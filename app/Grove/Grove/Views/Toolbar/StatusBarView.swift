@@ -16,6 +16,9 @@ struct StatusBarView: View {
     // MARK: Dependencies
 
     let repository: any GitRepositoryProtocol
+    /// Optional auto-fetch scheduler. When provided, fetch activity and last-fetch
+    /// time are shown in the centre of the bar.
+    var autoFetcher: AutoFetchScheduler? = nil
 
     // MARK: State
 
@@ -31,17 +34,8 @@ struct StatusBarView: View {
 
             Spacer()
 
-            // Center: activity message + spinner
-            if let message = activityMessage {
-                HStack(spacing: 6) {
-                    ProgressView()
-                        .scaleEffect(0.6)
-                        .frame(width: 14, height: 14)
-                    Text(message)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
+            // Centre: auto-fetch activity or last-fetch time
+            fetchStatusView
 
             // Right: current branch
             if let branch = repository.currentBranch {
@@ -60,6 +54,37 @@ struct StatusBarView: View {
         .background(.bar)
         .overlay(alignment: .top) {
             Divider()
+        }
+    }
+
+    // MARK: Fetch Status
+
+    @ViewBuilder
+    private var fetchStatusView: some View {
+        if let fetcher = autoFetcher {
+            if fetcher.isFetching {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                        .frame(width: 14, height: 14)
+                    Text("Fetching\u{2026}")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if let description = fetcher.lastFetchRelativeDescription {
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+        } else if let message = activityMessage {
+            HStack(spacing: 6) {
+                ProgressView()
+                    .scaleEffect(0.6)
+                    .frame(width: 14, height: 14)
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 

@@ -53,7 +53,6 @@ struct RepositoryWindowView: View {
                 openError = error.localizedDescription
             }
         }
-        .frame(minWidth: 900, minHeight: 600)
     }
 
     // MARK: Loading View
@@ -90,6 +89,9 @@ private struct RepositoryWindowContent: View {
     @State private var sidebarVM: SidebarViewModel
     @State private var historyVM: HistoryViewModel
     @State private var stashesVM: StashesViewModel
+    @State private var reflogVM: ReflogViewModel
+    @State private var branchesReviewVM: BranchesReviewViewModel
+    @State private var pullRequestsVM: PullRequestsViewModel
     @State private var toolbarState = RepositoryToolbarState()
 
     /// Sidebar-driven navigation selection.
@@ -98,14 +100,25 @@ private struct RepositoryWindowContent: View {
     /// File system watcher for live refresh when files change on disk.
     @State private var fileWatcher: FileWatcher?
 
+    /// Undo/redo manager for reversible git operations.
+    @State private var gitUndoManager: GitUndoManager
+
+    /// Background auto-fetch scheduler.
+    @State private var autoFetcher: AutoFetchScheduler
+
     // MARK: Init
 
     init(reference: RepositoryReference, repository: any GitRepositoryProtocol) {
         self.reference = reference
         self.repository = repository
-        _sidebarVM  = State(wrappedValue: SidebarViewModel(repository: repository))
-        _historyVM  = State(wrappedValue: HistoryViewModel(repository: repository))
-        _stashesVM  = State(wrappedValue: StashesViewModel(repository: repository))
+        _sidebarVM         = State(wrappedValue: SidebarViewModel(repository: repository))
+        _historyVM         = State(wrappedValue: HistoryViewModel(repository: repository))
+        _stashesVM         = State(wrappedValue: StashesViewModel(repository: repository))
+        _reflogVM          = State(wrappedValue: ReflogViewModel(repository: repository))
+        _branchesReviewVM  = State(wrappedValue: BranchesReviewViewModel(repository: repository))
+        _pullRequestsVM    = State(wrappedValue: PullRequestsViewModel(repository: repository))
+        _gitUndoManager    = State(wrappedValue: GitUndoManager())
+        _autoFetcher       = State(wrappedValue: AutoFetchScheduler(repository: repository))
     }
 
     // MARK: Body
@@ -118,7 +131,7 @@ private struct RepositoryWindowContent: View {
         } detail: {
             contentView
                 .safeAreaInset(edge: .bottom) {
-                    StatusBarView(repository: repository)
+                    StatusBarView(repository: repository, autoFetcher: autoFetcher)
                 }
         }
         .onChange(of: sidebarVM.selection) { _, newItem in
@@ -126,6 +139,8 @@ private struct RepositoryWindowContent: View {
                 selectedItem = item
             }
         }
+        .environment(gitUndoManager)
+        .focusedValue(\.gitUndoManager, gitUndoManager)
         .repositoryToolbar(repository: repository, state: toolbarState)
         .navigationTitle(reference.displayName)
         .task {
@@ -140,9 +155,12 @@ private struct RepositoryWindowContent: View {
             fileWatcher = watcher
             // Initial sidebar load.
             await sidebarVM.refresh()
+            // Start background auto-fetch.
+            autoFetcher.start()
         }
         .onDisappear {
             fileWatcher?.stop()
+            autoFetcher.stop()
         }
         .onReceive(NotificationCenter.default.publisher(for: GroveAction.notificationName)) { notification in
             guard let action = GroveAction(notification: notification) else { return }
@@ -200,6 +218,33 @@ private struct RepositoryWindowContent: View {
         case .quickActions:
             // Quick Actions panel is handled elsewhere.
             break
+        case .quickOpen:
+            // Quick Open triggers the Quick Actions panel in filename mode.
+            break
+        case .navigateReflog:
+            sidebarVM.selection = .reflog
+        case .navigatePullRequests:
+            sidebarVM.selection = .pullRequests
+        case .navigateBranchesReview:
+            sidebarVM.selection = .branchesReview
+        case .undo:
+            Task {
+                do {
+                    try await gitUndoManager.undo()
+                    await sidebarVM.refresh()
+                } catch {
+                    gitUndoManager.errorMessage = error.localizedDescription
+                }
+            }
+        case .redo:
+            Task {
+                do {
+                    try await gitUndoManager.redo()
+                    await sidebarVM.refresh()
+                } catch {
+                    gitUndoManager.errorMessage = error.localizedDescription
+                }
+            }
         }
     }
 
@@ -225,26 +270,32 @@ private struct RepositoryWindowContent: View {
                     await stashesVM.refresh()
                 }
 
+        case .reflog:
+            ReflogView()
+                .environment(reflogVM)
+                .task(id: "reflog-initial") {
+                    await reflogVM.refresh()
+                }
+
+        case .blame:
+            BlameFilePicker(repository: repository)
+
         case .pullRequests:
-            placeholderView(
-                icon: "arrow.triangle.merge",
-                title: "Pull Requests",
-                detail: "PR integration will be implemented in a future phase."
-            )
+            PullRequestsView()
+                .environment(pullRequestsVM)
+                .task(id: "pullrequests-initial") {
+                    await pullRequestsVM.refresh()
+                }
 
         case .branchesReview:
-            placeholderView(
-                icon: "arrow.triangle.branch",
-                title: "Branches Review",
-                detail: "WS4 will implement the branches review view here."
-            )
+            BranchesReviewView()
+                .environment(branchesReviewVM)
+                .task(id: "branchesreview-initial") {
+                    await branchesReviewVM.refresh()
+                }
 
         case .settings:
-            placeholderView(
-                icon: "gearshape",
-                title: "Settings",
-                detail: "Repository-specific settings will be implemented here."
-            )
+            RepositorySettingsView(repository: repository)
 
         case .branch(let info):
             filteredHistoryView(branch: info.name)
@@ -273,21 +324,6 @@ private struct RepositoryWindowContent: View {
             }
     }
 
-    private func placeholderView(icon: String, title: String, detail: String) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 48))
-                .foregroundStyle(.tertiary)
-            Text(title)
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text(detail)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 400)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
 }
 
 // MARK: - Preview

@@ -54,6 +54,11 @@ final class MockGitRepository: GitRepositoryProtocol {
         return MockData.statusEntries
     }
 
+    func listTrackedFiles() async throws -> [String] {
+        await simulateLatency()
+        return MockData.trackedFiles
+    }
+
     // MARK: Staging
 
     func stage(paths: [String]) async throws {
@@ -98,7 +103,7 @@ final class MockGitRepository: GitRepositoryProtocol {
 
     // MARK: Diff
 
-    func diff(for entry: StatusEntry, staged: Bool) async throws -> DiffResult {
+    func diff(for entry: StatusEntry, staged: Bool, ignoreWhitespace: Bool = false) async throws -> DiffResult {
         await simulateLatency()
         return MockData.diffResult(for: entry.path)
     }
@@ -111,9 +116,14 @@ final class MockGitRepository: GitRepositoryProtocol {
     // MARK: Commits
 
     @discardableResult
-    func commit(message: String, body: String?, amend: Bool) async throws -> CommitInfo {
+    func commit(message: String, body: String?, amend: Bool, sign: Bool = false) async throws -> CommitInfo {
         await simulateLatency()
         return MockData.commits[0]
+    }
+
+    func isSigningConfigured() async throws -> Bool {
+        await simulateLatency()
+        return true
     }
 
     func log(maxCount: Int, skip: Int, branch: String?) async throws -> [CommitInfo] {
@@ -122,6 +132,12 @@ final class MockGitRepository: GitRepositoryProtocol {
         let start = min(skip, all.count)
         let end = min(start + maxCount, all.count)
         return Array(all[start..<end])
+    }
+
+    func fileLog(path: String, maxCount: Int) async throws -> [CommitInfo] {
+        await simulateLatency(60_000_000)
+        // Return a plausible subset of commits to simulate file-specific history.
+        return Array(MockData.commits.prefix(maxCount))
     }
 
     func commitDetail(_ sha: String) async throws -> CommitInfo {
@@ -201,6 +217,15 @@ final class MockGitRepository: GitRepositoryProtocol {
         progress?(1.0)
     }
 
+    func sync(remote: String?, rebase: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
+        await simulateLatency(200_000_000)
+        progress?(0.33)
+        await simulateLatency(200_000_000)
+        progress?(0.66)
+        await simulateLatency(200_000_000)
+        progress?(1.0)
+    }
+
     // MARK: Merge / Rebase
 
     func merge(branch: String) async throws {
@@ -230,6 +255,89 @@ final class MockGitRepository: GitRepositoryProtocol {
         return MockData.statusEntries.filter { $0.indexStatus == .conflicted || $0.workdirStatus == .conflicted }
     }
 
+    // MARK: Cherry-pick
+
+    func cherryPick(commit: String) async throws {
+        await simulateLatency(100_000_000)
+    }
+
+    func abortCherryPick() async throws {
+        await simulateLatency()
+        repositoryState = .normal
+    }
+
+    // MARK: Revert
+
+    func revert(commit: String) async throws {
+        await simulateLatency(100_000_000)
+    }
+
+    func abortRevert() async throws {
+        await simulateLatency()
+        repositoryState = .normal
+    }
+
+    // MARK: Bisect
+
+    func bisectStart() async throws {
+        await simulateLatency()
+        repositoryState = .bisect
+    }
+
+    func bisectBad(commit: String?) async throws {
+        await simulateLatency()
+    }
+
+    func bisectGood(commit: String?) async throws {
+        await simulateLatency()
+    }
+
+    func bisectReset() async throws {
+        await simulateLatency()
+        repositoryState = .normal
+    }
+
+    func bisectLog() async throws -> [String] {
+        await simulateLatency()
+        return [
+            "# bad: [a1b2c3d] feat: add OAuth2 authentication flow",
+            "# good: [86a1b2c] chore: initial project scaffold",
+            "git bisect bad a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+            "git bisect good 86a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1",
+        ]
+    }
+
+    // MARK: Interactive Rebase
+
+    func rebaseInteractive(onto: String, commitCount: Int) async throws {
+        await simulateLatency(150_000_000)
+    }
+
+    func squashCommits(_ commits: [String], message: String) async throws {
+        await simulateLatency(200_000_000)
+    }
+
+    func rewordCommit(_ commit: String, newMessage: String) async throws {
+        await simulateLatency(150_000_000)
+    }
+
+    func dropCommit(_ commit: String) async throws {
+        await simulateLatency(150_000_000)
+    }
+
+    // MARK: Reset
+
+    func resetToCommit(_ commit: String, mode: ResetMode) async throws {
+        await simulateLatency(100_000_000)
+        currentBranch = MockData.branches.first(where: { $0.isHEAD })
+    }
+
+    // MARK: Clean
+
+    func cleanUntracked(directories: Bool, force: Bool) async throws {
+        await simulateLatency()
+    }
+
     // MARK: Stash
 
     func stashes() async throws -> [StashEntry] {
@@ -237,7 +345,7 @@ final class MockGitRepository: GitRepositoryProtocol {
         return MockData.stashEntries
     }
 
-    func stashCreate(message: String?, includeUntracked: Bool) async throws {
+    func stashCreate(message: String?, includeUntracked: Bool, paths: [String]? = nil) async throws {
         await simulateLatency()
     }
 
@@ -257,13 +365,13 @@ final class MockGitRepository: GitRepositoryProtocol {
     }
 
     @discardableResult
-    func createTag(name: String, at sha: String?, message: String?) async throws -> TagInfo {
+    func createTag(name: String, at sha: String?, message: String?, sign: Bool = false) async throws -> TagInfo {
         await simulateLatency()
         return TagInfo(
             id: name,
             name: name,
             targetSHA: sha ?? MockData.commits[0].id,
-            isAnnotated: message != nil,
+            isAnnotated: message != nil || sign,
             message: message,
             taggerName: "Jane Developer",
             taggerDate: Date()
@@ -272,6 +380,14 @@ final class MockGitRepository: GitRepositoryProtocol {
 
     func deleteTag(name: String) async throws {
         await simulateLatency()
+    }
+
+    func pushTag(name: String, remote: String?) async throws {
+        await simulateLatency(150_000_000)
+    }
+
+    func pushAllTags(remote: String?) async throws {
+        await simulateLatency(200_000_000)
     }
 
     // MARK: Blame
@@ -286,6 +402,50 @@ final class MockGitRepository: GitRepositoryProtocol {
     func reflog(maxCount: Int) async throws -> [ReflogEntry] {
         await simulateLatency()
         return Array(MockData.reflogEntries.prefix(maxCount))
+    }
+
+    // MARK: Pull Requests
+
+    func pullRequests() async throws -> [PullRequestInfo] {
+        await simulateLatency(80_000_000)
+        return MockData.pullRequests
+    }
+
+    func pullRequestDetail(number: Int) async throws -> PullRequestInfo {
+        await simulateLatency()
+        return MockData.pullRequests.first(where: { $0.id == number }) ?? MockData.pullRequests[0]
+    }
+
+    func pullRequestComments(number: Int) async throws -> [PRComment] {
+        await simulateLatency(60_000_000)
+        return MockData.prComments
+    }
+
+    func checkoutPullRequest(number: Int) async throws {
+        await simulateLatency(150_000_000)
+        if let pr = MockData.pullRequests.first(where: { $0.id == number }) {
+            currentBranch = BranchInfo(
+                id: "refs/heads/\(pr.sourceBranch)",
+                name: pr.sourceBranch,
+                isLocal: true,
+                isRemote: false,
+                isHEAD: true,
+                targetSHA: MockData.commits[0].id,
+                remoteName: nil,
+                upstream: nil,
+                ahead: 0,
+                behind: 0
+            )
+        }
+    }
+
+    func closePullRequest(number: Int) async throws {
+        await simulateLatency(80_000_000)
+    }
+
+    func mergePullRequest(number: Int) async throws {
+        await simulateLatency(200_000_000)
+        currentBranch = MockData.branches.first(where: { $0.isHEAD })
     }
 }
 
@@ -636,6 +796,71 @@ enum MockData {
         ),
     ]
 
+    // MARK: Tracked Files
+
+    /// All paths returned by `git ls-files` — includes files from ``statusEntries``
+    /// plus additional clean/unmodified tracked files that fill out a realistic
+    /// project tree.
+    static let trackedFiles: [String] = {
+        // Start with the paths that have status changes.
+        let changedPaths = statusEntries
+            .filter { $0.workdirStatus != .untracked }
+            .map(\.path)
+
+        // Additional clean tracked files with no current changes.
+        let cleanPaths: [String] = [
+            ".gitignore",
+            ".swiftlint.yml",
+            "Package.swift",
+            "Package.resolved",
+            "LICENSE",
+            "CHANGELOG.md",
+            "README.md",
+            "Sources/Grove/GroveApp.swift",
+            "Sources/Grove/Domain/AppState.swift",
+            "Sources/Grove/Domain/FileWatcher.swift",
+            "Sources/Grove/Domain/RepositoryManager.swift",
+            "Sources/Grove/Models/UserProfile.swift",
+            "Sources/Grove/Protocols/GitRepositoryProtocol.swift",
+            "Sources/Grove/Mocks/MockGitRepository.swift",
+            "Sources/Grove/Views/WorkingCopy/WorkingCopyView.swift",
+            "Sources/Grove/Views/WorkingCopy/WorkingCopyViewModel.swift",
+            "Sources/Grove/Views/WorkingCopy/FileStatusListView.swift",
+            "Sources/Grove/Views/WorkingCopy/FileStatusRow.swift",
+            "Sources/Grove/Views/History/HistoryView.swift",
+            "Sources/Grove/Views/History/CommitDetailView.swift",
+            "Sources/Grove/Views/History/CommitListView.swift",
+            "Sources/Grove/Views/Sidebar/RepositorySidebar.swift",
+            "Sources/Grove/Views/Sidebar/BranchSectionView.swift",
+            "Sources/Grove/Views/Sidebar/TagSectionView.swift",
+            "Sources/Grove/Views/Diff/DiffPanelView.swift",
+            "Sources/Grove/Views/Diff/HunkView.swift",
+            "Sources/Grove/Views/Diff/DiffLineView.swift",
+            "Sources/Grove/Views/Blame/BlameView.swift",
+            "Sources/Grove/Views/Settings/SettingsView.swift",
+            "Sources/Grove/Views/Settings/ProfileSettingsView.swift",
+            "Sources/Grove/Components/DiffViewer/DiffView.swift",
+            "Sources/Grove/Components/EmptyStateView.swift",
+            "Sources/Grove/Components/StatusIcon.swift",
+            "Sources/GitKit/Core/GitPointer.swift",
+            "Sources/GitKit/Repository/Repository.swift",
+            "Sources/GitKit/Status/StatusList.swift",
+            "Sources/GitKit/Parsers/StatusParser.swift",
+            "Sources/GitKit/Parsers/LogParser.swift",
+            "Sources/GitKit/Parsers/DiffParser.swift",
+            "Resources/Assets.xcassets/AppIcon.appiconset/Contents.json",
+            "Tests/GroveTests/CommitGraphTests.swift",
+            "Tests/GroveTests/StatusParserTests.swift",
+            "Tests/GroveTests/DiffParserTests.swift",
+            "docs/ARCHITECTURE.md",
+            "docs/CONVENTIONS.md",
+        ]
+
+        // Merge, deduplicate, and sort alphabetically to mirror `git ls-files` output.
+        let all = Set(changedPaths + cleanPaths)
+        return all.sorted()
+    }()
+
     // MARK: Status Entries
 
     static let statusEntries: [StatusEntry] = [
@@ -783,6 +1008,129 @@ enum MockData {
             ))
         }
         return entries
+    }()
+
+    // MARK: Pull Requests
+
+    static let pullRequests: [PullRequestInfo] = {
+        let now = Date()
+        let cal = Calendar.current
+        return [
+            PullRequestInfo(
+                id: 47,
+                title: "feat: add pull request list and detail views",
+                body: "Implements the Pull Requests feature using `gh` CLI.\n\nIncludes:\n- PR list with filter tabs\n- Detail panel with comments\n- Check Out / Close / Merge actions",
+                authorName: authorJane.name,
+                authorAvatarURL: nil,
+                state: .open,
+                sourceBranch: "feature/pull-requests",
+                targetBranch: "main",
+                createdDate: cal.date(byAdding: .hour, value: -6, to: now)!,
+                updatedDate: cal.date(byAdding: .minute, value: -45, to: now)!,
+                isDraft: false,
+                labels: [
+                    PRLabel(id: "enhancement", name: "enhancement", color: "0075ca"),
+                    PRLabel(id: "ui", name: "ui", color: "e4e669"),
+                ],
+                reviewers: [authorAlice.name],
+                checksStatus: .passing
+            ),
+            PullRequestInfo(
+                id: 46,
+                title: "feat: blame view with per-line author annotations",
+                body: "Adds a blame view that annotates each line of a file with its commit and author.",
+                authorName: authorBob.name,
+                authorAvatarURL: nil,
+                state: .open,
+                sourceBranch: "feature/blame-view",
+                targetBranch: "main",
+                createdDate: cal.date(byAdding: .day, value: -2, to: now)!,
+                updatedDate: cal.date(byAdding: .hour, value: -3, to: now)!,
+                isDraft: true,
+                labels: [
+                    PRLabel(id: "enhancement", name: "enhancement", color: "0075ca"),
+                ],
+                reviewers: [],
+                checksStatus: .pending
+            ),
+            PullRequestInfo(
+                id: 45,
+                title: "fix: stash diff crash when SHA is invalid",
+                body: "Guards against stash entries whose stored SHA is no longer reachable in the object store.",
+                authorName: authorAlice.name,
+                authorAvatarURL: nil,
+                state: .merged,
+                sourceBranch: "bugfix/stash-sha-crash",
+                targetBranch: "main",
+                createdDate: cal.date(byAdding: .day, value: -5, to: now)!,
+                updatedDate: cal.date(byAdding: .day, value: -3, to: now)!,
+                isDraft: false,
+                labels: [
+                    PRLabel(id: "bug", name: "bug", color: "d73a4a"),
+                ],
+                reviewers: [authorJane.name],
+                checksStatus: .passing
+            ),
+            PullRequestInfo(
+                id: 44,
+                title: "chore: migrate to Swift 5.10 strict concurrency",
+                body: nil,
+                authorName: authorJane.name,
+                authorAvatarURL: nil,
+                state: .closed,
+                sourceBranch: "chore/strict-concurrency",
+                targetBranch: "main",
+                createdDate: cal.date(byAdding: .day, value: -10, to: now)!,
+                updatedDate: cal.date(byAdding: .day, value: -8, to: now)!,
+                isDraft: false,
+                labels: [
+                    PRLabel(id: "chore", name: "chore", color: "e4e669"),
+                ],
+                reviewers: [],
+                checksStatus: .failing
+            ),
+        ]
+    }()
+
+    // MARK: PR Comments
+
+    static let prComments: [PRComment] = {
+        let now = Date()
+        let cal = Calendar.current
+        return [
+            PRComment(
+                id: "comment-0",
+                authorName: authorAlice.name,
+                authorAvatarURL: nil,
+                body: "Looks great overall! Left a few minor nits inline.",
+                createdDate: cal.date(byAdding: .hour, value: -4, to: now)!,
+                isReview: true
+            ),
+            PRComment(
+                id: "comment-1",
+                authorName: authorBob.name,
+                authorAvatarURL: nil,
+                body: "Should we add a `#Preview` for `PRActionBar` in isolation too?",
+                createdDate: cal.date(byAdding: .hour, value: -3, to: now)!,
+                isReview: false
+            ),
+            PRComment(
+                id: "comment-2",
+                authorName: authorJane.name,
+                authorAvatarURL: nil,
+                body: "Good call — added a standalone preview in the latest commit.",
+                createdDate: cal.date(byAdding: .hour, value: -2, to: now)!,
+                isReview: false
+            ),
+            PRComment(
+                id: "comment-3",
+                authorName: authorAlice.name,
+                authorAvatarURL: nil,
+                body: "LGTM. Approved.",
+                createdDate: cal.date(byAdding: .minute, value: -45, to: now)!,
+                isReview: true
+            ),
+        ]
     }()
 
     // MARK: Reflog

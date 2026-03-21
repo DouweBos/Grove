@@ -1,16 +1,13 @@
 // Views/Settings/PreferencesView.swift
 // Grove
 //
-// Preferences window structure. WS7 will fill in each tab panel.
-// This file establishes the TabView shell that WS7 populates.
+// Preferences window structure with all tab panels.
 
 import SwiftUI
 
 // MARK: - PreferencesView
 
 /// macOS Preferences window with an icon tab bar.
-///
-/// Tab panels are currently placeholders — WS7 will implement them.
 struct PreferencesView: View {
 
     let manager: any RepositoryManagerProtocol
@@ -23,29 +20,47 @@ struct PreferencesView: View {
                 }
                 .tag("general")
 
-            Text("Appearance preferences — WS7 will implement")
+            AppearancePreferencesTab()
                 .tabItem {
                     Label("Appearance", systemImage: "paintbrush")
                 }
                 .tag("appearance")
 
-            Text("Git Config preferences — WS7 will implement")
+            GitConfigPreferencesTab()
                 .tabItem {
                     Label("Git Config", systemImage: "terminal")
                 }
                 .tag("gitconfig")
 
-            Text("User Profiles preferences — WS7 will implement")
+            UserProfilesPreferencesTab()
                 .tabItem {
                     Label("Profiles", systemImage: "person.circle")
                 }
                 .tag("profiles")
 
-            Text("Services preferences — WS7 will implement")
+            ServicesPreferencesTab()
                 .tabItem {
                     Label("Services", systemImage: "network")
                 }
                 .tag("services")
+
+            EditorPreferencesTab()
+                .tabItem {
+                    Label("Editor", systemImage: "pencil.and.outline")
+                }
+                .tag("editor")
+
+            CommitTemplatesPreferencesTab()
+                .tabItem {
+                    Label("Templates", systemImage: "doc.text")
+                }
+                .tag("templates")
+
+            KeyboardShortcutsPreferencesTab()
+                .tabItem {
+                    Label("Shortcuts", systemImage: "keyboard")
+                }
+                .tag("shortcuts")
 
             AdvancedPreferencesTab(manager: manager)
                 .tabItem {
@@ -53,7 +68,7 @@ struct PreferencesView: View {
                 }
                 .tag("advanced")
         }
-        .frame(width: 540, height: 440)
+        .frame(width: 600, height: 480)
     }
 }
 

@@ -26,6 +26,7 @@ struct PullDialogView: View {
 
     @State private var selectedRemoteBranch: String
     @State private var useRebase = false
+    @State private var autoStash = false
     @State private var verifySignatures = false
     @State private var skipHooks = false
     @State private var isPulling = false
@@ -72,6 +73,16 @@ struct PullDialogView: View {
                     Toggle("Use Rebase Instead of Merge", isOn: $useRebase)
                         .fontWeight(.medium)
                     Text("Rebases the local HEAD branch onto the fetched revisions.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 20)
+                }
+                .padding(.vertical, 4)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("Auto Stash", isOn: $autoStash)
+                        .fontWeight(.medium)
+                    Text("Stashes local changes before pulling and restores them afterwards.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.leading, 20)
@@ -126,11 +137,23 @@ struct PullDialogView: View {
         errorMessage = nil
         Task {
             do {
+                // Auto stash: save local changes before pulling.
+                if autoStash {
+                    try await repository.stashCreate(
+                        message: "auto-stash before pull",
+                        includeUntracked: true,
+                        paths: nil
+                    )
+                }
                 try await repository.pull(
                     remote: nil,
                     rebase: useRebase,
                     progress: nil
                 )
+                // Auto stash: restore local changes after pulling.
+                if autoStash {
+                    try await repository.stashApply(index: 0, drop: true)
+                }
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription

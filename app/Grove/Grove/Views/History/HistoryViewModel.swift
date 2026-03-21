@@ -3,10 +3,12 @@
 
 import Foundation
 import Observation
+import SwiftUI
 
 /// ViewModel for the History view.
 ///
-/// Manages commit log loading, search/filter state, and commit detail selection.
+/// Manages commit log loading, search/filter state, commit detail selection,
+/// and the commit graph topology used by ``CommitGraphColumn``.
 @Observable
 final class HistoryViewModel {
 
@@ -21,6 +23,13 @@ final class HistoryViewModel {
     var errorMessage: String?
     var searchText = ""
     var filterBranch: String? // nil = all branches
+
+    // MARK: - Graph
+
+    /// Keyed by commit SHA. Populated after every page load.
+    var graphNodes: [String: GraphNode] = [:]
+    /// Number of active columns in the widest row. Drives graph column width.
+    var maxGraphColumns: Int = 1
 
     // MARK: - Pagination
 
@@ -44,6 +53,8 @@ final class HistoryViewModel {
         loadedCount = 0
         hasMore = true
         commits = []
+        graphNodes = [:]
+        maxGraphColumns = 1
         await loadMore()
     }
 
@@ -61,6 +72,7 @@ final class HistoryViewModel {
             commits.append(contentsOf: page)
             loadedCount += page.count
             hasMore = page.count == pageSize
+            buildGraph()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -84,15 +96,45 @@ final class HistoryViewModel {
     }
 
     func cherryPick(_ commit: CommitInfo) async {
-        // Placeholder — wired in WS5
+        do {
+            try await repository.cherryPick(commit: commit.id)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func createBranch(from commit: CommitInfo) async {
-        // Placeholder — wired in WS5
+        do {
+            try await repository.createBranch(name: "new-branch", from: commit.id, checkout: true)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func createTag(at commit: CommitInfo) async {
-        // Placeholder — wired in WS5
+        do {
+            try await repository.createTag(name: "new-tag", at: commit.id, message: nil)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Graph
+
+    /// Rebuilds the full graph from the currently loaded commit list.
+    ///
+    /// Called after every page load. The builder processes all commits in one
+    /// pass so topology stays correct across page boundaries.
+    private func buildGraph() {
+        let builder = CommitGraphBuilder()
+        let nodes = builder.buildGraph(from: commits)
+        var nodeMap: [String: GraphNode] = [:]
+        nodeMap.reserveCapacity(nodes.count)
+        for node in nodes {
+            nodeMap[node.id] = node
+        }
+        graphNodes = nodeMap
+        maxGraphColumns = (nodes.map(\.column).max().map { $0 + 1 }) ?? 1
     }
 
     // MARK: - Derived

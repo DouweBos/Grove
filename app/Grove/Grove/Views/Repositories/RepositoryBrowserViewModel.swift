@@ -1,19 +1,17 @@
 // Views/Repositories/RepositoryBrowserViewModel.swift
 // Grove
 //
-// ViewModel for the repository browser window.
-// Bridges the RepositoryManagerProtocol to the SwiftUI view layer.
+// ViewModel for the repository browser tab.
 
 import Foundation
 import Observation
-import SwiftUI
 
 // MARK: - RepositoryBrowserViewModel
 
 /// Drives the repository browser UI.
 ///
-/// Holds selection state, sheet presentation flags, and delegates
-/// all persistence operations to the injected ``RepositoryManagerProtocol``.
+/// Opening a repository calls the injected `onOpenRepository` closure,
+/// which the host view uses to add a tab in the window's tab manager.
 @MainActor
 @Observable
 final class RepositoryBrowserViewModel {
@@ -24,15 +22,8 @@ final class RepositoryBrowserViewModel {
 
     // MARK: Selection
 
-    /// Currently selected group in the sidebar.
     var selectedGroupID: UUID?
-    /// Currently selected bookmark.
     var selectedBookmarkID: UUID?
-
-    // MARK: Navigation
-
-    /// When set, the browser window navigates in-place to show this repository.
-    var openedReference: RepositoryReference?
 
     // MARK: Sheet Presentation
 
@@ -40,9 +31,19 @@ final class RepositoryBrowserViewModel {
     var isShowingAddDialog = false
     var isShowingCreateDialog = false
 
+    // MARK: Source Mode
+
+    /// Which source the sidebar is showing: local bookmarks or cloud repos.
+    var sourceMode: BrowserSourceMode = .local
+
     // MARK: Error State
 
     var errorMessage: String?
+
+    // MARK: Navigation
+
+    /// Called by the host to navigate to a repository.
+    var onOpenRepo: ((RepositoryReference) -> Void)?
 
     // MARK: Computed
 
@@ -56,14 +57,12 @@ final class RepositoryBrowserViewModel {
         return manager.bookmarks.first(where: { $0.id == id })
     }
 
-    /// Bookmarks that belong to a specific group.
     func bookmarks(for groupID: UUID) -> [RepositoryBookmarkData] {
         manager.bookmarks
             .filter { $0.groupID == groupID }
             .sorted { $0.sortOrder < $1.sortOrder }
     }
 
-    /// Bookmarks that don't belong to any group.
     var ungroupedBookmarks: [RepositoryBookmarkData] {
         manager.bookmarks
             .filter { $0.groupID == nil }
@@ -74,7 +73,6 @@ final class RepositoryBrowserViewModel {
 
     init(manager: any RepositoryManagerProtocol) {
         self.manager = manager
-        // Select the first group by default.
         self.selectedGroupID = manager.bookmarkGroups.first?.id
     }
 
@@ -82,15 +80,16 @@ final class RepositoryBrowserViewModel {
 
     func openSelectedBookmark() {
         guard let bookmark = selectedBookmark else { return }
-        openedReference = RepositoryReference(path: bookmark.path)
+        openBookmark(bookmark)
     }
 
     func openBookmark(_ bookmark: RepositoryBookmarkData) {
-        openedReference = RepositoryReference(path: bookmark.path)
+        let reference = RepositoryReference(path: bookmark.path)
+        openReference(reference)
     }
 
-    func closeRepository() {
-        openedReference = nil
+    func openReference(_ reference: RepositoryReference) {
+        onOpenRepo?(reference)
     }
 
     func addBookmark(path: String, displayName: String) {

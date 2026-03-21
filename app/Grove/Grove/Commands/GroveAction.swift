@@ -63,6 +63,24 @@ enum GroveAction: String, Sendable {
 
     /// Toggle the Quick Actions command palette (Cmd+Shift+A).
     case quickActions
+    /// Quick Open — focus the repository browser search (Cmd+Shift+O).
+    case quickOpen
+
+    // MARK: Navigation (extended)
+
+    /// Navigate to the Reflog view (Cmd+4).
+    case navigateReflog
+    /// Navigate to the Pull Requests view (Cmd+5).
+    case navigatePullRequests
+    /// Navigate to the Branches Review view (Cmd+6).
+    case navigateBranchesReview
+
+    // MARK: Undo / Redo
+
+    /// Undo the last recorded git operation (Cmd+Z).
+    case undo
+    /// Redo the last undone git operation (Cmd+Shift+Z).
+    case redo
 
     // MARK: Notification Plumbing
 

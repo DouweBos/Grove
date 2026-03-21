@@ -80,7 +80,7 @@ struct CreateRepositorySheet: View {
                 viewModel.selectedBookmarkID = viewModel.manager.bookmarks
                     .first(where: { $0.path == repo.path.path })?.id
                 dismiss()
-                viewModel.openedReference = RepositoryReference(path: url.path)
+                viewModel.openReference(RepositoryReference(path: url.path))
             } catch {
                 self.error = error.localizedDescription
             }

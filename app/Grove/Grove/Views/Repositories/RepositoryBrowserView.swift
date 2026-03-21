@@ -1,28 +1,18 @@
 // Views/Repositories/RepositoryBrowserView.swift
 // Grove
 //
-// Root view for the repository browser window.
-// Hosts a NavigationSplitView with the groups sidebar and content area.
+// Root view for the repository browser tab.
 
 import SwiftUI
 
 // MARK: - RepositoryBrowserView
 
 /// The full repository browser: sidebar with groups + content area.
-///
-/// Injected with a ``RepositoryManagerProtocol`` so previews can use
-/// ``MockRepositoryManager`` without touching real disk.
 struct RepositoryBrowserView: View {
-
-    // MARK: Dependencies
 
     @Environment(RepositoryBrowserViewModel.self) private var viewModel
 
-    // MARK: State
-
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
-
-    // MARK: Body
 
     var body: some View {
         @Bindable var vm = viewModel
@@ -33,7 +23,7 @@ struct RepositoryBrowserView: View {
             RepositoryBrowserContent()
         }
         .navigationTitle("Repositories")
-        .frame(minWidth: 800, minHeight: 500)
+        .toolbar(removing: .sidebarToggle)
         .sheet(isPresented: $vm.isShowingCloneDialog) {
             CloneDialogView()
                 .environment(viewModel)

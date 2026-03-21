@@ -16,6 +16,7 @@ struct RebaseDialogView: View {
     let localBranches: [BranchInfo]
 
     @State private var selectedBranch: String
+    @State private var autoStash = false
     @State private var isRebasing = false
     @State private var errorMessage: String?
 
@@ -48,6 +49,16 @@ struct RebaseDialogView: View {
                     .labelsHidden()
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("Auto Stash", isOn: $autoStash)
+                        .fontWeight(.medium)
+                    Text("Stashes local changes before rebasing and restores them afterwards.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 20)
+                }
+                .padding(.vertical, 4)
             }
             .formStyle(.grouped)
 
@@ -80,7 +91,19 @@ struct RebaseDialogView: View {
         errorMessage = nil
         Task {
             do {
+                // Auto stash: save local changes before rebasing.
+                if autoStash {
+                    try await repository.stashCreate(
+                        message: "auto-stash before rebase",
+                        includeUntracked: true,
+                        paths: nil
+                    )
+                }
                 try await repository.rebase(onto: selectedBranch)
+                // Auto stash: restore local changes after rebasing.
+                if autoStash {
+                    try await repository.stashApply(index: 0, drop: true)
+                }
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription

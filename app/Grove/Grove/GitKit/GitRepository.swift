@@ -122,6 +122,14 @@ final class GitRepository: GitRepositoryProtocol {
         return StatusParser.parse(result.stdout)
     }
 
+    func listTrackedFiles() async throws -> [String] {
+        let result = try await shell.run(["ls-files"])
+        return result.stdout
+            .split(separator: "\n")
+            .map(String.init)
+            .filter { !$0.isEmpty }
+    }
+
     // MARK: - Staging
 
     func stage(paths: [String]) async throws {
@@ -186,15 +194,17 @@ final class GitRepository: GitRepositoryProtocol {
 
     // MARK: - Diff
 
-    func diff(for entry: StatusEntry, staged: Bool) async throws -> DiffResult {
-        let args: [String]
+    func diff(for entry: StatusEntry, staged: Bool, ignoreWhitespace: Bool = false) async throws -> DiffResult {
+        var args: [String]
         if staged {
             // diff HEAD → index (what would be committed)
-            args = ["diff", "--cached", "-U3", "--", entry.path]
+            args = ["diff", "--cached", "-U3"]
         } else {
             // diff index → working tree (unstaged changes)
-            args = ["diff", "-U3", "--", entry.path]
+            args = ["diff", "-U3"]
         }
+        if ignoreWhitespace { args.append("-w") }
+        args += ["--", entry.path]
         let result = try await shell.run(args)
         return DiffParser.parseSingleFile(result.stdout) ?? DiffResult(
             filePath: entry.path,
@@ -232,7 +242,7 @@ final class GitRepository: GitRepositoryProtocol {
     // MARK: - Commits
 
     @discardableResult
-    func commit(message: String, body: String?, amend: Bool) async throws -> CommitInfo {
+    func commit(message: String, body: String?, amend: Bool, sign: Bool = false) async throws -> CommitInfo {
         guard !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             Logger.gitRepository.error("Commit attempted with empty message in \(self.displayName, privacy: .public)")
             throw GitRepositoryError.invalidCommitMessage
@@ -250,6 +260,7 @@ final class GitRepository: GitRepositoryProtocol {
 
         var args = ["commit", "-m", fullMessage]
         if amend { args.append("--amend") }
+        if sign  { args.append("-S") }
         try await shell.run(args)
 
         // Return the newly created commit.
@@ -267,6 +278,24 @@ final class GitRepository: GitRepositoryProtocol {
         return commit
     }
 
+    func isSigningConfigured() async throws -> Bool {
+        // Check if commit.gpgsign is explicitly set to "true".
+        let gpgsignResult = try await shell.runAllowingFailure(["config", "--get", "commit.gpgsign"])
+        if gpgsignResult.isSuccess {
+            let value = gpgsignResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if value == "true" { return true }
+        }
+
+        // Fall back to checking whether user.signingkey has a non-empty value.
+        let signingKeyResult = try await shell.runAllowingFailure(["config", "--get", "user.signingkey"])
+        if signingKeyResult.isSuccess {
+            let key = signingKeyResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            return !key.isEmpty
+        }
+
+        return false
+    }
+
     func log(maxCount: Int, skip: Int, branch: String?) async throws -> [CommitInfo] {
         var args = [
             "log",
@@ -277,6 +306,19 @@ final class GitRepository: GitRepositoryProtocol {
         if let branch {
             args.append(branch)
         }
+        let result = try await shell.run(args)
+        return LogParser.parse(result.stdout)
+    }
+
+    func fileLog(path: String, maxCount: Int) async throws -> [CommitInfo] {
+        let args = [
+            "log",
+            "--format=\(LogParser.formatString)",
+            "-\(maxCount)",
+            "--follow",
+            "--",
+            path,
+        ]
         let result = try await shell.run(args)
         return LogParser.parse(result.stdout)
     }
@@ -403,6 +445,19 @@ final class GitRepository: GitRepositoryProtocol {
         Logger.gitRepository.info("Push complete in \(self.displayName, privacy: .public)")
     }
 
+    func sync(remote: String?, rebase: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
+        Logger.gitRepository.info(
+            "Syncing with \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
+        )
+        try await fetch(remote: remote, progress: nil)
+        progress?(0.33)
+        try await pull(remote: remote, rebase: rebase, progress: nil)
+        progress?(0.66)
+        try await push(remote: remote, force: false, forceLease: false, progress: nil)
+        progress?(1.0)
+        Logger.gitRepository.info("Sync complete in \(self.displayName, privacy: .public)")
+    }
+
     // MARK: - Merge / Rebase
 
     func merge(branch: String) async throws {
@@ -478,6 +533,262 @@ final class GitRepository: GitRepositoryProtocol {
         }
     }
 
+    // MARK: - Cherry-pick
+
+    func cherryPick(commit: String) async throws {
+        Logger.gitRepository.info(
+            "Cherry-picking \(commit, privacy: .public) in \(self.displayName, privacy: .public)"
+        )
+        try await shell.run(["cherry-pick", commit])
+        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+        let stateBefore = repositoryState
+        repositoryState = await Self.loadRepositoryState(path: path)
+        if repositoryState != stateBefore {
+            Logger.gitRepository.notice(
+                "\(self.displayName, privacy: .public) state after cherry-pick: \(stateBefore.logDescription, privacy: .public) → \(self.repositoryState.logDescription, privacy: .public)"
+            )
+        }
+    }
+
+    func abortCherryPick() async throws {
+        Logger.gitRepository.info("Aborting cherry-pick in \(self.displayName, privacy: .public)")
+        try await shell.run(["cherry-pick", "--abort"])
+        let stateBefore = repositoryState
+        repositoryState = .normal
+        Logger.gitRepository.notice(
+            "\(self.displayName, privacy: .public) state: \(stateBefore.logDescription, privacy: .public) → normal"
+        )
+    }
+
+    // MARK: - Revert
+
+    func revert(commit: String) async throws {
+        Logger.gitRepository.info(
+            "Reverting \(commit, privacy: .public) in \(self.displayName, privacy: .public)"
+        )
+        // --no-edit prevents git from opening an editor for the revert message.
+        try await shell.run(["revert", "--no-edit", commit])
+        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+        let stateBefore = repositoryState
+        repositoryState = await Self.loadRepositoryState(path: path)
+        if repositoryState != stateBefore {
+            Logger.gitRepository.notice(
+                "\(self.displayName, privacy: .public) state after revert: \(stateBefore.logDescription, privacy: .public) → \(self.repositoryState.logDescription, privacy: .public)"
+            )
+        }
+    }
+
+    func abortRevert() async throws {
+        Logger.gitRepository.info("Aborting revert in \(self.displayName, privacy: .public)")
+        try await shell.run(["revert", "--abort"])
+        let stateBefore = repositoryState
+        repositoryState = .normal
+        Logger.gitRepository.notice(
+            "\(self.displayName, privacy: .public) state: \(stateBefore.logDescription, privacy: .public) → normal"
+        )
+    }
+
+    // MARK: - Bisect
+
+    func bisectStart() async throws {
+        Logger.gitRepository.info("Starting bisect in \(self.displayName, privacy: .public)")
+        try await shell.run(["bisect", "start"])
+        repositoryState = await Self.loadRepositoryState(path: path)
+    }
+
+    func bisectBad(commit: String?) async throws {
+        var args = ["bisect", "bad"]
+        if let commit { args.append(commit) }
+        Logger.gitRepository.info(
+            "Bisect bad\(commit.map { " \($0)" } ?? "", privacy: .public) in \(self.displayName, privacy: .public)"
+        )
+        try await shell.run(args)
+    }
+
+    func bisectGood(commit: String?) async throws {
+        var args = ["bisect", "good"]
+        if let commit { args.append(commit) }
+        Logger.gitRepository.info(
+            "Bisect good\(commit.map { " \($0)" } ?? "", privacy: .public) in \(self.displayName, privacy: .public)"
+        )
+        try await shell.run(args)
+    }
+
+    func bisectReset() async throws {
+        Logger.gitRepository.info("Resetting bisect in \(self.displayName, privacy: .public)")
+        try await shell.run(["bisect", "reset"])
+        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+        let stateBefore = repositoryState
+        repositoryState = .normal
+        Logger.gitRepository.notice(
+            "\(self.displayName, privacy: .public) state: \(stateBefore.logDescription, privacy: .public) → normal"
+        )
+    }
+
+    func bisectLog() async throws -> [String] {
+        let result = try await shell.run(["bisect", "log"])
+        return result.stdout
+            .components(separatedBy: "\n")
+            .filter { !$0.isEmpty }
+    }
+
+    // MARK: - Interactive Rebase
+
+    func rebaseInteractive(onto: String, commitCount: Int) async throws {
+        Logger.gitRepository.info(
+            "Interactive rebase of \(commitCount, privacy: .public) commits onto \(onto, privacy: .public) in \(self.displayName, privacy: .public)"
+        )
+        // GIT_SEQUENCE_EDITOR=true accepts the default todo list unchanged.
+        try await shell.run(
+            ["rebase", "-i", "\(onto)~\(commitCount)"],
+            environment: ["GIT_SEQUENCE_EDITOR": "true"]
+        )
+        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+        repositoryState = await Self.loadRepositoryState(path: path)
+    }
+
+    func squashCommits(_ commits: [String], message: String) async throws {
+        guard commits.count >= 2 else { return }
+        Logger.gitRepository.info(
+            "Squashing \(commits.count, privacy: .public) commits in \(self.displayName, privacy: .public)"
+        )
+        // Build a script that marks every commit after the first as "squash".
+        // The script receives the todo-list path as its sole argument.
+        let firstSHA   = commits[0]
+        let squashSHAs = Set(commits.dropFirst().map { String($0.prefix(7)) })
+        let scriptBody = """
+            #!/bin/sh
+            # Rewrite the rebase todo list: mark squash commits and set the message.
+            TODOFILE="$1"
+            TMPFILE="$(mktemp)"
+            MSGFILE="$(mktemp)"
+            printf '%s' \(shellEscape(message)) > "$MSGFILE"
+            while IFS= read -r line; do
+                sha=$(echo "$line" | awk '{print $2}')
+                if echo "\(squashSHAs.joined(separator: " "))" | grep -qw "$sha"; then
+                    echo "squash $sha $(echo "$line" | cut -d' ' -f3-)" >> "$TMPFILE"
+                else
+                    echo "$line" >> "$TMPFILE"
+                fi
+            done < "$TODOFILE"
+            mv "$TMPFILE" "$TODOFILE"
+            # Override the commit message after squash completes.
+            GIT_EDITOR="echo \(shellEscape(message)) >" git rebase --continue 2>/dev/null || true
+            """
+        let scriptURL = try writeTemporaryScript(scriptBody)
+        defer { try? FileManager.default.removeItem(at: scriptURL) }
+
+        // Determine range: find the parent of the earliest commit.
+        let parentResult = try await shell.runAllowingFailure(
+            ["rev-parse", "\(firstSHA)^"]
+        )
+        let parent = parentResult.isSuccess
+            ? parentResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            : "HEAD~\(commits.count)"
+
+        try await shell.run(
+            ["rebase", "-i", parent],
+            environment: [
+                "GIT_SEQUENCE_EDITOR": scriptURL.path,
+                "GIT_EDITOR": "true",
+            ]
+        )
+        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+        repositoryState = await Self.loadRepositoryState(path: path)
+        Logger.gitRepository.info("Squash complete in \(self.displayName, privacy: .public)")
+    }
+
+    func rewordCommit(_ commit: String, newMessage: String) async throws {
+        Logger.gitRepository.info(
+            "Rewording \(commit, privacy: .public) in \(self.displayName, privacy: .public)"
+        )
+        let shortSHA = String(commit.prefix(7))
+        // Script: change "pick <sha>" to "reword <sha>" for the target commit.
+        let scriptBody = """
+            #!/bin/sh
+            TODOFILE="$1"
+            sed -i '' "s/^pick \\(\(shortSHA)[^ ]*\\)/reword \\1/" "$TODOFILE"
+            """
+        let scriptURL = try writeTemporaryScript(scriptBody)
+        defer { try? FileManager.default.removeItem(at: scriptURL) }
+
+        // Editor script: replace the file content with newMessage.
+        let editorBody = """
+            #!/bin/sh
+            printf '%s\\n' \(shellEscape(newMessage)) > "$1"
+            """
+        let editorURL = try writeTemporaryScript(editorBody)
+        defer { try? FileManager.default.removeItem(at: editorURL) }
+
+        let parentResult = try await shell.runAllowingFailure(["rev-parse", "\(commit)^"])
+        let parent = parentResult.isSuccess
+            ? parentResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            : "\(commit)^"
+
+        try await shell.run(
+            ["rebase", "-i", parent],
+            environment: [
+                "GIT_SEQUENCE_EDITOR": scriptURL.path,
+                "GIT_EDITOR": editorURL.path,
+            ]
+        )
+        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+        repositoryState = await Self.loadRepositoryState(path: path)
+        Logger.gitRepository.info("Reword complete in \(self.displayName, privacy: .public)")
+    }
+
+    func dropCommit(_ commit: String) async throws {
+        Logger.gitRepository.info(
+            "Dropping \(commit, privacy: .public) in \(self.displayName, privacy: .public)"
+        )
+        let shortSHA = String(commit.prefix(7))
+        // Script: delete the line for the target commit from the todo list.
+        let scriptBody = """
+            #!/bin/sh
+            TODOFILE="$1"
+            sed -i '' "/^pick \(shortSHA)/d" "$TODOFILE"
+            """
+        let scriptURL = try writeTemporaryScript(scriptBody)
+        defer { try? FileManager.default.removeItem(at: scriptURL) }
+
+        let parentResult = try await shell.runAllowingFailure(["rev-parse", "\(commit)^"])
+        let parent = parentResult.isSuccess
+            ? parentResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            : "\(commit)^"
+
+        try await shell.run(
+            ["rebase", "-i", parent],
+            environment: ["GIT_SEQUENCE_EDITOR": scriptURL.path]
+        )
+        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+        repositoryState = await Self.loadRepositoryState(path: path)
+        Logger.gitRepository.info("Drop complete in \(self.displayName, privacy: .public)")
+    }
+
+    // MARK: - Reset
+
+    func resetToCommit(_ commit: String, mode: ResetMode) async throws {
+        Logger.gitRepository.info(
+            "Resetting (\(mode.rawValue, privacy: .public)) to \(commit, privacy: .public) in \(self.displayName, privacy: .public)"
+        )
+        try await shell.run(["reset", "--\(mode.rawValue)", commit])
+        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+        Logger.gitRepository.info("Reset complete in \(self.displayName, privacy: .public)")
+    }
+
+    // MARK: - Clean
+
+    func cleanUntracked(directories: Bool, force: Bool) async throws {
+        Logger.gitRepository.info(
+            "Cleaning untracked\(directories ? " (+ dirs)" : "", privacy: .public) in \(self.displayName, privacy: .public)"
+        )
+        var args = ["clean"]
+        if force       { args.append("-f") }
+        if directories { args.append("-d") }
+        try await shell.run(args)
+        Logger.gitRepository.info("Clean complete in \(self.displayName, privacy: .public)")
+    }
+
     // MARK: - Stash
 
     func stashes() async throws -> [StashEntry] {
@@ -487,14 +798,19 @@ final class GitRepository: GitRepositoryProtocol {
         return StashParser.parse(result.stdout)
     }
 
-    func stashCreate(message: String?, includeUntracked: Bool) async throws {
+    func stashCreate(message: String?, includeUntracked: Bool, paths: [String]? = nil) async throws {
+        let pathDesc = paths.map { " (\($0.count) files)" } ?? ""
         Logger.gitRepository.info(
-            "Creating stash\(message.map { " '\($0)'" } ?? "", privacy: .public) in \(self.displayName, privacy: .public)"
+            "Creating stash\(message.map { " '\($0)'" } ?? "")\(pathDesc, privacy: .public) in \(self.displayName, privacy: .public)"
         )
         var args = ["stash", "push"]
         if includeUntracked { args.append("--include-untracked") }
         if let message {
             args += ["-m", message]
+        }
+        // When specific paths are provided, append them after the -- separator.
+        if let paths, !paths.isEmpty {
+            args += ["--"] + paths
         }
         try await shell.run(args)
         Logger.gitRepository.info("Stash created in \(self.displayName, privacy: .public)")
@@ -531,9 +847,13 @@ final class GitRepository: GitRepositoryProtocol {
     }
 
     @discardableResult
-    func createTag(name: String, at sha: String?, message: String?) async throws -> TagInfo {
+    func createTag(name: String, at sha: String?, message: String?, sign: Bool = false) async throws -> TagInfo {
         var args: [String]
-        if let message {
+        if sign {
+            // -s implies an annotated tag and uses the configured signing key.
+            args = ["tag", "-s", name]
+            if let message { args += ["-m", message] }
+        } else if let message {
             args = ["tag", "-a", name, "-m", message]
         } else {
             args = ["tag", name]
@@ -550,6 +870,24 @@ final class GitRepository: GitRepositoryProtocol {
 
     func deleteTag(name: String) async throws {
         try await shell.run(["tag", "-d", name])
+    }
+
+    func pushTag(name: String, remote: String?) async throws {
+        let remoteName = remote ?? "origin"
+        Logger.gitRepository.info(
+            "Pushing tag '\(name, privacy: .public)' to \(remoteName, privacy: .public) in \(self.displayName, privacy: .public)"
+        )
+        try await shell.run(["push", remoteName, "refs/tags/\(name)"])
+        Logger.gitRepository.info("Tag push complete in \(self.displayName, privacy: .public)")
+    }
+
+    func pushAllTags(remote: String?) async throws {
+        let remoteName = remote ?? "origin"
+        Logger.gitRepository.info(
+            "Pushing all tags to \(remoteName, privacy: .public) in \(self.displayName, privacy: .public)"
+        )
+        try await shell.run(["push", remoteName, "--tags"])
+        Logger.gitRepository.info("All tags pushed in \(self.displayName, privacy: .public)")
     }
 
     // MARK: - Blame
@@ -573,7 +911,122 @@ final class GitRepository: GitRepositoryProtocol {
         return ReflogParser.parse(result.stdout)
     }
 
+    // MARK: - Pull Requests
+
+    func pullRequests() async throws -> [PullRequestInfo] {
+        Logger.gitRepository.info("Fetching pull requests in \(self.displayName, privacy: .public)")
+        let result = try await ghRun([
+            "pr", "list",
+            "--json", "number,title,body,author,state,headRefName,baseRefName,createdAt,updatedAt,isDraft,labels,reviewRequests,statusCheckRollup",
+            "--limit", "50"
+        ])
+        let prs = try PRParser.parseList(result.stdout)
+        Logger.gitRepository.info("Fetched \(prs.count, privacy: .public) pull requests in \(self.displayName, privacy: .public)")
+        return prs
+    }
+
+    func pullRequestDetail(number: Int) async throws -> PullRequestInfo {
+        Logger.gitRepository.info("Fetching PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
+        let result = try await ghRun([
+            "pr", "view", "\(number)",
+            "--json", "number,title,body,author,state,headRefName,baseRefName,createdAt,updatedAt,isDraft,labels,reviewRequests,statusCheckRollup"
+        ])
+        return try PRParser.parseSingle(result.stdout)
+    }
+
+    func pullRequestComments(number: Int) async throws -> [PRComment] {
+        Logger.gitRepository.info("Fetching comments for PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
+        let result = try await ghRun([
+            "pr", "view", "\(number)",
+            "--json", "comments,reviews"
+        ])
+        return try PRParser.parseComments(result.stdout)
+    }
+
+    func checkoutPullRequest(number: Int) async throws {
+        Logger.gitRepository.info("Checking out PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
+        try await ghRun(["pr", "checkout", "\(number)"])
+        currentBranch   = try? await Self.loadCurrentBranch(shell: shell)
+        repositoryState = await Self.loadRepositoryState(path: path)
+        Logger.gitRepository.info("Checked out PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
+    }
+
+    func closePullRequest(number: Int) async throws {
+        Logger.gitRepository.info("Closing PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
+        try await ghRun(["pr", "close", "\(number)"])
+        Logger.gitRepository.info("Closed PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
+    }
+
+    func mergePullRequest(number: Int) async throws {
+        Logger.gitRepository.info("Merging PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
+        try await ghRun(["pr", "merge", "\(number)", "--merge"])
+        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+        Logger.gitRepository.info("Merged PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
+    }
+
     // MARK: - Private Helpers
+
+    /// Run a `gh` CLI subcommand in the repository's working directory.
+    ///
+    /// Searches for `gh` in the same well-known locations used for `git`.
+    /// Throws ``GitShellError/nonZeroExit`` when the process exits non-zero.
+    @discardableResult
+    private func ghRun(_ arguments: [String]) async throws -> ShellResult {
+        let ghPath = GitRepository.resolveGhPath()
+        let result = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<ShellResult, Error>) in
+            do {
+                let process = Process()
+                process.executableURL       = URL(fileURLWithPath: ghPath)
+                process.arguments           = arguments
+                process.currentDirectoryURL = path
+                var env = ProcessInfo.processInfo.environment
+                env["LANG"]    = "en_US.UTF-8"
+                env["LC_ALL"]  = "en_US.UTF-8"
+                process.environment = env
+
+                let stdoutPipe = Pipe()
+                let stderrPipe = Pipe()
+                process.standardOutput = stdoutPipe
+                process.standardError  = stderrPipe
+
+                process.terminationHandler = { proc in
+                    let outData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                    let errData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                    let stdout  = String(data: outData, encoding: .utf8) ?? ""
+                    let stderr  = String(data: errData, encoding: .utf8) ?? ""
+                    continuation.resume(returning: ShellResult(stdout: stdout, stderr: stderr, exitCode: proc.terminationStatus))
+                }
+                try process.run()
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
+        guard result.isSuccess else {
+            let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            Logger.gitRepository.warning(
+                "gh \(arguments.first ?? "", privacy: .public) exited \(result.exitCode, privacy: .public): \(stderr, privacy: .public)"
+            )
+            throw GitShellError.nonZeroExit(
+                command: "gh " + (arguments.first ?? ""),
+                exitCode: result.exitCode,
+                stderr: result.stderr
+            )
+        }
+        return result
+    }
+
+    /// Resolve the path to the `gh` CLI executable.
+    nonisolated private static func resolveGhPath() -> String {
+        let candidates = [
+            "/usr/local/bin/gh",
+            "/opt/homebrew/bin/gh",
+            "/usr/bin/gh",
+        ]
+        for candidate in candidates where FileManager.default.fileExists(atPath: candidate) {
+            return candidate
+        }
+        return "/usr/local/bin/gh"
+    }
 
     /// Load the current branch from git, returning `nil` in detached-HEAD state.
     nonisolated private static func loadCurrentBranch(shell: GitShell) async throws -> BranchInfo? {
@@ -654,6 +1107,28 @@ final class GitRepository: GitRepositoryProtocol {
             return .bisect
         }
         return .normal
+    }
+
+    /// Write `content` to a temporary executable shell script and return its URL.
+    ///
+    /// The caller is responsible for removing the file when done.
+    private func writeTemporaryScript(_ content: String) throws -> URL {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("grove-\(UUID().uuidString).sh")
+        try content.write(to: url, atomically: true, encoding: .utf8)
+        // Make the script executable.
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755 as NSNumber],
+            ofItemAtPath: url.path
+        )
+        return url
+    }
+
+    /// Wrap `string` in single quotes, escaping any embedded single quotes.
+    ///
+    /// Produces a POSIX shell literal safe for embedding in script bodies.
+    nonisolated private func shellEscape(_ string: String) -> String {
+        "'" + string.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
     /// Apply a patch string via `git apply`.

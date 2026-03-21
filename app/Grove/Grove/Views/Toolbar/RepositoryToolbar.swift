@@ -19,12 +19,14 @@ final class RepositoryToolbarState {
     var isPushPresented = false
     var isPullPresented = false
     var isFetchPresented = false
+    var isSyncPresented = false
     var isBranchPresented = false
     var isTagPresented = false
     var isStashPresented = false
     var isMergePresented = false
     var isRebasePresented = false
     var isFetching = false
+    var isSyncing = false
 
     var localBranches: [BranchInfo] = []
     var remoteBranches: [BranchInfo] = []
@@ -54,6 +56,9 @@ struct RepositoryToolbarItems: ToolbarContent {
             pushButton
         }
         ToolbarItem(placement: .primaryAction) {
+            syncButton
+        }
+        ToolbarItem(placement: .primaryAction) {
             Menu {
                 Button {
                     toolbarState.isStashPresented = true
@@ -79,6 +84,21 @@ struct RepositoryToolbarItems: ToolbarContent {
             }
             .help("More actions")
         }
+    }
+
+    // MARK: Sync
+
+    private var syncButton: some View {
+        Button {
+            Task {
+                toolbarState.remotes = (try? await repository.remotes()) ?? []
+                toolbarState.isSyncPresented = true
+            }
+        } label: {
+            Label("Sync", systemImage: "arrow.triangle.2.circlepath")
+        }
+        .help("Sync: fetch, pull, then push")
+        .disabled(toolbarState.isSyncing)
     }
 
     // MARK: Fetch
@@ -175,6 +195,12 @@ struct RepositoryToolbarSheets<Content: View>: View {
             }
             .sheet(isPresented: $toolbarState.isFetchPresented) {
                 FetchDialogView(
+                    repository: repository,
+                    remotes: toolbarState.remotes
+                )
+            }
+            .sheet(isPresented: $toolbarState.isSyncPresented) {
+                SyncDialogView(
                     repository: repository,
                     remotes: toolbarState.remotes
                 )

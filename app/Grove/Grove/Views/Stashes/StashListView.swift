@@ -43,6 +43,9 @@ struct StashListView: View {
                     ForEach(viewModel.stashes) { stash in
                         StashRow(stash: stash)
                             .tag(stash)
+                            // Drag source: "stash@{<index>}" as the transfer payload.
+                            // Dropping onto Working Copy applies the stash.
+                            .draggable("stash@{\(stash.id)}")
                             .contextMenu {
                                 Button("Apply Stash") {
                                     Task { await viewModel.apply(stash: stash) }

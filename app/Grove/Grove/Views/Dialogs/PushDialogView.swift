@@ -129,12 +129,17 @@ struct PushDialogView: View {
         errorMessage = nil
         Task {
             do {
+                let remote: String? = selectedRemote.isEmpty ? nil : selectedRemote
                 try await repository.push(
-                    remote: selectedRemote.isEmpty ? nil : selectedRemote,
+                    remote: remote,
                     force: forcePush,
                     forceLease: !forcePush,
                     progress: nil
                 )
+                // Push all tags after the branch push when the option is enabled.
+                if pushAllTags {
+                    try await repository.pushAllTags(remote: remote)
+                }
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription

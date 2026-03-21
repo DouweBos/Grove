@@ -47,9 +47,14 @@ struct CommitListView: View {
                             CommitRow(
                                 commit: commit,
                                 branches: branchesFor(commit),
-                                tags: tagsFor(commit)
+                                tags: tagsFor(commit),
+                                graphNode: viewModel.graphNodes[commit.id],
+                                maxGraphColumns: viewModel.maxGraphColumns
                             )
                             .tag(commit)
+                            // Drag source: the full 40-char SHA is the transfer payload.
+                            // Dropping onto Working Copy triggers cherry-pick.
+                            .draggable(commit.id)
                             .contextMenu { contextMenu(for: commit) }
                             .onAppear {
                                 // Trigger pagination when the last item appears

@@ -12,24 +12,60 @@ import SwiftUI
 ///
 /// Groups are collapsible rows with an
 /// orange folder icon; repos appear indented underneath.
+///
+/// Bookmark reordering across groups is supported via drag-and-drop.
+/// Each ``RepositoryRow`` is draggable (payload: bookmark UUID string).
+/// Each ``RepositoryGroupSection`` header and the ungrouped list are drop
+/// targets that call ``RepositoryBrowserViewModel/moveBookmark(_:toGroup:)``.
 struct RepositoryGroupsSidebar: View {
 
     @Environment(RepositoryBrowserViewModel.self) private var viewModel
     var body: some View {
         @Bindable var vm = viewModel
         List(selection: $vm.selectedBookmarkID) {
-            RepositoryBookmarksList(
-                bookmarks: viewModel.ungroupedBookmarks,
-                openBookmark: viewModel.openBookmark(_:),
-                removeBookmark: viewModel.removeBookmark(_:)
-            )
+            Section("Repositories") {
+                // Ungrouped bookmarks — also a drop target (moves into "no group").
+                RepositoryBookmarksList(
+                    bookmarks: viewModel.ungroupedBookmarks,
+                    openBookmark: viewModel.openBookmark(_:),
+                    removeBookmark: viewModel.removeBookmark(_:)
+                )
+                // Drop target: moving a bookmark here removes it from any group.
+                .dropDestination(for: String.self) { items, _ in
+                    guard let uuidString = items.first,
+                          let id = UUID(uuidString: uuidString),
+                          let bookmark = viewModel.manager.bookmarks.first(where: { $0.id == id })
+                    else { return false }
+                    viewModel.moveBookmark(bookmark, toGroup: nil)
+                    return true
+                }
 
-            // Grouped bookmarks
-            ForEach(viewModel.manager.bookmarkGroups.sorted(by: { $0.sortOrder < $1.sortOrder })) { group in
-                RepositoryGroupSection(group: group)
+                // Grouped bookmarks
+                ForEach(viewModel.manager.bookmarkGroups.sorted(by: { $0.sortOrder < $1.sortOrder })) { group in
+                    RepositoryGroupSection(group: group)
+                }
             }
         }
         .listStyle(.sidebar)
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                HStack(spacing: 8) {
+                    Button {
+                        viewModel.sourceMode = .cloud
+                    } label: {
+                        Image(systemName: viewModel.sourceMode == .cloud ? "cloud.fill" : "cloud")
+                    }
+                    .help("Cloud Repositories")
+
+                    Button {
+                        viewModel.sourceMode = .local
+                    } label: {
+                        Image(systemName: viewModel.sourceMode == .local ? "externaldrive.fill" : "externaldrive")
+                    }
+                    .help("Local Repositories")
+                }
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             SidebarBottomBar()
         }
@@ -53,19 +89,34 @@ private struct RepositoryGroupSection: View {
             )
         } label: {
             RepositoryGroupRow(group: group)
+                // Drop target on the group label: dropping a bookmark UUID here
+                // moves it into this group.
+                .dropDestination(for: String.self) { items, _ in
+                    guard let uuidString = items.first,
+                          let id = UUID(uuidString: uuidString),
+                          let bookmark = viewModel.manager.bookmarks.first(where: { $0.id == id })
+                    else { return false }
+                    viewModel.moveBookmark(bookmark, toGroup: group.id)
+                    return true
+                }
         }
     }
 }
+
+// MARK: - RepositoryBookmarksList
 
 private struct RepositoryBookmarksList: View {
     let bookmarks: [RepositoryBookmarkData]
     let openBookmark: (RepositoryBookmarkData) -> ()
     let removeBookmark: (RepositoryBookmarkData) -> ()
-    
+
     var body: some View {
         ForEach(bookmarks) { bookmark in
             RepositoryRow(bookmark: bookmark)
                 .tag(bookmark.id)
+                // Drag source: the bookmark UUID string is the transfer payload.
+                // Drop targets are the group section labels and the ungrouped list.
+                .draggable(bookmark.id.uuidString)
                 .onTapGesture(count: 2) {
                     openBookmark(bookmark)
                 }

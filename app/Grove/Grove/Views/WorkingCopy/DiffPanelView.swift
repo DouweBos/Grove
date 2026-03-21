@@ -43,6 +43,9 @@ struct DiffPanelView: View {
 
             Spacer()
 
+            // Ignore Whitespace toggle
+            ignoreWhitespaceButton
+
             // Staged / Unstaged toggle
             stagedUnstagedPicker
         }
@@ -73,6 +76,26 @@ struct DiffPanelView: View {
         }
     }
 
+    // MARK: Ignore Whitespace
+
+    /// Toggle button that enables/disables whitespace-only change filtering.
+    private var ignoreWhitespaceButton: some View {
+        Button {
+            Task {
+                viewModel.ignoreWhitespace.toggle()
+                if let entry = viewModel.selectedEntry {
+                    await viewModel.select(entry)
+                }
+            }
+        } label: {
+            Image(systemName: "text.badge.minus")
+                .font(.system(size: 12))
+                .foregroundStyle(viewModel.ignoreWhitespace ? Color.accentColor : Color.secondary)
+                .help(viewModel.ignoreWhitespace ? "Show Whitespace Changes" : "Ignore Whitespace Changes")
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: Staged / Unstaged Picker
 
     private var stagedUnstagedPicker: some View {
@@ -92,15 +115,17 @@ struct DiffPanelView: View {
     }
 
     private func toggleButton(title: String, isActive: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        let tintColor: Color = title == "Staged"
+            ? Color(red: 0x2E / 255.0, green: 0xA0 / 255.0, blue: 0x43 / 255.0)  // green
+            : Color(red: 0xE0 / 255.0, green: 0x7B / 255.0, blue: 0x35 / 255.0)  // orange
+
+        return Button(action: action) {
             Text(title)
                 .font(.system(size: 11, weight: isActive ? .semibold : .regular))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .background(
-                    isActive
-                        ? Color.accentColor.opacity(0.85)
-                        : Color.clear,
+                    isActive ? tintColor : Color.clear,
                     in: RoundedRectangle(cornerRadius: 5)
                 )
                 .foregroundStyle(isActive ? Color.white : Color.secondary)

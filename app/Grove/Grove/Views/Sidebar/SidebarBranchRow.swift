@@ -7,6 +7,8 @@ import SwiftUI
 struct SidebarBranchRow: View {
 
     let branch: BranchInfo
+    /// When `true`, a small pin icon is shown to indicate the branch is pinned.
+    var isPinned: Bool = false
 
     /// The short display name — strips the group prefix for grouped branches.
     var displayName: String {
@@ -27,6 +29,13 @@ struct SidebarBranchRow: View {
                 .truncationMode(.middle)
 
             Spacer(minLength: 4)
+
+            if isPinned {
+                Image(systemName: "pin.fill")
+                    .imageScale(.small)
+                    .foregroundStyle(.tertiary)
+                    .rotationEffect(.degrees(45))
+            }
 
             if branch.ahead > 0 || branch.behind > 0 {
                 AheadBehindIndicator(ahead: branch.ahead, behind: branch.behind)

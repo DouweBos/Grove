@@ -16,6 +16,10 @@ enum SidebarItem: Hashable, Sendable {
     case history
     /// The Stashes list view.
     case stashes
+    /// The Reflog browser view — shows all HEAD movements via `git reflog`.
+    case reflog
+    /// The Blame view — annotates a file with per-line commit information.
+    case blame
     /// The Pull Requests list view.
     case pullRequests
     /// The Branches Review view — shows stale and merged branches.

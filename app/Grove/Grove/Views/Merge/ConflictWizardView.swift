@@ -72,7 +72,22 @@ struct ConflictWizardView: View {
     var onResolve: (ConflictSide) -> Void
 
     /// Called when the user requests the external merge tool.
+    ///
+    /// When `nil`, the button is wired to ``ExternalToolLauncher`` using the
+    /// file URLs below. Provide a custom closure to override that behaviour.
     var onOpenExternalTool: (() -> Void)?
+
+    /// URL of the common-ancestor (base) version on disk. Required for tool launch.
+    var baseFileURL: URL?
+
+    /// URL of the local HEAD (ours) version on disk. Required for tool launch.
+    var oursFileURL: URL?
+
+    /// URL of the incoming (theirs) version on disk. Required for tool launch.
+    var theirsFileURL: URL?
+
+    /// URL of the output (merged result) file on disk. Required for tool launch.
+    var mergedFileURL: URL?
 
     // MARK: Private State
 
@@ -207,12 +222,17 @@ struct ConflictWizardView: View {
         }
     }
 
-    /// "Open in External Merge Tool" button — currently a placeholder that
-    /// calls `onOpenExternalTool` if provided. WS5/WS7 will wire the real
-    /// AppPreferences.externalMergeTool path.
+    /// "Open in External Merge Tool" button.
+    ///
+    /// Uses ``ExternalToolLauncher`` when all four file URLs are available;
+    /// falls back to `onOpenExternalTool` when provided; otherwise disabled.
     private var externalMergeToolButton: some View {
-        Button {
-            onOpenExternalTool?()
+        let canLaunch = onOpenExternalTool != nil
+            || (baseFileURL != nil && oursFileURL != nil
+                && theirsFileURL != nil && mergedFileURL != nil)
+
+        return Button {
+            launchExternalMergeTool()
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "arrow.up.forward.app")
@@ -227,6 +247,29 @@ struct ConflictWizardView: View {
         .controlSize(.regular)
         // Subtle styling — this is a secondary action after version picking.
         .foregroundStyle(.secondary)
+        .disabled(!canLaunch)
+    }
+
+    private func launchExternalMergeTool() {
+        // If the caller provided a custom closure, prefer it.
+        if let onOpenExternalTool {
+            onOpenExternalTool()
+            return
+        }
+
+        // Otherwise launch via ExternalToolLauncher with the provided file URLs.
+        guard let base   = baseFileURL,
+              let ours   = oursFileURL,
+              let theirs = theirsFileURL,
+              let merged = mergedFileURL else { return }
+
+        try? ExternalToolLauncher.launchMergeTool(
+            base:   base,
+            ours:   ours,
+            theirs: theirs,
+            merged: merged,
+            toolPath: AppToolPreferences.mergeToolPath
+        )
     }
 }
 

@@ -33,13 +33,16 @@ struct CreateBranchDialogView: View {
     init(
         repository: any GitRepositoryProtocol,
         localBranches: [BranchInfo] = [],
+        fromRef: String? = nil,
         onCreated: ((BranchInfo) -> Void)? = nil
     ) {
         self.repository = repository
         self.localBranches = localBranches
         self.onCreated = onCreated
+        // Prefer the explicit `fromRef` when supplied (e.g. from a drag-and-drop).
+        // Fall back to the current HEAD branch name, then "main".
         let head = localBranches.first(where: { $0.isHEAD })?.name ?? "main"
-        _startingPoint = State(initialValue: head)
+        _startingPoint = State(initialValue: fromRef ?? head)
     }
 
     // MARK: Computed

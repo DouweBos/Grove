@@ -2,33 +2,30 @@
 // Grove
 //
 // A single row in the repository browser sidebar representing
-// one bookmarked repository.
+// one bookmarked repository. Compact single-line design.
 
 import SwiftUI
 
 // MARK: - RepositoryRow
 
-/// Sidebar row for a bookmarked repository — folder icon + display name.
+/// Compact sidebar row for a bookmarked repository.
+///
+/// Shows only the folder icon and display name on one line, for a compact
+/// sidebar aesthetic. The full path is surfaced via a tooltip on hover.
 struct RepositoryRow: View {
 
     let bookmark: RepositoryBookmarkData
 
     var body: some View {
         Label {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(bookmark.displayName)
-                    .lineLimit(1)
-                Text(bookmark.path)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.head)
-            }
+            Text(bookmark.displayName)
+                .lineLimit(1)
         } icon: {
             Image(systemName: "folder")
                 .foregroundStyle(.secondary)
         }
-        .padding(.leading, 4)
+        .padding(.vertical, 2)
+        .help(bookmark.path)
     }
 }
 
@@ -47,5 +44,5 @@ struct RepositoryRow: View {
     return List {
         RepositoryRow(bookmark: bookmark)
     }
-    .frame(width: 220, height: 120)
+    .frame(width: 220, height: 80)
 }

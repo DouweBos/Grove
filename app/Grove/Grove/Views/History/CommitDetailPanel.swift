@@ -42,7 +42,7 @@ struct CommitDetailPanel: View {
                 case .changeset:
                     CommitChangesetView()
                 case .tree:
-                    CommitTreePlaceholder()
+                    CommitTreeTab()
                 }
             }
         } else {
@@ -55,19 +55,6 @@ struct CommitDetailPanel: View {
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-}
-
-// MARK: - CommitTreePlaceholder
-
-private struct CommitTreePlaceholder: View {
-    var body: some View {
-        VStack {
-            Spacer()
-            Text("Tree view — coming soon")
-                .foregroundStyle(.secondary)
-            Spacer()
         }
     }
 }

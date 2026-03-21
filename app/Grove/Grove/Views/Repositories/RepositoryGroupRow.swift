@@ -8,7 +8,11 @@ import SwiftUI
 
 // MARK: - RepositoryGroupRow
 
-/// A sidebar row for a bookmark group — orange folder icon + group name.
+/// Compact sidebar row for a bookmark group — orange folder icon + group name.
+///
+/// The disclosure triangle for expand / collapse is rendered by the enclosing
+/// `DisclosureGroup` in ``RepositoryGroupSection``; this view is responsible
+/// only for the icon and label.
 struct RepositoryGroupRow: View {
 
     let group: BookmarkGroupData
@@ -17,6 +21,7 @@ struct RepositoryGroupRow: View {
         Label {
             Text(group.name)
                 .fontWeight(.medium)
+                .lineLimit(1)
         } icon: {
             Image(systemName: "folder.fill")
                 .foregroundStyle(.orange)
@@ -41,5 +46,5 @@ struct RepositoryGroupRow: View {
             isExpanded: true
         ))
     }
-    .frame(width: 220, height: 200)
+    .frame(width: 220, height: 120)
 }

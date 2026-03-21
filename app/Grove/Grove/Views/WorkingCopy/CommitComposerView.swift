@@ -2,8 +2,8 @@
 // Grove
 //
 // Commit composer occupying the top-left zone of the Working Copy layout.
-// Contains: subject field with character count, optional body, Amend checkbox,
-// Sign Off checkbox, profile selector, and the Commit button.
+// Contains: subject field with character count + autocomplete, optional body,
+// Amend checkbox, Sign Off checkbox, profile picker, and the Commit button.
 // Inline composer with a prominent subject field.
 
 import SwiftUI
@@ -35,7 +35,7 @@ struct CommitComposerView: View {
         @Bindable var vm = viewModel
 
         VStack(spacing: 0) {
-            // Subject row
+            // Subject row — autocomplete is anchored as an overlay here
             HStack(alignment: .center, spacing: 6) {
                 Button {
                     withAnimation(.easeInOut(duration: 0.15)) {
@@ -58,11 +58,33 @@ struct CommitComposerView: View {
                             Task { await viewModel.commit() }
                         }
                     }
+                    // Dismiss autocomplete when field loses focus.
+                    .onChange(of: subjectFocused) { _, focused in
+                        if !focused {
+                            viewModel.dismissAutoComplete()
+                        }
+                    }
 
                 characterCountBadge
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
+            // Autocomplete popover anchored below the subject row.
+            .overlay(alignment: .bottomLeading) {
+                if viewModel.isAutoCompleteVisible,
+                   let trigger = viewModel.autoCompleteTrigger {
+                    CommitAutoCompleteView(
+                        trigger: trigger,
+                        suggestions: viewModel.autoCompleteSuggestions,
+                        onSelect: { viewModel.applyAutoComplete($0) },
+                        onDismiss: { viewModel.dismissAutoComplete() }
+                    )
+                    .offset(x: 20, y: 0)
+                    .zIndex(100)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top)))
+                    .animation(.easeOut(duration: 0.12), value: viewModel.isAutoCompleteVisible)
+                }
+            }
 
             if showBody {
                 Divider()
@@ -94,9 +116,19 @@ struct CommitComposerView: View {
                     .toggleStyle(.checkbox)
                     .font(.system(size: 11))
 
+                if viewModel.isSigningAvailable {
+                    Toggle(isOn: $vm.signCommit) {
+                        Label("Sign", systemImage: "lock.fill")
+                            .font(.system(size: 11))
+                    }
+                    .toggleStyle(.checkbox)
+                    .font(.system(size: 11))
+                    .help("Sign this commit with GPG/SSH key")
+                }
+
                 Spacer()
 
-                profileLabel
+                profilePicker
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
@@ -124,19 +156,48 @@ struct CommitComposerView: View {
             )
     }
 
-    // MARK: Profile Label
+    // MARK: Profile Picker
 
-    private var profileLabel: some View {
+    /// A compact `Menu` that lets the user choose which git identity to commit as.
+    ///
+    /// Shows an avatar initial circle and the selected profile name.  When
+    /// multiple profiles are available a popover menu lists all of them.
+    @ViewBuilder
+    private var profilePicker: some View {
+        if viewModel.availableProfiles.count <= 1 {
+            // Single profile — show as a plain non-interactive label.
+            profileLabel(for: viewModel.selectedProfile)
+        } else {
+            Menu {
+                ForEach(viewModel.availableProfiles) { profile in
+                    Button {
+                        viewModel.selectedProfile = profile
+                    } label: {
+                        HStack {
+                            Text(profile.name)
+                            Text(profile.email)
+                                .foregroundStyle(.secondary)
+                            if profile.id == viewModel.selectedProfile?.id {
+                                Spacer()
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                profileLabel(for: viewModel.selectedProfile)
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+        }
+    }
+
+    /// Renders the avatar circle + name for any ``UserProfileData``.
+    @ViewBuilder
+    private func profileLabel(for profile: UserProfileData?) -> some View {
         HStack(spacing: 4) {
-            Circle()
-                .fill(Color.secondary.opacity(0.4))
-                .frame(width: 20, height: 20)
-                .overlay(
-                    Text(viewModel.repository.displayName.prefix(1).uppercased())
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.white)
-                )
-            Text(viewModel.repository.displayName)
+            ProfileAvatarView(initial: profile?.initial ?? "?")
+            Text(profile?.name ?? "No Profile")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -163,11 +224,65 @@ struct CommitComposerView: View {
     }
 }
 
+// MARK: - ProfileAvatarView
+
+/// A small filled circle displaying the first letter of a profile name.
+///
+/// Extracted so it can be reused wherever a git identity is displayed.
+struct ProfileAvatarView: View {
+
+    let initial: String
+    var size: CGFloat = 20
+
+    var body: some View {
+        Circle()
+            .fill(Color.accentColor.opacity(0.75))
+            .frame(width: size, height: size)
+            .overlay(
+                Text(initial)
+                    .font(.system(size: size * 0.45, weight: .bold))
+                    .foregroundStyle(.white)
+            )
+    }
+}
+
 // MARK: - Preview
 
-#Preview("Commit Composer") {
+#Preview("Commit Composer — Single Profile") {
     let vm = WorkingCopyViewModel(repository: MockGitRepository())
     CommitComposerView()
         .environment(vm)
         .frame(width: 300)
+}
+
+#Preview("Commit Composer — Multiple Profiles") {
+    let vm = WorkingCopyViewModel(repository: MockGitRepository())
+    vm.loadProfiles(from: [
+        UserProfileData(
+            id: UUID(),
+            name: "Jane Developer",
+            email: "jane@example.com",
+            signingKeyID: nil,
+            isDefault: true
+        ),
+        UserProfileData(
+            id: UUID(),
+            name: "Bob Contributor",
+            email: "bob@example.com",
+            signingKeyID: nil,
+            isDefault: false
+        ),
+    ])
+    return CommitComposerView()
+        .environment(vm)
+        .frame(width: 300)
+}
+
+#Preview("Commit Composer — Autocomplete Active") {
+    let vm = WorkingCopyViewModel(repository: MockGitRepository())
+    vm.commitSubject = "fix: closes #"
+    return CommitComposerView()
+        .environment(vm)
+        .frame(width: 300)
+        .padding(.bottom, 120) // room for the dropdown
 }

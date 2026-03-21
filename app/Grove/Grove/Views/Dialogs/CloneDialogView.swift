@@ -111,7 +111,7 @@ struct CloneDialogView: View {
                     }
                 )
                 dismiss()
-                viewModel.openedReference = RepositoryReference(path: repo.path.path)
+                viewModel.openReference(RepositoryReference(path: repo.path.path))
             } catch {
                 errorMessage = error.localizedDescription
                 isCloning = false
