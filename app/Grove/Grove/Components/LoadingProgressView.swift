@@ -41,7 +41,7 @@ struct LoadingProgressView: View {
     let title: String
     /// When non-`nil` and in `0.0...1.0`, renders a determinate progress bar.
     /// A `nil` value renders an indeterminate spinner.
-    var progress: Double? = nil
+    var progress: Double?
     var style: Style = .standard
 
     // MARK: Body

@@ -9,7 +9,7 @@ import SwiftUI
 ///
 /// Uses `HSplitView` for a resizable two-column layout matching the Stashes
 /// and History views. The shared ``ReflogViewModel`` is injected from the
-/// parent ``RepositoryWindowContent`` via `@Environment`.
+/// parent ``RepositoryContentRouter`` via `@Environment`.
 struct ReflogView: View {
 
     @Environment(ReflogViewModel.self) private var viewModel

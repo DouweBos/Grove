@@ -58,10 +58,10 @@ enum StashParser {
         let branchName = extractBranchName(from: message)
 
         return StashEntry(
-            id:         index,
-            message:    message,
-            sha:        sha,
-            date:       date,
+            id: index,
+            message: message,
+            sha: sha,
+            date: date,
             branchName: branchName
         )
     }

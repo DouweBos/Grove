@@ -104,10 +104,10 @@ struct CommitAutoCompleteView: View {
             highlightedID = new.first?.id
         }
         // Keyboard: arrow navigation + confirm + dismiss
-        .onKeyPress(.upArrow)   { moveHighlight(by: -1); return .handled }
-        .onKeyPress(.downArrow) { moveHighlight(by:  1); return .handled }
-        .onKeyPress(.return)    { confirmHighlighted();   return .handled }
-        .onKeyPress(.escape)    { onDismiss();            return .handled }
+        .onKeyPress(.upArrow) { moveHighlight(by: -1); return .handled }
+        .onKeyPress(.downArrow) { moveHighlight(by: 1); return .handled }
+        .onKeyPress(.return) { confirmHighlighted();   return .handled }
+        .onKeyPress(.escape) { onDismiss();            return .handled }
     }
 
     // MARK: Trigger Header
@@ -242,7 +242,7 @@ private struct SuggestionRow: View {
                 title: "#42",
                 subtitle: "feature/dark-mode",
                 insertText: "#42"
-            ),
+            )
         ],
         onSelect: { _ in },
         onDismiss: {}
@@ -268,7 +268,7 @@ private struct SuggestionRow: View {
                 title: "refactor: split AuthManager into focused services",
                 subtitle: "b2c3d4e",
                 insertText: "b2c3d4e"
-            ),
+            )
         ],
         onSelect: { _ in },
         onDismiss: {}
@@ -294,7 +294,7 @@ private struct SuggestionRow: View {
                 title: "TokenStore.swift",
                 subtitle: "Sources/App/",
                 insertText: "Sources/App/TokenStore.swift"
-            ),
+            )
         ],
         onSelect: { _ in },
         onDismiss: {}
@@ -320,7 +320,7 @@ private struct SuggestionRow: View {
                 title: "Bug Fix",
                 subtitle: "fix: ",
                 insertText: "fix: "
-            ),
+            )
         ],
         onSelect: { _ in },
         onDismiss: {}

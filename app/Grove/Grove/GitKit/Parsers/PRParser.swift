@@ -162,7 +162,7 @@ enum PRParser {
                 if states.contains(where: { $0.lowercased() == "pending" || $0.lowercased() == "in_progress" }) {
                     checksStatus = .pending
                 } else {
-                    checksStatus = statuses.isEmpty ? .none : .passing
+                    checksStatus = states.isEmpty ? .none : .passing
                 }
             } else if statuses.contains(where: { $0.lowercased() == "failure" || $0.lowercased() == "error" }) {
                 checksStatus = .failing

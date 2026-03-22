@@ -35,7 +35,7 @@ struct DiffHunkHeaderView: View {
     /// Whether any lines inside this hunk are currently selected for line-level ops.
     var hasSelectedLines: Bool = false
 
-    var onAction: ((HunkAction) -> Void)? = nil
+    var onAction: ((HunkAction) -> Void)?
 
     // MARK: Body
 

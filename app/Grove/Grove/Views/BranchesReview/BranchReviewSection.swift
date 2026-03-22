@@ -136,7 +136,7 @@ struct BranchReviewSection: View {
             aheadOfMain: 0,
             behindMain: 12,
             category: .stale
-        ),
+        )
     ]
 
     return List {

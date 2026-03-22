@@ -12,8 +12,8 @@ struct PRActionBar: View {
 
     let pr: PullRequestInfo
     let onCheckout: () -> Void
-    let onClose:    () -> Void
-    let onMerge:    () -> Void
+    let onClose: () -> Void
+    let onMerge: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
@@ -58,8 +58,8 @@ struct PRActionBar: View {
         PRActionBar(
             pr: MockData.pullRequests[0],
             onCheckout: {},
-            onClose:    {},
-            onMerge:    {}
+            onClose: {},
+            onMerge: {}
         )
     }
     .frame(width: 480, height: 80)

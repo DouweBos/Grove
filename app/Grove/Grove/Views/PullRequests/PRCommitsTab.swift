@@ -189,7 +189,9 @@ private struct PRCommitRow: View {
 
     private var avatarColor: Color {
         let colors: [Color] = [.blue, .green, .orange, .purple, .pink, .cyan, .teal, .indigo]
-        let index = abs(commit.authorEmail.hashValue) % colors.count
+        var hash: UInt64 = 5381
+        for byte in commit.authorEmail.utf8 { hash = hash &* 33 &+ UInt64(byte) }
+        let index = Int(hash % UInt64(colors.count))
         return colors[index]
     }
 }

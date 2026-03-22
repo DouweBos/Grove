@@ -151,7 +151,7 @@ enum TowerImporter {
 
         // Convert Tower's CFAbsoluteTime to Date.
         // CFAbsoluteTime is seconds since 2001-01-01 00:00:00 UTC.
-        var lastOpened: Date? = nil
+        var lastOpened: Date?
         if let towerTimestamp = dict["lastOpenedDate"] as? Double, towerTimestamp > 0 {
             lastOpened = Date(timeIntervalSinceReferenceDate: towerTimestamp)
         }

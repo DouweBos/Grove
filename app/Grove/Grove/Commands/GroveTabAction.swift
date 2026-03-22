@@ -12,8 +12,7 @@ import Foundation
 /// Tab lifecycle actions dispatched through NotificationCenter.
 ///
 /// Commands post via ``post()``. The active repository window receives
-/// them via ``notificationName`` and delegates to its
-/// ``RepositoryWindowManager``.
+/// them via ``notificationName`` and delegates to ``RepositoryWindowHost``.
 enum GroveTabAction: String, Sendable {
 
     // MARK: Cases
@@ -26,7 +25,7 @@ enum GroveTabAction: String, Sendable {
     case closeWindow
     /// Select the next tab to the right, wrapping (Cmd+Shift+]).
     case nextTab
-    /// Select the next tab to the left, wrapping (Cmd+Shift+[).
+    /// Select the previous tab (to the left), wrapping (Cmd+Shift+[).
     case previousTab
 
     // MARK: Notification Plumbing

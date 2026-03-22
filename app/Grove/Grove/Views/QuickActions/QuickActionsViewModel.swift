@@ -115,12 +115,12 @@ final class QuickActionsViewModel {
     private func refreshData() async {
         // Build navigation results (always the same set).
         allNavigationResults = [
-            .navigation(item: .workingCopy,   title: "Working Copy"),
-            .navigation(item: .history,       title: "History"),
-            .navigation(item: .stashes,       title: "Stashes"),
-            .navigation(item: .pullRequests,  title: "Pull Requests"),
+            .navigation(item: .workingCopy, title: "Working Copy"),
+            .navigation(item: .history, title: "History"),
+            .navigation(item: .stashes, title: "Stashes"),
+            .navigation(item: .pullRequests, title: "Pull Requests"),
             .navigation(item: .branchesReview, title: "Branches Review"),
-            .navigation(item: .settings,      title: "Settings"),
+            .navigation(item: .settings, title: "Settings")
         ]
 
         // Fetch live data from the repository.

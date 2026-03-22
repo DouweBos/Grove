@@ -7,12 +7,13 @@ import Observation
 /// ViewModel for the in-repository sidebar.
 ///
 /// Manages branch, remote, tag lists and the current navigation selection.
+@MainActor
 @Observable
 final class SidebarViewModel {
 
     // MARK: - State
 
-    var selection: SidebarItem? = .history
+    var selection: SidebarItem? = .workingCopy
     var localBranches: [BranchInfo] = []
     var remoteBranches: [BranchInfo] = []
     var tags: [TagInfo] = []

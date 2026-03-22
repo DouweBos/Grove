@@ -33,14 +33,14 @@ final class RepositoryToolbarState {
     var remotes: [RemoteInfo] = []
 }
 
-// MARK: - RepositoryToolbarItems
+// MARK: - RepositoryToolbar
 
 /// `ToolbarContent` declaring the repository action buttons.
 ///
 /// Sheet presentations are handled by `RepositoryToolbarSheets` — a thin
 /// wrapping view that uses `@Bindable` to project bindings from the
 /// shared `RepositoryToolbarState`.
-struct RepositoryToolbarItems: ToolbarContent {
+struct RepositoryToolbar: ToolbarContent {
 
     let repository: any GitRepositoryProtocol
     let toolbarState: RepositoryToolbarState
@@ -147,11 +147,6 @@ struct RepositoryToolbarItems: ToolbarContent {
 
 }
 
-// MARK: - RepositoryToolbar (alias)
-
-/// Public name for ``RepositoryToolbarItems``.
-typealias RepositoryToolbar = RepositoryToolbarItems
-
 // MARK: - RepositoryToolbarSheets
 
 /// Thin `View` wrapper that attaches toolbar items and all associated sheets.
@@ -177,7 +172,7 @@ struct RepositoryToolbarSheets<Content: View>: View {
     var body: some View {
         content
             .toolbar {
-                RepositoryToolbarItems(repository: repository, toolbarState: toolbarState)
+                RepositoryToolbar(repository: repository, toolbarState: toolbarState)
             }
             .sheet(isPresented: $toolbarState.isPushPresented) {
                 PushDialogView(

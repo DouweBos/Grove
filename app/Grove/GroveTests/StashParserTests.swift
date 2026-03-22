@@ -111,7 +111,7 @@ struct StashParserTests {
         let output = [
             makeStashLine(descriptor: "stash@{0}", message: "WIP on main: first"),
             makeStashLine(descriptor: "stash@{1}", message: "WIP on develop: second"),
-            makeStashLine(descriptor: "stash@{2}", message: "On feature/x: third"),
+            makeStashLine(descriptor: "stash@{2}", message: "On feature/x: third")
         ].joined(separator: "\n")
 
         let entries = StashParser.parse(output)
@@ -123,7 +123,7 @@ struct StashParserTests {
         let output = [
             makeStashLine(descriptor: "stash@{0}"),
             makeStashLine(descriptor: "stash@{1}"),
-            makeStashLine(descriptor: "stash@{2}"),
+            makeStashLine(descriptor: "stash@{2}")
         ].joined(separator: "\n")
 
         let entries = StashParser.parse(output)
@@ -136,7 +136,7 @@ struct StashParserTests {
         let messages = [
             "WIP on main: first work",
             "On develop: layout experiments",
-            "My custom stash",
+            "My custom stash"
         ]
         let output = zip(messages, 0...).map { message, idx in
             makeStashLine(descriptor: "stash@{\(idx)}", message: message)

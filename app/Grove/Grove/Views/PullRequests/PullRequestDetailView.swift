@@ -32,12 +32,15 @@ struct PullRequestDetailView: View {
                 PRActionBar(
                     pr: pr,
                     onCheckout: { Task { await viewModel.checkout(pr: pr) } },
-                    onClose:    { Task { await viewModel.close(pr: pr) } },
-                    onMerge:    { Task { await viewModel.merge(pr: pr) } }
+                    onClose: { Task { await viewModel.close(pr: pr) } },
+                    onMerge: { Task { await viewModel.merge(pr: pr) } }
                 )
             }
-            .alert("Action Failed", isPresented: .constant(viewModel.actionError != nil)) {
-                Button("OK") { viewModel.actionError = nil }
+            .alert("Action Failed", isPresented: Binding(
+                get: { viewModel.actionError != nil },
+                set: { if !$0 { viewModel.clearActionError() } }
+            )) {
+                Button("OK") { viewModel.clearActionError() }
             } message: {
                 Text(viewModel.actionError ?? "")
             }
@@ -206,7 +209,7 @@ struct PullRequestDetailView: View {
     @ViewBuilder
     private func prStatePill(_ state: PRState) -> some View {
         let (label, color): (String, Color) = switch state {
-        case .open:   ("Open",   .green)
+        case .open:   ("Open", .green)
         case .closed: ("Closed", .red)
         case .merged: ("Merged", .purple)
         }

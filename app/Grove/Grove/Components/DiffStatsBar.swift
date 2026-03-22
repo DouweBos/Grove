@@ -1,13 +1,8 @@
-// Components/ChangeBar.swift
+// Components/DiffStatsBar.swift
 // Grove
 //
 // A compact horizontal bar visualising the additions/deletions ratio for a file.
 // Used in History commit detail (changeset tab) and Working Copy file list.
-// Green segment for additions, red for deletions.
-//
-// NOTE: ChangesetFileRow.swift (WS4) defines a similarly-named local ChangeBar.
-// This component provides the same visual but takes a DiffStats value type
-// and is used across WS3 components. WS5 integration will consolidate.
 
 import SwiftUI
 
@@ -85,10 +80,10 @@ private extension Color {
 #Preview("Diff Stats Bar") {
     VStack(alignment: .leading, spacing: 12) {
         DiffStatsBar(stats: DiffStats(additions: 18, deletions: 7))
-        DiffStatsBar(stats: DiffStats(additions: 0,  deletions: 5))
+        DiffStatsBar(stats: DiffStats(additions: 0, deletions: 5))
         DiffStatsBar(stats: DiffStats(additions: 42, deletions: 0))
-        DiffStatsBar(stats: DiffStats(additions: 0,  deletions: 0))
-        DiffStatsBar(stats: DiffStats(additions: 1,  deletions: 99))
+        DiffStatsBar(stats: DiffStats(additions: 0, deletions: 0))
+        DiffStatsBar(stats: DiffStats(additions: 1, deletions: 99))
     }
     .padding()
 }

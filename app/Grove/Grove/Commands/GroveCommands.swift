@@ -7,7 +7,7 @@
 // Commands cannot directly access RepositoryViewModel because they live
 // outside the SwiftUI environment hierarchy. Instead every action is
 // dispatched through GroveAction.post(), which posts a Notification that
-// the active RepositoryWindowView observes and handles.
+// RootWindowHost observes and forwards to the active RepositorySession.
 //
 // The one exception is the Undo/Redo group, which reads undo state through
 // a FocusedValue so menu items can be correctly titled and enabled.

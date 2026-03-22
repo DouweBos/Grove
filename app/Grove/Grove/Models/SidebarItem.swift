@@ -1,8 +1,8 @@
 // Models/SidebarItem.swift
 // Grove
 //
-// The navigation item contract shared between the Sidebar (WS4)
-// and the content router (WS2).  Kept intentionally flat — the
+// The navigation item contract shared between the Sidebar
+// and the content router.  Kept intentionally flat — the
 // router switches on this enum and hands the associated value down
 // to the correct view.
 

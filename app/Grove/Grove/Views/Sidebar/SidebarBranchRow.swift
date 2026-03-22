@@ -20,7 +20,7 @@ struct SidebarBranchRow: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: branch.isHEAD ? "arrow.triangle.branch" : "arrow.triangle.branch")
+            Image(systemName: "arrow.triangle.branch")
                 .imageScale(.small)
                 .foregroundStyle(branch.isHEAD ? Color.accentColor : .secondary)
 

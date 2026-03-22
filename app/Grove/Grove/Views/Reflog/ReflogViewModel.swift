@@ -58,15 +58,15 @@ enum ReflogActionType: String, Sendable {
     /// Infer the action type from a raw reflog message string.
     static func from(message: String) -> ReflogActionType {
         let lower = message.lowercased()
-        if lower.hasPrefix("commit (amend)")    { return .commitAmend }
-        if lower.hasPrefix("commit")            { return .commit }
-        if lower.hasPrefix("checkout")          { return .checkout }
-        if lower.hasPrefix("rebase")            { return .rebase }
-        if lower.hasPrefix("merge")             { return .merge }
-        if lower.hasPrefix("pull")              { return .pull }
-        if lower.hasPrefix("push")              { return .push }
-        if lower.hasPrefix("reset")             { return .reset }
-        if lower.hasPrefix("cherry-pick")       { return .cherryPick }
+        if lower.hasPrefix("commit (amend)") { return .commitAmend }
+        if lower.hasPrefix("commit") { return .commit }
+        if lower.hasPrefix("checkout") { return .checkout }
+        if lower.hasPrefix("rebase") { return .rebase }
+        if lower.hasPrefix("merge") { return .merge }
+        if lower.hasPrefix("pull") { return .pull }
+        if lower.hasPrefix("push") { return .push }
+        if lower.hasPrefix("reset") { return .reset }
+        if lower.hasPrefix("cherry-pick") { return .cherryPick }
         return .other
     }
 }

@@ -210,8 +210,8 @@ final class GitShell: Sendable {
                         )
                     }
                     continuation.resume(returning: ShellResult(
-                        stdout:   stdout,
-                        stderr:   stderr,
+                        stdout: stdout,
+                        stderr: stderr,
                         exitCode: proc.terminationStatus
                     ))
                 }
@@ -258,8 +258,8 @@ final class GitShell: Sendable {
                         )
                     }
                     continuation.resume(returning: ShellResult(
-                        stdout:   stdout,
-                        stderr:   stderr,
+                        stdout: stdout,
+                        stderr: stderr,
                         exitCode: proc.terminationStatus
                     ))
                 }
@@ -300,7 +300,7 @@ final class GitShell: Sendable {
         let candidates = [
             "/usr/bin/git",
             "/usr/local/bin/git",
-            "/opt/homebrew/bin/git",
+            "/opt/homebrew/bin/git"
         ]
         for path in candidates where FileManager.default.fileExists(atPath: path) {
             return path

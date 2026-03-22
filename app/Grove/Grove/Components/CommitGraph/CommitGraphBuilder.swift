@@ -55,7 +55,7 @@ private let laneColorPalette: [Color] = [
     Color(red: 0.95, green: 0.35, blue: 0.55), // pink
     Color(red: 0.10, green: 0.78, blue: 0.85), // cyan
     Color(red: 0.90, green: 0.25, blue: 0.25), // red
-    Color(red: 0.90, green: 0.75, blue: 0.10), // yellow
+    Color(red: 0.90, green: 0.75, blue: 0.10) // yellow
 ]
 
 private func laneColor(for column: Int) -> Color {

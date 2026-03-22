@@ -2,7 +2,7 @@
 // Grove
 //
 // Periodically fetches all remotes for an open repository.
-// Owned by RepositoryWindowContent and started/stopped with the window lifecycle.
+// Owned by RepositorySession and started/stopped with the window lifecycle.
 
 import Foundation
 import Observation
@@ -27,7 +27,10 @@ final class AutoFetchScheduler {
     // MARK: - Configuration
 
     /// How often to fetch, in minutes. `0` disables automatic fetching.
-    var intervalMinutes: Int = 0 {
+    ///
+    /// Initialized from the `autoFetchMinutes` key in `UserDefaults` so that
+    /// the preference set in General Preferences takes effect automatically.
+    var intervalMinutes: Int = UserDefaults.standard.integer(forKey: "autoFetchMinutes") {
         didSet {
             guard oldValue != intervalMinutes else { return }
             // Restart the timer whenever the interval changes so the new
@@ -95,14 +98,14 @@ final class AutoFetchScheduler {
         guard intervalMinutes > 0 else { return }
 
         let interval = TimeInterval(intervalMinutes * 60)
-        let newTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+        let newTimer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor [weak self] in
                 await self?.performFetch()
             }
         }
-        // Allow the timer to fire even when the run loop is busy (e.g. during
-        // menu tracking), matching the behaviour users expect from background tasks.
+        // Add to .common so the timer fires even when the run loop is busy
+        // (e.g. during menu tracking).
         RunLoop.main.add(newTimer, forMode: .common)
         timer = newTimer
         Logger.ui.debug("AutoFetchScheduler: timer scheduled every \(self.intervalMinutes, privacy: .public) minute(s)")
@@ -142,21 +145,21 @@ final class AutoFetchScheduler {
 extension AutoFetchScheduler {
 
     /// A short relative description of ``lastFetchDate`` suitable for the status bar,
-    /// e.g. "Fetched origin just now" or "Fetched origin 3 min ago".
+    /// e.g. "Fetched remotes just now" or "Fetched remotes 3 min ago".
     var lastFetchRelativeDescription: String? {
         guard let date = lastFetchDate else { return nil }
         let elapsed = Date().timeIntervalSince(date)
         switch elapsed {
         case ..<5:
-            return "Fetched origin just now"
+            return "Fetched remotes just now"
         case ..<60:
-            return "Fetched origin \(Int(elapsed))s ago"
+            return "Fetched remotes \(Int(elapsed))s ago"
         case ..<3600:
             let mins = Int(elapsed / 60)
-            return "Fetched origin \(mins) min\(mins == 1 ? "" : "s") ago"
+            return "Fetched remotes \(mins) min\(mins == 1 ? "" : "s") ago"
         default:
             let hours = Int(elapsed / 3600)
-            return "Fetched origin \(hours) hr\(hours == 1 ? "" : "s") ago"
+            return "Fetched remotes \(hours) hr\(hours == 1 ? "" : "s") ago"
         }
     }
 }

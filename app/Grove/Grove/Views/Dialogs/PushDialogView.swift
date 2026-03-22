@@ -133,7 +133,7 @@ struct PushDialogView: View {
                 try await repository.push(
                     remote: remote,
                     force: forcePush,
-                    forceLease: !forcePush,
+                    forceWithLease: false,
                     progress: nil
                 )
                 // Push all tags after the branch push when the option is enabled.

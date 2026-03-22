@@ -18,12 +18,11 @@ struct StatusBarView: View {
     let repository: any GitRepositoryProtocol
     /// Optional auto-fetch scheduler. When provided, fetch activity and last-fetch
     /// time are shown in the centre of the bar.
-    var autoFetcher: AutoFetchScheduler? = nil
+    var autoFetcher: AutoFetchScheduler?
 
     // MARK: State
 
     @State private var activityMessage: String?
-    @State private var progress: Double?
 
     // MARK: Body
 

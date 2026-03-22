@@ -79,10 +79,10 @@ final class ExternalToolLauncher {
 
         let args = AppToolPreferences.mergeArguments
             .replacingTokens([
-                "$LOCAL":  ours.path,
+                "$LOCAL": ours.path,
                 "$REMOTE": theirs.path,
-                "$BASE":   base.path,
-                "$MERGED": merged.path,
+                "$BASE": base.path,
+                "$MERGED": merged.path
             ])
 
         try launch(executablePath: path, arguments: args)

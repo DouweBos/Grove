@@ -136,7 +136,7 @@ struct FileHistoryView: View {
                 object: nil,
                 userInfo: [
                     "filePath": viewModel.filePath,
-                    "revision": commit.id,
+                    "revision": commit.id
                 ]
             )
         }
@@ -199,7 +199,7 @@ struct FileHistoryView: View {
                         object: nil,
                         userInfo: [
                             "filePath": viewModel.filePath,
-                            "revision": commit.id,
+                            "revision": commit.id
                         ]
                     )
                 } label: {

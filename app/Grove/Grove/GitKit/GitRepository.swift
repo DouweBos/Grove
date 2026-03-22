@@ -22,6 +22,8 @@ enum GitRepositoryError: LocalizedError {
     case notAGitRepository(URL)
     case invalidCommitMessage
     case branchNotFound(String)
+    case commitNotFound(String)
+    case commitReadbackFailed
     case tagNotFound(String)
     case cannotDeleteCurrentBranch
     case remoteOperationFailed(String)
@@ -36,6 +38,10 @@ enum GitRepositoryError: LocalizedError {
             return "A commit message is required."
         case .branchNotFound(let name):
             return "Branch '\(name)' not found."
+        case .commitNotFound(let sha):
+            return "Commit '\(sha)' not found."
+        case .commitReadbackFailed:
+            return "Failed to read back the newly created commit."
         case .tagNotFound(let name):
             return "Tag '\(name)' not found."
         case .cannotDeleteCurrentBranch:
@@ -152,7 +158,7 @@ final class GitRepository: GitRepositoryProtocol {
     }
 
     func unstageHunk(_ hunk: HunkData, in file: String) async throws {
-        let patch = DiffParser.buildReversePatch(from: hunk, filePath: file)
+        let patch = DiffParser.buildPatch(from: hunk, filePath: file)
         try await applyPatch(patch, cached: true, reverse: true)
     }
 
@@ -190,6 +196,12 @@ final class GitRepository: GitRepositoryProtocol {
         // Apply a reverse patch to the working tree (no --cached).
         let patch = DiffParser.buildReversePatch(from: hunk, filePath: file)
         try await applyPatch(patch, cached: false, reverse: false)
+    }
+
+    func discardLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
+        // Apply a reverse patch for the selected lines to the working tree.
+        let patch = DiffParser.buildPatch(from: lines, in: hunk, filePath: file)
+        try await applyPatch(patch, cached: false, reverse: true)
     }
 
     // MARK: - Diff
@@ -231,10 +243,10 @@ final class GitRepository: GitRepositoryProtocol {
         return diffs.map { diff in
             let status = statusMap[diff.filePath] ?? .modified
             return FileDiff(
-                path:   diff.filePath,
+                path: diff.filePath,
                 status: status,
-                diff:   diff,
-                stats:  diff.stats
+                diff: diff,
+                stats: diff.stats
             )
         }
     }
@@ -260,13 +272,13 @@ final class GitRepository: GitRepositoryProtocol {
 
         var args = ["commit", "-m", fullMessage]
         if amend { args.append("--amend") }
-        if sign  { args.append("-S") }
+        if sign { args.append("-S") }
         try await shell.run(args)
 
         // Return the newly created commit.
         let commits = try await log(maxCount: 1, skip: 0, branch: nil)
         guard let commit = commits.first else {
-            throw GitRepositoryError.invalidCommitMessage
+            throw GitRepositoryError.commitReadbackFailed
         }
 
         Logger.gitRepository.info(
@@ -301,7 +313,7 @@ final class GitRepository: GitRepositoryProtocol {
             "log",
             "--format=\(LogParser.formatString)",
             "-\(maxCount)",
-            "--skip=\(skip)",
+            "--skip=\(skip)"
         ]
         if let branch {
             args.append(branch)
@@ -317,7 +329,7 @@ final class GitRepository: GitRepositoryProtocol {
             "-\(maxCount)",
             "--follow",
             "--",
-            path,
+            path
         ]
         let result = try await shell.run(args)
         return LogParser.parse(result.stdout)
@@ -329,7 +341,7 @@ final class GitRepository: GitRepositoryProtocol {
         )
         let commits = LogParser.parse(result.stdout)
         guard let commit = commits.first else {
-            throw GitRepositoryError.branchNotFound(sha)
+            throw GitRepositoryError.commitNotFound(sha)
         }
         return commit
     }
@@ -427,13 +439,13 @@ final class GitRepository: GitRepositoryProtocol {
         }
     }
 
-    func push(remote: String?, force: Bool, forceLease: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
-        let forceDescription = forceLease ? " --force-with-lease" : (force ? " --force" : "")
+    func push(remote: String?, force: Bool, forceWithLease: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
+        let forceDescription = forceWithLease ? " --force-with-lease" : (force ? " --force" : "")
         Logger.gitRepository.info(
             "Pushing\(forceDescription, privacy: .public) to \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
         )
         var args = ["push"]
-        if forceLease {
+        if forceWithLease {
             args.append("--force-with-lease")
         } else if force {
             args.append("--force")
@@ -453,7 +465,7 @@ final class GitRepository: GitRepositoryProtocol {
         progress?(0.33)
         try await pull(remote: remote, rebase: rebase, progress: nil)
         progress?(0.66)
-        try await push(remote: remote, force: false, forceLease: false, progress: nil)
+        try await push(remote: remote, force: false, forceWithLease: false, progress: nil)
         progress?(1.0)
         Logger.gitRepository.info("Sync complete in \(self.displayName, privacy: .public)")
     }
@@ -690,7 +702,7 @@ final class GitRepository: GitRepositoryProtocol {
             ["rebase", "-i", parent],
             environment: [
                 "GIT_SEQUENCE_EDITOR": scriptURL.path,
-                "GIT_EDITOR": "true",
+                "GIT_EDITOR": "true"
             ]
         )
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
@@ -729,7 +741,7 @@ final class GitRepository: GitRepositoryProtocol {
             ["rebase", "-i", parent],
             environment: [
                 "GIT_SEQUENCE_EDITOR": scriptURL.path,
-                "GIT_EDITOR": editorURL.path,
+                "GIT_EDITOR": editorURL.path
             ]
         )
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
@@ -783,7 +795,7 @@ final class GitRepository: GitRepositoryProtocol {
             "Cleaning untracked\(directories ? " (+ dirs)" : "", privacy: .public) in \(self.displayName, privacy: .public)"
         )
         var args = ["clean"]
-        if force       { args.append("-f") }
+        if force { args.append("-f") }
         if directories { args.append("-d") }
         try await shell.run(args)
         Logger.gitRepository.info("Clean complete in \(self.displayName, privacy: .public)")
@@ -1020,7 +1032,7 @@ final class GitRepository: GitRepositoryProtocol {
         let candidates = [
             "/usr/local/bin/gh",
             "/opt/homebrew/bin/gh",
-            "/usr/bin/gh",
+            "/usr/bin/gh"
         ]
         for candidate in candidates where FileManager.default.fileExists(atPath: candidate) {
             return candidate
@@ -1063,22 +1075,22 @@ final class GitRepository: GitRepositoryProtocol {
                 let parts = abResult.stdout
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                     .components(separatedBy: "\t")
-                ahead  = parts.count > 0 ? (Int(parts[0]) ?? 0) : 0
+                ahead  = !parts.isEmpty ? (Int(parts[0]) ?? 0) : 0
                 behind = parts.count > 1 ? (Int(parts[1]) ?? 0) : 0
             }
         }
 
         return BranchInfo(
-            id:         refname,
-            name:       shortName,
-            isLocal:    true,
-            isRemote:   false,
-            isHEAD:     true,
-            targetSHA:  sha,
+            id: refname,
+            name: shortName,
+            isLocal: true,
+            isRemote: false,
+            isHEAD: true,
+            targetSHA: sha,
             remoteName: nil,
-            upstream:   upstream.map { "refs/remotes/\($0)" },
-            ahead:      ahead,
-            behind:     behind
+            upstream: upstream.map { "refs/remotes/\($0)" },
+            ahead: ahead,
+            behind: behind
         )
     }
 
@@ -1134,7 +1146,7 @@ final class GitRepository: GitRepositoryProtocol {
     /// Apply a patch string via `git apply`.
     private func applyPatch(_ patch: String, cached: Bool, reverse: Bool = false) async throws {
         var args = ["apply"]
-        if cached  { args.append("--cached") }
+        if cached { args.append("--cached") }
         if reverse { args.append("--reverse") }
         args += ["--whitespace=nowarn", "-"]
 
@@ -1158,7 +1170,7 @@ final class GitRepository: GitRepositoryProtocol {
     /// Parse `git remote -v` output into ``RemoteInfo`` values.
     nonisolated private func parseRemoteVerbose(_ output: String) -> [RemoteInfo] {
         var fetchURLs: [String: String] = [:]
-        var pushURLs:  [String: String] = [:]
+        var pushURLs: [String: String] = [:]
 
         for line in output.components(separatedBy: "\n") {
             guard !line.isEmpty else { continue }
@@ -1181,9 +1193,9 @@ final class GitRepository: GitRepositoryProtocol {
             let fetchURL = fetchURLs[name] ?? ""
             let pushURL  = pushURLs[name]
             return RemoteInfo(
-                id:      name,
-                name:    name,
-                url:     fetchURL,
+                id: name,
+                name: name,
+                url: fetchURL,
                 pushURL: pushURL == fetchURL ? nil : pushURL
             )
         }
@@ -1241,16 +1253,15 @@ final class GitRepository: GitRepositoryProtocol {
             }
 
             result.append(TagInfo(
-                id:          name,
-                name:        name,
-                targetSHA:   targetSHA,
+                id: name,
+                name: name,
+                targetSHA: targetSHA,
                 isAnnotated: isAnnotated,
-                message:     isAnnotated ? subject : nil,
-                taggerName:  taggerName,
-                taggerDate:  taggerDate
+                message: isAnnotated ? subject : nil,
+                taggerName: taggerName,
+                taggerDate: taggerDate
             ))
         }
         return result
     }
 }
-

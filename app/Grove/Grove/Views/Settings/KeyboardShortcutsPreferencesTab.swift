@@ -29,8 +29,8 @@ struct ShortcutRepresentation: Equatable {
         guard !keyLabel.isEmpty else { return "-" }
         var parts = ""
         if modifiers.contains(.control) { parts += "\u{2303}" }
-        if modifiers.contains(.option)  { parts += "\u{2325}" }
-        if modifiers.contains(.shift)   { parts += "\u{21E7}" }
+        if modifiers.contains(.option) { parts += "\u{2325}" }
+        if modifiers.contains(.shift) { parts += "\u{21E7}" }
         if modifiers.contains(.command) { parts += "\u{2318}" }
         parts += keyLabel
         return parts
@@ -53,7 +53,7 @@ struct KeyboardShortcutsPreferencesTab: View {
 
     @State private var actions: [ShortcutAction] = Self.defaultActions()
     @State private var selectedActionID: ShortcutAction.ID?
-    @State private var filterCategory: ShortcutCategory? = nil
+    @State private var filterCategory: ShortcutCategory?
     @State private var showResetAllConfirmation = false
 
     private var filteredActions: [ShortcutAction] {
@@ -201,7 +201,7 @@ struct KeyboardShortcutsPreferencesTab: View {
 
             // General
             ShortcutAction(category: .general, actionName: "Preferences", defaultShortcut: .init(modifiers: [.command], keyLabel: ","), currentShortcut: .init(modifiers: [.command], keyLabel: ",")),
-            ShortcutAction(category: .general, actionName: "Clone Repository", defaultShortcut: .init(modifiers: [.command, .shift], keyLabel: "N"), currentShortcut: .init(modifiers: [.command, .shift], keyLabel: "N")),
+            ShortcutAction(category: .general, actionName: "Clone Repository", defaultShortcut: .init(modifiers: [.command, .shift], keyLabel: "N"), currentShortcut: .init(modifiers: [.command, .shift], keyLabel: "N"))
         ]
     }
 }

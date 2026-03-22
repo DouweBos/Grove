@@ -145,9 +145,7 @@ struct StashDetailView: View {
         Binding {
             viewModel.selectedFileDiff?.path
         } set: { path in
-            viewModel.selectedFileDiff = path.flatMap { p in
-                viewModel.stashDiffs.first { $0.path == p }
-            }
+            viewModel.selectFileDiff(byPath: path)
         }
     }
 }

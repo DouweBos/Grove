@@ -12,8 +12,6 @@ import os
 
 // MARK: - RepositoryState logging support
 
-extension RepositoryState: Equatable {}
-
 extension RepositoryState {
     /// A short, human-readable description used in log messages.
     var logDescription: String {

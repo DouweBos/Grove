@@ -30,7 +30,7 @@ struct DiffView: View {
     /// Whether the panel is in Staged mode (affects hunk action button labels).
     var showingStaged: Bool = false
     /// Called when the user taps a hunk or line action button.
-    var onHunkAction: ((HunkData, HunkAction) -> Void)? = nil
+    var onHunkAction: ((HunkData, HunkAction) -> Void)?
 
     // MARK: State
 

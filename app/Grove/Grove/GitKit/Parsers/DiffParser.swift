@@ -82,7 +82,7 @@ enum DiffParser {
             if line.hasPrefix("diff --git ") { break }
             if line.hasPrefix("--- ") || line.hasPrefix("+++ ") || line.hasPrefix("@@ ") { break }
 
-            if line.hasPrefix("Binary files") || line.lowercased().contains("binary") {
+            if line.hasPrefix("Binary files") || line.hasPrefix("GIT binary patch") {
                 isBinary = true
             }
             if line.hasPrefix("rename to ") {
@@ -126,11 +126,11 @@ enum DiffParser {
         }
 
         let result = DiffResult(
-            filePath:  newFilePath,
-            oldPath:   renamedOldPath,
-            isBinary:  isBinary,
-            hunks:     hunks,
-            stats:     DiffStats(additions: additions, deletions: deletions)
+            filePath: newFilePath,
+            oldPath: renamedOldPath,
+            isBinary: isBinary,
+            hunks: hunks,
+            stats: DiffStats(additions: additions, deletions: deletions)
         )
 
         return (result, i)
@@ -212,13 +212,13 @@ enum DiffParser {
         }
 
         let hunk = HunkData(
-            id:       "\(headerLine.hashValue)",
-            header:   headerLine,
+            id: "\(headerLine.hashValue)",
+            header: headerLine,
             oldStart: oldStart,
             oldCount: oldCount,
             newStart: newStart,
             newCount: newCount,
-            lines:    diffLines
+            lines: diffLines
         )
 
         return (hunk, i)

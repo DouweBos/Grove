@@ -6,8 +6,8 @@
 // currently-focused repository window.
 //
 // Sender: GroveCommands menu items post a Notification whose object is a GroveAction.
-// Receiver: RepositoryWindowView (or any view that hosts a repository) observes
-// GroveAction.notificationName and dispatches the action to its ViewModel.
+// Receiver: RootWindowHost observes GroveAction.notificationName and forwards
+// the action to the active RepositorySession.
 
 import Foundation
 
@@ -27,6 +27,12 @@ enum GroveAction: String, Sendable {
     case navigateHistory
     /// Navigate to the Stashes view (Cmd+3).
     case navigateStashes
+    /// Navigate to the Reflog view (Cmd+4).
+    case navigateReflog
+    /// Navigate to the Pull Requests view (Cmd+5).
+    case navigatePullRequests
+    /// Navigate to the Branches Review view (Cmd+6).
+    case navigateBranchesReview
 
     // MARK: Remote Operations
 
@@ -65,15 +71,6 @@ enum GroveAction: String, Sendable {
     case quickActions
     /// Quick Open — focus the repository browser search (Cmd+Shift+O).
     case quickOpen
-
-    // MARK: Navigation (extended)
-
-    /// Navigate to the Reflog view (Cmd+4).
-    case navigateReflog
-    /// Navigate to the Pull Requests view (Cmd+5).
-    case navigatePullRequests
-    /// Navigate to the Branches Review view (Cmd+6).
-    case navigateBranchesReview
 
     // MARK: Undo / Redo
 

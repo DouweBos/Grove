@@ -14,6 +14,7 @@ struct AdvancedPreferencesTab: View {
 
     @State private var importState: ImportState = .idle
     @State private var showClearConfirmation = false
+    @State private var showResetConfirmation = false
     @State private var clearBeforeImport = false
 
     private var towerInstalled: Bool { TowerImporter.isTowerInstalled }
@@ -22,6 +23,7 @@ struct AdvancedPreferencesTab: View {
         Form {
             towerImportSection
             dataManagementSection
+            resetToDefaultsSection
         }
         .formStyle(.grouped)
     }
@@ -105,6 +107,48 @@ struct AdvancedPreferencesTab: View {
             }
         } header: {
             Text("Data Management")
+        }
+    }
+
+    // MARK: - Reset to Defaults
+
+    @ViewBuilder
+    private var resetToDefaultsSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Reset all preferences to their default values. This does not affect your repository bookmarks.")
+                    .foregroundStyle(.secondary)
+
+                Button("Reset to Defaults", role: .destructive) {
+                    showResetConfirmation = true
+                }
+                .confirmationDialog(
+                    "Reset all preferences to defaults?",
+                    isPresented: $showResetConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Reset to Defaults", role: .destructive) {
+                        resetAllPreferences()
+                    }
+                } message: {
+                    Text("All settings will be restored to their default values.")
+                }
+            }
+        } header: {
+            Text("Preferences")
+        }
+    }
+
+    private func resetAllPreferences() {
+        let keys = [
+            "defaultCloneDirectory", "terminalApp", "autoFetchMinutes",
+            "warnOnHunkDiscard", "showQuickStartOnLaunch", "compactToolbar",
+            "commitHistoryLimit", "externalEditorName", "externalDiffToolPath",
+            "externalDiffToolArguments", "externalMergeToolPath",
+            "externalMergeToolArguments", "externalEditorPath"
+        ]
+        for key in keys {
+            UserDefaults.standard.removeObject(forKey: key)
         }
     }
 

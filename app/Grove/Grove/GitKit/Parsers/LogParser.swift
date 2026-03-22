@@ -96,18 +96,18 @@ enum LogParser {
         }
 
         return CommitInfo(
-            id:              sha,
-            message:         fullMessage,
-            summary:         summary,
-            body:            body,
-            authorName:      authorName,
-            authorEmail:     authorEmail,
-            authorDate:      authorDate,
-            committerName:   committerName,
-            committerEmail:  committerEmail,
-            committerDate:   committerDateV,
-            parentIDs:       parentIDs,
-            isSigned:        isSigned
+            id: sha,
+            message: fullMessage,
+            summary: summary,
+            body: body,
+            authorName: authorName,
+            authorEmail: authorEmail,
+            authorDate: authorDate,
+            committerName: committerName,
+            committerEmail: committerEmail,
+            committerDate: committerDateV,
+            parentIDs: parentIDs,
+            isSigned: isSigned
         )
     }
 

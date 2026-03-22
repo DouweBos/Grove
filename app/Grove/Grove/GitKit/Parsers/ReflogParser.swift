@@ -3,19 +3,15 @@
 //
 // Parses the output of `git reflog` with a custom format into [ReflogEntry].
 //
-// Format string used by GitRepository:
-//   %H%x00%gD%x00%gs%x00%an%x00%ae%x00%aI%x00%x01
-//   (followed by reading the previous SHA from gd)
-//
-// We use a simpler two-pass approach:
-//   git reflog --format="%H%x00%P%x00%gs%x00%an%x00%ae%x00%aI%x00%x01"
+// Format string:
+//   %H%x00%P%x00%gs%x00%cn%x00%ce%x00%aI%x00%x01
 //
 // Fields (NUL-separated):
 //   0  %H   — new (destination) SHA
 //   1  %P   — parent SHA(s) — we use first parent as "oldSHA"
 //   2  %gs  — reflog subject / action message
-//   3  %an  — committer name
-//   4  %ae  — committer email
+//   3  %cn  — committer name
+//   4  %ce  — committer email
 //   5  %aI  — date ISO 8601
 
 import Foundation
@@ -29,7 +25,7 @@ enum ReflogParser {
 
     /// Format string for `git reflog`.
     nonisolated static var formatString: String {
-        "%H%x00%P%x00%gs%x00%an%x00%ae%x00%aI%x00%x01"
+        "%H%x00%P%x00%gs%x00%cn%x00%ce%x00%aI%x00%x01"
     }
 
     // MARK: Public API
@@ -69,13 +65,13 @@ enum ReflogParser {
         let oldSHA = parentsStr.components(separatedBy: " ").first ?? String(repeating: "0", count: 40)
 
         return ReflogEntry(
-            id:             "\(newSHA)-\(message.hashValue)",
-            oldSHA:         oldSHA.isEmpty ? String(repeating: "0", count: 40) : oldSHA,
-            newSHA:         newSHA,
-            committerName:  committerName,
+            id: "\(newSHA)-\(message.hashValue)",
+            oldSHA: oldSHA.isEmpty ? String(repeating: "0", count: 40) : oldSHA,
+            newSHA: newSHA,
+            committerName: committerName,
             committerEmail: committerEmail,
-            date:           date,
-            message:        message
+            date: date,
+            message: message
         )
     }
 

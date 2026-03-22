@@ -85,6 +85,10 @@ final class MockGitRepository: GitRepositoryProtocol {
         await simulateLatency()
     }
 
+    func discardLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
+        await simulateLatency()
+    }
+
     func stageAll() async throws {
         await simulateLatency()
     }
@@ -212,7 +216,7 @@ final class MockGitRepository: GitRepositoryProtocol {
         progress?(1.0)
     }
 
-    func push(remote: String?, force: Bool, forceLease: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
+    func push(remote: String?, force: Bool, forceWithLease: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
         await simulateLatency(300_000_000)
         progress?(1.0)
     }
@@ -303,7 +307,7 @@ final class MockGitRepository: GitRepositoryProtocol {
             "# bad: [a1b2c3d] feat: add OAuth2 authentication flow",
             "# good: [86a1b2c] chore: initial project scaffold",
             "git bisect bad a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
-            "git bisect good 86a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1",
+            "git bisect good 86a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1"
         ]
     }
 
@@ -583,7 +587,7 @@ enum MockData {
                 authorJane.email,
                 [],
                 false
-            ),
+            )
         ]
 
         let now = Date()
@@ -711,7 +715,7 @@ enum MockData {
             upstream: nil,
             ahead: 0,
             behind: 0
-        ),
+        )
     ]
 
     // MARK: Remotes
@@ -728,7 +732,7 @@ enum MockData {
             name: "upstream",
             url: "https://github.com/upstream-org/my-app.git",
             pushURL: "git@github.com:upstream-org/my-app.git"
-        ),
+        )
     ]
 
     // MARK: Tags
@@ -760,7 +764,7 @@ enum MockData {
             message: nil,
             taggerName: nil,
             taggerDate: nil
-        ),
+        )
     ]
 
     // MARK: Stash Entries
@@ -793,7 +797,7 @@ enum MockData {
             sha: "dd1122334455667788990011223344556677889900",
             date: Calendar.current.date(byAdding: .weekOfYear, value: -1, to: Date())!,
             branchName: "bugfix/crash-on-empty-stash"
-        ),
+        )
     ]
 
     // MARK: Tracked Files
@@ -853,7 +857,7 @@ enum MockData {
             "Tests/GroveTests/StatusParserTests.swift",
             "Tests/GroveTests/DiffParserTests.swift",
             "docs/ARCHITECTURE.md",
-            "docs/CONVENTIONS.md",
+            "docs/CONVENTIONS.md"
         ]
 
         // Merge, deduplicate, and sort alphabetically to mirror `git ls-files` output.
@@ -917,7 +921,7 @@ enum MockData {
                     indexStatus: .renamed, workdirStatus: .unmodified),
         StatusEntry(id: "Sources/Grove/Views/Blame/BlameView.swift",
                     path: "Sources/Grove/Views/Blame/BlameView.swift",
-                    indexStatus: .unmodified, workdirStatus: .deleted),
+                    indexStatus: .unmodified, workdirStatus: .deleted)
     ]
 
     // MARK: Diff
@@ -938,20 +942,20 @@ enum MockData {
         oldStart: 10, oldCount: 12,
         newStart: 10, newCount: 18,
         lines: [
-            DiffLine(id: "h1-1", type: .context,  content: "    @Observable",           oldLineNumber: 10, newLineNumber: 10),
-            DiffLine(id: "h1-2", type: .context,  content: "    final class WorkingCopyViewModel {", oldLineNumber: 11, newLineNumber: 11),
-            DiffLine(id: "h1-3", type: .context,  content: "",                            oldLineNumber: 12, newLineNumber: 12),
+            DiffLine(id: "h1-1", type: .context, content: "    @Observable", oldLineNumber: 10, newLineNumber: 10),
+            DiffLine(id: "h1-2", type: .context, content: "    final class WorkingCopyViewModel {", oldLineNumber: 11, newLineNumber: 11),
+            DiffLine(id: "h1-3", type: .context, content: "", oldLineNumber: 12, newLineNumber: 12),
             DiffLine(id: "h1-4", type: .deletion, content: "        var stagedFiles: [StatusEntry] = []", oldLineNumber: 13, newLineNumber: nil),
             DiffLine(id: "h1-5", type: .deletion, content: "        var unstagedFiles: [StatusEntry] = []", oldLineNumber: 14, newLineNumber: nil),
-            DiffLine(id: "h1-6", type: .addition, content: "        var status: [StatusEntry] = []",      oldLineNumber: nil, newLineNumber: 13),
-            DiffLine(id: "h1-7", type: .addition, content: "        var stagedFiles: [StatusEntry] {",    oldLineNumber: nil, newLineNumber: 14),
+            DiffLine(id: "h1-6", type: .addition, content: "        var status: [StatusEntry] = []", oldLineNumber: nil, newLineNumber: 13),
+            DiffLine(id: "h1-7", type: .addition, content: "        var stagedFiles: [StatusEntry] {", oldLineNumber: nil, newLineNumber: 14),
             DiffLine(id: "h1-8", type: .addition, content: "            status.filter { $0.indexStatus != .unmodified }", oldLineNumber: nil, newLineNumber: 15),
-            DiffLine(id: "h1-9", type: .addition, content: "        }",                                  oldLineNumber: nil, newLineNumber: 16),
+            DiffLine(id: "h1-9", type: .addition, content: "        }", oldLineNumber: nil, newLineNumber: 16),
             DiffLine(id: "h1-10", type: .addition, content: "        var unstagedFiles: [StatusEntry] {", oldLineNumber: nil, newLineNumber: 17),
             DiffLine(id: "h1-11", type: .addition, content: "            status.filter { $0.workdirStatus != .unmodified }", oldLineNumber: nil, newLineNumber: 18),
-            DiffLine(id: "h1-12", type: .addition, content: "        }",                                 oldLineNumber: nil, newLineNumber: 19),
-            DiffLine(id: "h1-13", type: .context,  content: "",                           oldLineNumber: 15, newLineNumber: 20),
-            DiffLine(id: "h1-14", type: .context,  content: "        let repository: any GitRepositoryProtocol", oldLineNumber: 16, newLineNumber: 21),
+            DiffLine(id: "h1-12", type: .addition, content: "        }", oldLineNumber: nil, newLineNumber: 19),
+            DiffLine(id: "h1-13", type: .context, content: "", oldLineNumber: 15, newLineNumber: 20),
+            DiffLine(id: "h1-14", type: .context, content: "        let repository: any GitRepositoryProtocol", oldLineNumber: 16, newLineNumber: 21)
         ]
     )
 
@@ -961,17 +965,17 @@ enum MockData {
         oldStart: 38, oldCount: 8,
         newStart: 44, newCount: 10,
         lines: [
-            DiffLine(id: "h2-1", type: .context,  content: "    func refresh() async {", oldLineNumber: 38, newLineNumber: 44),
-            DiffLine(id: "h2-2", type: .context,  content: "        do {",               oldLineNumber: 39, newLineNumber: 45),
+            DiffLine(id: "h2-1", type: .context, content: "    func refresh() async {", oldLineNumber: 38, newLineNumber: 44),
+            DiffLine(id: "h2-2", type: .context, content: "        do {", oldLineNumber: 39, newLineNumber: 45),
             DiffLine(id: "h2-3", type: .deletion, content: "            let s = try await repository.status()", oldLineNumber: 40, newLineNumber: nil),
             DiffLine(id: "h2-4", type: .deletion, content: "            stagedFiles = s.filter { ... }", oldLineNumber: 41, newLineNumber: nil),
             DiffLine(id: "h2-5", type: .addition, content: "            try await repository.refreshStatus()", oldLineNumber: nil, newLineNumber: 46),
             DiffLine(id: "h2-6", type: .addition, content: "            status = try await repository.status()", oldLineNumber: nil, newLineNumber: 47),
-            DiffLine(id: "h2-7", type: .context,  content: "        } catch {",          oldLineNumber: 42, newLineNumber: 48),
-            DiffLine(id: "h2-8", type: .deletion, content: "            print(error)",   oldLineNumber: 43, newLineNumber: nil),
+            DiffLine(id: "h2-7", type: .context, content: "        } catch {", oldLineNumber: 42, newLineNumber: 48),
+            DiffLine(id: "h2-8", type: .deletion, content: "            print(error)", oldLineNumber: 43, newLineNumber: nil),
             DiffLine(id: "h2-9", type: .addition, content: "            errorMessage = error.localizedDescription", oldLineNumber: nil, newLineNumber: 49),
-            DiffLine(id: "h2-10", type: .context, content: "        }",                  oldLineNumber: 44, newLineNumber: 50),
-            DiffLine(id: "h2-11", type: .context, content: "    }",                      oldLineNumber: 45, newLineNumber: 51),
+            DiffLine(id: "h2-10", type: .context, content: "        }", oldLineNumber: 44, newLineNumber: 50),
+            DiffLine(id: "h2-11", type: .context, content: "    }", oldLineNumber: 45, newLineNumber: 51)
         ]
     )
 
@@ -991,7 +995,7 @@ enum MockData {
         let shaPool = commits.map(\.id)
         let lineData: [(Int, Int, Int)] = [
             (1, 5, 0), (6, 8, 1), (14, 3, 2), (17, 10, 0),
-            (27, 4, 1), (31, 12, 3), (43, 7, 0), (50, 6, 2),
+            (27, 4, 1), (31, 12, 3), (43, 7, 0), (50, 6, 2)
         ]
         for (start, count, shaIdx) in lineData {
             let commit = commits[shaIdx]
@@ -1030,7 +1034,7 @@ enum MockData {
                 isDraft: false,
                 labels: [
                     PRLabel(id: "enhancement", name: "enhancement", color: "0075ca"),
-                    PRLabel(id: "ui", name: "ui", color: "e4e669"),
+                    PRLabel(id: "ui", name: "ui", color: "e4e669")
                 ],
                 reviewers: [authorAlice.name],
                 checksStatus: .passing
@@ -1048,7 +1052,7 @@ enum MockData {
                 updatedDate: cal.date(byAdding: .hour, value: -3, to: now)!,
                 isDraft: true,
                 labels: [
-                    PRLabel(id: "enhancement", name: "enhancement", color: "0075ca"),
+                    PRLabel(id: "enhancement", name: "enhancement", color: "0075ca")
                 ],
                 reviewers: [],
                 checksStatus: .pending
@@ -1066,7 +1070,7 @@ enum MockData {
                 updatedDate: cal.date(byAdding: .day, value: -3, to: now)!,
                 isDraft: false,
                 labels: [
-                    PRLabel(id: "bug", name: "bug", color: "d73a4a"),
+                    PRLabel(id: "bug", name: "bug", color: "d73a4a")
                 ],
                 reviewers: [authorJane.name],
                 checksStatus: .passing
@@ -1084,11 +1088,11 @@ enum MockData {
                 updatedDate: cal.date(byAdding: .day, value: -8, to: now)!,
                 isDraft: false,
                 labels: [
-                    PRLabel(id: "chore", name: "chore", color: "e4e669"),
+                    PRLabel(id: "chore", name: "chore", color: "e4e669")
                 ],
                 reviewers: [],
                 checksStatus: .failing
-            ),
+            )
         ]
     }()
 
@@ -1129,7 +1133,7 @@ enum MockData {
                 body: "LGTM. Approved.",
                 createdDate: cal.date(byAdding: .minute, value: -45, to: now)!,
                 isReview: true
-            ),
+            )
         ]
     }()
 
@@ -1145,7 +1149,7 @@ enum MockData {
             "merge feature/auth: Merge made by the 'ort' strategy.",
             "commit (amend): fix: prevent token refresh race condition",
             "rebase (finish): returning to refs/heads/main",
-            "push origin main",
+            "push origin main"
         ]
         let now = Date()
         for (i, msg) in messages.enumerated() {

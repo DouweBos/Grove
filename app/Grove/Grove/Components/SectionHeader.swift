@@ -27,7 +27,7 @@ struct SectionHeader<MenuContent: View>: View {
     let title: String
     @Binding var isExpanded: Bool
     /// Optional count shown in a badge to the right of the title.
-    var count: Int? = nil
+    var count: Int?
     /// Content of the context menu (also shown via the `+` button).
     var menuContent: (() -> MenuContent)?
 

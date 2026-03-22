@@ -148,7 +148,9 @@ struct PRAuthorAvatarView: View {
 
     private var avatarColor: Color {
         let colors: [Color] = [.blue, .green, .orange, .purple, .pink, .cyan, .teal, .indigo]
-        let index = abs(name.hashValue) % colors.count
+        var hash: UInt64 = 5381
+        for byte in name.utf8 { hash = hash &* 33 &+ UInt64(byte) }
+        let index = Int(hash % UInt64(colors.count))
         return colors[index]
     }
 

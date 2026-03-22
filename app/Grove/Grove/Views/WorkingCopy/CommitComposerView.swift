@@ -171,7 +171,7 @@ struct CommitComposerView: View {
             Menu {
                 ForEach(viewModel.availableProfiles) { profile in
                     Button {
-                        viewModel.selectedProfile = profile
+                        viewModel.selectProfile(profile)
                     } label: {
                         HStack {
                             Text(profile.name)
@@ -271,7 +271,7 @@ struct ProfileAvatarView: View {
             email: "bob@example.com",
             signingKeyID: nil,
             isDefault: false
-        ),
+        )
     ])
     return CommitComposerView()
         .environment(vm)

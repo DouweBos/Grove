@@ -217,7 +217,7 @@ struct StatusParserTests {
             ("1 .D N... 100644 100644 100644 a b c", .unmodified, .deleted),
             ("1 RR N... 100644 100644 100644 a b c", .renamed, .renamed),
             ("1 CC N... 100644 100644 100644 a b c", .copied, .copied),
-            ("1 TT N... 100644 100644 100644 a b c", .typeChange, .typeChange),
+            ("1 TT N... 100644 100644 100644 a b c", .typeChange, .typeChange)
         ]
         for (line, expectedIndex, expectedWorkdir) in cases {
             let entries = StatusParser.parse(line)

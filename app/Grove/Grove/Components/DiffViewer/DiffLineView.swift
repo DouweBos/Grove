@@ -22,7 +22,7 @@ struct DiffLineView: View {
     let line: DiffLine
     /// Pre-computed word-level highlighted attributed string. Pass `nil` to
     /// render plain content (context lines, single-sided changes).
-    var attributedContent: AttributedString? = nil
+    var attributedContent: AttributedString?
     /// Whether this line is currently selected (e.g. for line-level staging).
     var isSelected: Bool = false
 

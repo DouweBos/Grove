@@ -107,7 +107,9 @@ struct CommitRow: View {
     /// Color used when no ``GraphNode`` is available yet.
     private var fallbackColor: Color {
         let colors: [Color] = [.blue, .green, .orange, .purple, .pink, .cyan, .yellow]
-        let index = abs(commit.id.hashValue) % colors.count
+        var hash: UInt64 = 5381
+        for byte in commit.id.utf8 { hash = hash &* 33 &+ UInt64(byte) }
+        let index = Int(hash % UInt64(colors.count))
         return colors[index]
     }
 }
@@ -125,8 +127,8 @@ struct CommitRow: View {
         private let commits  = MockData.commits
         private let branches = MockData.branches
         private let tags     = MockData.tags
-        private let nodeMap:  [String: GraphNode]
-        private let maxCols:  Int
+        private let nodeMap: [String: GraphNode]
+        private let maxCols: Int
 
         init() {
             let builder = CommitGraphBuilder()

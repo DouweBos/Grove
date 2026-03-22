@@ -171,6 +171,10 @@ final class PullRequestsViewModel {
         }
     }
 
+    func clearActionError() {
+        actionError = nil
+    }
+
     /// Check out the branch for the selected pull request.
     func checkout(pr: PullRequestInfo) async {
         actionError = nil

@@ -77,12 +77,12 @@ enum BlameParser {
             commitCache[sha] = meta
 
             rawEntries.append(RawEntry(
-                sha:       sha,
+                sha: sha,
                 finalLine: finalLine,
-                origLine:  origLine,
-                numLines:  numLines,
-                filename:  filename,
-                meta:      meta
+                origLine: origLine,
+                numLines: numLines,
+                filename: filename,
+                meta: meta
             ))
         }
 
@@ -93,20 +93,20 @@ enum BlameParser {
     // MARK: Private Types
 
     private struct CommitMeta {
-        var authorName:    String = ""
-        var authorEmail:   String = ""
-        var authorTime:    Date   = Date(timeIntervalSince1970: 0)
-        var summary:       String = ""
-        var originalPath:  String?
+        var authorName: String = ""
+        var authorEmail: String = ""
+        var authorTime: Date   = Date(timeIntervalSince1970: 0)
+        var summary: String = ""
+        var originalPath: String?
     }
 
     private struct RawEntry {
-        let sha:       String
+        let sha: String
         let finalLine: Int
-        let origLine:  Int
-        let numLines:  Int
-        let filename:  String?
-        let meta:      CommitMeta
+        let origLine: Int
+        let numLines: Int
+        let filename: String?
+        let meta: CommitMeta
     }
 
     // MARK: Parsing Helpers
@@ -172,14 +172,14 @@ enum BlameParser {
 
             let entryID = "\(first.sha)-\(start)"
             result.append(BlameEntry(
-                id:           entryID,
-                lineStart:    start,
-                lineCount:    count,
-                commitSHA:    first.sha,
-                authorName:   first.meta.authorName,
-                authorEmail:  first.meta.authorEmail,
-                authorDate:   first.meta.authorTime,
-                summary:      first.meta.summary,
+                id: entryID,
+                lineStart: start,
+                lineCount: count,
+                commitSHA: first.sha,
+                authorName: first.meta.authorName,
+                authorEmail: first.meta.authorEmail,
+                authorDate: first.meta.authorTime,
+                summary: first.meta.summary,
                 originalPath: first.meta.originalPath
             ))
 

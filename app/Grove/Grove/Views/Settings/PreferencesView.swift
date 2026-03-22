@@ -77,13 +77,13 @@ struct PreferencesView: View {
 /// General preferences tab.
 struct GeneralPreferencesTab: View {
 
-    @State private var defaultCloneDirectory = "~/Projects"
-    @State private var terminalApp = "Terminal"
-    @State private var autoFetchMinutes = 0
-    @State private var warnOnChunkDiscard = true
-    @State private var showQuickStartOnLaunch = true
-    @State private var compactToolbar = false
-    @State private var commitHistoryLimit = 500
+    @AppStorage("defaultCloneDirectory") private var defaultCloneDirectory = "~/Projects"
+    @AppStorage("terminalApp") private var terminalApp = "Terminal"
+    @AppStorage("autoFetchMinutes") private var autoFetchMinutes = 0
+    @AppStorage("warnOnHunkDiscard") private var warnOnHunkDiscard = true
+    @AppStorage("showQuickStartOnLaunch") private var showQuickStartOnLaunch = true
+    @AppStorage("compactToolbar") private var compactToolbar = false
+    @AppStorage("commitHistoryLimit") private var commitHistoryLimit = 500
 
     var body: some View {
         Form {
@@ -116,7 +116,7 @@ struct GeneralPreferencesTab: View {
             }
 
             Section("Behavior") {
-                Toggle("Warn when discarding a chunk", isOn: $warnOnChunkDiscard)
+                Toggle("Warn when discarding a hunk", isOn: $warnOnHunkDiscard)
                 Toggle("Show Quick Start window on launch", isOn: $showQuickStartOnLaunch)
                 Toggle("Compact toolbar layout", isOn: $compactToolbar)
             }

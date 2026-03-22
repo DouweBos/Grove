@@ -9,7 +9,7 @@ struct SidebarBadge: View {
     let count: Int
 
     var body: some View {
-        if count > 0 {
+        if count > 0 { // swiftlint:disable:this empty_count
             Text("\(count)")
                 .font(.caption2)
                 .fontWeight(.semibold)

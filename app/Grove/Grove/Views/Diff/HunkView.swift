@@ -20,7 +20,7 @@ struct HunkView: View {
 
     let hunk: HunkData
     var showingStaged: Bool = false
-    var onAction: ((HunkAction) -> Void)? = nil
+    var onAction: ((HunkAction) -> Void)?
 
     // MARK: Body
 

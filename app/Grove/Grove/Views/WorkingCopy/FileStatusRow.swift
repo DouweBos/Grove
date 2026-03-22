@@ -21,7 +21,7 @@ struct FileStatusRow: View {
 
     let entry: StatusEntry
     let isSelected: Bool
-    var onToggleStage: (() -> Void)? = nil
+    var onToggleStage: (() -> Void)?
 
     // MARK: Computed
 

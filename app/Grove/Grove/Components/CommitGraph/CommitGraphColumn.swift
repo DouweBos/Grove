@@ -89,14 +89,14 @@ struct CommitGraphColumn: View {
                     // Own lane: draw in two segments so the circle sits cleanly
                     // on top of the line without the line bleeding through it.
                     // Segment 1 — top of row → just above circle.
-                    path.move(to:    CGPoint(x: fromX, y: 0))
+                    path.move(to: CGPoint(x: fromX, y: 0))
                     path.addLine(to: CGPoint(x: fromX, y: midY - r - 1))
                     // Segment 2 — just below circle → bottom of row.
-                    path.move(to:    CGPoint(x: fromX, y: midY + r + 1))
+                    path.move(to: CGPoint(x: fromX, y: midY + r + 1))
                     path.addLine(to: CGPoint(x: fromX, y: size.height))
                 } else {
                     // Pass-through lane — uninterrupted vertical.
-                    path.move(to:    CGPoint(x: fromX, y: 0))
+                    path.move(to: CGPoint(x: fromX, y: 0))
                     path.addLine(to: CGPoint(x: fromX, y: size.height))
                 }
             } else {
@@ -113,9 +113,9 @@ struct CommitGraphColumn: View {
 
                 path.move(to: CGPoint(x: fromX, y: startY))
                 path.addCurve(
-                    to:       CGPoint(x: toX,   y: endY),
+                    to: CGPoint(x: toX, y: endY),
                     control1: CGPoint(x: fromX, y: controlY1),
-                    control2: CGPoint(x: toX,   y: controlY2)
+                    control2: CGPoint(x: toX, y: controlY2)
                 )
             }
 
@@ -169,7 +169,7 @@ struct CommitGraphColumn: View {
     //   row 3: merge commit with two parents
 
     let palette = CommitGraphLayout.self
-    let _ = palette
+    _ = palette
 
     let blueColor  = Color(red: 0.20, green: 0.60, blue: 1.00)
     let greenColor = Color(red: 0.18, green: 0.75, blue: 0.45)
@@ -181,7 +181,7 @@ struct CommitGraphColumn: View {
                 column: 0,
                 color: blueColor,
                 edges: [
-                    GraphEdge(fromColumn: 0, toColumn: 0, color: blueColor),
+                    GraphEdge(fromColumn: 0, toColumn: 0, color: blueColor)
                 ],
                 isMerge: false
             ),
@@ -194,7 +194,7 @@ struct CommitGraphColumn: View {
                 color: blueColor,
                 edges: [
                     GraphEdge(fromColumn: 0, toColumn: 0, color: blueColor),
-                    GraphEdge(fromColumn: 1, toColumn: 1, color: greenColor),
+                    GraphEdge(fromColumn: 1, toColumn: 1, color: greenColor)
                 ],
                 isMerge: false
             ),
@@ -207,7 +207,7 @@ struct CommitGraphColumn: View {
                 color: blueColor,
                 edges: [
                     GraphEdge(fromColumn: 0, toColumn: 0, color: blueColor),
-                    GraphEdge(fromColumn: 0, toColumn: 1, color: greenColor),
+                    GraphEdge(fromColumn: 0, toColumn: 1, color: greenColor)
                 ],
                 isMerge: true
             ),
@@ -220,12 +220,12 @@ struct CommitGraphColumn: View {
                 color: greenColor,
                 edges: [
                     GraphEdge(fromColumn: 0, toColumn: 0, color: blueColor),
-                    GraphEdge(fromColumn: 1, toColumn: 1, color: greenColor),
+                    GraphEdge(fromColumn: 1, toColumn: 1, color: greenColor)
                 ],
                 isMerge: false
             ),
             "Column 1 commit"
-        ),
+        )
     ]
 
     return List {

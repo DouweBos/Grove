@@ -126,7 +126,7 @@ struct LogParserTests {
         let shas = [
             "1111111111111111111111111111111111111111",
             "2222222222222222222222222222222222222222",
-            "3333333333333333333333333333333333333333",
+            "3333333333333333333333333333333333333333"
         ]
         let output = shas.map { makeLogRecord(sha: $0) }.joined()
         let commits = LogParser.parse(output)

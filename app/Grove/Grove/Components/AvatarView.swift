@@ -27,7 +27,7 @@ enum AvatarSize {
     /// Font used for the initials label.
     var font: Font {
         switch self {
-        case .small:  return .system(size: 8,  weight: .semibold)
+        case .small:  return .system(size: 8, weight: .semibold)
         case .medium: return .system(size: 11, weight: .semibold)
         case .large:  return .system(size: 14, weight: .semibold)
         }
@@ -92,7 +92,10 @@ struct AvatarView: View {
 
     private var avatarColor: Color {
         let palette: [Color] = [.blue, .green, .orange, .purple, .pink, .cyan, .teal, .indigo]
-        let index = abs(email.hashValue) % palette.count
+        // Use a stable hash (djb2) instead of hashValue which is randomized per process.
+        var hash: UInt64 = 5381
+        for byte in email.lowercased().utf8 { hash = hash &* 33 &+ UInt64(byte) }
+        let index = Int(hash % UInt64(palette.count))
         return palette[index]
     }
 
@@ -103,7 +106,7 @@ struct AvatarView: View {
     /// The `d=404` parameter instructs Gravatar to return HTTP 404 instead of
     /// a generated image so that ``AsyncImage`` falls back to the placeholder.
     private var gravatarURL: URL? {
-        let normalised = email.trimmingCharacters(in: .whitespaces).lowercased()
+        let normalised = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let hash = Insecure.MD5
             .hash(data: Data(normalised.utf8))
             .map { String(format: "%02hhx", $0) }
@@ -139,7 +142,7 @@ struct AvatarView: View {
         ("Bob Contributor", "bob@example.com"),
         ("Alice Reviewer", "alice@example.com"),
         ("Carlos Ruiz", "carlos@example.com"),
-        ("Single", "single@example.com"),
+        ("Single", "single@example.com")
     ]
     HStack(spacing: 12) {
         ForEach(authors, id: \.1) { name, email in

@@ -83,7 +83,7 @@ final class MockRepositoryManager: RepositoryManagerProtocol {
                 lastOpenedDate: Calendar.current.date(byAdding: .day, value: -3, to: now),
                 sortOrder: 1,
                 groupID: personalGroup.id
-            ),
+            )
         ]
     }
 
@@ -110,7 +110,7 @@ final class MockRepositoryManager: RepositoryManagerProtocol {
             (.fetching, 50, 100),
             (.indexing, 80, 100),
             (.checkingOut, 95, 100),
-            (.checkingOut, 100, 100),
+            (.checkingOut, 100, 100)
         ]
         for (phase, received, total) in steps {
             try? await Task.sleep(nanoseconds: 150_000_000)

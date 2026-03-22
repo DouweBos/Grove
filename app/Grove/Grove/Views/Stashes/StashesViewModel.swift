@@ -56,6 +56,12 @@ final class StashesViewModel {
         }
     }
 
+    func selectFileDiff(byPath path: String?) {
+        selectedFileDiff = path.flatMap { p in
+            stashDiffs.first { $0.path == p }
+        }
+    }
+
     func apply(stash: StashEntry, drop: Bool = false) async {
         do {
             try await repository.stashApply(index: stash.id, drop: drop)

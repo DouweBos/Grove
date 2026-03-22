@@ -109,7 +109,7 @@ struct ReflogParserTests {
         let shas = [
             "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
             "bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222",
-            "cccc3333cccc3333cccc3333cccc3333cccc3333",
+            "cccc3333cccc3333cccc3333cccc3333cccc3333"
         ]
         let output = shas.map { makeReflogRecord(newSHA: $0) }.joined()
         let entries = ReflogParser.parse(output)
@@ -121,7 +121,7 @@ struct ReflogParserTests {
         let messages = [
             "commit: feat: new feature",
             "pull: Fast-forward",
-            "rebase (finish): returning to refs/heads/main",
+            "rebase (finish): returning to refs/heads/main"
         ]
         let output = messages.map { makeReflogRecord(message: $0) }.joined()
         let entries = ReflogParser.parse(output)

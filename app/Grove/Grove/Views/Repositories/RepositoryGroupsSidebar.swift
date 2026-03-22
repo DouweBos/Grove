@@ -18,8 +18,8 @@ import SwiftUI
 /// Each ``RepositoryGroupSection`` header and the ungrouped list are drop
 /// targets that call ``RepositoryBrowserViewModel/moveBookmark(_:toGroup:)``.
 struct RepositoryGroupsSidebar: View {
-
     @Environment(RepositoryBrowserViewModel.self) private var viewModel
+
     var body: some View {
         @Bindable var vm = viewModel
         List(selection: $vm.selectedBookmarkID) {
@@ -47,27 +47,23 @@ struct RepositoryGroupsSidebar: View {
             }
         }
         .listStyle(.sidebar)
+        .frame(minWidth: 320)
         .toolbar {
-            ToolbarItem(placement: .automatic) {
-                HStack(spacing: 8) {
-                    Button {
-                        viewModel.sourceMode = .cloud
-                    } label: {
-                        Image(systemName: viewModel.sourceMode == .cloud ? "cloud.fill" : "cloud")
-                    }
-                    .help("Cloud Repositories")
-
-                    Button {
-                        viewModel.sourceMode = .local
-                    } label: {
-                        Image(systemName: viewModel.sourceMode == .local ? "externaldrive.fill" : "externaldrive")
-                    }
-                    .help("Local Repositories")
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    viewModel.sourceMode = .cloud
+                } label: {
+                    Image(systemName: viewModel.sourceMode == .cloud ? "cloud.fill" : "cloud")
                 }
+                .help("Cloud Repositories")
+
+                Button {
+                    viewModel.sourceMode = .local
+                } label: {
+                    Image(systemName: viewModel.sourceMode == .local ? "externaldrive.fill" : "externaldrive")
+                }
+                .help("Local Repositories")
             }
-        }
-        .safeAreaInset(edge: .bottom) {
-            SidebarBottomBar()
         }
     }
 }
@@ -107,8 +103,8 @@ private struct RepositoryGroupSection: View {
 
 private struct RepositoryBookmarksList: View {
     let bookmarks: [RepositoryBookmarkData]
-    let openBookmark: (RepositoryBookmarkData) -> ()
-    let removeBookmark: (RepositoryBookmarkData) -> ()
+    let openBookmark: (RepositoryBookmarkData) -> Void
+    let removeBookmark: (RepositoryBookmarkData) -> Void
 
     var body: some View {
         ForEach(bookmarks) { bookmark in
@@ -130,20 +126,6 @@ private struct RepositoryBookmarksList: View {
                     }
                 }
         }
-    }
-}
-
-// MARK: - SidebarBottomBar
-
-private struct SidebarBottomBar: View {
-    var body: some View {
-        HStack {
-            // Placeholder for future add-group button (WS7 will wire keyboard shortcut)
-            Spacer()
-        }
-        .frame(height: 28)
-        .padding(.horizontal, 8)
-        .background(.regularMaterial)
     }
 }
 

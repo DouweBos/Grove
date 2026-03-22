@@ -91,7 +91,7 @@ struct RepositorySidebar: View {
                 SidebarNavigationItem(
                     item: .branchesReview,
                     icon: "arrow.triangle.branch",
-                    label: "Branch Review"
+                    label: "Branches Review"
                 )
                 SidebarNavigationItem(
                     item: .settings,

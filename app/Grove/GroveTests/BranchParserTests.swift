@@ -218,7 +218,7 @@ struct BranchParserTests {
         let output = [
             makeBranchLine(refname: "refs/heads/main", shortName: "main", head: "*"),
             makeBranchLine(refname: "refs/heads/develop", shortName: "develop"),
-            makeBranchLine(refname: "refs/remotes/origin/main", shortName: "origin/main"),
+            makeBranchLine(refname: "refs/remotes/origin/main", shortName: "origin/main")
         ].joined(separator: "\n")
 
         let branches = BranchParser.parse(output)

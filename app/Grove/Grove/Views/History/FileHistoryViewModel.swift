@@ -114,7 +114,7 @@ final class FileHistoryViewModel {
         let candidates = [
             "/usr/bin/git",
             "/usr/local/bin/git",
-            "/opt/homebrew/bin/git",
+            "/opt/homebrew/bin/git"
         ]
         for path in candidates {
             if FileManager.default.fileExists(atPath: path) {

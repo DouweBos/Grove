@@ -207,7 +207,7 @@ struct FileStatusToolbar: View {
     private var modeBinding: Binding<FileViewMode> {
         Binding(
             get: { viewModel.fileViewMode },
-            set: { viewModel.fileViewMode = $0 }
+            set: { viewModel.setFileViewMode($0) }
         )
     }
 }

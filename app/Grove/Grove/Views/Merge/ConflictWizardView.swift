@@ -264,8 +264,8 @@ struct ConflictWizardView: View {
               let merged = mergedFileURL else { return }
 
         try? ExternalToolLauncher.launchMergeTool(
-            base:   base,
-            ours:   ours,
+            base: base,
+            ours: ours,
             theirs: theirs,
             merged: merged,
             toolPath: AppToolPreferences.mergeToolPath

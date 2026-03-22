@@ -63,14 +63,20 @@ struct BranchComparisonView: View {
         .task {
             await loadBranches()
         }
-        .alert("Action Failed", isPresented: .constant(errorMessage != nil && isActing)) {
+        .alert("Action Failed", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
             Button("OK") { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
         }
         .confirmationDialog(
             actionConfirmation?.title ?? "",
-            isPresented: .constant(actionConfirmation != nil),
+            isPresented: Binding(
+                get: { actionConfirmation != nil },
+                set: { if !$0 { actionConfirmation = nil } }
+            ),
             titleVisibility: .visible
         ) {
             if let confirmation = actionConfirmation {

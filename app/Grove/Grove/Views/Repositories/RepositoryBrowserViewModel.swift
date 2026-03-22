@@ -6,12 +6,24 @@
 import Foundation
 import Observation
 
+// MARK: - BrowserSourceMode
+
+/// Which source is active in the repository browser sidebar.
+enum BrowserSourceMode {
+    /// Local bookmarks (default). Toggled by the disk icon.
+    case local
+    /// Connected cloud service repositories. Toggled by the cloud icon.
+    case cloud
+    /// No source selected (sidebar is hidden).
+    case none
+}
+
 // MARK: - RepositoryBrowserViewModel
 
 /// Drives the repository browser UI.
 ///
-/// Opening a repository calls the injected `onOpenRepository` closure,
-/// which the host view uses to add a tab in the window's tab manager.
+/// Opening a repository sets ``pendingOpenRef``, which the host view
+/// observes via `.onChange` to navigate to the repository.
 @MainActor
 @Observable
 final class RepositoryBrowserViewModel {
@@ -42,8 +54,9 @@ final class RepositoryBrowserViewModel {
 
     // MARK: Navigation
 
-    /// Called by the host to navigate to a repository.
-    var onOpenRepo: ((RepositoryReference) -> Void)?
+    /// Set by the browser when the user opens a repository; the host
+    /// observes this via `.onChange` and navigates accordingly.
+    var pendingOpenRef: RepositoryReference?
 
     // MARK: Computed
 
@@ -89,7 +102,7 @@ final class RepositoryBrowserViewModel {
     }
 
     func openReference(_ reference: RepositoryReference) {
-        onOpenRepo?(reference)
+        pendingOpenRef = reference
     }
 
     func addBookmark(path: String, displayName: String) {

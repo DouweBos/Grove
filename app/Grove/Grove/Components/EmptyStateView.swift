@@ -26,9 +26,9 @@ struct EmptyStateView: View {
 
     let systemImage: String
     let title: String
-    var subtitle: String? = nil
-    var actionTitle: String? = nil
-    var action: (() -> Void)? = nil
+    var subtitle: String?
+    var actionTitle: String?
+    var action: (() -> Void)?
 
     // MARK: Body
 

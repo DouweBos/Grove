@@ -23,7 +23,7 @@ struct DiffHeaderView: View {
     let stats: DiffStats
     var showStagedToggle: Bool = false
     var isStaged: Bool = false
-    var onToggleStaged: (() -> Void)? = nil
+    var onToggleStaged: (() -> Void)?
 
     // MARK: Body
 

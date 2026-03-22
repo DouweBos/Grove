@@ -171,7 +171,7 @@ struct BranchReviewRow: View {
             aheadOfMain: 0,
             behindMain: 2,
             category: .merged
-        ),
+        )
     ]
 
     return List {

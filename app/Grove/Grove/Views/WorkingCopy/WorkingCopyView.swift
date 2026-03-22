@@ -44,7 +44,7 @@ struct WorkingCopyView: View {
         .environment(viewModel)
         .task { await viewModel.refresh() }
         .alert("Error", isPresented: errorBinding) {
-            Button("OK") { viewModel.errorMessage = nil }
+            Button("OK") { viewModel.clearError() }
         } message: {
             if let msg = viewModel.errorMessage {
                 Text(msg)
@@ -57,7 +57,7 @@ struct WorkingCopyView: View {
     private var errorBinding: Binding<Bool> {
         Binding(
             get: { viewModel.errorMessage != nil },
-            set: { if !$0 { viewModel.errorMessage = nil } }
+            set: { if !$0 { viewModel.clearError() } }
         )
     }
 }

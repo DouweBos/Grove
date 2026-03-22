@@ -151,7 +151,6 @@ private struct CommitFileTree: View {
                 }
             }
         }
-        .listStyle(.plain)
         .onAppear { expandAll() }
     }
 
@@ -230,7 +229,7 @@ private struct CommitFileTree: View {
                 .font(.subheadline)
                 .lineLimit(1)
                 .truncationMode(.middle)
-                .foregroundStyle(isSelected ? .primary : .primary)
+                .foregroundStyle(.primary)
 
             Spacer()
 

@@ -1,37 +1,10 @@
-// Protocols/RepositoryManagerProtocol.swift
+// Domain/RepositoryManagerProtocol.swift
 // Grove
 //
 // Contract for the object that manages bookmarked repositories and
 // handles open / clone / init operations.
-// This file is owned by WS0 and frozen after Phase A.
 
 import Foundation
-
-// MARK: - RepositoryBookmarkData
-
-/// Lightweight, `Codable` representation of a bookmarked repository.
-/// Mirrors the SwiftData `RepositoryBookmark` model without the Core Data
-/// machinery, enabling use in previews and mocks.
-struct RepositoryBookmarkData: Identifiable, Hashable, Codable, Sendable {
-    let id: UUID
-    var path: String
-    var displayName: String
-    var addedDate: Date
-    var lastOpenedDate: Date?
-    var sortOrder: Int
-    /// Identifier of the group this bookmark belongs to, if any.
-    var groupID: UUID?
-}
-
-// MARK: - BookmarkGroupData
-
-/// Lightweight, `Codable` representation of a bookmark group.
-struct BookmarkGroupData: Identifiable, Hashable, Codable, Sendable {
-    let id: UUID
-    var name: String
-    var sortOrder: Int
-    var isExpanded: Bool
-}
 
 // MARK: - RepositoryManagerProtocol
 
@@ -41,9 +14,6 @@ struct BookmarkGroupData: Identifiable, Hashable, Codable, Sendable {
 /// - Opening, cloning, and initialising repositories.
 /// - Persisting bookmark metadata (path, display name, group, order).
 /// - Providing observable state for the browser UI.
-///
-/// The real implementation is owned by WS2; views and ViewModels
-/// depend only on this protocol.
 @MainActor
 protocol RepositoryManagerProtocol: AnyObject, Observable {
     /// All bookmark groups, in display order.

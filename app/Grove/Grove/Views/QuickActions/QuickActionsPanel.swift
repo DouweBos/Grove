@@ -252,7 +252,7 @@ struct QuickActionsPanel: View {
 ///
 /// Use this on the root view of a repository window:
 /// ```swift
-/// RepositoryWindowContent()
+/// RepositoryContentRouter(session: session, repository: repository)
 ///     .quickActions(repository: repository) { item in
 ///         sidebarSelection = item
 ///     }

@@ -71,16 +71,16 @@ enum BranchParser {
         let (ahead, behind) = parseTrackShort(trackShort)
 
         return BranchInfo(
-            id:         refname,
-            name:       shortName,
-            isLocal:    isLocal,
-            isRemote:   isRemote,
-            isHEAD:     isHEAD,
-            targetSHA:  sha,
+            id: refname,
+            name: shortName,
+            isLocal: isLocal,
+            isRemote: isRemote,
+            isHEAD: isHEAD,
+            targetSHA: sha,
             remoteName: remoteName,
-            upstream:   upstream,
-            ahead:      ahead,
-            behind:     behind
+            upstream: upstream,
+            ahead: ahead,
+            behind: behind
         )
     }
 

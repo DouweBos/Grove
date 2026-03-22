@@ -166,6 +166,20 @@ final class WorkingCopyViewModel {
         loadDefaultPreviewProfiles()
     }
 
+    // MARK: Public API — Mutators
+
+    func clearError() {
+        errorMessage = nil
+    }
+
+    func setFileViewMode(_ mode: FileViewMode) {
+        fileViewMode = mode
+    }
+
+    func selectProfile(_ profile: UserProfileData?) {
+        selectedProfile = profile
+    }
+
     // MARK: Public API — Status
 
     /// Refresh status from the repository.
@@ -264,9 +278,9 @@ final class WorkingCopyViewModel {
                 let lines = hunk.lines.filter { $0.type != .context }
                 try await repository.unstageLines(lines, in: hunk, file: entry.path)
             case .discardLines:
-                // Discard lines: unstage them from the index.
+                // Discard lines: revert them from the working tree.
                 let lines = hunk.lines.filter { $0.type != .context }
-                try await repository.unstageLines(lines, in: hunk, file: entry.path)
+                try await repository.discardLines(lines, in: hunk, file: entry.path)
             }
             await refresh()
         } catch {
@@ -526,15 +540,15 @@ final class WorkingCopyViewModel {
     private func templateSuggestions(query: String) -> [AutoCompleteSuggestion] {
         let builtIn: [(String, String, String)] = [
             // (id, name, prefix)
-            ("conventional-feat",     "feat: New Feature",          "feat: "),
-            ("conventional-fix",      "fix: Bug Fix",                "fix: "),
-            ("conventional-docs",     "docs: Documentation",         "docs: "),
-            ("conventional-style",    "style: Formatting",           "style: "),
-            ("conventional-refactor", "refactor: Code Refactoring",  "refactor: "),
-            ("conventional-test",     "test: Tests",                 "test: "),
-            ("conventional-chore",    "chore: Maintenance",          "chore: "),
-            ("conventional-perf",     "perf: Performance",           "perf: "),
-            ("conventional-ci",       "ci: CI/CD",                   "ci: "),
+            ("conventional-feat", "feat: New Feature", "feat: "),
+            ("conventional-fix", "fix: Bug Fix", "fix: "),
+            ("conventional-docs", "docs: Documentation", "docs: "),
+            ("conventional-style", "style: Formatting", "style: "),
+            ("conventional-refactor", "refactor: Code Refactoring", "refactor: "),
+            ("conventional-test", "test: Tests", "test: "),
+            ("conventional-chore", "chore: Maintenance", "chore: "),
+            ("conventional-perf", "perf: Performance", "perf: "),
+            ("conventional-ci", "ci: CI/CD", "ci: ")
         ]
 
         let filtered = query.isEmpty
@@ -567,7 +581,7 @@ final class WorkingCopyViewModel {
                 email: "you@example.com",
                 signingKeyID: nil,
                 isDefault: true
-            ),
+            )
         ]
         loadProfiles(from: defaults)
     }

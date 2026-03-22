@@ -38,9 +38,9 @@ struct ImageDiffView: View {
     /// The new version of the image, or `nil` for deleted files.
     let newImage: Image?
     /// Optional size metadata for the before image.
-    var oldSize: CGSize? = nil
+    var oldSize: CGSize?
     /// Optional size metadata for the after image.
-    var newSize: CGSize? = nil
+    var newSize: CGSize?
 
     // MARK: State
 
