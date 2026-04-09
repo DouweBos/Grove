@@ -8,11 +8,40 @@ struct TagsSidebarSection: View {
 
     @Environment(SidebarViewModel.self) private var viewModel
 
+    // MARK: - Sheet / Alert State
+
+    @State private var isShowingCreateBranch = false
+    @State private var createBranchFromTag: String?
+
+    @State private var isShowingDeleteAlert = false
+    @State private var tagToDelete: TagInfo?
+
     var body: some View {
         Section(header: SidebarSectionHeader(title: "Tags")) {
             ForEach(viewModel.tags) { tag in
                 tagRow(tag)
             }
+        }
+        .sheet(isPresented: $isShowingCreateBranch) {
+            CreateBranchDialogView(
+                repository: viewModel.repository,
+                localBranches: viewModel.localBranches,
+                fromRef: createBranchFromTag
+            ) { _ in
+                Task { await viewModel.refresh() }
+            }
+        }
+        .alert(
+            "Delete Tag",
+            isPresented: $isShowingDeleteAlert,
+            presenting: tagToDelete
+        ) { tag in
+            Button("Delete", role: .destructive) {
+                Task { await viewModel.deleteTag(tag) }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: { tag in
+            Text("Delete tag \"\(tag.name)\"? This cannot be undone.")
         }
     }
 
@@ -36,9 +65,15 @@ struct TagsSidebarSection: View {
         }
         .tag(SidebarItem.tag(tag))
         .contextMenu {
-            Button("Create Branch at \"\(tag.name)\"...") { }
+            Button("Create Branch at \"\(tag.name)\"...") {
+                createBranchFromTag = tag.name
+                isShowingCreateBranch = true
+            }
             Divider()
-            Button("Delete Tag \"\(tag.name)\"...", role: .destructive) { }
+            Button("Delete Tag \"\(tag.name)\"...", role: .destructive) {
+                tagToDelete = tag
+                isShowingDeleteAlert = true
+            }
         }
     }
 }

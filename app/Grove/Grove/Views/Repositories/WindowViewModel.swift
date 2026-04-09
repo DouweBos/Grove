@@ -1,10 +1,13 @@
-// Views/Repositories/RepositoryBrowserViewModel.swift
+// Views/Repositories/WindowViewModel.swift
 // Grove
 //
-// ViewModel for the repository browser tab.
+// ViewModel for the main application window. Owns navigation state
+// (which repository is open), the browser (bookmarks, groups),
+// and loaded repository sessions.
 
 import Foundation
 import Observation
+import os
 
 // MARK: - BrowserSourceMode
 
@@ -18,19 +21,39 @@ enum BrowserSourceMode {
     case none
 }
 
-// MARK: - RepositoryBrowserViewModel
+// MARK: - WindowViewModel
 
-/// Drives the repository browser UI.
-///
-/// Opening a repository sets ``pendingOpenRef``, which the host view
-/// observes via `.onChange` to navigate to the repository.
+/// Drives the main window: navigation between the browser and open
+/// repositories, bookmark management, and repository session lifecycle.
 @MainActor
 @Observable
-final class RepositoryBrowserViewModel {
+final class WindowViewModel {
 
     // MARK: Dependencies
 
     let manager: any RepositoryManagerProtocol
+
+    // MARK: Navigation
+
+    /// The currently opened repository, or `nil` when showing the browser.
+    var openRepo: RepositoryReference?
+
+    /// Whether the browser is showing (no repository open).
+    var isBrowsing: Bool { openRepo == nil }
+
+    // MARK: Sessions
+
+    /// Loaded repositories and their sessions, keyed by filesystem path.
+    private(set) var sessions: [String: LoadedSession] = [:]
+
+    /// Repo paths that failed to open.
+    private(set) var sessionErrors: [String: String] = [:]
+
+    /// The session for the currently open repository.
+    var currentSession: LoadedSession? {
+        guard let ref = openRepo else { return nil }
+        return sessions[ref.path]
+    }
 
     // MARK: Selection
 
@@ -46,17 +69,11 @@ final class RepositoryBrowserViewModel {
     // MARK: Source Mode
 
     /// Which source the sidebar is showing: local bookmarks or cloud repos.
-    var sourceMode: BrowserSourceMode = .local
+    private(set) var sourceMode: BrowserSourceMode = .local
 
     // MARK: Error State
 
     var errorMessage: String?
-
-    // MARK: Navigation
-
-    /// Set by the browser when the user opens a repository; the host
-    /// observes this via `.onChange` and navigates accordingly.
-    var pendingOpenRef: RepositoryReference?
 
     // MARK: Computed
 
@@ -89,7 +106,11 @@ final class RepositoryBrowserViewModel {
         self.selectedGroupID = manager.bookmarkGroups.first?.id
     }
 
-    // MARK: Actions
+    // MARK: Navigation Actions
+
+    func setSourceMode(_ mode: BrowserSourceMode) {
+        sourceMode = mode
+    }
 
     func openSelectedBookmark() {
         guard let bookmark = selectedBookmark else { return }
@@ -102,8 +123,43 @@ final class RepositoryBrowserViewModel {
     }
 
     func openReference(_ reference: RepositoryReference) {
-        pendingOpenRef = reference
+        sourceMode = .none
+        openRepo = reference
     }
+
+    func closeRepository() {
+        openRepo = nil
+        sourceMode = .local
+    }
+
+    // MARK: Session Loading
+
+    func loadSessionIfNeeded(for ref: RepositoryReference) {
+        let path = ref.path
+        guard sessions[path] == nil, sessionErrors[path] == nil else { return }
+        Logger.ui.info("Opening repository for \(path, privacy: .public)")
+        Task {
+            let url = URL(fileURLWithPath: path)
+            do {
+                let repo = try await GitRepository(path: url)
+                let session = RepositorySession(repository: repo)
+                sessions[path] = LoadedSession(repository: repo, session: session)
+                await session.start()
+                Logger.ui.info("Repository ready: \(ref.displayName, privacy: .public)")
+            } catch {
+                Logger.ui.error("Failed to open repository \(path, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                sessionErrors[path] = error.localizedDescription
+            }
+        }
+    }
+
+    func stopAllSessions() {
+        for (_, loaded) in sessions {
+            loaded.session.stop()
+        }
+    }
+
+    // MARK: Bookmark Actions
 
     func addBookmark(path: String, displayName: String) {
         do {
@@ -160,4 +216,12 @@ final class RepositoryBrowserViewModel {
             addBookmark(path: url.path, displayName: url.lastPathComponent)
         }
     }
+}
+
+// MARK: - LoadedSession
+
+/// Pairs a loaded repository handle with its session.
+struct LoadedSession {
+    let repository: any GitRepositoryProtocol
+    let session: RepositorySession
 }

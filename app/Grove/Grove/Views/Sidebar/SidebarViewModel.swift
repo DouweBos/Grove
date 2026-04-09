@@ -80,22 +80,34 @@ final class SidebarViewModel {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
-        do {
-            async let lb = repository.localBranches()
-            async let rb = repository.remoteBranches()
-            async let tg = repository.tags()
-            async let rm = repository.remotes()
-            async let st = repository.status()
-            let (local, remote, tagList, remoteList, statusList) = try await (lb, rb, tg, rm, st)
-            localBranches = local
-            remoteBranches = remote
-            tags = tagList
-            remotes = remoteList
+
+        // Fetch each data source concurrently. Each call is wrapped so
+        // one failure doesn't prevent the others from loading.
+        async let lb: [BranchInfo]? = tryOrNil { try await repository.localBranches() }
+        async let rb: [BranchInfo]? = tryOrNil { try await repository.remoteBranches() }
+        async let tg: [TagInfo]? = tryOrNil { try await repository.tags() }
+        async let rm: [RemoteInfo]? = tryOrNil { try await repository.remotes() }
+        async let st: [StatusEntry]? = tryOrNil { try await repository.status() }
+
+        let (local, remote, tagList, remoteList, statusList) = await (lb, rb, tg, rm, st)
+
+        if let local { localBranches = local }
+        if let remote { remoteBranches = remote }
+        if let tagList { tags = tagList }
+        if let remoteList { remotes = remoteList }
+        if let statusList {
             workingCopyBadgeCount = statusList.filter {
                 $0.indexStatus != .unmodified || $0.workdirStatus != .unmodified
             }.count
-        } catch {
-            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Run an async throwing closure, returning `nil` on error.
+    private func tryOrNil<T>(_ body: @Sendable () async throws -> T) async -> T? {
+        do { return try await body() }
+        catch {
+            errorMessage = errorMessage ?? error.localizedDescription
+            return nil
         }
     }
 
@@ -161,6 +173,51 @@ final class SidebarViewModel {
         }
     }
 
+    /// Deletes a tag.
+    func deleteTag(_ tag: TagInfo) async {
+        do {
+            try await repository.deleteTag(name: tag.name)
+            await refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Deletes a remote-tracking branch on the remote.
+    func deleteRemoteBranch(_ branch: BranchInfo) async {
+        guard let remote = branch.remoteName else { return }
+        let branchName: String = {
+            if branch.name.hasPrefix(remote + "/") {
+                return String(branch.name.dropFirst(remote.count + 1))
+            }
+            return branch.name
+        }()
+        do {
+            try await repository.deleteRemoteBranch(name: branchName, remote: remote)
+            await refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Updates a submodule at the given path.
+    func updateSubmodule(path: String) async {
+        do {
+            try await repository.updateSubmodule(path: path)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Removes a linked worktree.
+    func removeWorktree(path: String) async {
+        do {
+            try await repository.removeWorktree(path: path, force: false)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     // MARK: - Derived
 
     /// Branches considered "archived" — not HEAD, not ahead of upstream, and
@@ -178,12 +235,12 @@ final class SidebarViewModel {
         }
     }
 
-    /// Branch groups derived from "/" in branch names, using only active branches.
+    /// Branch groups derived from "/" in branch names.
     var localBranchGroups: [(prefix: String?, branches: [BranchInfo])] {
         var ungrouped: [BranchInfo] = []
         var groups: [String: [BranchInfo]] = [:]
 
-        for branch in activeBranches {
+        for branch in localBranches {
             if let slashIndex = branch.name.firstIndex(of: "/") {
                 let prefix = String(branch.name[branch.name.startIndex..<slashIndex])
                 groups[prefix, default: []].append(branch)

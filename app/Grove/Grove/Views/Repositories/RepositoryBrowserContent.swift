@@ -11,7 +11,7 @@ import SwiftUI
 /// Content area that switches between drop zone and repo info panel.
 struct RepositoryBrowserContent: View {
 
-    @Environment(RepositoryBrowserViewModel.self) private var viewModel
+    @Environment(WindowViewModel.self) private var viewModel
 
     var body: some View {
         if let bookmark = viewModel.selectedBookmark {
@@ -26,6 +26,6 @@ struct RepositoryBrowserContent: View {
 
 #Preview {
     RepositoryBrowserContent()
-        .environment(RepositoryBrowserViewModel(manager: MockRepositoryManager()))
+        .environment(WindowViewModel(manager: MockRepositoryManager()))
         .frame(width: 580, height: 500)
 }

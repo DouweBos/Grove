@@ -14,7 +14,7 @@ import SwiftUI
 /// Add / Create / Clone action buttons.
 struct RepositoryDropZoneView: View {
 
-    @Environment(RepositoryBrowserViewModel.self) private var viewModel
+    @Environment(WindowViewModel.self) private var viewModel
     @State private var isTargeted = false
 
     var body: some View {
@@ -95,6 +95,6 @@ struct RepositoryDropZoneView: View {
 
 #Preview {
     RepositoryDropZoneView()
-        .environment(RepositoryBrowserViewModel(manager: MockRepositoryManager()))
+        .environment(WindowViewModel(manager: MockRepositoryManager()))
         .frame(width: 580, height: 500)
 }

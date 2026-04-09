@@ -42,8 +42,12 @@ struct WorktreeInfo: Identifiable, Hashable, Sendable {
 struct WorktreesSidebarSection: View {
 
     @Environment(SidebarViewModel.self) private var viewModel
+    @Environment(WindowViewModel.self) private var windowVM
     @State private var worktrees: [WorktreeInfo] = []
     @State private var isLoading = false
+
+    @State private var isShowingRemoveAlert = false
+    @State private var worktreeToRemove: WorktreeInfo?
 
     /// Linked worktrees only (excludes the main worktree).
     private var linkedWorktrees: [WorktreeInfo] {
@@ -78,6 +82,21 @@ struct WorktreesSidebarSection: View {
         }
         .task(id: viewModel.repository.path) {
             await loadWorktrees()
+        }
+        .alert(
+            "Remove Worktree",
+            isPresented: $isShowingRemoveAlert,
+            presenting: worktreeToRemove
+        ) { worktree in
+            Button("Remove", role: .destructive) {
+                Task {
+                    await viewModel.removeWorktree(path: worktree.path)
+                    await loadWorktrees()
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: { worktree in
+            Text("Remove the worktree at \"\(worktree.displayPath)\"? The working directory will be deleted.")
         }
     }
 
@@ -115,12 +134,17 @@ struct WorktreesSidebarSection: View {
                 .foregroundStyle(.teal)
         }
         .contextMenu {
-            Button("Open in New Window") { }
+            Button("Open") {
+                windowVM.openReference(RepositoryReference(path: worktree.path))
+            }
             Button("Reveal in Finder") {
                 NSWorkspace.shared.open(URL(fileURLWithPath: worktree.path))
             }
             Divider()
-            Button("Remove Worktree…", role: .destructive) { }
+            Button("Remove Worktree…", role: .destructive) {
+                worktreeToRemove = worktree
+                isShowingRemoveAlert = true
+            }
         }
     }
 

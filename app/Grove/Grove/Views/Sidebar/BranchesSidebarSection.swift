@@ -19,13 +19,23 @@ struct BranchesSidebarSection: View {
 
     @Environment(SidebarViewModel.self) private var viewModel
 
-    // MARK: - Create-Branch-from-Drop State
+    // MARK: - Sheet State
 
     /// Whether the Create Branch sheet is currently presented.
     @State private var isShowingCreateBranchSheet = false
     /// The ref (branch name or commit SHA) that was dropped onto the BRANCHES
     /// header, used to pre-fill the starting point in the Create Branch sheet.
     @State private var createBranchFromRef: String?
+
+    /// Whether the Create Branch (from context menu) sheet is currently presented.
+    @State private var isShowingCreateBranchFromBranch = false
+    /// The branch to use as the starting point for context menu "Create Branch from".
+    @State private var createBranchSourceBranch: BranchInfo?
+
+    /// Whether the Rename Branch sheet is currently presented.
+    @State private var isShowingRenameBranch = false
+    /// The branch to rename.
+    @State private var renameBranch: BranchInfo?
 
     // MARK: Body
 
@@ -73,6 +83,25 @@ struct BranchesSidebarSection: View {
                 Task { await viewModel.refresh() }
             }
         }
+        // Present CreateBranchDialogView from context menu "Create Branch from…".
+        .sheet(isPresented: $isShowingCreateBranchFromBranch) {
+            CreateBranchDialogView(
+                repository: viewModel.repository,
+                localBranches: viewModel.localBranches,
+                fromRef: createBranchSourceBranch?.name
+            ) { _ in
+                Task { await viewModel.refresh() }
+            }
+        }
+        // Present RenameBranchDialogView from context menu "Rename…".
+        .sheet(isPresented: $isShowingRenameBranch) {
+            if let branch = renameBranch {
+                RenameBranchDialogView(
+                    repository: viewModel.repository,
+                    branch: branch
+                )
+            }
+        }
     }
 
     // MARK: - Branches Header
@@ -103,7 +132,10 @@ struct BranchesSidebarSection: View {
                     Task { await viewModel.checkout(branch: branch) }
                 }
                 Divider()
-                Button("Create Branch from \"\(branch.name)\"...") { }
+                Button("Create Branch from \"\(branch.name)\"...") {
+                    createBranchSourceBranch = branch
+                    isShowingCreateBranchFromBranch = true
+                }
                 Button("Merge \"\(branch.name)\" into HEAD") {
                     Task { await viewModel.merge(branch: branch) }
                 }
@@ -111,7 +143,10 @@ struct BranchesSidebarSection: View {
                     Task { await viewModel.rebase(onto: branch) }
                 }
                 Divider()
-                Button("Rename \"\(branch.name)\"...") { }
+                Button("Rename \"\(branch.name)\"...") {
+                    renameBranch = branch
+                    isShowingRenameBranch = true
+                }
                 Button(isPinned ? "Unpin \"\(branch.name)\"" : "Pin \"\(branch.name)\"") {
                     viewModel.togglePin(branch: branch)
                 }

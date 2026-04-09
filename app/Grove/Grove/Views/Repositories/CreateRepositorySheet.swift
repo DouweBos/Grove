@@ -11,7 +11,7 @@ import UniformTypeIdentifiers
 /// Sheet for initialising a new Git repository at a chosen location.
 struct CreateRepositorySheet: View {
 
-    @Environment(RepositoryBrowserViewModel.self) private var viewModel
+    @Environment(WindowViewModel.self) private var viewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var destinationURL: URL?
@@ -93,5 +93,5 @@ struct CreateRepositorySheet: View {
 
 #Preview {
     CreateRepositorySheet()
-        .environment(RepositoryBrowserViewModel(manager: MockRepositoryManager()))
+        .environment(WindowViewModel(manager: MockRepositoryManager()))
 }

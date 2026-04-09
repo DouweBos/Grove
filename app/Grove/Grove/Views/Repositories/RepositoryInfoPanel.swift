@@ -18,7 +18,7 @@ import SwiftUI
 ///  - REMOTES section (remote name → URL, loaded asynchronously)
 struct RepositoryInfoPanel: View {
 
-    @Environment(RepositoryBrowserViewModel.self) private var viewModel
+    @Environment(WindowViewModel.self) private var viewModel
 
     let bookmark: RepositoryBookmarkData
 
@@ -339,7 +339,7 @@ private struct InfoSectionHeader: View {
         sortOrder: 0,
         groupID: nil
     )
-    let vm = RepositoryBrowserViewModel(manager: MockRepositoryManager())
+    let vm = WindowViewModel(manager: MockRepositoryManager())
     vm.selectedBookmarkID = bookmark.id
     return RepositoryInfoPanel(bookmark: bookmark)
         .environment(vm)

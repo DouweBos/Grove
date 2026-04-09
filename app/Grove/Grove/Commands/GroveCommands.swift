@@ -41,7 +41,6 @@ struct GroveCommands: Commands {
 
     var body: some Commands {
         GroveUndoRedoCommands()
-        GroveTabCommands()
         GroveNavigateCommands()
         GroveGitCommands()
     }
@@ -70,42 +69,6 @@ private struct GroveUndoRedoCommands: Commands {
             }
             .keyboardShortcut("z", modifiers: [.command, .shift])
             .disabled(!(undoManager?.canRedo ?? false))
-        }
-    }
-}
-
-// MARK: - GroveTabCommands
-
-/// Adds tab management items to the **File** menu.
-///
-/// Cmd+T / Cmd+W are handled here so they work from the menu bar and are
-/// visible in the keyboard shortcut system. The actual tab mutations are
-/// performed by ``RepositoryWindowHost`` via ``GroveTabAction``.
-private struct GroveTabCommands: Commands {
-
-    var body: some Commands {
-        CommandGroup(after: .newItem) {
-            Button("New Tab") {
-                GroveTabAction.newTab.post()
-            }
-            .keyboardShortcut("t", modifiers: .command)
-
-            Button("Close Tab") {
-                GroveTabAction.closeTab.post()
-            }
-            .keyboardShortcut("w", modifiers: .command)
-
-            Divider()
-
-            Button("Select Next Tab") {
-                GroveTabAction.nextTab.post()
-            }
-            .keyboardShortcut("]", modifiers: [.command, .shift])
-
-            Button("Select Previous Tab") {
-                GroveTabAction.previousTab.post()
-            }
-            .keyboardShortcut("[", modifiers: [.command, .shift])
         }
     }
 }

@@ -15,6 +15,8 @@ struct UnifiedSidebar: View {
 
     /// Active repository session, or `nil` when showing the browser.
     let session: RepositorySession?
+    
+    @Environment(WindowViewModel.self) private var viewModel
 
     var body: some View {
         Group {
@@ -28,5 +30,23 @@ struct UnifiedSidebar: View {
             }
         }
         .animation(.easeInOut(duration: 0.15), value: session != nil)
+        .frame(minWidth: 320)
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    viewModel.setSourceMode(.cloud)
+                } label: {
+                    Image(systemName: viewModel.sourceMode == .cloud ? "cloud.fill" : "cloud")
+                }
+                .help("Cloud Repositories")
+
+                Button {
+                    viewModel.setSourceMode(.local)
+                } label: {
+                    Image(systemName: viewModel.sourceMode == .local ? "externaldrive.fill" : "externaldrive")
+                }
+                .help("Local Repositories")
+            }
+        }
     }
 }

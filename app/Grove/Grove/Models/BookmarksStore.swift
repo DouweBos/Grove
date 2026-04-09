@@ -4,12 +4,14 @@
 // Bookmark and group data types, plus the top-level Codable container
 // serialized to bookmarks.plist.
 
+import CoreTransferable
 import Foundation
+import UniformTypeIdentifiers
 
 // MARK: - RepositoryBookmarkData
 
 /// Lightweight, `Codable` representation of a bookmarked repository.
-struct RepositoryBookmarkData: Identifiable, Hashable, Codable, Sendable {
+nonisolated struct RepositoryBookmarkData: Identifiable, Hashable, Codable, Sendable {
     let id: UUID
     var path: String
     var displayName: String
@@ -18,6 +20,20 @@ struct RepositoryBookmarkData: Identifiable, Hashable, Codable, Sendable {
     var sortOrder: Int
     /// Identifier of the group this bookmark belongs to, if any.
     var groupID: UUID?
+}
+
+// MARK: - UTType
+
+extension UTType {
+    static let groveBookmark = UTType(exportedAs: "com.grove.bookmark")
+}
+
+// MARK: - Transferable
+
+extension RepositoryBookmarkData: Transferable {
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: .groveBookmark)
+    }
 }
 
 // MARK: - BookmarkGroupData

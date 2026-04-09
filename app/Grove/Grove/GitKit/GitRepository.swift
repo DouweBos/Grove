@@ -902,6 +902,29 @@ final class GitRepository: GitRepositoryProtocol {
         Logger.gitRepository.info("All tags pushed in \(self.displayName, privacy: .public)")
     }
 
+    // MARK: - Submodules
+
+    func updateSubmodule(path: String) async throws {
+        Logger.gitRepository.info(
+            "Updating submodule '\(path, privacy: .public)' in \(self.displayName, privacy: .public)"
+        )
+        try await shell.run(["submodule", "update", "--init", "--", path])
+        Logger.gitRepository.info("Submodule update complete in \(self.displayName, privacy: .public)")
+    }
+
+    // MARK: - Worktrees
+
+    func removeWorktree(path: String, force: Bool) async throws {
+        Logger.gitRepository.info(
+            "Removing worktree '\(path, privacy: .public)' in \(self.displayName, privacy: .public)"
+        )
+        var args = ["worktree", "remove"]
+        if force { args.append("--force") }
+        args.append(path)
+        try await shell.run(args)
+        Logger.gitRepository.info("Worktree removed in \(self.displayName, privacy: .public)")
+    }
+
     // MARK: - Blame
 
     func blame(file: String, revision: String?) async throws -> [BlameEntry] {

@@ -394,6 +394,18 @@ final class MockGitRepository: GitRepositoryProtocol {
         await simulateLatency(200_000_000)
     }
 
+    // MARK: Submodules
+
+    func updateSubmodule(path: String) async throws {
+        await simulateLatency()
+    }
+
+    // MARK: Worktrees
+
+    func removeWorktree(path: String, force: Bool) async throws {
+        await simulateLatency()
+    }
+
     // MARK: Blame
 
     func blame(file: String, revision: String?) async throws -> [BlameEntry] {

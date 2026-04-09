@@ -34,6 +34,7 @@ struct SubmoduleInfo: Identifiable, Hashable, Sendable {
 struct SubmodulesSidebarSection: View {
 
     @Environment(SidebarViewModel.self) private var viewModel
+    @Environment(WindowViewModel.self) private var windowVM
     @State private var submodules: [SubmoduleInfo] = []
     @State private var isLoading = false
 
@@ -97,8 +98,14 @@ struct SubmodulesSidebarSection: View {
                 .foregroundStyle(.purple)
         }
         .contextMenu {
-            Button("Open Submodule in New Window") { }
-            Button("Update Submodule") { }
+            Button("Open Submodule") {
+                let fullPath = viewModel.repository.path
+                    .appendingPathComponent(submodule.path).path
+                windowVM.openReference(RepositoryReference(path: fullPath))
+            }
+            Button("Update Submodule") {
+                Task { await viewModel.updateSubmodule(path: submodule.path) }
+            }
             Divider()
             Button("Copy Path") {
                 NSPasteboard.general.clearContents()

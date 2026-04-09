@@ -12,7 +12,7 @@ import UniformTypeIdentifiers
 /// Sheet for cloning a remote Git repository.
 struct CloneDialogView: View {
 
-    @Environment(RepositoryBrowserViewModel.self) private var viewModel
+    @Environment(WindowViewModel.self) private var viewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var cloneURL = ""
@@ -150,5 +150,5 @@ private struct CloneProgressView: View {
 
 #Preview {
     CloneDialogView()
-        .environment(RepositoryBrowserViewModel(manager: MockRepositoryManager()))
+        .environment(WindowViewModel(manager: MockRepositoryManager()))
 }

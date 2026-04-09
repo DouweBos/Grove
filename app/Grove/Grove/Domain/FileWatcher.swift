@@ -50,9 +50,7 @@ final class FileWatcher: Sendable {
         )
 
         let flags = UInt32(
-            kFSEventStreamCreateFlagUseCFTypes |
-            kFSEventStreamCreateFlagFileEvents |
-            kFSEventStreamCreateFlagNoDefer
+            kFSEventStreamCreateFlagUseCFTypes
         )
 
         guard let stream = FSEventStreamCreate(
@@ -96,8 +94,16 @@ private final class StreamBox: @unchecked Sendable {
         lock.withLock { self.stream = stream }
     }
 
+    private var debounceWork: DispatchWorkItem?
+    private let debounceInterval: TimeInterval = 0.3
+
     func invokeHandler() {
-        DispatchQueue.main.async { [handler] in handler() }
+        lock.withLock {
+            debounceWork?.cancel()
+            let work = DispatchWorkItem { [handler] in handler() }
+            debounceWork = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + debounceInterval, execute: work)
+        }
     }
 
     func stop() {

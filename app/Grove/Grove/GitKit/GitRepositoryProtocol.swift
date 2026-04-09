@@ -200,6 +200,16 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     /// Push all local tags to the remote.
     func pushAllTags(remote: String?) async throws
 
+    // MARK: Submodules
+
+    /// Update a submodule at the given path (`git submodule update --init <path>`).
+    func updateSubmodule(path: String) async throws
+
+    // MARK: Worktrees
+
+    /// Remove a linked worktree (`git worktree remove <path>`).
+    func removeWorktree(path: String, force: Bool) async throws
+
     // MARK: Blame
 
     func blame(file: String, revision: String?) async throws -> [BlameEntry]
