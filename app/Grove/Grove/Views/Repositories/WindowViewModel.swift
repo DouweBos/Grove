@@ -48,6 +48,9 @@ final class WindowViewModel {
     var selectedGroupID: UUID?
     var selectedBookmarkID: UUID?
 
+    /// Worktree links read from disk; rebuilt by `refreshWorktrees()`.
+    private(set) var worktreeIndex = WorktreeIndex()
+
     // MARK: Sheet Presentation
 
     var isShowingCloneDialog = false
@@ -73,7 +76,7 @@ final class WindowViewModel {
 
     var selectedBookmark: RepositoryBookmarkData? {
         guard let id = selectedBookmarkID else { return nil }
-        return manager.bookmarks.first(where: { $0.id == id })
+        return manager.bookmarks.first(where: { $0.id == id }) ?? worktreeRow(withID: id)
     }
 
     var sortedGroups: [BookmarkGroupData] {
@@ -88,25 +91,40 @@ final class WindowViewModel {
     var isSearching: Bool { !searchText.trimmingCharacters(in: .whitespaces).isEmpty }
 
     func bookmarks(for groupID: UUID) -> [RepositoryBookmarkData] {
-        filtered(manager.bookmarks.filter { $0.groupID == groupID })
+        filtered(topLevelBookmarks.filter { $0.groupID == groupID })
     }
 
     var ungroupedBookmarks: [RepositoryBookmarkData] {
-        filtered(manager.bookmarks.filter { $0.groupID == nil })
+        filtered(topLevelBookmarks.filter { $0.groupID == nil })
+    }
+
+    /// Worktrees whose main repository is bookmarked are listed under it, not on their own.
+    private var topLevelBookmarks: [RepositoryBookmarkData] {
+        manager.bookmarks.filter { !worktreeIndex.isNested($0) }
     }
 
     private func filtered(_ list: [RepositoryBookmarkData]) -> [RepositoryBookmarkData] {
         let query = searchText.trimmingCharacters(in: .whitespaces)
-        let matches = query.isEmpty ? list : list.filter {
-            $0.displayName.localizedCaseInsensitiveContains(query) || $0.path.localizedCaseInsensitiveContains(query)
+        let matches = query.isEmpty ? list : list.filter { bookmark in
+            matches(bookmark, query) || worktreeRows(of: bookmark).contains { matches($0, query) }
         }
         return matches.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    private func matches(_ bookmark: RepositoryBookmarkData, _ query: String) -> Bool {
+        bookmark.displayName.localizedCaseInsensitiveContains(query) || bookmark.path.localizedCaseInsensitiveContains(query)
     }
 
     // MARK: Init
 
     init(manager: any RepositoryManagerProtocol) {
         self.manager = manager
+        refreshWorktrees()
+    }
+
+    /// Re-reads worktree links from disk; cheap enough to run on every bookmark change or activation.
+    func refreshWorktrees() {
+        worktreeIndex = WorktreeIndex(bookmarks: manager.bookmarks)
     }
 
     // MARK: Navigation Actions
@@ -262,7 +280,7 @@ final class WindowViewModel {
             var isDirectory: ObjCBool = false
             guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
                   isDirectory.boolValue else { continue }
-            addBookmark(path: url.path, displayName: url.lastPathComponent)
+            addRepository(at: url)
         }
     }
 }

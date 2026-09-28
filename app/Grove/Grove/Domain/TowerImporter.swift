@@ -116,11 +116,29 @@ enum TowerImporter {
             }
         }
 
+        bookmarks = foldingWorktrees(bookmarks)
         Logger.repositoryManager.info("Tower import: \(groups.count) groups, \(bookmarks.count) bookmarks, \(skippedPaths.count) skipped")
         return ImportResult(groups: groups, bookmarks: bookmarks, skippedPaths: skippedPaths)
     }
 
     // MARK: - Private
+
+    /// Tower lists each git worktree as its own repository. Grove shows worktrees under their
+    /// main repository, so keep one bookmark per main repository instead.
+    static func foldingWorktrees(_ bookmarks: [RepositoryBookmarkData]) -> [RepositoryBookmarkData] {
+        var seen = Set<String>()
+        return bookmarks.compactMap { bookmark in
+            guard let main = WorktreeResolver.mainRepositoryPath(forWorktreeAt: bookmark.path) else {
+                return seen.insert(bookmark.path).inserted ? bookmark : nil
+            }
+            if bookmarks.contains(where: { $0.path == main }) { return nil }
+            guard seen.insert(main).inserted else { return nil }
+            var replacement = bookmark
+            replacement.path = main
+            replacement.displayName = URL(fileURLWithPath: main).lastPathComponent
+            return replacement
+        }
+    }
 
     private enum ParseResult {
         case bookmark(RepositoryBookmarkData)

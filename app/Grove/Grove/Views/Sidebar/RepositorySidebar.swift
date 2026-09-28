@@ -61,16 +61,29 @@ struct RepositorySidebar: View {
 /// Repository name, checked-out branch and its sync state, like Charon's disk summary.
 private struct RepositorySummaryHeader: View {
     @Environment(SidebarViewModel.self) private var viewModel
+    @Environment(WindowViewModel.self) private var windowViewModel
+    /// Main repository path when this window shows a linked worktree.
+    @State private var mainRepositoryPath: String?
 
     private var head: BranchInfo? { viewModel.localBranches.first(where: \.isHEAD) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text(viewModel.repository.path.lastPathComponent)
+            // A worktree's folder name is incidental; the repository it belongs to is what matters.
+            Text(mainRepositoryPath.map { URL(fileURLWithPath: $0).lastPathComponent } ?? viewModel.repository.path.lastPathComponent)
                 .font(.pageTitle)
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
                 .truncationMode(.middle)
+            if let mainRepositoryPath {
+                Button { windowViewModel.openReference(RepositoryReference(path: mainRepositoryPath)) } label: {
+                    Label("Worktree", systemImage: "tree")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .buttonStyle(.plain)
+                .help("Worktree at \(viewModel.repository.path.path). Click to open the main repository.")
+            }
             HStack(spacing: Theme.Spacing.xs) {
                 Image(systemName: head == nil ? "exclamationmark.triangle" : "arrow.triangle.branch")
                     .font(.system(size: 11, weight: .semibold))
@@ -89,6 +102,9 @@ private struct RepositorySummaryHeader: View {
             badges
         }
         .padding(.vertical, Theme.Spacing.sm)
+        .task(id: viewModel.repository.path) {
+            mainRepositoryPath = WorktreeResolver.mainRepositoryPath(forWorktreeAt: viewModel.repository.path.path)
+        }
     }
 
     @ViewBuilder

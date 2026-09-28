@@ -1,0 +1,51 @@
+{
+  "setup": {
+    "copy": [
+      {
+        "path": ".claude",
+        "exclude": [
+          "worktrees/**",
+          "projects/**/worktrees/**",
+          "scheduled_tasks.lock"
+        ]
+      }
+    ],
+    "symlink": [],
+    "commands": []
+  },
+  "terminals": [
+    {
+      "name": "Shell",
+      "dir": "."
+    }
+  ],
+  "run": [
+    {
+      "title": "Build & Run Grove",
+      "command": "xcodebuild -project Grove.xcodeproj -scheme Grove -derivedDataPath build -destination 'platform=macOS,arch=arm64' build && open -n build/Build/Products/Debug/Grove.app",
+      "cwd": "app/Grove",
+      "restartOnRerun": true
+    },
+    {
+      "title": "Unit Tests",
+      "command": "xcodebuild -project Grove.xcodeproj -scheme Grove -derivedDataPath build -destination 'platform=macOS,arch=arm64' test -only-testing:GroveTests",
+      "cwd": "app/Grove",
+      "restartOnRerun": true
+    }
+  ],
+  "workspace_env": [],
+  "platforms": [],
+  "tools": {
+    "disabled": [
+      "device-recording",
+      "device-inspector",
+      "device-control",
+      "device-debug"
+    ]
+  },
+  "agent_prompt": "Grove is a native macOS SwiftUI app (no simulators or web runtime). Build and test with xcodebuild from app/Grove using the worktree-local -derivedDataPath build. Never perform git writes against real repositories while testing; use a scratch repo under /tmp.",
+  "protected_branches": [
+    "main",
+    "master"
+  ]
+}

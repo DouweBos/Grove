@@ -23,7 +23,12 @@ struct RepositoryInfoPanel: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                 header
-                if !exists {
+                if !exists, let worktree, let mainRepositoryName {
+                    Banner(symbol: "questionmark.folder",
+                           message: "This worktree's folder is gone. Pruning removes the stale entry from \(mainRepositoryName).",
+                           actionTitle: "Prune Worktrees",
+                           action: { Task { await viewModel.pruneWorktrees(ofRepositoryAt: worktree.mainRepositoryPath) } })
+                } else if !exists {
                     Banner(symbol: "questionmark.folder", message: "This folder no longer exists. It may have been moved or deleted.",
                            actionTitle: "Remove from List", action: { viewModel.removeBookmark(bookmark) })
                 } else if let loadError {
@@ -89,10 +94,23 @@ struct RepositoryInfoPanel: View {
         }
     }
 
+    private var worktree: LinkedWorktree? { viewModel.linkedWorktree(for: bookmark) }
+
+    private var mainRepositoryName: String? {
+        worktree.map { URL(fileURLWithPath: $0.mainRepositoryPath).lastPathComponent }
+    }
+
     @ViewBuilder
     private var badges: some View {
         if let snapshot {
             HStack(spacing: Theme.Spacing.xs) {
+                if let worktree, let mainRepositoryName {
+                    Button { viewModel.selectRepository(atPath: worktree.mainRepositoryPath) } label: {
+                        StatusBadge(title: "Worktree of \(mainRepositoryName)", symbol: "tree", tone: .neutral)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Show \(mainRepositoryName)")
+                }
                 if let branch = snapshot.branch {
                     BranchLabel(name: branch.name, kind: .localBranch(isHEAD: true))
                 } else {
@@ -124,10 +142,19 @@ struct RepositoryInfoPanel: View {
                     Text("Never")
                 }
             }
-            fact("Added") { Text(bookmark.addedDate, format: .dateTime.day().month().year()) }
+            if viewModel.isSyntheticWorktreeRow(bookmark) {
+                // Discovered from disk rather than added, so there's no added date to show.
+                fact("Folder") { Text(URL(fileURLWithPath: bookmark.path).lastPathComponent).lineLimit(1).truncationMode(.middle) }
+            } else {
+                fact("Added") { Text(bookmark.addedDate, format: .dateTime.day().month().year()) }
+            }
             fact("Upstream") { Text(snapshot?.branch?.upstreamShortName ?? "–") }
-            fact("Group") {
-                Text(viewModel.sortedGroups.first(where: { $0.id == bookmark.groupID })?.name ?? "None")
+            if let mainRepositoryName {
+                fact("Repository") { Text(mainRepositoryName) }
+            } else {
+                fact("Group") {
+                    Text(viewModel.sortedGroups.first(where: { $0.id == bookmark.groupID })?.name ?? "None")
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

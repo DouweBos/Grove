@@ -24,7 +24,7 @@ struct AddRepositorySheet: View {
             onCancel: { dismiss() },
             onPrimary: {
                 guard let url = selectedURL else { return }
-                viewModel.addBookmark(path: url.path, displayName: url.lastPathComponent, groupID: groupID)
+                viewModel.addRepository(at: url, groupID: groupID)
                 dismiss()
             }
         ) {

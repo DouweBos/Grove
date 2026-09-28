@@ -55,16 +55,23 @@ struct RepositoryGroupsSidebar: View {
             draggedIDs.compactMap { id in viewModel.manager.bookmarks.first { $0.id == id } }
         }
         .contextMenu(forSelectionType: UUID.self) { selectedIDs in
-            if let id = selectedIDs.first,
-               let bookmark = viewModel.manager.bookmarks.first(where: { $0.id == id }) {
-                BookmarkActions(bookmark: bookmark)
+            if let id = selectedIDs.first, let row = viewModel.row(withID: id) {
+                if viewModel.isSyntheticWorktreeRow(row) {
+                    WorktreeActions(row: row)
+                } else {
+                    BookmarkActions(bookmark: row)
+                }
             } else {
                 Button("New Group…", systemImage: "folder.badge.plus") { viewModel.showNewGroupDialog() }
             }
         } primaryAction: { selectedIDs in
-            guard let id = selectedIDs.first,
-                  let bookmark = viewModel.manager.bookmarks.first(where: { $0.id == id }) else { return }
-            viewModel.openBookmark(bookmark)
+            guard let id = selectedIDs.first, let row = viewModel.row(withID: id) else { return }
+            viewModel.openBookmark(row)
+        }
+        // Worktrees come and go outside Grove, so re-read them whenever the list or app focus changes.
+        .onChange(of: viewModel.manager.bookmarks.map(\.path)) { viewModel.refreshWorktrees() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            viewModel.refreshWorktrees()
         }
         .confirmationDialog(
             "Delete the group \u{201C}\(groupPendingDelete?.name ?? "")\u{201D}?",
@@ -113,6 +120,25 @@ private struct BookmarkActions: View {
     }
 }
 
+// MARK: - WorktreeActions
+
+/// Menu for a worktree listed only because its main repository is bookmarked.
+private struct WorktreeActions: View {
+    let row: RepositoryBookmarkData
+    @Environment(WindowViewModel.self) private var viewModel
+
+    var body: some View {
+        Button("Open", systemImage: "arrow.up.forward.app") { viewModel.openBookmark(row) }
+        Button("Reveal in Finder", systemImage: "folder") {
+            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: row.path)])
+        }
+        Button("Copy Path", systemImage: "doc.on.doc") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(row.path, forType: .string)
+        }
+    }
+}
+
 // MARK: - RepositoryGroupSection
 
 private struct RepositoryGroupSection: View {
@@ -152,10 +178,44 @@ private struct RepositoryBookmarksList: View {
 
     var body: some View {
         ForEach(bookmarks) { bookmark in
-            RepositoryRow(bookmark: bookmark)
-                .tag(bookmark.id)
-                .draggable(bookmark)
+            RepositoryEntry(bookmark: bookmark)
         }
+    }
+}
+
+/// A repository row, with its linked worktrees nested underneath when it has any.
+private struct RepositoryEntry: View {
+    @Environment(WindowViewModel.self) private var viewModel
+    let bookmark: RepositoryBookmarkData
+    @State private var isExpanded = false
+
+    var body: some View {
+        let worktrees = viewModel.worktreeRows(of: bookmark)
+        if worktrees.isEmpty {
+            row
+        } else {
+            DisclosureGroup(isExpanded: Binding(
+                get: { isExpanded || viewModel.isSearching || worktrees.contains { $0.id == viewModel.selectedBookmarkID } },
+                set: { isExpanded = $0 }
+            )) {
+                ForEach(worktrees) { worktree in
+                    RepositoryRow(bookmark: worktree, worktree: viewModel.linkedWorktree(for: worktree))
+                        .tag(worktree.id)
+                }
+            } label: {
+                row
+            }
+        }
+    }
+
+    private var row: some View {
+        RepositoryRow(
+            bookmark: bookmark,
+            worktree: viewModel.linkedWorktree(for: bookmark),
+            worktreeCount: viewModel.worktreeIndex.worktreesByRepository[bookmark.path]?.count ?? 0
+        )
+        .tag(bookmark.id)
+        .draggable(bookmark)
     }
 }
 
