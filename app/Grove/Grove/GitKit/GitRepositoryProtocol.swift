@@ -210,7 +210,16 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     /// Update a submodule at the given path (`git submodule update --init <path>`).
     func updateSubmodule(path: String) async throws
 
+    /// Submodules declared in `.gitmodules`, with their checkout state.
+    func submodules() async throws -> [SubmoduleInfo]
+
     // MARK: Worktrees
+
+    /// Every worktree of the repository, main one first.
+    func worktrees() async throws -> [WorktreeInfo]
+
+    /// Forget worktrees whose folders were deleted (`git worktree prune`).
+    func pruneWorktrees() async throws
 
     /// Remove a linked worktree (`git worktree remove <path>`).
     func removeWorktree(path: String, force: Bool) async throws
@@ -311,6 +320,9 @@ extension GitRepositoryProtocol {
     func filesInCommit(_ sha: String) async throws -> [String] { [] }
 
     func stashDiff(index: Int) async throws -> [FileDiff] { [] }
+    func submodules() async throws -> [SubmoduleInfo] { [] }
+    func worktrees() async throws -> [WorktreeInfo] { [] }
+    func pruneWorktrees() async throws {}
     func fileContents(path: String, revision: String?) async throws -> String { "" }
     func fileData(path: String, at revision: FileRevision) async throws -> Data { Data() }
     func mergedBranches(into base: String) async throws -> Set<String> { [] }

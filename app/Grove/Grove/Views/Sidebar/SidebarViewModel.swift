@@ -18,11 +18,19 @@ final class SidebarViewModel {
     var remoteBranches: [BranchInfo] = []
     var tags: [TagInfo] = []
     var remotes: [RemoteInfo] = []
+    var worktrees: [WorktreeInfo] = []
+    var submodules: [SubmoduleInfo] = []
     var isLoading = false
     var errorMessage: String?
 
     /// Untracked change count shown on the Working Copy badge.
     var workingCopyBadgeCount: Int = 0
+
+    /// Worktrees other than the one this window shows; from a linked worktree that includes the main one.
+    var otherWorktrees: [WorktreeInfo] {
+        let current = repository.path.standardizedFileURL.resolvingSymlinksInPath().path
+        return worktrees.filter { URL(fileURLWithPath: $0.path).standardizedFileURL.resolvingSymlinksInPath().path != current }
+    }
 
     func select(_ item: SidebarItem) {
         selection = item
@@ -149,8 +157,13 @@ final class SidebarViewModel {
         async let tg: [TagInfo]? = tryOrNil { try await repository.tags() }
         async let rm: [RemoteInfo]? = tryOrNil { try await repository.remotes() }
         async let st: [StatusEntry]? = tryOrNil { try await repository.status() }
+        async let wt: [WorktreeInfo]? = tryOrNil { try await repository.worktrees() }
+        async let sm: [SubmoduleInfo]? = tryOrNil { try await repository.submodules() }
 
         let (local, remote, tagList, remoteList, statusList) = await (lb, rb, tg, rm, st)
+        let (worktreeList, submoduleList) = await (wt, sm)
+        if let worktreeList { worktrees = worktreeList }
+        if let submoduleList { submodules = submoduleList }
 
         if let local { localBranches = local }
         if let remote { remoteBranches = remote }
@@ -299,6 +312,15 @@ final class SidebarViewModel {
     func removeWorktree(path: String) async {
         do {
             try await repository.removeWorktree(path: path, force: false)
+            await didChangeRepository()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func pruneWorktrees() async {
+        do {
+            try await repository.pruneWorktrees()
             await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription

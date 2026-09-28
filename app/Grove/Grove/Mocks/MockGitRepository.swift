@@ -405,7 +405,24 @@ final class MockGitRepository: GitRepositoryProtocol {
         await simulateLatency()
     }
 
+    func submodules() async throws -> [SubmoduleInfo] {
+        [
+            SubmoduleInfo(name: "vendor/analytics", path: "vendor/analytics", url: "https://github.com/example/analytics.git",
+                          sha: "1a2b3c4d5e6f7a8b9c0d", state: .upToDate),
+            SubmoduleInfo(name: "vendor/icons", path: "vendor/icons", url: "https://github.com/example/icons.git",
+                          sha: "9f8e7d6c5b4a39281706", state: .uninitialized)
+        ]
+    }
+
     // MARK: Worktrees
+
+    func worktrees() async throws -> [WorktreeInfo] {
+        [
+            WorktreeInfo(path: path.path, branch: "main", headSHA: "a1b2c3d4e5f6", isMain: true, isPrunable: false, isLocked: false),
+            WorktreeInfo(path: path.path + "-feature-auth", branch: "feature/auth", headSHA: "b2c3d4e5f6a1",
+                         isMain: false, isPrunable: false, isLocked: false)
+        ]
+    }
 
     func removeWorktree(path: String, force: Bool) async throws {
         await simulateLatency()

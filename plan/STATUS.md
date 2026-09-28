@@ -20,6 +20,8 @@ Where the overhaul stands. Update this when a wave of work lands.
 - Diffs: hunk-discard confirmation with "don't ask again"; one no-wrap diff everywhere with pinned gutter and a remembered Wrap Lines toggle; image diffs; open in diff/merge tool; Changes stacks below ~650pt; history arrow keys; dead components removed.
 - Toolbar fits at the 900pt minimum: unselected pills collapse to icons when narrow, sidebar capped at 300pt. Unpublished branches show "Not published".
 
+- Worktrees: browser nests linked worktrees under their main repository (Tower import folds them); in-repo sidebar lists worktrees and submodules with state, double-click opens.
+
 ## Open
 
 - Branches Review's merged-check error state and grouped-delete undo are unit-tested but not seen in the UI.

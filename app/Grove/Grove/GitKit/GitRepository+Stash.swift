@@ -63,7 +63,22 @@ extension GitRepository {
         Logger.gitRepository.info("Submodule update complete in \(self.displayName, privacy: .public)")
     }
 
+    func submodules() async throws -> [SubmoduleInfo] {
+        let gitmodules = path.appendingPathComponent(".gitmodules")
+        guard let declared = try? String(contentsOf: gitmodules, encoding: .utf8) else { return [] }
+        let status = try await shell.runAllowingFailure(["submodule", "status"])
+        return SubmoduleParser.parse(gitmodules: declared, status: status.isSuccess ? status.stdout : "")
+    }
+
     // MARK: - Worktrees
+
+    func worktrees() async throws -> [WorktreeInfo] {
+        WorktreeParser.parse(try await shell.run(["worktree", "list", "--porcelain"]).stdout)
+    }
+
+    func pruneWorktrees() async throws {
+        try await shell.run(["worktree", "prune"])
+    }
 
     func removeWorktree(path: String, force: Bool) async throws {
         Logger.gitRepository.info(
