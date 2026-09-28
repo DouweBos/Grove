@@ -101,21 +101,26 @@ final class HostingAccountStore {
     /// `-GroveKeychainService <name>` keeps a test run's tokens apart from the real ones.
     static let shared = HostingAccountStore(
         secrets: KeychainSecretStore(service: UserDefaults.standard.string(forKey: "GroveKeychainService")
-                                     ?? KeychainSecretStore.defaultService)
+                                     ?? KeychainSecretStore.defaultService),
+        providesGitCredentials: true
     )
 
     private(set) var accounts: [HostingAccount] = []
     private let defaults: UserDefaults
     private let secrets: any SecretStore
+    /// The app's store also answers git's HTTPS prompts; stores made for tests don't.
+    private let providesGitCredentials: Bool
     private static let defaultsKey = "hostingAccounts"
 
-    init(defaults: UserDefaults = .standard, secrets: any SecretStore = KeychainSecretStore()) {
+    init(defaults: UserDefaults = .standard, secrets: any SecretStore = KeychainSecretStore(), providesGitCredentials: Bool = false) {
         self.defaults = defaults
         self.secrets = secrets
+        self.providesGitCredentials = providesGitCredentials
         if let data = defaults.data(forKey: Self.defaultsKey),
            let stored = try? JSONDecoder().decode([HostingAccount].self, from: data) {
             accounts = stored
         }
+        publishGitCredentials()
     }
 
     /// Adds the account, or replaces the one with the same id (re-authenticating) or the same service, host and user.
@@ -155,6 +160,12 @@ final class HostingAccountStore {
 
     private func save() {
         defaults.set(try? JSONEncoder().encode(accounts), forKey: Self.defaultsKey)
+        publishGitCredentials()
+    }
+
+    private func publishGitCredentials() {
+        guard providesGitCredentials else { return }
+        GitCredentials.update(accounts.compactMap { account in secret(for: account).map { (account, $0) } })
     }
 }
 

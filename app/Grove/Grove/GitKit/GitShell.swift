@@ -233,6 +233,10 @@ final class GitShell: Sendable {
         environment: [String: String]
     ) throws -> Process {
         var env = baseEnvironment
+        // Read per launch, so accounts added while Grove runs apply to the next fetch or push.
+        for (key, value) in GitCredentials.environment() {
+            env[key] = value
+        }
         for (key, value) in environment {
             env[key] = value
         }
