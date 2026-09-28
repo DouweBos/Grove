@@ -87,7 +87,7 @@ final class CreatePullRequestViewModel: Identifiable {
 
     // MARK: Loading
 
-    /// Picks the base (the head's recorded parent, else the remote's default branch), then prefills from commits.
+    /// Picks the base (the branch the head is stacked on, else the remote's default branch), then prefills from commits.
     func load() async {
         if !refs.hasLoaded { await refs.loadIfNeeded() }
         let remoteDefault = await repository.defaultBranch(of: remote)
@@ -97,7 +97,7 @@ final class CreatePullRequestViewModel: Identifiable {
             head = other
         }
         let candidates = baseCandidates.filter { $0 != remoteHead }
-        if let parent = refs.parents[head], candidates.contains(parent) {
+        if let parent = refs.stack(containing: head)?.layer(head)?.parent, candidates.contains(parent) {
             base = parent
         } else {
             base = PullRequestDraft.defaultBase(remoteHead: remoteDefault, candidates: candidates) ?? ""

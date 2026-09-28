@@ -113,6 +113,7 @@ final class RepositorySession {
         pullRequestsVM.onRepositoryChanged = refresh
         stackVM.onRepositoryChanged = refresh
         stackVM.onRestackStopped = { [weak self] in self?.sidebarVM.select(.workingCopy) }
+        stackVM.onCreatePullRequest = { [weak self] branch in self?.pullRequestsVM.beginCreatePullRequest(head: branch) }
         sidebarVM.onShowStack = { [stackVM] branch in stackVM.focus(branch: branch) }
         gitFlowVM.onRepositoryChanged = refresh
         svnVM.onRepositoryChanged = refresh

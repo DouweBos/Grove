@@ -15,7 +15,8 @@ final class StackViewModel {
     var onRepositoryChanged: (() async -> Void)?
     /// A layer conflicted mid-cascade; the session switches to Changes, where the banner continues it.
     var onRestackStopped: (() -> Void)?
-    private(set) var activity: String?
+    var onCreatePullRequest: ((String) -> Void)?
+    var activity: String?
 
     /// The branch last picked in the sidebar or the tab's menu; HEAD's stack when nil or no longer stacked.
     private(set) var focusedBranch: String?

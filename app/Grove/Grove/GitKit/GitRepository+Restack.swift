@@ -13,12 +13,14 @@ enum RestackError: LocalizedError, Equatable {
     case stopped(String)
     case dirtyWorktree
     case alreadyRunning
+    case notFastForward(branch: String, target: String)
 
     var errorDescription: String? {
         switch self {
         case .stopped(let title): "\(title) stopped on a conflict. Resolve it in Changes, then continue."
         case .dirtyWorktree: "Commit or stash your changes before restacking."
         case .alreadyRunning: "A restack is already in progress. Continue or abort it first."
+        case .notFastForward(let branch, let target): "\(branch) can't move forward to \(target) without a restack first."
         }
     }
 }
@@ -129,6 +131,31 @@ extension GitRepository {
             throw RestackError.stopped(plan.progressTitle)
         }
         return plan
+    }
+
+    // MARK: - Pushing and folding
+
+    func pushStack(_ layers: [StackPush], to remote: String) async throws {
+        guard !layers.isEmpty else { return }
+        Logger.gitRepository.info("Pushing \(layers.count, privacy: .public) stack layers to \(remote, privacy: .public)")
+        try await shell.run(["push", "--atomic", "-u"] + layers.map(\.leaseArgument) + [remote] + layers.map(\.refspec))
+        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+    }
+
+    func fastForward(branch: String, to revision: String, worktreePath: String?) async throws {
+        let target = try await shell.run(["rev-parse", "--verify", "\(revision)^{commit}"]).stdout
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let worktreePath {
+            try await GitShell(workingDirectory: URL(fileURLWithPath: worktreePath)).run(["merge", "--ff-only", target])
+        } else if currentBranch?.name == branch {
+            try await shell.run(["merge", "--ff-only", target])
+        } else {
+            guard await isAncestor("refs/heads/\(branch)", of: target) else {
+                throw RestackError.notFastForward(branch: branch, target: revision)
+            }
+            try await shell.run(["update-ref", "refs/heads/\(branch)", target])
+        }
+        await reloadState()
     }
 
     private func isClean(_ shell: GitShell) async throws -> Bool {

@@ -53,6 +53,11 @@ struct SidebarDropSheet: View {
                 DialogField("Rebase") { mono(target) }
                 DialogField("Onto") { mono(onto) }
             }
+        case .moveStack(let branch, let onto):
+            DialogCard {
+                DialogField("Move") { mono(branch) }
+                DialogField("Onto") { mono(onto) }
+            }
         case .pull(let remoteBranch, let target):
             DialogCard {
                 DialogField("From") { mono(remoteBranch) }
@@ -108,6 +113,7 @@ struct SidebarDropSheet: View {
         case .rebase(let target, let onto): "Rebase \(target) onto \(onto)?"
         case .pull(let remoteBranch, let target): "Pull \(remoteBranch) into \(target)?"
         case .push(let branch, let remote): "Push \(branch) to \(remote)?"
+        case .moveStack(let branch, let onto): "Move \(branch) onto \(onto)?"
         }
     }
 
@@ -125,6 +131,8 @@ struct SidebarDropSheet: View {
                     + "nothing changes and you'll need to check it out and pull."
         case .push(let branch, let remote):
             "Uploads \(branch)'s commits to \(remote). It fails rather than overwrite commits on the remote you don't have."
+        case .moveStack(let branch, let onto):
+            "Rebases \(branch)'s own commits onto \(onto), then restacks every branch built on it."
         }
     }
 
@@ -134,6 +142,7 @@ struct SidebarDropSheet: View {
         case .rebase: "arrow.triangle.pull"
         case .pull: "arrow.down.to.line"
         case .push: "arrow.up.to.line"
+        case .moveStack: "square.stack.3d.up"
         }
     }
 
@@ -143,6 +152,7 @@ struct SidebarDropSheet: View {
         case .rebase: "Rebase"
         case .pull: "Pull"
         case .push: "Push"
+        case .moveStack: "Move"
         }
     }
 
@@ -152,6 +162,7 @@ struct SidebarDropSheet: View {
         case .rebase: "Rebasing…"
         case .pull: "Pulling…"
         case .push: "Pushing…"
+        case .moveStack: "Moving…"
         }
     }
 

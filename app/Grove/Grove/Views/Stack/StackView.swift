@@ -8,6 +8,7 @@ import SwiftUI
 struct StackView: View {
 
     @Environment(StackViewModel.self) private var viewModel
+    @State private var newBranchFrom: CreateBranchRequest?
 
     var body: some View {
         VStack(spacing: Theme.Spacing.md) {
@@ -20,7 +21,7 @@ struct StackView: View {
                     Banner(symbol: "xmark.octagon", message: message, tone: .negative) { viewModel.dismissError() }
                 }
                 ScrollView {
-                    StackTree(stack: stack)
+                    StackTree(stack: stack) { newBranchFrom = CreateBranchRequest(ref: $0.branch) }
                         .padding(.bottom, Theme.Spacing.lg)
                 }
             } else {
@@ -30,6 +31,12 @@ struct StackView: View {
         }
         .padding(.bottom, Theme.Spacing.md)
         .task(id: viewModel.stack) { await viewModel.refresh() }
+        .sheet(item: $newBranchFrom) { request in
+            CreateBranchDialogView(repository: viewModel.repository, localBranches: viewModel.refs.localBranches,
+                                   fromRef: request.ref) { _ in
+                Task { await viewModel.onRepositoryChanged?() }
+            }
+        }
     }
 
     private func header(_ stack: BranchStack) -> some View {
@@ -60,6 +67,9 @@ struct StackView: View {
             Button("Restack", systemImage: "square.stack.3d.up") { Task { await viewModel.restackDrifted() } }
                 .disabled(!viewModel.canRestack(stack))
                 .help("Move only the layers that drifted from their parent, and what sits on them")
+            Button("Push Stack", systemImage: "arrow.up") { Task { await viewModel.pushStack() } }
+                .disabled(viewModel.changedLayers(stack).isEmpty)
+                .help("Push every changed layer at once, each only if its remote branch hasn't moved")
         }
         .disabled(viewModel.isBusy)
         .card(padding: Theme.Spacing.md)
@@ -76,6 +86,7 @@ struct StackView: View {
 private struct StackTree: View {
     @Environment(StackViewModel.self) private var viewModel
     let stack: BranchStack
+    let onNewBranch: (StackLayer) -> Void
 
     var body: some View {
         let layout = StackTreeLayout(stack)
@@ -85,11 +96,11 @@ private struct StackTree: View {
                     HStack(alignment: .top, spacing: Theme.Spacing.sm) {
                         StackLaneGutter(segments: row.segments, lane: row.lane, laneCount: layout.laneCount, isHEAD: layer.isHEAD)
                         StackLayerCard(layer: layer, stats: viewModel.stats(for: layer), commits: viewModel.commits(for: layer),
-                                       isExpanded: viewModel.expandedLayers.contains(layer.branch)) {
-                            viewModel.toggleExpanded(layer)
-                        }
+                                       isExpanded: viewModel.expandedLayers.contains(layer.branch),
+                                       onToggle: { viewModel.toggleExpanded(layer) },
+                                       onCreatePullRequest: { viewModel.createPullRequest(for: layer) })
                         .padding(.bottom, Theme.Spacing.sm)
-                        .contextMenu { StackLayerMenu(layer: layer) }
+                        .contextMenu { StackLayerMenu(layer: layer, onNewBranch: onNewBranch) }
                     }
                     .fixedSize(horizontal: false, vertical: true)
                 }
@@ -108,19 +119,6 @@ private struct StackTree: View {
                 .padding(.top, StackLaneGutter.nodeY - 10)
             }
         }
-    }
-}
-
-/// Actions on one layer.
-private struct StackLayerMenu: View {
-    @Environment(StackViewModel.self) private var viewModel
-    let layer: StackLayer
-
-    var body: some View {
-        Button("Restack from Here", systemImage: "arrow.triangle.2.circlepath") {
-            Task { await viewModel.restack(from: layer) }
-        }
-        .disabled(viewModel.isBusy)
     }
 }
 

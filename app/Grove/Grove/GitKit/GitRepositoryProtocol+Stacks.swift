@@ -27,6 +27,23 @@ protocol StackGitOperations: AnyObject {
     func abortRestack() async throws
     /// The restack that stopped on a conflict, if any.
     func pendingRestack() async -> RestackPlan?
+    /// Pushes every layer in one `push --atomic`, each only if its remote branch is still where Grove last saw it.
+    func pushStack(_ layers: [StackPush], to remote: String) async throws
+    /// Moves `branch` forward to `revision`, in whichever worktree has it checked out; refuses anything but a fast-forward.
+    func fastForward(branch: String, to revision: String, worktreePath: String?) async throws
+}
+
+/// One layer of a stack push.
+nonisolated struct StackPush: Hashable, Sendable {
+    let branch: String
+    /// Name on the remote; the upstream's when it has one.
+    let remoteBranch: String
+    /// Where the remote branch should still be; nil when it mustn't exist yet.
+    let expectedSHA: String?
+
+    /// `--force-with-lease=<ref>:<expect>`: an empty expectation means the branch must be new.
+    var leaseArgument: String { "--force-with-lease=refs/heads/\(remoteBranch):\(expectedSHA ?? "")" }
+    var refspec: String { "refs/heads/\(branch):refs/heads/\(remoteBranch)" }
 }
 
 extension StackGitOperations {
@@ -40,4 +57,6 @@ extension StackGitOperations {
     func continueRestack() async throws {}
     func abortRestack() async throws {}
     func pendingRestack() async -> RestackPlan? { nil }
+    func pushStack(_ layers: [StackPush], to remote: String) async throws {}
+    func fastForward(branch: String, to revision: String, worktreePath: String?) async throws {}
 }

@@ -11,6 +11,7 @@ struct StackLayerCard: View {
     var commits: [CommitInfo]?
     var isExpanded = false
     var onToggle: () -> Void = {}
+    var onCreatePullRequest: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
@@ -64,6 +65,11 @@ struct StackLayerCard: View {
                 .help(pr.tooltip)
         } else if layer.health.contains(.noPR) {
             StatusBadge(title: "No PR", symbol: "arrow.triangle.pull", tone: .neutral)
+            if let onCreatePullRequest {
+                Button("Create PR", action: onCreatePullRequest)
+                    .controlSize(.small)
+                    .help("Open a pull request based on \(layer.parent ?? "trunk")")
+            }
         }
     }
 

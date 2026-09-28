@@ -15,6 +15,8 @@ enum SidebarDropAction: Identifiable, Equatable {
     case pull(remoteBranch: String, target: String)
     /// Push local `branch` to `remote`.
     case push(branch: String, remote: String)
+    /// Rebase stacked `branch` and everything on it onto `onto`: a real move, so recognition follows it.
+    case moveStack(branch: String, onto: String)
 
     var id: String {
         switch self {
@@ -22,6 +24,7 @@ enum SidebarDropAction: Identifiable, Equatable {
         case .rebase(let target, let onto): "rebase-\(target)-\(onto)"
         case .pull(let remoteBranch, let target): "pull-\(remoteBranch)-\(target)"
         case .push(let branch, let remote): "push-\(branch)-\(remote)"
+        case .moveStack(let branch, let onto): "move-\(branch)-\(onto)"
         }
     }
 }
@@ -31,6 +34,10 @@ extension SidebarViewModel {
     /// A dragged ref dropped on local branch `target`: another local branch merges (Option rebases), a remote branch pulls.
     func handleDrop(_ payload: String, onBranch target: BranchInfo, option: Bool) -> Bool {
         guard payload != target.name else { return false }
+        if !option, refs.stack(containing: payload) != nil {
+            requestDrop(.moveStack(branch: payload, onto: target.name))
+            return true
+        }
         if localBranches.contains(where: { $0.name == payload }) {
             requestDrop(option ? .rebase(target: target.name, onto: payload) : .merge(source: payload, target: target.name))
             return true
@@ -71,6 +78,9 @@ extension SidebarViewModel {
         do {
             try await perform(action, pullStrategy: pullStrategy, remoteBranchName: remoteBranchName, setUpstream: setUpstream)
             pendingDrop = nil
+        } catch RestackError.stopped {
+            pendingDrop = nil
+            select(.workingCopy)
         } catch {
             dropError = error.localizedDescription
         }
@@ -97,6 +107,10 @@ extension SidebarViewModel {
         case .push(let branch, let remote):
             let name = remoteBranchName?.trimmingCharacters(in: .whitespaces)
             try await repository.push(branch: branch, to: remote, as: name?.isEmpty == false ? name! : branch, setUpstream: setUpstream)
+        case .moveStack(let branch, let onto):
+            guard let stack = refs.stack(containing: branch) else { return }
+            let plan = RestackPlan.make(stack, mode: .move(branch, onto: onto), trunkRef: stack.trunk, headBranch: headName)
+            try await repository.restack(plan)
         }
     }
 
