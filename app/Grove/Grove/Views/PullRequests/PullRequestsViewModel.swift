@@ -75,12 +75,19 @@ final class PullRequestsViewModel {
     var pendingOperation: PendingOperation?
     private(set) var isPerforming = false
 
+    /// The open "Create Pull Request" sheet.
+    private(set) var creation: CreatePullRequestViewModel?
+
     var onRepositoryChanged: (() async -> Void)?
+    /// Set by the session: brings the Pull Requests tab up, e.g. after creating one from the sidebar.
+    var onShowPullRequests: (() -> Void)?
 
     let repository: any GitRepositoryProtocol
+    let refs: RepositoryRefs
 
-    init(repository: any GitRepositoryProtocol) {
+    init(repository: any GitRepositoryProtocol, refs: RepositoryRefs? = nil) {
         self.repository = repository
+        self.refs = refs ?? RepositoryRefs(repository: repository)
     }
 
     // MARK: - Derived
@@ -259,6 +266,32 @@ final class PullRequestsViewModel {
         case .close: await perform { try await self.repository.closePullRequest(number: pending.pr.id) }
         }
         await refresh()
+    }
+
+    // MARK: - Creating
+
+    /// Opens the sheet with `head` (the checked-out branch when nil) as the branch to merge.
+    func beginCreatePullRequest(head: String? = nil) {
+        let creation = CreatePullRequestViewModel(repository: repository, refs: refs, head: head)
+        creation.onCreated = { [weak self] url in await self?.didCreatePullRequest(url: url) }
+        self.creation = creation
+    }
+
+    func cancelCreatePullRequest() {
+        creation = nil
+    }
+
+    private func didCreatePullRequest(url: String) async {
+        creation = nil
+        onShowPullRequests?()
+        // The head may have just been pushed, and its branch row should show the new number.
+        await onRepositoryChanged?()
+        refs.refreshPullRequests(force: true)
+        filterState = .open
+        await refresh()
+        if let number = PullRequestDraft.number(fromURL: url), let created = pullRequests.first(where: { $0.id == number }) {
+            await select(created)
+        }
     }
 
     func clearActionError() {

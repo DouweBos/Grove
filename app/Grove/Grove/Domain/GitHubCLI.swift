@@ -87,6 +87,13 @@ enum GitHubCLI {
         return result.filter { $0.account != nil }
     }
 
+    nonisolated static func createPullRequestArguments(_ draft: PullRequestDraft) -> [String] {
+        var arguments = ["pr", "create", "--base", draft.base, "--head", draft.head, "--title", draft.title, "--body", draft.body]
+        if draft.isDraft { arguments.append("--draft") }
+        if !draft.reviewers.isEmpty { arguments += ["--reviewer", draft.reviewers.joined(separator: ",")] }
+        return arguments
+    }
+
     /// Parses `gh pr view --json commits`.
     nonisolated static func parseCommits(_ json: String) -> [CommitInfo] {
         guard let data = json.data(using: .utf8),

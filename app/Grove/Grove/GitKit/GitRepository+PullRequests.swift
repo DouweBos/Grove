@@ -68,4 +68,11 @@ extension GitRepository {
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
         Logger.gitRepository.info("Merged PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
     }
+
+    func createPullRequest(_ draft: PullRequestDraft) async throws -> String {
+        Logger.gitRepository.info("Creating PR \(draft.head, privacy: .public) → \(draft.base, privacy: .public)")
+        let result = try await ghRun(GitHubCLI.createPullRequestArguments(draft))
+        // gh prints progress lines before the URL; the URL is the last line.
+        return result.stdout.split(whereSeparator: \.isNewline).last.map(String.init) ?? ""
+    }
 }

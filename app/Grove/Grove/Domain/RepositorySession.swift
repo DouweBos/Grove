@@ -71,7 +71,7 @@ final class RepositorySession {
         self.stashesVM        = StashesViewModel(repository: repository)
         self.reflogVM         = ReflogViewModel(repository: repository)
         self.branchesReviewVM = BranchesReviewViewModel(repository: repository, refs: refs)
-        self.pullRequestsVM   = PullRequestsViewModel(repository: repository)
+        self.pullRequestsVM   = PullRequestsViewModel(repository: repository, refs: refs)
         self.toolbarState     = RepositoryToolbarState(refs: refs)
         self.repositorySettingsVM = RepositorySettingsViewModel(repository: repository)
         self.autoFetcher      = AutoFetchScheduler(repository: repository)
@@ -95,6 +95,8 @@ final class RepositorySession {
         branchesReviewVM.onRepositoryChanged = refresh
         branchesReviewVM.undoManager = gitUndoManager
         pullRequestsVM.onRepositoryChanged = refresh
+        pullRequestsVM.onShowPullRequests = { [weak self] in self?.sidebarVM.select(.pullRequests) }
+        sidebarVM.onCreatePullRequest = { [weak self] branch in self?.pullRequestsVM.beginCreatePullRequest(head: branch) }
     }
 
     // MARK: - Lifecycle
@@ -155,7 +157,7 @@ final class RepositorySession {
 
     // MARK: - Action Handling
 
-    // swiftlint:disable:next cyclomatic_complexity
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     func handleAction(_ action: GroveAction) {
         switch action {
         case .navigateWorkingCopy:
@@ -188,6 +190,8 @@ final class RepositorySession {
             toolbarState.present(.merge)
         case .rebase:
             toolbarState.present(.rebase)
+        case .createPullRequest:
+            pullRequestsVM.beginCreatePullRequest()
         case .commit:
             guard selectedItem == .workingCopy else { return }
             Task { await workingCopyVM.commit() }

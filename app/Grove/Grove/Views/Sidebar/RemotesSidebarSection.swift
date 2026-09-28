@@ -72,7 +72,11 @@ struct RemotesSidebarSection: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(branch.name, forType: .string)
                 }
-                if let pullRequest { OpenPullRequestButton(pullRequest: pullRequest) }
+                if let pullRequest {
+                    OpenPullRequestButton(pullRequest: pullRequest)
+                } else {
+                    Button("Create Pull Request\u{2026}", systemImage: "arrow.triangle.pull") { viewModel.createPullRequest(for: branch) }
+                }
                 Divider()
                 Button("Delete on Remote…", systemImage: "trash", role: .destructive) {
                     branchToDelete = branch

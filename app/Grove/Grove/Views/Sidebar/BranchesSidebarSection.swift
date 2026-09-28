@@ -143,6 +143,8 @@ struct BranchContextMenu: View {
         Button("New Branch from \u{201C}\(branch.name)\u{201D}…", systemImage: "arrow.triangle.branch", action: onCreateBranch)
         if let pullRequest = viewModel.refs.openPullRequest(for: branch) {
             OpenPullRequestButton(pullRequest: pullRequest)
+        } else {
+            Button("Create Pull Request\u{2026}", systemImage: "arrow.triangle.pull") { viewModel.createPullRequest(for: branch) }
         }
         Divider()
         Button("Merge into Current Branch", systemImage: "arrow.triangle.merge") {

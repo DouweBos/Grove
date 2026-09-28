@@ -130,6 +130,9 @@ private struct PullRequestListPanel: View {
         VStack(spacing: 0) {
             PanelHeader(title: "Pull Requests", detail: "\(viewModel.filteredPullRequests.count)") {
                 if viewModel.isLoading { ProgressView().controlSize(.small) }
+                Button { viewModel.beginCreatePullRequest() } label: { Image(systemName: "plus") }
+                    .buttonStyle(.borderless)
+                    .help("Create Pull Request")
                 Button { Task { await viewModel.refresh() } } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(.borderless)
                     .help("Reload from GitHub")
