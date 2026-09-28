@@ -29,6 +29,7 @@ enum GitRepositoryError: LocalizedError {
     case remoteOperationFailed(String)
     case stashIndexOutOfRange(Int)
     case applyPatchFailed(String)
+    case historyRewriteConflict
 
     var errorDescription: String? {
         switch self {
@@ -52,6 +53,8 @@ enum GitRepositoryError: LocalizedError {
             return "Stash index \(index) is out of range."
         case .applyPatchFailed(let detail):
             return "Failed to apply patch: \(detail)"
+        case .historyRewriteConflict:
+            return "Newer commits depend on these changes, so rewriting history would conflict. Nothing was changed."
         }
     }
 }
@@ -228,16 +231,13 @@ final class GitRepository: GitRepositoryProtocol {
     }
 
     func diffForCommit(_ sha: String) async throws -> [FileDiff] {
-        // Show the diff introduced by this commit.
-        let diffResult = try await shell.run(
-            ["diff", "-U3", "--diff-filter=ACDMRT", "\(sha)^!", "--"]
-        )
-        let diffs = DiffParser.parse(diffResult.stdout)
-
-        // Also get the status for each file.
-        let statusResult = try await shell.run(
-            ["diff", "--name-status", "--diff-filter=ACDMRT", "\(sha)^!", "--"]
-        )
+        // `show` handles root commits; merges diff against their first parent.
+        let base = ["show", "--format=", "-M", "--diff-merges=first-parent", "--no-ext-diff", "--no-color"]
+        let diffResult = try await shell.run(base + ["-U3", sha, "--"])
+        // Without the final newline the parser doesn't read a phantom empty context line.
+        let output = diffResult.stdout.hasSuffix("\n") ? String(diffResult.stdout.dropLast()) : diffResult.stdout
+        let diffs = DiffParser.parse(output)
+        let statusResult = try await shell.run(base + ["--name-status", sha, "--"])
         let statusMap = parseNameStatus(statusResult.stdout)
 
         return diffs.map { diff in
@@ -249,6 +249,11 @@ final class GitRepository: GitRepositoryProtocol {
                 stats: diff.stats
             )
         }
+    }
+
+    func filesInCommit(_ sha: String) async throws -> [String] {
+        let result = try await shell.run(["ls-tree", "-r", "--name-only", "--full-tree", sha])
+        return result.stdout.split(separator: "\n").map(String.init)
     }
 
     // MARK: - Commits
@@ -312,6 +317,7 @@ final class GitRepository: GitRepositoryProtocol {
         var args = [
             "log",
             "--format=\(LogParser.formatString)",
+            "--date-order",
             "-\(maxCount)",
             "--skip=\(skip)"
         ]
@@ -664,49 +670,7 @@ final class GitRepository: GitRepositoryProtocol {
         Logger.gitRepository.info(
             "Squashing \(commits.count, privacy: .public) commits in \(self.displayName, privacy: .public)"
         )
-        // Build a script that marks every commit after the first as "squash".
-        // The script receives the todo-list path as its sole argument.
-        let firstSHA   = commits[0]
-        let squashSHAs = Set(commits.dropFirst().map { String($0.prefix(7)) })
-        let scriptBody = """
-            #!/bin/sh
-            # Rewrite the rebase todo list: mark squash commits and set the message.
-            TODOFILE="$1"
-            TMPFILE="$(mktemp)"
-            MSGFILE="$(mktemp)"
-            printf '%s' \(shellEscape(message)) > "$MSGFILE"
-            while IFS= read -r line; do
-                sha=$(echo "$line" | awk '{print $2}')
-                if echo "\(squashSHAs.joined(separator: " "))" | grep -qw "$sha"; then
-                    echo "squash $sha $(echo "$line" | cut -d' ' -f3-)" >> "$TMPFILE"
-                else
-                    echo "$line" >> "$TMPFILE"
-                fi
-            done < "$TODOFILE"
-            mv "$TMPFILE" "$TODOFILE"
-            # Override the commit message after squash completes.
-            GIT_EDITOR="echo \(shellEscape(message)) >" git rebase --continue 2>/dev/null || true
-            """
-        let scriptURL = try writeTemporaryScript(scriptBody)
-        defer { try? FileManager.default.removeItem(at: scriptURL) }
-
-        // Determine range: find the parent of the earliest commit.
-        let parentResult = try await shell.runAllowingFailure(
-            ["rev-parse", "\(firstSHA)^"]
-        )
-        let parent = parentResult.isSuccess
-            ? parentResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-            : "HEAD~\(commits.count)"
-
-        try await shell.run(
-            ["rebase", "-i", parent],
-            environment: [
-                "GIT_SEQUENCE_EDITOR": scriptURL.path,
-                "GIT_EDITOR": "true"
-            ]
-        )
-        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
-        repositoryState = await Self.loadRepositoryState(path: path)
+        try await rewriteHistory(from: commits[0], action: "squash", targets: Array(commits.dropFirst()), message: message)
         Logger.gitRepository.info("Squash complete in \(self.displayName, privacy: .public)")
     }
 
@@ -714,38 +678,7 @@ final class GitRepository: GitRepositoryProtocol {
         Logger.gitRepository.info(
             "Rewording \(commit, privacy: .public) in \(self.displayName, privacy: .public)"
         )
-        let shortSHA = String(commit.prefix(7))
-        // Script: change "pick <sha>" to "reword <sha>" for the target commit.
-        let scriptBody = """
-            #!/bin/sh
-            TODOFILE="$1"
-            sed -i '' "s/^pick \\(\(shortSHA)[^ ]*\\)/reword \\1/" "$TODOFILE"
-            """
-        let scriptURL = try writeTemporaryScript(scriptBody)
-        defer { try? FileManager.default.removeItem(at: scriptURL) }
-
-        // Editor script: replace the file content with newMessage.
-        let editorBody = """
-            #!/bin/sh
-            printf '%s\\n' \(shellEscape(newMessage)) > "$1"
-            """
-        let editorURL = try writeTemporaryScript(editorBody)
-        defer { try? FileManager.default.removeItem(at: editorURL) }
-
-        let parentResult = try await shell.runAllowingFailure(["rev-parse", "\(commit)^"])
-        let parent = parentResult.isSuccess
-            ? parentResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-            : "\(commit)^"
-
-        try await shell.run(
-            ["rebase", "-i", parent],
-            environment: [
-                "GIT_SEQUENCE_EDITOR": scriptURL.path,
-                "GIT_EDITOR": editorURL.path
-            ]
-        )
-        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
-        repositoryState = await Self.loadRepositoryState(path: path)
+        try await rewriteHistory(from: commit, action: "reword", targets: [commit], message: newMessage)
         Logger.gitRepository.info("Reword complete in \(self.displayName, privacy: .public)")
     }
 
@@ -753,28 +686,64 @@ final class GitRepository: GitRepositoryProtocol {
         Logger.gitRepository.info(
             "Dropping \(commit, privacy: .public) in \(self.displayName, privacy: .public)"
         )
-        let shortSHA = String(commit.prefix(7))
-        // Script: delete the line for the target commit from the todo list.
-        let scriptBody = """
+        try await rewriteHistory(from: commit, action: "drop", targets: [commit], message: nil)
+        Logger.gitRepository.info("Drop complete in \(self.displayName, privacy: .public)")
+    }
+
+    /// Scripted `rebase -i` from `oldest`'s parent that applies `action` to each target's pick line.
+    private func rewriteHistory(from oldest: String, action: String, targets: [String], message: String?) async throws {
+        // Todo lines carry abbreviated SHAs, so match them as prefixes of the full target SHAs.
+        let todoScript = """
             #!/bin/sh
-            TODOFILE="$1"
-            sed -i '' "/^pick \(shortSHA)/d" "$TODOFILE"
+            TODO="$1"
+            TMP="$TODO.grove"
+            : > "$TMP"
+            while IFS= read -r line || [ -n "$line" ]; do
+                cmd=${line%% *}
+                rest=${line#* }
+                sha=${rest%% *}
+                if [ "$cmd" = pick ] && [ -n "$sha" ]; then
+                    for target in \(targets.joined(separator: " ")); do
+                        case "$target" in
+                            "$sha"*)
+                                if [ "\(action)" = drop ]; then continue 2; fi
+                                line="\(action) $rest" ;;
+                        esac
+                    done
+                fi
+                printf '%s\\n' "$line" >> "$TMP"
+            done < "$TODO"
+            mv "$TMP" "$TODO"
             """
-        let scriptURL = try writeTemporaryScript(scriptBody)
-        defer { try? FileManager.default.removeItem(at: scriptURL) }
+        let todoURL = try writeTemporaryScript(todoScript)
+        defer { try? FileManager.default.removeItem(at: todoURL) }
 
-        let parentResult = try await shell.runAllowingFailure(["rev-parse", "\(commit)^"])
-        let parent = parentResult.isSuccess
-            ? parentResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-            : "\(commit)^"
+        var environment = ["GIT_SEQUENCE_EDITOR": todoURL.path, "GIT_EDITOR": "true"]
+        var editorURL: URL?
+        if let message {
+            let url = try writeTemporaryScript("#!/bin/sh\nprintf '%s\\n' \(shellEscape(message)) > \"$1\"\n")
+            environment["GIT_EDITOR"] = url.path
+            editorURL = url
+        }
+        defer { if let editorURL { try? FileManager.default.removeItem(at: editorURL) } }
 
-        try await shell.run(
-            ["rebase", "-i", parent],
-            environment: ["GIT_SEQUENCE_EDITOR": scriptURL.path]
-        )
+        let parentResult = try await shell.runAllowingFailure(["rev-parse", "--verify", "--quiet", "\(oldest)^"])
+        let base = parentResult.isSuccess
+            ? [parentResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)]
+            : ["--root"]
+
+        do {
+            try await shell.run(["rebase", "-i", "--rebase-merges"] + base, environment: environment)
+        } catch {
+            // A conflict leaves a half-done rebase; undo it so the branch is exactly as before.
+            let stopped = await Self.loadRepositoryState(path: path) != .normal
+            if stopped { _ = try? await shell.runAllowingFailure(["rebase", "--abort"]) }
+            repositoryState = await Self.loadRepositoryState(path: path)
+            currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+            throw stopped ? GitRepositoryError.historyRewriteConflict : error
+        }
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
         repositoryState = await Self.loadRepositoryState(path: path)
-        Logger.gitRepository.info("Drop complete in \(self.displayName, privacy: .public)")
     }
 
     // MARK: - Reset
