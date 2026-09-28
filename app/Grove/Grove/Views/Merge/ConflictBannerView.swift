@@ -44,7 +44,9 @@ struct ConflictBannerView: View {
                     Button("Resolve…") { Task { await viewModel.resolveNextConflict() } }
                         .buttonStyle(.borderedProminent)
                 } else {
-                    Button("Continue \(operationName)") { Task { await viewModel.continueOperation() } }
+                    Button(viewModel.pendingRestack == nil ? "Continue \(operationName)" : "Continue Restack") {
+                        Task { await viewModel.continueOperation() }
+                    }
                         .buttonStyle(.borderedProminent)
                 }
             }
@@ -56,7 +58,9 @@ struct ConflictBannerView: View {
             Button("Abort \(operationName)", role: .destructive) { Task { await viewModel.abortOperation() } }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Your repository returns to the state before the \(operationName.lowercased()) started. Conflict resolutions are lost.")
+            Text(viewModel.pendingRestack == nil
+                 ? "Your repository returns to the state before the \(operationName.lowercased()) started. Conflict resolutions are lost."
+                 : "Every branch the restack already moved goes back to where it was. Conflict resolutions are lost.")
         }
     }
 
@@ -70,6 +74,7 @@ struct ConflictBannerView: View {
     }
 
     private var title: String {
+        if let restack = viewModel.pendingRestack { return restack.progressTitle }
         let ours = viewModel.operationContext?.oursLabel ?? viewModel.repository.currentBranch?.name ?? "HEAD"
         let theirs = viewModel.operationContext?.theirsLabel ?? "…"
         switch viewModel.repositoryState {

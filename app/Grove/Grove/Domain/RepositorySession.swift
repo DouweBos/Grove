@@ -112,6 +112,7 @@ final class RepositorySession {
         branchesReviewVM.undoManager = gitUndoManager
         pullRequestsVM.onRepositoryChanged = refresh
         stackVM.onRepositoryChanged = refresh
+        stackVM.onRestackStopped = { [weak self] in self?.sidebarVM.select(.workingCopy) }
         sidebarVM.onShowStack = { [stackVM] branch in stackVM.focus(branch: branch) }
         gitFlowVM.onRepositoryChanged = refresh
         svnVM.onRepositoryChanged = refresh

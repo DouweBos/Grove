@@ -13,6 +13,9 @@ final class StackViewModel {
     let refs: RepositoryRefs
     let repository: any GitRepositoryProtocol
     var onRepositoryChanged: (() async -> Void)?
+    /// A layer conflicted mid-cascade; the session switches to Changes, where the banner continues it.
+    var onRestackStopped: (() -> Void)?
+    private(set) var activity: String?
 
     /// The branch last picked in the sidebar or the tab's menu; HEAD's stack when nil or no longer stacked.
     private(set) var focusedBranch: String?
@@ -80,6 +83,65 @@ final class StackViewModel {
     }
 
     func dismissError() { errorMessage = nil }
+
+    // MARK: - Restack
+
+    var isBusy: Bool { activity != nil }
+
+    func canRestack(_ stack: BranchStack) -> Bool {
+        stack.layers.contains { $0.health.contains(.needsRestack) }
+    }
+
+    /// Fixes only the layers that drifted from their parent, and whatever sits on them.
+    func restackDrifted() async {
+        guard let stack else { return }
+        await restack(stack, mode: .drifted, title: "Restacking \(stack.name)")
+    }
+
+    func restack(from layer: StackLayer) async {
+        guard let stack else { return }
+        await restack(stack, mode: .from(layer.branch), title: "Restacking \(layer.branch)")
+    }
+
+    /// Fetches, then moves the whole stack onto trunk's new tip.
+    func sync() async {
+        guard let stack else { return }
+        activity = "Fetching"
+        do {
+            try await repository.fetch(remote: nil, progress: nil)
+        } catch {
+            activity = nil
+            errorMessage = error.localizedDescription
+            return
+        }
+        await onRepositoryChanged?()
+        guard let fresh = self.stack ?? refs.stack(containing: stack.id) else { activity = nil; return }
+        await restack(fresh, mode: .ontoTrunk, title: "Syncing \(fresh.name)")
+    }
+
+    func restack(_ stack: BranchStack, mode: RestackMode, title: String) async {
+        activity = title
+        defer { activity = nil }
+        let plan = RestackPlan.make(stack, mode: mode, trunkRef: await trunkRef(stack.trunk), headBranch: refs.headBranch?.name)
+        do {
+            try await repository.restack(plan)
+        } catch RestackError.stopped {
+            onRestackStopped?()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        await onRepositoryChanged?()
+    }
+
+    /// The remote's trunk once it has moved past the local one, which people rarely pull; else the local branch.
+    func trunkRef(_ trunk: String) async -> String {
+        let local = "refs/heads/\(trunk)"
+        guard let remote = refs.remoteBranches.first(where: { $0.name == "\(StackReader.primaryRemote(refs.remotes) ?? "origin")/\(trunk)" })
+        else { return local }
+        let hasLocal = refs.localBranches.contains { $0.name == trunk }
+        if hasLocal, await repository.isAncestor(remote.id, of: local) { return local }
+        return remote.id
+    }
 
     private static func key(_ layer: StackLayer) -> String { "\(layer.base)..\(layer.tipSHA)" }
 }

@@ -19,6 +19,14 @@ protocol StackGitOperations: AnyObject {
     func forkPoint(parent: String, branch: String) async -> String?
     /// Lines added and removed between two commits.
     func diffStats(from base: String, to revision: String) async throws -> DiffStats
+    /// Runs `plan`, saving it as operation state; throws ``RestackError/stopped(_:)`` when a layer conflicts.
+    func restack(_ plan: RestackPlan) async throws
+    /// Continues the rebase that stopped the restack, then the rest of the cascade; a plain operation without one.
+    func continueRestack() async throws
+    /// Aborts the stopped rebase and resets every layer already moved.
+    func abortRestack() async throws
+    /// The restack that stopped on a conflict, if any.
+    func pendingRestack() async -> RestackPlan?
 }
 
 extension StackGitOperations {
@@ -28,4 +36,8 @@ extension StackGitOperations {
     func commitCount(from base: String, to revision: String) async -> Int { 0 }
     func forkPoint(parent: String, branch: String) async -> String? { nil }
     func diffStats(from base: String, to revision: String) async throws -> DiffStats { DiffStats(additions: 0, deletions: 0) }
+    func restack(_ plan: RestackPlan) async throws {}
+    func continueRestack() async throws {}
+    func abortRestack() async throws {}
+    func pendingRestack() async -> RestackPlan? { nil }
 }

@@ -116,6 +116,8 @@ final class WorkingCopyViewModel {
         }
     }
     private(set) var operationContext: OperationContext?
+    /// The stack restack this operation belongs to, whose Continue and Abort cover the whole cascade.
+    private(set) var pendingRestack: RestackPlan?
     var isRunningOperation = false
 
     // MARK: Autocomplete
@@ -164,12 +166,14 @@ final class WorkingCopyViewModel {
         async let context = isInOperation ? repository.operationContext() : nil
         async let lfsState = WorkingCopyLFS.load(repository, paths: statusEntries.map(\.path))
         async let template = repository.commitTemplate()
+        async let restack = isInOperation ? repository.pendingRestack() : nil
         cachedRecentCommits = await recent ?? []
         lfs = await lfsState
         setGitTemplate(await template)
         isSigningAvailable = await signing ?? false
         identity = await commitIdentity
         operationContext = await context
+        pendingRestack = await restack
         await trackedFiles
         if conflictedFiles.isEmpty { showOnlyConflicts = false }
         await reconcileSelection()

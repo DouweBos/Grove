@@ -22,6 +22,7 @@ extension WorkingCopyViewModel {
     func abortOperation() async {
         await runOperation {
             let repo = self.repository
+            if self.pendingRestack != nil { return try await repo.abortRestack() }
             switch self.repositoryState {
             case .rebase, .rebaseInteractive: try await repo.abortRebase()
             case .cherrypick: try await repo.abortCherryPick()
@@ -32,7 +33,14 @@ extension WorkingCopyViewModel {
     }
 
     func continueOperation() async {
-        await runOperation { try await self.repository.continueOperation() }
+        await runOperation {
+            guard self.pendingRestack != nil else { return try await self.repository.continueOperation() }
+            do {
+                try await self.repository.continueRestack()
+            } catch RestackError.stopped {
+                // The next layer conflicted too; the banner already says where the cascade is.
+            }
+        }
     }
 
     private func runOperation(_ work: @escaping () async throws -> Void) async {

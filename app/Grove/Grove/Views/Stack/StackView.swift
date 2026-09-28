@@ -13,6 +13,9 @@ struct StackView: View {
         VStack(spacing: Theme.Spacing.md) {
             if let stack = viewModel.stack {
                 header(stack)
+                if let activity = viewModel.activity {
+                    ProgressStrip(title: activity, detail: "", fraction: nil)
+                }
                 if let message = viewModel.errorMessage {
                     Banner(symbol: "xmark.octagon", message: message, tone: .negative) { viewModel.dismissError() }
                 }
@@ -52,7 +55,13 @@ struct StackView: View {
                 .foregroundStyle(Theme.textSecondary)
                 .lineLimit(1)
             Spacer()
+            Button("Sync", systemImage: "arrow.triangle.2.circlepath") { Task { await viewModel.sync() } }
+                .help("Fetch, then restack every layer onto \(stack.trunk)'s new tip")
+            Button("Restack", systemImage: "square.stack.3d.up") { Task { await viewModel.restackDrifted() } }
+                .disabled(!viewModel.canRestack(stack))
+                .help("Move only the layers that drifted from their parent, and what sits on them")
         }
+        .disabled(viewModel.isBusy)
         .card(padding: Theme.Spacing.md)
     }
 
@@ -80,6 +89,7 @@ private struct StackTree: View {
                             viewModel.toggleExpanded(layer)
                         }
                         .padding(.bottom, Theme.Spacing.sm)
+                        .contextMenu { StackLayerMenu(layer: layer) }
                     }
                     .fixedSize(horizontal: false, vertical: true)
                 }
@@ -98,6 +108,19 @@ private struct StackTree: View {
                 .padding(.top, StackLaneGutter.nodeY - 10)
             }
         }
+    }
+}
+
+/// Actions on one layer.
+private struct StackLayerMenu: View {
+    @Environment(StackViewModel.self) private var viewModel
+    let layer: StackLayer
+
+    var body: some View {
+        Button("Restack from Here", systemImage: "arrow.triangle.2.circlepath") {
+            Task { await viewModel.restack(from: layer) }
+        }
+        .disabled(viewModel.isBusy)
     }
 }
 
