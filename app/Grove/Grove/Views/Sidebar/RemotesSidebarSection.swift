@@ -55,7 +55,9 @@ struct RemotesSidebarSection: View {
     private func remoteBranchRow(_ branch: BranchInfo) -> some View {
         let shortName = SidebarViewModel.shortName(of: branch)
         let hasLocal = viewModel.localBranches.contains { $0.name == shortName }
-        return SidebarRow(title: shortName, symbol: "arrow.triangle.branch", tint: Theme.info)
+        let pullRequest = viewModel.refs.openPullRequest(for: branch)
+        return SidebarRow(title: shortName, symbol: "arrow.triangle.branch", tint: Theme.info, detail: pullRequest?.label)
+            .help(pullRequest.map { "\(branch.name)\n" + $0.tooltip } ?? branch.name)
             .tag(SidebarItem.remoteBranch(branch))
             .draggable(branch.name)
             .contextMenu {
@@ -70,6 +72,7 @@ struct RemotesSidebarSection: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(branch.name, forType: .string)
                 }
+                if let pullRequest { OpenPullRequestButton(pullRequest: pullRequest) }
                 Divider()
                 Button("Delete on Remote…", systemImage: "trash", role: .destructive) {
                     branchToDelete = branch

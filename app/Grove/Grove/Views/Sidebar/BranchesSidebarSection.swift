@@ -69,7 +69,8 @@ struct BranchesSidebarSection: View {
 
     private func branchRow(_ branch: BranchInfo, isPinned: Bool, showsFullName: Bool = false) -> some View {
         SidebarBranchRow(branch: branch, isPinned: isPinned, showsFullName: showsFullName,
-                         worktree: viewModel.worktree(checkingOut: branch), parent: viewModel.refs.parents[branch.name])
+                         worktree: viewModel.worktree(checkingOut: branch), parent: viewModel.refs.parents[branch.name],
+                         pullRequest: viewModel.refs.openPullRequest(for: branch))
             .tag(SidebarItem.branch(branch))
             .draggable(branch.name)
             .contextMenu {
@@ -115,6 +116,9 @@ struct BranchContextMenu: View {
             .disabled(branch.isHEAD)
         }
         Button("New Branch from \u{201C}\(branch.name)\u{201D}…", systemImage: "arrow.triangle.branch", action: onCreateBranch)
+        if let pullRequest = viewModel.refs.openPullRequest(for: branch) {
+            OpenPullRequestButton(pullRequest: pullRequest)
+        }
         Divider()
         Button("Merge into Current Branch", systemImage: "arrow.triangle.merge") {
             Task { await viewModel.merge(branch: branch) }

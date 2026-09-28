@@ -38,7 +38,8 @@ struct WorktreesSidebarSection: View {
         SidebarRow(
             title: worktree.branch ?? "Detached HEAD",
             symbol: worktree.isPrunable ? "questionmark.folder" : "tree",
-            tint: worktree.isPrunable ? Theme.warning : Theme.info
+            tint: worktree.isPrunable ? Theme.warning : Theme.info,
+            detail: worktree.branch.flatMap { viewModel.refs.openPullRequests[$0]?.label }
         ) {
             if worktree.isMain {
                 Text("main").font(.system(size: 11, weight: .medium))

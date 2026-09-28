@@ -14,6 +14,7 @@ struct SidebarBranchRow: View {
     var worktree: WorktreeInfo?
     /// Parent recorded when the branch was created.
     var parent: String?
+    var pullRequest: OpenPullRequest?
 
     var displayName: String {
         guard !showsFullName, let slashIndex = branch.name.firstIndex(of: "/") else { return branch.name }
@@ -25,6 +26,7 @@ struct SidebarBranchRow: View {
             title: displayName,
             symbol: branch.isHEAD ? "checkmark.circle.fill" : (worktree == nil ? "arrow.triangle.branch" : "tree"),
             tint: branch.isHEAD ? Theme.accent : (worktree == nil ? Theme.textSecondary : Theme.info),
+            detail: pullRequest?.label,
             isEmphasized: branch.isHEAD
         ) {
             HStack(spacing: Theme.Spacing.xs) {
@@ -44,6 +46,7 @@ struct SidebarBranchRow: View {
     private var tooltip: String {
         var name = branch.upstreamShortName.map { "\(branch.name) → \($0)" } ?? branch.name
         if let parent { name += "\nParent: \(parent)" }
+        if let pullRequest { name += "\n" + pullRequest.tooltip }
         guard let worktree else { return name }
         let place = worktree.isMain ? "the main worktree" : "worktree \(worktree.folderName)"
         return "\(name)\nChecked out in \(place). Double-click to switch to it."

@@ -22,6 +22,14 @@ extension GitRepository {
         return prs
     }
 
+    /// Only what branch rows show, so it stays a small response even for busy repositories.
+    func openPullRequests() async throws -> [String: OpenPullRequest] {
+        let result = try await ghRun([
+            "pr", "list", "--state", "open", "--limit", "500", "--json", "number,title,headRefName,isDraft,url"
+        ])
+        return try OpenPullRequest.index(fromJSON: Data(result.stdout.utf8))
+    }
+
     func pullRequestDetail(number: Int) async throws -> PullRequestInfo {
         Logger.gitRepository.info("Fetching PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
         let result = try await ghRun([

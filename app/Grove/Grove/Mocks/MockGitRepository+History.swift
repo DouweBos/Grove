@@ -21,6 +21,11 @@ extension MockGitRepository {
 
     // MARK: Pull Requests
 
+    func openPullRequests() async throws -> [String: OpenPullRequest] {
+        ["feature/auth": OpenPullRequest(number: 42, title: "Add sign in", headBranch: "feature/auth",
+                                         isDraft: false, url: "https://github.com/example/app/pull/42")]
+    }
+
     func pullRequests() async throws -> [PullRequestInfo] {
         await simulateLatency(80_000_000)
         return MockData.pullRequests

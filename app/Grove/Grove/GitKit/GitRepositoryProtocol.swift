@@ -278,6 +278,8 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
 
     /// Return the list of pull requests from the GitHub CLI.
     func pullRequests() async throws -> [PullRequestInfo]
+    /// Open pull requests keyed by head branch name.
+    func openPullRequests() async throws -> [String: OpenPullRequest]
     /// Return full detail for a single pull request number.
     func pullRequestDetail(number: Int) async throws -> PullRequestInfo
     /// Return all comments and reviews for a pull request.
@@ -349,6 +351,7 @@ extension GitRepositoryProtocol {
         try await createBranch(name: name, from: from, checkout: checkout)
     }
     func branchParents() async throws -> [String: String] { [:] }
+    func openPullRequests() async throws -> [String: OpenPullRequest] { [:] }
     func pull(remote: String?, branch: String?, strategy: PullStrategy, options: PullOptions,
               progress: (@Sendable (Double) -> Void)?) async throws {
         try await pull(remote: remote, strategy: strategy, progress: progress)

@@ -19,6 +19,10 @@ final class RepositoryRefs {
     private(set) var submodules: [SubmoduleInfo] = []
     /// Parent branch recorded when a branch was created, keyed by branch name.
     private(set) var parents: [String: String] = [:]
+    /// Open pull requests keyed by head branch; a network read, so refreshed at most once a minute.
+    private(set) var openPullRequests: [String: OpenPullRequest] = [:]
+    private var pullRequestsFetchedAt: Date?
+    private var pullRequestTask: Task<Void, Never>?
     /// Staged or unstaged entries, for the Changes badge.
     private(set) var changedCount = 0
     private(set) var hasLoaded = false
@@ -47,6 +51,7 @@ final class RepositoryRefs {
     /// Starts (or joins) a read synchronously, so lists refreshing alongside it can `settled()` on it.
     @discardableResult
     func beginRefresh() -> Task<Void, Never> {
+        refreshPullRequests()
         if let inFlight { return inFlight }
         let task = Task {
             await read()
@@ -67,6 +72,25 @@ final class RepositoryRefs {
     }
 
     func dismissError() { errorMessage = nil }
+
+    /// The open pull request whose head is `branch`; remote branches match on the part after the remote name.
+    func openPullRequest(for branch: BranchInfo) -> OpenPullRequest? {
+        guard branch.isRemote else { return openPullRequests[branch.name] }
+        return branch.name.split(separator: "/", maxSplits: 1).last.flatMap { openPullRequests[String($0)] }
+    }
+
+    /// Runs beside ref reads without holding them up; a failure (no `gh`, no GitHub remote) keeps the last result.
+    func refreshPullRequests(force: Bool = false) {
+        guard pullRequestTask == nil else { return }
+        if !force, let pullRequestsFetchedAt, Date().timeIntervalSince(pullRequestsFetchedAt) < 60 { return }
+        pullRequestTask = Task {
+            if let fetched = try? await repository.openPullRequests(), fetched != openPullRequests {
+                openPullRequests = fetched
+            }
+            pullRequestsFetchedAt = Date()
+            pullRequestTask = nil
+        }
+    }
 
     /// Replaces the lists directly, for previews and tests.
     func replace(localBranches: [BranchInfo]? = nil, remoteBranches: [BranchInfo]? = nil, tags: [TagInfo]? = nil,
