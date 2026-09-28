@@ -69,10 +69,12 @@ struct DiffView: View {
         DiffHunkHeaderView(
             hunk: hunk,
             showingStaged: showingStaged,
-            hasSelectedLines: !selectedInHunk.isEmpty
-        ) { action in
-            handleAction(action, hunk: hunk, selectedLines: selectedInHunk)
-        }
+            hasSelectedLines: !selectedInHunk.isEmpty,
+            // Read-only diffs (no handler) get a header without stage/discard buttons.
+            onAction: onHunkAction == nil ? nil : { action in
+                handleAction(action, hunk: hunk, selectedLines: selectedInHunk)
+            }
+        )
 
         ForEach(hunk.lines) { line in
             DiffLineView(

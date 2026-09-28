@@ -53,13 +53,15 @@ struct DiffHunkHeaderView: View {
             Spacer()
 
             // Action buttons — right-aligned
-            HStack(spacing: 6) {
-                if hasSelectedLines {
-                    lineButtons
+            if onAction != nil {
+                HStack(spacing: 6) {
+                    if hasSelectedLines {
+                        lineButtons
+                    }
+                    hunkButtons
                 }
-                hunkButtons
+                .padding(.trailing, 8)
             }
-            .padding(.trailing, 8)
         }
         .background(DiffColors.hunkHeaderBackground)
     }

@@ -55,59 +55,18 @@ struct VerifiedBadge: View {
         case .unsigned:
             EmptyView()
         case .verified:
-            badge(
-                icon: "checkmark.seal.fill",
-                label: "Verified",
-                foreground: .white,
-                background: Color(red: 0x2E / 255, green: 0xA0 / 255, blue: 0x43 / 255)
-            )
+            StatusBadge(title: "Verified", symbol: "checkmark.seal.fill", tone: .positive)
         case .unverified:
-            badge(
-                icon: "exclamationmark.triangle.fill",
-                label: "Unverified",
-                foreground: Color(white: 0.3),
-                background: Color(white: 0.78)
-            )
+            StatusBadge(title: "Unverified", symbol: "exclamationmark.triangle.fill", tone: .caution)
         }
-    }
-
-    // MARK: Private
-
-    private func badge(
-        icon: String,
-        label: String,
-        foreground: Color,
-        background: Color
-    ) -> some View {
-        Label(label, systemImage: icon)
-            .font(.caption2)
-            .fontWeight(.semibold)
-            .foregroundStyle(foreground)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(background, in: Capsule())
     }
 }
 
-// MARK: - Preview
-
-#Preview("Verified Badge States") {
+#Preview {
     HStack(spacing: 12) {
-        VStack(spacing: 6) {
-            VerifiedBadge(status: .verified)
-            Text(".verified").font(.caption2).foregroundStyle(.secondary)
-        }
-        VStack(spacing: 6) {
-            VerifiedBadge(status: .unverified)
-            Text(".unverified").font(.caption2).foregroundStyle(.secondary)
-        }
-        VStack(spacing: 6) {
-            // .unsigned renders EmptyView — show a placeholder label instead
-            Text("(no badge)")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            Text(".unsigned").font(.caption2).foregroundStyle(.secondary)
-        }
+        VerifiedBadge(status: .verified)
+        VerifiedBadge(status: .unverified)
     }
     .padding()
+    .background(Theme.surface)
 }
