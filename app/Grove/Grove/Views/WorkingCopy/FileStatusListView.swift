@@ -15,6 +15,7 @@ struct FileStatusListView: View {
         VStack(spacing: 0) {
             PanelHeader(title: "Files", detail: fileCountDetail) {
                 viewModePicker
+                FilesPanelMenu()
             }
             content
         }
@@ -200,6 +201,10 @@ private struct FileSection<Accessory: View>: View {
             if !diffToolPath.isEmpty {
                 Button("Open in Diff Tool") { Task { await viewModel.openInDiffTool(entry, side: side) } }
             }
+            let patchEntries = viewModel.patchEntries(for: entry, side: side)
+            Button(patchEntries.count > 1 ? "Create Patch from \(patchEntries.count) Files\u{2026}" : "Create Patch\u{2026}") {
+                Task { await savePatch(patchEntries, side: side, viewModel: viewModel) }
+            }
         } else {
             Button("Resolve…") { Task { await viewModel.select(entry) } }
             if !mergeToolPath.isEmpty {
@@ -222,6 +227,8 @@ private struct FileSection<Accessory: View>: View {
         Button("Reveal in Finder") {
             NSWorkspace.shared.activateFileViewerSelecting([viewModel.repository.path.appendingPathComponent(entry.path)])
         }
+        Divider()
+        FileActionsMenu(entries: viewModel.actionEntries(for: entry, side: side))
         Divider()
         Button("Discard Changes…", role: .destructive) { viewModel.requestDiscard(entry) }
     }

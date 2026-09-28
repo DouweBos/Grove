@@ -142,6 +142,20 @@ private final class FailingMockRepository: GitRepositoryProtocol {
     func checkoutPullRequest(number: Int) async throws { try await backing.checkoutPullRequest(number: number) }
     func closePullRequest(number: Int) async throws { try await backing.closePullRequest(number: number) }
     func mergePullRequest(number: Int) async throws { try await backing.mergePullRequest(number: number) }
+    func ignore(patterns: [String], localOnly: Bool) async throws { try await backing.ignore(patterns: patterns, localOnly: localOnly) }
+    func stopTracking(paths: [String]) async throws { try await backing.stopTracking(paths: paths) }
+    func moveFile(from source: String, to destination: String) async throws { try await backing.moveFile(from: source, to: destination) }
+    func restoreFile(_ path: String, from revision: String, revisionPath: String) async throws {
+        try await backing.restoreFile(path, from: revision, revisionPath: revisionPath)
+    }
+    func patch(paths: [String], staged: Bool) async throws -> String { try await backing.patch(paths: paths, staged: staged) }
+    func commitTemplate() async -> String? { await backing.commitTemplate() }
+    @discardableResult func saveSnapshot(message: String, includeUntracked: Bool) async throws -> Bool {
+        try await backing.saveSnapshot(message: message, includeUntracked: includeUntracked)
+    }
+    func applyPatch(at file: URL, toIndex: Bool, checkOnly: Bool) async throws {
+        try await backing.applyPatch(at: file, toIndex: toIndex, checkOnly: checkOnly)
+    }
 }
 
 // MARK: - SidebarViewModelTests

@@ -46,6 +46,8 @@ struct DiffView: View {
     /// Pre-computed word-level highlights: (deletionID, additionID) → attributed strings.
     @State private var wordHighlights: [String: (AttributedString, AttributedString)] = [:]
     @State private var showsLFSPointer = false
+    /// Syntax colors, lexed per hunk as its lines scroll into view.
+    @State private var syntax = DiffSyntaxCache()
 
     // MARK: Body
 
@@ -80,6 +82,7 @@ struct DiffView: View {
     @ViewBuilder
     private func hunkSection(_ hunk: HunkData) -> some View {
         let selectedInHunk = selectedLinesIn(hunk)
+        let syntaxKey = DiffSyntaxCache.key(for: hunk, path: diff.filePath)
 
         DiffHunkHeaderView(
             hunk: hunk,
@@ -93,7 +96,7 @@ struct DiffView: View {
         ForEach(hunk.lines) { line in
             DiffLineView(
                 line: line,
-                attributedContent: attributedContent(for: line),
+                attributedContent: attributedContent(for: line, in: hunk, syntaxKey: syntaxKey),
                 isSelected: selectedLineIDs.contains(line.id)
             )
             .onTapGesture {
@@ -115,12 +118,10 @@ struct DiffView: View {
 
     // MARK: Word Highlight Lookup
 
-    private func attributedContent(for line: DiffLine) -> AttributedString? {
-        let key = line.id
-        if let pair = wordHighlights[key] {
-            return line.type == .deletion ? pair.0 : pair.1
-        }
-        return nil
+    /// Word-level change highlights with syntax colors on top of them.
+    private func attributedContent(for line: DiffLine, in hunk: HunkData, syntaxKey: DiffSyntaxCache.HunkKey?) -> AttributedString? {
+        let word = wordHighlights[line.id].map { line.type == .deletion ? $0.0 : $0.1 }
+        return syntax.attributed(for: line, in: hunk, key: syntaxKey, wordHighlight: word)
     }
 
     // MARK: Line Selection

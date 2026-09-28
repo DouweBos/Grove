@@ -64,9 +64,17 @@ private struct StashListPanel: View {
         VStack(spacing: 0) {
             PanelHeader(title: "Stashes", detail: "\(viewModel.stashes.count)") {
                 if viewModel.isLoading && !viewModel.stashes.isEmpty { ProgressView().controlSize(.small) }
-                Button { GroveAction.stash.post() } label: { Image(systemName: "plus") }
-                    .buttonStyle(.borderless)
-                    .help("Stash Changes\u{2026}")
+                Menu {
+                    Button("Stash Changes\u{2026}") { GroveAction.stash.post() }
+                    Button("Save Snapshot\u{2026}") { GroveAction.saveSnapshot.post() }
+                } label: {
+                    Image(systemName: "plus")
+                } primaryAction: {
+                    GroveAction.stash.post()
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("Stash Changes\u{2026}")
             }
             if viewModel.isLoading && viewModel.stashes.isEmpty {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)

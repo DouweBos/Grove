@@ -48,6 +48,7 @@ struct ServicesPreferencesTab: View {
                     }
                 }
             }
+            AnthropicKeySection()
         }
         .formStyle(.grouped)
         .task { await check() }

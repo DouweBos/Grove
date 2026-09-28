@@ -18,6 +18,20 @@ struct FileHistoryView: View {
                 .panel()
         }
         .task { await viewModel.loadHistory() }
+        .confirmationDialog(restoreTitle, isPresented: restoreBinding, titleVisibility: .visible,
+                            presenting: viewModel.pendingRestore) { commit in
+            Button("Restore", role: .destructive) { Task { await viewModel.restore(commit) } }
+            Button("Cancel", role: .cancel) { viewModel.cancelRestore() }
+        } message: { commit in
+            Text("\(fileName) has local changes. Restoring \(commit.shortSHA) overwrites them in the working copy.")
+        }
+    }
+
+    private var restoreTitle: String { "Restore this version?" }
+    private var fileName: String { (viewModel.filePath as NSString).lastPathComponent }
+
+    private var restoreBinding: Binding<Bool> {
+        Binding(get: { viewModel.pendingRestore != nil }, set: { if !$0 { viewModel.cancelRestore() } })
     }
 
     // MARK: - Commits
@@ -75,6 +89,9 @@ struct FileHistoryView: View {
             }
             Button("Open Blame at This Revision") { openBlame(commit) }
             Button("Export File at This Revision\u{2026}") { Task { await export(commit) } }
+            Divider()
+            Button("Restore This Version") { Task { await viewModel.requestRestore(commit) } }
+                .disabled(viewModel.isRestoring)
         }
     }
 
@@ -93,7 +110,13 @@ struct FileHistoryView: View {
                     Button { Task { await export(commit) } } label: { Image(systemName: "square.and.arrow.down") }
                         .buttonStyle(.borderless)
                         .help("Export File at This Revision\u{2026}")
+                    Button { Task { await viewModel.requestRestore(commit) } } label: { Image(systemName: "clock.arrow.circlepath") }
+                        .buttonStyle(.borderless)
+                        .disabled(!viewModel.canRestoreSelected)
+                        .help("Restore This Version")
+                        .accessibilityLabel("Restore This Version")
                 }
+                notices
                 if isImage {
                     RepositoryImageDiffView(source: .commit(commit.id, in: viewModel.repository),
                                             path: viewModel.filePath, oldPath: viewModel.fileDiff?.oldPath)
@@ -114,6 +137,19 @@ struct FileHistoryView: View {
     }
 
     private var isImage: Bool { ImageDiffView.supports(path: viewModel.filePath) }
+
+    @ViewBuilder
+    private var notices: some View {
+        if let error = viewModel.errorMessage {
+            Banner(symbol: "xmark.octagon", message: error, tone: .negative)
+                .padding(Theme.Spacing.sm)
+        } else if let restored = viewModel.restoredCommit {
+            Banner(symbol: "clock.arrow.circlepath",
+                   message: "Restored the version from \(restored.shortSHA) into the working copy. Review it in Changes.",
+                   tone: .positive, onDismiss: { viewModel.dismissRestoreNotice() })
+                .padding(Theme.Spacing.sm)
+        }
+    }
 
     // MARK: - Actions
 

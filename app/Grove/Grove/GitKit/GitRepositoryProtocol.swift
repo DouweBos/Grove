@@ -208,6 +208,9 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func stashCreate(message: String?, includeUntracked: Bool, paths: [String]?) async throws
     func stashApply(index: Int, drop: Bool) async throws
     func stashDrop(index: Int) async throws
+    /// Stores the working state as a stash but leaves the working copy as it is; false when there was nothing to save.
+    @discardableResult
+    func saveSnapshot(message: String, includeUntracked: Bool) async throws -> Bool
 
     // MARK: Tags
 
@@ -313,6 +316,8 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func commit(message: String, body: String?, amend: Bool, sign: Bool, signOff: Bool) async throws -> CommitInfo
     /// The effective `user.name` / `user.email`, or `nil` when unset.
     func commitIdentity() async -> CommitIdentity?
+    /// Contents of the file git's `commit.template` points at, or `nil` when unset or unreadable.
+    func commitTemplate() async -> String?
     /// Branch names for both sides of the in-progress merge/rebase/cherry-pick/revert.
     func operationContext() async -> OperationContext?
     /// Continue the in-progress operation after conflicts are resolved.
@@ -352,6 +357,24 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func fastForward(branch: String, fromRemote remote: String, branch remoteBranch: String) async throws
     /// Pushes any local branch, checked out or not, to `remoteBranch` on `remote`.
     func push(branch: String, to remote: String, as remoteBranch: String, setUpstream: Bool) async throws
+
+    // MARK: File Actions (implemented in GitRepository+FileActions.swift)
+
+    /// Appends gitignore patterns to `.gitignore`, or to `.git/info/exclude` when `localOnly`.
+    func ignore(patterns: [String], localOnly: Bool) async throws
+    /// Removes paths from the index but keeps them on disk (`git rm --cached`).
+    func stopTracking(paths: [String]) async throws
+    /// Renames or moves a file: `git mv` when tracked, a plain move when untracked.
+    func moveFile(from source: String, to destination: String) async throws
+    /// Writes `revisionPath` as it was at `revision` into the working copy at `path`, leaving the index alone.
+    func restoreFile(_ path: String, from revision: String, revisionPath: String) async throws
+
+    // MARK: Patches (implemented in GitRepository+Patches.swift)
+
+    /// The staged or unstaged changes of `paths` as an applicable patch; unstaged includes untracked files.
+    func patch(paths: [String], staged: Bool) async throws -> String
+    /// `git apply` of a patch file; `toIndex` also stages it, `checkOnly` only reports whether it applies.
+    func applyPatch(at file: URL, toIndex: Bool, checkOnly: Bool) async throws
 }
 
 // MARK: - GitRepositoryProtocol Default Arguments

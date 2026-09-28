@@ -9,6 +9,7 @@
 //   c:    → recent commit SHAs and summaries
 //   `     → filenames from the current working-tree status
 //   /     → commit message templates
+//   :     → gitmoji codes, inserting the emoji
 
 import SwiftUI
 
@@ -16,22 +17,8 @@ import SwiftUI
 
 /// A floating list of commit message suggestions anchored below the subject field.
 ///
-/// Place this view inside an `.overlay` or `.background` on the subject
-/// `TextField` row so it can appear at the correct position without
-/// disrupting the layout.
-///
-/// ```swift
-/// TextField("Commit Subject", text: $vm.commitSubject)
-///     .overlay(alignment: .topLeading) {
-///         CommitAutoCompleteView(
-///             trigger: vm.autoCompleteTrigger,
-///             suggestions: vm.autoCompleteSuggestions,
-///             onSelect: { vm.applyAutoComplete($0) },
-///             onDismiss: { vm.dismissAutoComplete() }
-///         )
-///         .offset(y: 24)
-///     }
-/// ```
+/// The subject field keeps keyboard focus and forwards arrows, Return and Escape
+/// to the view model, which owns the highlighted row.
 struct CommitAutoCompleteView: View {
 
     // MARK: Inputs
@@ -40,14 +27,12 @@ struct CommitAutoCompleteView: View {
     let trigger: AutoCompleteTrigger
     /// Current list of matching suggestions.
     let suggestions: [AutoCompleteSuggestion]
-    /// Called when the user taps or keyboards-selects a row.
+    /// The row Return would pick.
+    let highlightedID: String?
+    /// Called when the user clicks a row.
     let onSelect: (AutoCompleteSuggestion) -> Void
-    /// Called when the user presses Escape or the list should close.
-    let onDismiss: () -> Void
-
-    // MARK: State
-
-    @State private var highlightedID: String?
+    /// Called when the pointer moves over a row.
+    let onHighlight: (String) -> Void
 
     // MARK: Constants
 
@@ -70,15 +55,6 @@ struct CommitAutoCompleteView: View {
                 .strokeBorder(Theme.border, lineWidth: 0.5)
         )
         .shadow(color: Theme.textPrimary.opacity(0.12), radius: 10, x: 0, y: 4)
-        .onAppear { highlightedID = suggestions.first?.id }
-        .onChange(of: suggestions) { _, new in
-            highlightedID = new.first?.id
-        }
-        // Keyboard: arrow navigation + confirm + dismiss
-        .onKeyPress(.upArrow) { moveHighlight(by: -1); return .handled }
-        .onKeyPress(.downArrow) { moveHighlight(by: 1); return .handled }
-        .onKeyPress(.return) { confirmHighlighted();   return .handled }
-        .onKeyPress(.escape) { onDismiss();            return .handled }
     }
 
     // MARK: Trigger Header
@@ -108,13 +84,16 @@ struct CommitAutoCompleteView: View {
                         suggestion: suggestion,
                         isHighlighted: suggestion.id == highlightedID
                     )
+                    .id(suggestion.id)
                     .onTapGesture { onSelect(suggestion) }
                     .onHover { hovering in
-                        if hovering { highlightedID = suggestion.id }
+                        if hovering { onHighlight(suggestion.id) }
                     }
                 }
             }
+            .scrollTargetLayout()
         }
+        .scrollPosition(id: .constant(highlightedID), anchor: .center)
         .frame(height: CGFloat(visibleCount) * rowHeight)
     }
 
@@ -126,6 +105,7 @@ struct CommitAutoCompleteView: View {
         case .commit:   return "arrow.triangle.branch"
         case .filename: return "doc.text"
         case .template: return "text.badge.plus"
+        case .gitmoji:  return "face.smiling"
         }
     }
 
@@ -135,21 +115,10 @@ struct CommitAutoCompleteView: View {
         case .commit:   return "Recent Commits"
         case .filename: return "Changed Files"
         case .template: return "Commit Templates"
+        case .gitmoji:  return "Gitmoji"
         }
     }
 
-    private func moveHighlight(by delta: Int) {
-        guard !suggestions.isEmpty else { return }
-        let currentIndex = suggestions.firstIndex(where: { $0.id == highlightedID }) ?? 0
-        let newIndex = (currentIndex + delta + suggestions.count) % suggestions.count
-        highlightedID = suggestions[newIndex].id
-    }
-
-    private func confirmHighlighted() {
-        guard let id = highlightedID,
-              let suggestion = suggestions.first(where: { $0.id == id }) else { return }
-        onSelect(suggestion)
-    }
 }
 
 // MARK: - SuggestionRow
@@ -213,8 +182,9 @@ private struct SuggestionRow: View {
                 insertText: "#42"
             )
         ],
+        highlightedID: "PROJ-123",
         onSelect: { _ in },
-        onDismiss: {}
+        onHighlight: { _ in }
     )
     .padding()
     .frame(width: 400)

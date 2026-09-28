@@ -37,6 +37,13 @@ enum Theme {
     static let untracked = textSecondary
     static let conflicted = warning
 
+    // Syntax coloring in diffs.
+    static let syntaxKeyword = Color(.syntaxKeyword)
+    static let syntaxString = Color(.syntaxString)
+    static let syntaxComment = Color(.syntaxComment)
+    static let syntaxNumber = Color(.syntaxNumber)
+    static let syntaxType = Color(.syntaxType)
+
     static let addedFill = success.opacity(0.12)
     static let deletedFill = danger.opacity(0.12)
     static let addedWordFill = success.opacity(0.3)
@@ -46,6 +53,7 @@ enum Theme {
     static let subtleFill = textSecondary.opacity(0.12)
     static let bannerFill = warning.opacity(0.14)
     static let dangerFill = danger.opacity(0.12)
+    static let successFill = success.opacity(0.12)
     static let track = textSecondary.opacity(0.2)
 
     enum Radius {
