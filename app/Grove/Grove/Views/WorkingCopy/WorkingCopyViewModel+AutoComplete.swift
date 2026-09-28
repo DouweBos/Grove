@@ -18,6 +18,8 @@ enum AutoCompleteTrigger: Equatable {
     case filename
     /// `/` — commit message templates.
     case template
+    /// `:` at the start or after a space — gitmoji codes, inserting the emoji.
+    case gitmoji
 }
 
 // MARK: - AutoCompleteSuggestion
@@ -53,6 +55,27 @@ extension WorkingCopyViewModel {
 
         autoCompleteTrigger = trigger
         autoCompleteSuggestions = generateSuggestions(trigger: trigger, query: query)
+        autoCompleteHighlight = autoCompleteSuggestions.first?.id
+    }
+
+    func highlightAutoComplete(_ id: String) {
+        autoCompleteHighlight = id
+    }
+
+    func moveAutoCompleteHighlight(by delta: Int) {
+        let suggestions = autoCompleteSuggestions
+        guard !suggestions.isEmpty else { return }
+        let current = suggestions.firstIndex { $0.id == autoCompleteHighlight } ?? 0
+        autoCompleteHighlight = suggestions[(current + delta + suggestions.count) % suggestions.count].id
+    }
+
+    /// Return in the subject field; false when no list is showing, so Return moves on to the description.
+    func acceptAutoComplete() -> Bool {
+        guard isAutoCompleteVisible,
+              let suggestion = autoCompleteSuggestions.first(where: { $0.id == autoCompleteHighlight }) ?? autoCompleteSuggestions.first
+        else { return false }
+        applyAutoComplete(suggestion)
+        return true
     }
 
     /// Apply a chosen suggestion: replace the trigger + query with `insertText`.
@@ -72,6 +95,7 @@ extension WorkingCopyViewModel {
     func dismissAutoComplete() {
         autoCompleteTrigger = nil
         autoCompleteSuggestions = []
+        autoCompleteHighlight = nil
     }
 
     // MARK: Private — Autocomplete Detection
@@ -79,6 +103,7 @@ extension WorkingCopyViewModel {
     /// Returns the matched ``AutoCompleteTrigger`` and the query text that follows it,
     /// or `nil` if the current text does not end with a recognised trigger sequence.
     private func detectTrigger(in text: String) -> (AutoCompleteTrigger, String)? {
+        if let query = Self.gitmojiQuery(in: text) { return (.gitmoji, query) }
         // `c:` must be checked before single-char triggers to avoid a false match on `c`.
         if let range = text.range(of: "c:", options: .backwards) {
             let query = String(text[range.upperBound...])
@@ -106,7 +131,17 @@ extension WorkingCopyViewModel {
         case .commit:   return "c:"
         case .filename: return "`"
         case .template: return "/"
+        case .gitmoji:  return ":"
         }
+    }
+
+    /// The code typed after a `:` that starts the text or follows a space, so `feat:` never triggers it.
+    static func gitmojiQuery(in text: String) -> String? {
+        guard let colon = text.lastIndex(of: ":") else { return nil }
+        guard colon == text.startIndex || text[text.index(before: colon)].isWhitespace else { return nil }
+        let query = text[text.index(after: colon)...]
+        guard query.allSatisfy({ $0.isLetter || $0.isNumber || "_+-".contains($0) }) else { return nil }
+        return String(query)
     }
 
     // MARK: Private — Suggestion Generation
@@ -122,6 +157,11 @@ extension WorkingCopyViewModel {
             return filenameSuggestions(query: query)
         case .template:
             return templateSuggestions(query: query)
+        case .gitmoji:
+            return Gitmoji.search(query).prefix(12).map { gitmoji in
+                AutoCompleteSuggestion(id: gitmoji.code, icon: "face.smiling", title: "\(gitmoji.emoji)  \(gitmoji.code)",
+                                       subtitle: gitmoji.description, insertText: gitmoji.emoji + " ")
+            }
         }
     }
 

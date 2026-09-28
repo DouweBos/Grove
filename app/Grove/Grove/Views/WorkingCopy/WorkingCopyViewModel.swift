@@ -122,6 +122,8 @@ final class WorkingCopyViewModel {
 
     var autoCompleteTrigger: AutoCompleteTrigger?
     var autoCompleteSuggestions: [AutoCompleteSuggestion] = []
+    /// The suggestion Return picks; the subject field keeps focus, so arrow keys move this.
+    var autoCompleteHighlight: String?
     var isAutoCompleteVisible: Bool { autoCompleteTrigger != nil && !autoCompleteSuggestions.isEmpty }
     /// Recent commits for the `c:` trigger, warmed on refresh.
     private(set) var cachedRecentCommits: [CommitInfo] = []

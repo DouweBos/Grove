@@ -8,16 +8,30 @@ import SwiftUI
 struct CommitComposerAccessories: View {
     @Environment(WorkingCopyViewModel.self) private var viewModel
     @Environment(\.openSettings) private var openSettings
+    @State private var isGitmojiShown = false
 
     var body: some View {
         HStack(spacing: Theme.Spacing.md) {
             Spacer(minLength: 0)
+            gitmojiButton
             templateMenu
         }
         .buttonStyle(.borderless)
         .foregroundStyle(Theme.textSecondary)
         .padding(.horizontal, Theme.Spacing.sm)
         .padding(.bottom, Theme.Spacing.xs + 2)
+    }
+
+    private var gitmojiButton: some View {
+        Button { isGitmojiShown.toggle() } label: { Image(systemName: "face.smiling") }
+            .help("Insert Gitmoji (or type : in the summary)")
+            .accessibilityLabel("Insert Gitmoji")
+            .popover(isPresented: $isGitmojiShown, arrowEdge: .bottom) {
+                GitmojiPicker { gitmoji in
+                    viewModel.insertGitmoji(gitmoji)
+                    isGitmojiShown = false
+                }
+            }
     }
 
     private var templateMenu: some View {

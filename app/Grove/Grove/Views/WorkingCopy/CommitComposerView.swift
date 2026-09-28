@@ -45,6 +45,18 @@ struct CommitComposerView: View {
                 .foregroundStyle(Theme.textPrimary)
                 .focused($focus, equals: .subject)
                 .onSubmit { focus = .body }
+                .onKeyPress(.return) { viewModel.acceptAutoComplete() ? .handled : .ignored }
+                .onKeyPress(.tab) { viewModel.acceptAutoComplete() ? .handled : .ignored }
+                .onKeyPress(.escape) {
+                    guard viewModel.isAutoCompleteVisible else { return .ignored }
+                    viewModel.dismissAutoComplete()
+                    return .handled
+                }
+                .onKeyPress(keys: [.upArrow, .downArrow]) { press in
+                    guard viewModel.isAutoCompleteVisible else { return .ignored }
+                    viewModel.moveAutoCompleteHighlight(by: press.key == .upArrow ? -1 : 1)
+                    return .handled
+                }
                 .onChange(of: focus) { _, field in
                     if field != .subject { viewModel.dismissAutoComplete() }
                 }
@@ -89,8 +101,9 @@ struct CommitComposerView: View {
             CommitAutoCompleteView(
                 trigger: trigger,
                 suggestions: viewModel.autoCompleteSuggestions,
+                highlightedID: viewModel.autoCompleteHighlight,
                 onSelect: { viewModel.applyAutoComplete($0) },
-                onDismiss: { viewModel.dismissAutoComplete() }
+                onHighlight: { viewModel.highlightAutoComplete($0) }
             )
             .offset(y: 40)
             .transition(.opacity)

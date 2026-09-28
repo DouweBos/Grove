@@ -19,6 +19,12 @@ extension WorkingCopyViewModel {
         dismissAutoComplete()
     }
 
+    /// Gitmoji go first in the summary, by convention; picking another replaces it.
+    func insertGitmoji(_ gitmoji: Gitmoji) {
+        commitSubject = Gitmoji.prefixing(commitSubject, with: gitmoji)
+        dismissAutoComplete()
+    }
+
     func setGitTemplate(_ text: String?) {
         let template = text.flatMap(CommitTemplate.init(gitTemplate:))
         if template != gitTemplate { gitTemplate = template }
