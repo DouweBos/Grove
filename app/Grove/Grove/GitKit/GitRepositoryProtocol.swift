@@ -17,7 +17,7 @@ import Foundation
 /// a `RepositoryActor` (or equivalent) to guarantee serial access to the
 /// underlying non-thread-safe libgit2 handle.
 @MainActor
-protocol GitRepositoryProtocol: AnyObject, Observable {
+protocol GitRepositoryProtocol: AnyObject, Observable, StackGitOperations {
     /// Absolute URL of the repository's working directory.
     var path: URL { get }
     /// Human-readable name shown in the UI (last path component by default).
@@ -302,8 +302,8 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
 
     /// The repository's pull requests on its hosting service.
     func pullRequests() async throws -> [PullRequestInfo]
-    /// Open pull requests keyed by head branch name.
-    func branchPullRequests() async throws -> [String: BranchPullRequest]
+    /// Open and recently merged pull requests, as branch rows.
+    func branchPullRequests() async throws -> [BranchPullRequest]
     /// Return full detail for a single pull request number.
     func pullRequestDetail(number: Int) async throws -> PullRequestInfo
     /// Return all comments and reviews for a pull request.
@@ -455,7 +455,7 @@ extension GitRepositoryProtocol {
         try await createBranch(name: name, from: from, checkout: checkout)
     }
     func branchParents() async throws -> [String: String] { [:] }
-    func branchPullRequests() async throws -> [String: BranchPullRequest] { [:] }
+    func branchPullRequests() async throws -> [BranchPullRequest] { [] }
     func pull(remote: String?, branch: String?, strategy: PullStrategy, options: PullOptions,
               progress: (@Sendable (Double) -> Void)?) async throws {
         try await pull(remote: remote, strategy: strategy, progress: progress)

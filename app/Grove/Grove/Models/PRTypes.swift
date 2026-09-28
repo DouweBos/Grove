@@ -26,6 +26,8 @@ struct PullRequestInfo: Identifiable, Hashable, Sendable {
     let labels: [PRLabel]
     let reviewers: [String]
     let checksStatus: PRChecksStatus
+    /// The head commit, where the service reports one.
+    var headSHA: String?
 }
 
 // MARK: - PRState

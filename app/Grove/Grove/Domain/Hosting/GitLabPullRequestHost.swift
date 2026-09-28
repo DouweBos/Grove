@@ -23,11 +23,13 @@ nonisolated struct GitLabPullRequestHost: PullRequestHost {
             .compactMap(GitLabParser.mergeRequest)
     }
 
-    func branchPullRequests() async throws -> [String: BranchPullRequest] {
+    func branchPullRequests() async throws -> [BranchPullRequest] {
         async let open = client.getPages(try url("/merge_requests?state=opened&per_page=100"))
         async let merged = client.getPages(try url("/merge_requests?state=merged&order_by=updated_at&per_page=100"), maxPages: 1)
-        return HostingJSON.branchPullRequests(try await open + merged, parse: GitLabParser.mergeRequest,
-                                              headSHA: { $0["sha"] as? String }, url: { _, raw in raw["web_url"] as? String ?? "" })
+        let requests = try await open + merged
+        let urls = Dictionary(requests.compactMap { raw in (raw["iid"] as? Int).map { ($0, raw["web_url"] as? String ?? "") } },
+                              uniquingKeysWith: { first, _ in first })
+        return HostingJSON.branchRows(requests.compactMap(GitLabParser.mergeRequest)) { urls[$0] ?? "" }
     }
 
     func pullRequest(number: Int) async throws -> PullRequestInfo {
@@ -126,7 +128,7 @@ nonisolated enum GitLabParser {
             sourceBranch: raw["source_branch"] as? String ?? "", targetBranch: raw["target_branch"] as? String ?? "",
             createdDate: created, updatedDate: (raw["updated_at"] as? String).flatMap(GitDate.parse) ?? created,
             isDraft: raw["draft"] as? Bool ?? raw["work_in_progress"] as? Bool ?? false,
-            labels: labels, reviewers: reviewers, checksStatus: checks
+            labels: labels, reviewers: reviewers, checksStatus: checks, headSHA: raw["sha"] as? String
         )
     }
 

@@ -54,7 +54,7 @@ struct HostingAPITests {
           "merged":{"nodes":[{"number":12,"title":"Login","headRefName":"feature/login","headRefOid":"aaa","isDraft":false,"url":"u12"},
                              {"number":9,"title":"Old","headRefName":"old","headRefOid":"ccc","isDraft":false,"url":"u9"}]}}}}
         """
-        let index = try await github(FakeHTTPClient { _ in (200, response) }).branchPullRequests()
+        let index = BranchPullRequest.index(try await github(FakeHTTPClient { _ in (200, response) }).branchPullRequests())
         #expect(index["feature/login"]?.number == 14 && index["feature/login"]?.isMerged == false, "Open wins over merged")
         #expect(index["old"]?.isMerged == true && index["old"]?.headSHA == "ccc")
     }

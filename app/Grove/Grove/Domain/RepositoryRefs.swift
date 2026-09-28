@@ -21,6 +21,8 @@ final class RepositoryRefs {
     private(set) var parents: [String: String] = [:]
     /// Open and merged pull requests keyed by head branch; a network read, so refreshed at most once a minute.
     private(set) var branchPullRequests: [String: BranchPullRequest] = [:]
+    /// Recently merged pull requests, which tell a stack its parent landed.
+    private(set) var mergedPullRequests: [BranchPullRequest] = []
     private var pullRequestsFetchedAt: Date?
     private var pullRequestTask: Task<Void, Never>?
     /// Staged or unstaged entries, for the Changes badge.
@@ -30,6 +32,15 @@ final class RepositoryRefs {
     private(set) var errorMessage: String?
     /// Bumped whenever branches or tags change, so consumers can skip re-indexing identical refs.
     private(set) var generation = 0
+    /// Stacked branches recognized from the graph, reflogs and pull requests after each read.
+    private(set) var stacks: [BranchStack] = []
+    /// Branches whose patches all exist on another branch.
+    private(set) var duplicateBranches: [DuplicateBranch] = []
+    /// The branch stacks are measured against.
+    private(set) var trunk: String?
+    private let stackReader = StackReader()
+    private var stackTask: Task<Void, Never>?
+    private var needsStackRead = false
 
     var headBranch: BranchInfo? { localBranches.first(where: \.isHEAD) }
 
@@ -83,26 +94,68 @@ final class RepositoryRefs {
         branchPullRequests[name].map { !$0.isMerged } ?? false
     }
 
+    /// Open pull requests keyed by head branch, which is what stacks are read from.
+    private var openPullRequests: [String: BranchPullRequest] { branchPullRequests.filter { !$0.value.isMerged } }
+
     /// Runs beside ref reads without holding them up; a failure (no account, no hosted remote) keeps the last result.
     func refreshPullRequests(force: Bool = false) {
         guard pullRequestTask == nil else { return }
         if !force, let pullRequestsFetchedAt, Date().timeIntervalSince(pullRequestsFetchedAt) < 60 { return }
         pullRequestTask = Task {
-            if let fetched = try? await repository.branchPullRequests(), fetched != branchPullRequests {
-                branchPullRequests = fetched
+            if let fetched = try? await repository.branchPullRequests() {
+                let indexed = BranchPullRequest.index(fetched)
+                let merged = fetched.filter(\.isMerged)
+                if indexed != branchPullRequests { branchPullRequests = indexed }
+                if merged != mergedPullRequests { mergedPullRequests = merged }
+                pullRequestsLoaded = true
             }
             pullRequestsFetchedAt = Date()
             pullRequestTask = nil
+            if hasLoaded { await readStacks() }
         }
     }
 
     /// Replaces the lists directly, for previews and tests.
     func replace(localBranches: [BranchInfo]? = nil, remoteBranches: [BranchInfo]? = nil, tags: [TagInfo]? = nil,
-                 remotes: [RemoteInfo]? = nil, worktrees: [WorktreeInfo]? = nil) {
+                 remotes: [RemoteInfo]? = nil, worktrees: [WorktreeInfo]? = nil, stacks: [BranchStack]? = nil) {
         apply(local: localBranches, remote: remoteBranches, tags: tags)
         if let remotes { self.remotes = remotes }
         if let worktrees { self.worktrees = worktrees }
+        if let stacks {
+            self.stacks = stacks
+            trunk = stacks.first?.trunk
+        }
         hasLoaded = true
+    }
+
+    /// The stack `branch` is a layer of.
+    func stack(containing branch: String) -> BranchStack? {
+        stacks.first { $0.contains(branch) }
+    }
+
+    /// Recognizes stacks from what was just read; a read during a running one runs again after it.
+    func readStacks() async {
+        if let stackTask {
+            needsStackRead = true
+            return await stackTask.value
+        }
+        let task = Task {
+            repeat {
+                needsStackRead = false
+                let snapshot = StackReader.Snapshot(
+                    localBranches: localBranches, remoteBranches: remoteBranches, remotes: remotes, worktrees: worktrees,
+                    openPullRequests: openPullRequests, mergedPullRequests: mergedPullRequests,
+                    pullRequestsLoaded: pullRequestsLoaded)
+                if let result = await stackReader.read(snapshot, repository: repository) {
+                    stacks = result.stacks
+                    duplicateBranches = result.duplicates
+                }
+                trunk = stackReader.trunk
+            } while needsStackRead
+            stackTask = nil
+        }
+        stackTask = task
+        await task.value
     }
 
     private func read() async {
@@ -131,9 +184,11 @@ final class RepositoryRefs {
         }
         errorMessage = readError
         hasLoaded = true
+        await readStacks()
     }
 
     private var readError: String?
+    private var pullRequestsLoaded = false
 
     private func attempt<T>(_ body: @Sendable () async throws -> T) async -> T? {
         do { return try await body() } catch {

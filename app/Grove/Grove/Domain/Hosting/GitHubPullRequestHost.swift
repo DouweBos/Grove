@@ -38,23 +38,18 @@ nonisolated struct GitHubPullRequestHost: PullRequestHost {
         return GitHubParser.nodes(repository["pullRequests"]).compactMap(GitHubParser.pullRequest)
     }
 
-    /// Only what branch rows show, so it stays a small response even for busy repositories.
+    /// Only what branch rows and stacks show, so it stays a small response even for busy repositories.
     /// Open and merged are separate lists so recent merges can't crowd out older open pull requests.
-    func branchPullRequests() async throws -> [String: BranchPullRequest] {
-        let fields = "nodes { number title headRefName headRefOid isDraft url }"
+    func branchPullRequests() async throws -> [BranchPullRequest] {
+        let row = "nodes { number title headRefName baseRefName headRefOid isDraft url "
+            + "commits(last: 1) { nodes { commit { statusCheckRollup { state } } } } }"
         let repository = try await query(
             ", $count: Int!",
-            "open: pullRequests(first: $count, states: [OPEN], orderBy: {field: CREATED_AT, direction: DESC}) { \(fields) } "
-                + "merged: pullRequests(first: $count, states: [MERGED], orderBy: {field: UPDATED_AT, direction: DESC}) { \(fields) }",
+            "open: pullRequests(first: $count, states: [OPEN], orderBy: {field: CREATED_AT, direction: DESC}) { \(row) } "
+                + "merged: pullRequests(first: $count, states: [MERGED], orderBy: {field: UPDATED_AT, direction: DESC}) { \(row) }",
             ["count": 100])
-        let open = GitHubParser.nodes(repository["open"]).map { ($0, false) }
-        let merged = GitHubParser.nodes(repository["merged"]).map { ($0, true) }
-        return BranchPullRequest.index((open + merged).compactMap { node, isMerged in
-            guard let number = node["number"] as? Int, let head = node["headRefName"] as? String else { return nil }
-            return BranchPullRequest(number: number, title: node["title"] as? String ?? "", headBranch: head,
-                                     isDraft: node["isDraft"] as? Bool ?? false, url: node["url"] as? String ?? "",
-                                     isMerged: isMerged, headSHA: node["headRefOid"] as? String)
-        })
+        return GitHubParser.nodes(repository["open"]).compactMap { GitHubParser.branchRow($0, isMerged: false) }
+            + GitHubParser.nodes(repository["merged"]).compactMap { GitHubParser.branchRow($0, isMerged: true) }
     }
 
     func pullRequest(number: Int) async throws -> PullRequestInfo {
@@ -117,7 +112,7 @@ nonisolated struct GitHubPullRequestHost: PullRequestHost {
 
 nonisolated enum GitHubParser {
 
-    static let fields = "number title body url state isDraft headRefName baseRefName createdAt updatedAt "
+    static let fields = "number title body url state isDraft headRefName baseRefName headRefOid createdAt updatedAt "
         + "author { login avatarUrl } labels(first: 20) { nodes { name color } } "
         + "reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } ... on Team { name } ... on Bot { login } } } } "
         + "commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }"
@@ -134,13 +129,7 @@ nonisolated enum GitHubParser {
         case "CLOSED": .closed
         default: .open
         }
-        let rollup = ((nodes(node["commits"]).first?["commit"] as? HostingJSON.Object)?["statusCheckRollup"] as? HostingJSON.Object)?["state"]
-        let checks: PRChecksStatus = switch rollup as? String {
-        case "SUCCESS": .passing
-        case "FAILURE", "ERROR": .failing
-        case "PENDING", "EXPECTED": .pending
-        default: .none
-        }
+        let checks = checksStatus(node)
         let labels = nodes(node["labels"]).compactMap { label -> PRLabel? in
             guard let name = label["name"] as? String else { return nil }
             return PRLabel(id: name, name: name, color: label["color"] as? String ?? "")
@@ -155,8 +144,27 @@ nonisolated enum GitHubParser {
             authorName: author?["login"] as? String ?? "ghost", authorAvatarURL: author?["avatarUrl"] as? String, state: state,
             sourceBranch: node["headRefName"] as? String ?? "", targetBranch: node["baseRefName"] as? String ?? "",
             createdDate: created, updatedDate: (node["updatedAt"] as? String).flatMap(GitDate.parse) ?? created,
-            isDraft: node["isDraft"] as? Bool ?? false, labels: labels, reviewers: reviewers, checksStatus: checks
+            isDraft: node["isDraft"] as? Bool ?? false, labels: labels, reviewers: reviewers, checksStatus: checks,
+            headSHA: node["headRefOid"] as? String
         )
+    }
+
+    static func branchRow(_ node: HostingJSON.Object, isMerged: Bool) -> BranchPullRequest? {
+        guard let number = node["number"] as? Int, let head = node["headRefName"] as? String else { return nil }
+        return BranchPullRequest(number: number, title: node["title"] as? String ?? "", headBranch: head,
+                                 isDraft: node["isDraft"] as? Bool ?? false, url: node["url"] as? String ?? "",
+                                 baseBranch: node["baseRefName"] as? String ?? "", isMerged: isMerged,
+                                 headSHA: node["headRefOid"] as? String, checks: checksStatus(node))
+    }
+
+    private static func checksStatus(_ node: HostingJSON.Object) -> PRChecksStatus {
+        let rollup = ((nodes(node["commits"]).first?["commit"] as? HostingJSON.Object)?["statusCheckRollup"] as? HostingJSON.Object)?["state"]
+        return switch rollup as? String {
+        case "SUCCESS": .passing
+        case "FAILURE", "ERROR": .failing
+        case "PENDING", "EXPECTED": .pending
+        default: .none
+        }
     }
 
     static func conversation(comments: [HostingJSON.Object], reviews: [HostingJSON.Object]) -> [PRComment] {

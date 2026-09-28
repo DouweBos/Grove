@@ -79,14 +79,9 @@ nonisolated enum HostingJSON {
         return (raw[..<open].trimmingCharacters(in: .whitespaces), String(raw[raw.index(after: open)..<close]))
     }
 
-    /// Branch-row summaries of open and merged pull requests; closed ones say nothing about their branch.
-    static func branchPullRequests(_ raws: [Object], parse: (Object) -> PullRequestInfo?, headSHA: (Object) -> String?,
-                                   url: (Int, Object) -> String) -> [String: BranchPullRequest] {
-        BranchPullRequest.index(raws.compactMap { raw in
-            guard let pr = parse(raw), pr.state != .closed else { return nil }
-            return BranchPullRequest(number: pr.id, title: pr.title, headBranch: pr.sourceBranch, isDraft: pr.isDraft,
-                                     url: url(pr.id, raw), isMerged: pr.state == .merged, headSHA: headSHA(raw))
-        })
+    /// Open and merged pull requests as branch rows; closed ones say nothing about a branch.
+    static func branchRows(_ pullRequests: [PullRequestInfo], url: (Int) -> String) -> [BranchPullRequest] {
+        pullRequests.filter { $0.state != .closed }.map { BranchPullRequest($0, url: url($0.id)) }
     }
 }
 

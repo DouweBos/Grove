@@ -34,13 +34,10 @@ nonisolated struct AzureDevOpsPullRequestHost: PullRequestHost {
         try await values("/pullrequests", query: "searchCriteria.status=all&$top=100").compactMap(AzureDevOpsParser.pullRequest)
     }
 
-    func branchPullRequests() async throws -> [String: BranchPullRequest] {
+    func branchPullRequests() async throws -> [BranchPullRequest] {
         async let open = values("/pullrequests", query: "searchCriteria.status=active&$top=200")
         async let merged = values("/pullrequests", query: "searchCriteria.status=completed&$top=100")
-        return HostingJSON.branchPullRequests(
-            try await open + merged, parse: AzureDevOpsParser.pullRequest,
-            headSHA: { ($0["lastMergeSourceCommit"] as? HostingJSON.Object)?["commitId"] as? String },
-            url: { number, _ in webPage(number) })
+        return HostingJSON.branchRows((try await open + merged).compactMap(AzureDevOpsParser.pullRequest)) { webPage($0) }
     }
 
     func pullRequest(number: Int) async throws -> PullRequestInfo {
@@ -126,7 +123,8 @@ nonisolated enum AzureDevOpsParser {
             targetBranch: (raw["targetRefName"] as? String ?? "").withoutHeadsPrefix,
             // There's no "updated" date; closing is the last change the list reports.
             createdDate: created, updatedDate: (raw["closedDate"] as? String).flatMap(GitDate.parse) ?? created,
-            isDraft: raw["isDraft"] as? Bool ?? false, labels: labels, reviewers: reviewers, checksStatus: .none
+            isDraft: raw["isDraft"] as? Bool ?? false, labels: labels, reviewers: reviewers, checksStatus: .none,
+            headSHA: (raw["lastMergeSourceCommit"] as? HostingJSON.Object)?["commitId"] as? String
         )
     }
 

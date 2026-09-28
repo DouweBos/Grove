@@ -3,16 +3,18 @@
 
 import Foundation
 
-/// A branch's open or merged pull request, as far as branch rows need to know.
+/// A branch's open or merged pull request, as far as branch rows and stacks need to know.
 nonisolated struct BranchPullRequest: Hashable, Sendable {
     let number: Int
     let title: String
     let headBranch: String
     let isDraft: Bool
     let url: String
+    var baseBranch: String = ""
     var isMerged = false
-    /// Head commit at merge time; Bitbucket reports it abbreviated.
+    /// Head commit the host knows, at merge time for a merged one; Bitbucket reports it abbreviated.
     var headSHA: String?
+    var checks: PRChecksStatus = .none
 
     /// Open pull requests keyed by head branch, then merged ones for branches without one; the newest wins.
     static func index(_ pullRequests: [BranchPullRequest]) -> [String: BranchPullRequest] {
@@ -40,5 +42,19 @@ nonisolated struct BranchPullRequest: Hashable, Sendable {
     var tooltip: String {
         let kind = isMerged ? "Merged pull request" : isDraft ? "Draft pull request" : "Pull request"
         return "\(kind) #\(number): \(title)"
+    }
+
+    /// Whether `sha` is the commit the host reported, allowing for hosts that report short hashes.
+    func headMatches(_ sha: String) -> Bool {
+        guard let headSHA, headSHA.count >= 7 else { return false }
+        return sha.hasPrefix(headSHA) || headSHA.hasPrefix(sha)
+    }
+}
+
+extension BranchPullRequest {
+    /// From a full pull request, for hosts whose list endpoint already returns everything.
+    init(_ pr: PullRequestInfo, url: String) {
+        self.init(number: pr.id, title: pr.title, headBranch: pr.sourceBranch, isDraft: pr.isDraft, url: url,
+                  baseBranch: pr.targetBranch, isMerged: pr.state == .merged, headSHA: pr.headSHA, checks: pr.checksStatus)
     }
 }

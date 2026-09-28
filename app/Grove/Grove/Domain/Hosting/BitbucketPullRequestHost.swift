@@ -28,13 +28,12 @@ nonisolated struct BitbucketPullRequestHost: PullRequestHost {
             .compactMap(BitbucketParser.pullRequest)
     }
 
-    func branchPullRequests() async throws -> [String: BranchPullRequest] {
+    func branchPullRequests() async throws -> [BranchPullRequest] {
         async let open = values("?state=OPEN&pagelen=50")
         async let merged = values("?state=MERGED&sort=-updated_on&pagelen=50")
-        return HostingJSON.branchPullRequests(
-            try await open + merged, parse: BitbucketParser.pullRequest,
-            headSHA: { (($0["source"] as? HostingJSON.Object)?["commit"] as? HostingJSON.Object)?["hash"] as? String },
-            url: { number, _ in "https://bitbucket.org/\(location.fullName)/pull-requests/\(number)" })
+        return HostingJSON.branchRows((try await open + merged).compactMap(BitbucketParser.pullRequest)) {
+            "https://bitbucket.org/\(location.fullName)/pull-requests/\($0)"
+        }
     }
 
     func pullRequest(number: Int) async throws -> PullRequestInfo {
@@ -103,7 +102,8 @@ nonisolated enum BitbucketParser {
             authorAvatarURL: avatar, state: state,
             sourceBranch: branch(raw["source"]), targetBranch: branch(raw["destination"]),
             createdDate: created, updatedDate: (raw["updated_on"] as? String).flatMap(GitDate.parse) ?? created,
-            isDraft: raw["draft"] as? Bool ?? false, labels: [], reviewers: reviewers, checksStatus: .none
+            isDraft: raw["draft"] as? Bool ?? false, labels: [], reviewers: reviewers, checksStatus: .none,
+            headSHA: (((raw["source"] as? HostingJSON.Object)?["commit"] as? HostingJSON.Object)?["hash"] as? String)
         )
     }
 

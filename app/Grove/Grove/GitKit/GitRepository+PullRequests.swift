@@ -28,7 +28,7 @@ extension GitRepository {
         return prs
     }
 
-    func branchPullRequests() async throws -> [String: BranchPullRequest] {
+    func branchPullRequests() async throws -> [BranchPullRequest] {
         try await host().branchPullRequests()
     }
 
