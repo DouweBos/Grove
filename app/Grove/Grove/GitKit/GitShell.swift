@@ -21,6 +21,19 @@ enum GitShellError: LocalizedError {
     case gitNotFound
     /// The working directory URL is not a valid file-system path.
     case invalidWorkingDirectory(URL)
+    /// The repository uses Git LFS but git-lfs isn't on PATH.
+    case lfsNotInstalled
+
+    /// git's and git-lfs's hook messages when a command needed git-lfs and couldn't run it.
+    nonisolated static func isLFSMissing(_ stderr: String) -> Bool {
+        stderr.contains("git-lfs: command not found") || stderr.contains("'lfs' is not a git command")
+            || stderr.contains("'git-lfs' was not found on your path")
+    }
+
+    nonisolated static func failure(arguments: [String], result: ShellResult) -> GitShellError {
+        if isLFSMissing(result.stderr) { return .lfsNotInstalled }
+        return .nonZeroExit(command: arguments.first ?? "", exitCode: result.exitCode, stderr: result.stderr)
+    }
 
     var errorDescription: String? {
         switch self {
@@ -33,6 +46,8 @@ enum GitShellError: LocalizedError {
             return "Could not locate the git executable. Install Xcode Command Line Tools or Git."
         case .invalidWorkingDirectory(let url):
             return "The path '\(url.path)' is not a valid working directory."
+        case .lfsNotInstalled:
+            return LFSStatus.missingMessage
         }
     }
 }
@@ -106,6 +121,7 @@ final class GitShell: Sendable {
         env["PAGER"] = "cat"
         // Disable interactive prompts (prevents hanging in CI or when no TTY).
         env["GIT_TERMINAL_PROMPT"] = "0"
+        env["PATH"] = GitShell.augmentedPath(env["PATH"])
         for (key, value) in extraEnvironment {
             env[key] = value
         }
@@ -132,11 +148,7 @@ final class GitShell: Sendable {
             Logger.gitShell.warning(
                 "git \(arguments.first ?? "", privacy: .public) exited \(result.exitCode, privacy: .public): \(stderr, privacy: .public)"
             )
-            throw GitShellError.nonZeroExit(
-                command: arguments.first ?? "",
-                exitCode: result.exitCode,
-                stderr: result.stderr
-            )
+            throw GitShellError.failure(arguments: arguments, result: result)
         }
         return result
     }
@@ -170,11 +182,7 @@ final class GitShell: Sendable {
             Logger.gitShell.warning(
                 "git \(arguments.first ?? "", privacy: .public) (with input) exited \(result.exitCode, privacy: .public): \(stderr, privacy: .public)"
             )
-            throw GitShellError.nonZeroExit(
-                command: arguments.first ?? "",
-                exitCode: result.exitCode,
-                stderr: result.stderr
-            )
+            throw GitShellError.failure(arguments: arguments, result: result)
         }
         return result
     }
@@ -220,6 +228,8 @@ final class GitShell: Sendable {
         environment: [String: String]
     ) throws -> Process {
         var env = baseEnvironment
+        // Read per launch so a preference change applies to the next git command without reopening anything.
+        env.merge(GitEnvironment.variables(forRepositoryAt: workingDirectory.path, base: baseEnvironment)) { $1 }
         for (key, value) in environment {
             env[key] = value
         }
@@ -233,6 +243,15 @@ final class GitShell: Sendable {
     }
 
     // MARK: Git Path Resolution
+
+    /// Apps launched from the Dock get a minimal PATH; Homebrew's git-lfs, gpg and hook tools live here.
+    nonisolated static let toolDirectories = ["/opt/homebrew/bin", "/usr/local/bin"]
+
+    nonisolated static func augmentedPath(_ path: String?) -> String {
+        var parts = (path ?? "/usr/bin:/bin:/usr/sbin:/sbin").split(separator: ":").map(String.init)
+        for directory in toolDirectories where !parts.contains(directory) { parts.append(directory) }
+        return parts.joined(separator: ":")
+    }
 
     nonisolated private static func resolveGitPath() -> String {
         let candidates = [

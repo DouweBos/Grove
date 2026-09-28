@@ -28,9 +28,15 @@ final class RepositoryToolbarState {
 
     /// Sheets read branches and remotes from here, so they open without waiting for git.
     let refs: RepositoryRefs
+    let gitFlow: GitFlowViewModel
+    let svn: SVNViewModel
+    /// Set by the session: the Add Submodule sheet lives with the sidebar's submodules.
+    var onAddSubmodule: (() -> Void)?
 
-    init(refs: RepositoryRefs) {
+    init(refs: RepositoryRefs, gitFlow: GitFlowViewModel, svn: SVNViewModel) {
         self.refs = refs
+        self.gitFlow = gitFlow
+        self.svn = svn
     }
 
     enum Sheet { case fetch, pull, push, sync, branch, tag, stash, merge, rebase }
@@ -86,35 +92,7 @@ struct RepositoryToolbar: ToolbarContent {
             syncButton
         }
         ToolbarItem(placement: .primaryAction) {
-            Menu {
-                ForEach(RepositoryTab.secondary, id: \.self) { tab in
-                    Button {
-                        onNavigate(tab.item)
-                    } label: {
-                        Label(tab.title, systemImage: tab.symbol)
-                    }
-                }
-                Divider()
-                Button {
-                    toolbarState.present(.stash)
-                } label: {
-                    Label("Stash Changes…", systemImage: "tray.and.arrow.down")
-                }
-                Divider()
-                Button {
-                    toolbarState.present(.branch)
-                } label: {
-                    Label("New Branch…", systemImage: "arrow.triangle.branch")
-                }
-                Button {
-                    toolbarState.present(.tag)
-                } label: {
-                    Label("New Tag…", systemImage: "tag")
-                }
-            } label: {
-                Label("More", systemImage: "ellipsis.circle")
-            }
-            .help("More actions")
+            RepositoryMoreMenu(toolbarState: toolbarState, onNavigate: onNavigate)
         }
     }
 
@@ -135,8 +113,8 @@ struct RepositoryToolbar: ToolbarContent {
         } label: {
             Label("Sync", systemImage: "arrow.triangle.2.circlepath")
         }
-        .help("Sync: fetch, pull, then push")
-        .disabled(toolbarState.isSyncing)
+        .help(isSVN ? "Subversion clones sync with Fetch from SVN and Commit to SVN" : "Sync: fetch, pull, then push")
+        .disabled(toolbarState.isSyncing || isSVN)
     }
 
     // MARK: Fetch
@@ -150,26 +128,26 @@ struct RepositoryToolbar: ToolbarContent {
         .help("Fetch from remote")
     }
 
-    // MARK: Pull
+    // MARK: Pull / Push, or git svn in a Subversion-backed clone
+
+    private var isSVN: Bool { toolbarState.svn.status.isSVN }
 
     private var pullButton: some View {
         Button {
-            toolbarState.present(.pull)
+            if isSVN { toolbarState.svn.present(.fetch) } else { toolbarState.present(.pull) }
         } label: {
-            Label("Pull", systemImage: "arrow.down.to.line")
+            Label(isSVN ? "Fetch from SVN" : "Pull", systemImage: "arrow.down.to.line")
         }
-        .help("Pull from remote")
+        .help(isSVN ? "Fetch new revisions from Subversion (git svn rebase)" : "Pull from remote")
     }
-
-    // MARK: Push
 
     private var pushButton: some View {
         Button {
-            toolbarState.present(.push)
+            if isSVN { toolbarState.svn.present(.dcommit) } else { toolbarState.present(.push) }
         } label: {
-            Label("Push", systemImage: "arrow.up.to.line")
+            Label(isSVN ? "Commit to SVN" : "Push", systemImage: "arrow.up.to.line")
         }
-        .help("Push to remote")
+        .help(isSVN ? "Send local commits to Subversion (git svn dcommit)" : "Push to remote")
     }
 
 }
@@ -247,6 +225,13 @@ struct RepositoryToolbarSheets<Content: View>: View {
             .sheet(isPresented: $toolbarState.isRebasePresented) {
                 RebaseDialogView(repository: repository, localBranches: refs.localBranches, onComplete: onComplete)
             }
+            .sheet(item: Binding(get: { toolbarState.gitFlow.sheet },
+                                 set: { if $0 == nil { toolbarState.gitFlow.dismissSheet() } })) { sheet in
+                GitFlowSheetView(viewModel: toolbarState.gitFlow, sheet: sheet)
+            }
+            .sheet(item: Binding(get: { toolbarState.svn.sheet }, set: { if $0 == nil { toolbarState.svn.dismissSheet() } })) { sheet in
+                SVNSheetView(viewModel: toolbarState.svn, sheet: sheet)
+            }
     }
 }
 
@@ -271,7 +256,9 @@ extension View {
 
 #Preview {
     let repo = MockGitRepository()
-    let state = RepositoryToolbarState(refs: RepositoryRefs(repository: repo))
+    let refs = RepositoryRefs(repository: repo)
+    let state = RepositoryToolbarState(refs: refs, gitFlow: GitFlowViewModel(repository: repo, refs: refs),
+                                       svn: SVNViewModel(repository: repo))
     return NavigationStack {
         Text("Repository Content")
             .frame(width: 800, height: 600)

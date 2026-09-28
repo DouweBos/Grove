@@ -28,6 +28,18 @@ struct WorktreeResolverTests {
         #expect(WorktreeResolver.mainRepositoryPath(forWorktreeAt: repo) == nil)
     }
 
+    @Test func submoduleIsNotAWorktree() throws {
+        // A submodule's `.git` file points into the superproject's `.git/modules`, which has no commondir.
+        let modules = root.appendingPathComponent("main/.git/modules/vendor/lib")
+        try FileManager.default.createDirectory(at: modules, withIntermediateDirectories: true)
+        try Data("ref: refs/heads/main\n".utf8).write(to: modules.appendingPathComponent("HEAD"))
+        let submodule = root.appendingPathComponent("main/vendor/lib")
+        try FileManager.default.createDirectory(at: submodule, withIntermediateDirectories: true)
+        try Data("gitdir: ../../.git/modules/vendor/lib\n".utf8).write(to: submodule.appendingPathComponent(".git"))
+
+        #expect(WorktreeResolver.mainRepositoryPath(forWorktreeAt: submodule.path) == nil)
+    }
+
     @Test func repositoryListsItsWorktreesWithBranch() {
         let linked = WorktreeResolver.linkedWorktrees(ofRepositoryAt: repo)
         #expect(linked.map(\.path) == [worktree])

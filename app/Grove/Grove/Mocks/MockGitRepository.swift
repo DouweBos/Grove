@@ -437,6 +437,18 @@ final class MockGitRepository: GitRepositoryProtocol {
         await simulateLatency()
     }
 
+    func updateSubmodule(path: String, toRemote: Bool) async throws {
+        await simulateLatency()
+    }
+
+    func initSubmodule(path: String) async throws {
+        await simulateLatency()
+    }
+
+    func fetchSubmodule(path: String) async throws {
+        await simulateLatency()
+    }
+
     func submodules() async throws -> [SubmoduleInfo] {
         [
             SubmoduleInfo(name: "vendor/analytics", path: "vendor/analytics", url: "https://github.com/example/analytics.git",

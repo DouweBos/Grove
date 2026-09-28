@@ -16,16 +16,33 @@ struct AdvancedPreferencesTab: View {
     @State private var showClearConfirmation = false
     @State private var showResetConfirmation = false
     @State private var clearBeforeImport = false
+    @State private var environment = GitEnvironment.customVariables(.global)
 
     private var towerInstalled: Bool { TowerImporter.isTowerInstalled }
 
     var body: some View {
         Form {
+            environmentSection
             towerImportSection
             dataManagementSection
             resetToDefaultsSection
         }
         .formStyle(.grouped)
+        .onChange(of: environment) { _, variables in GitEnvironment.setCustomVariables(variables, .global) }
+    }
+
+    // MARK: - Environment
+
+    private var environmentSection: some View {
+        Section {
+            EnvironmentVariablesEditor(variables: $environment)
+        } header: {
+            Text("Environment Variables")
+        } footer: {
+            Text("Passed to every git command Grove runs, and so to hooks. A repository's own variables, set in its Settings, "
+                 + "take precedence.")
+                .font(.caption).foregroundStyle(Theme.textSecondary)
+        }
     }
 
     // MARK: - Tower Import

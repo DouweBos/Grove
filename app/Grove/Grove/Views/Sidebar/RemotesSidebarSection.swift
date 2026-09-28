@@ -23,7 +23,12 @@ struct RemotesSidebarSection: View {
                         SidebarRow(title: remote.name, symbol: "cloud", tint: Theme.info) {
                             Text("\(branches.count)").font(.system(size: 11, design: .monospaced))
                         }
-                        .help(remote.url)
+                        .help(remote.url + "\nDrop a local branch here to push it")
+                        .contentShape(Rectangle())
+                        .dropDestination(for: String.self) { items, _ in
+                            guard let payload = items.first else { return false }
+                            return viewModel.handleDrop(payload, onRemote: remote)
+                        }
                     }
                 }
             } header: {

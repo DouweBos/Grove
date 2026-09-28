@@ -67,6 +67,11 @@ struct BranchesSidebarSection: View {
                          pullRequest: viewModel.refs.openPullRequest(for: branch))
             .tag(SidebarItem.branch(branch))
             .draggable(branch.name)
+            // Another branch dropped here merges into this one (Option rebases this one onto it); a remote branch pulls.
+            .dropDestination(for: String.self) { items, _ in
+                guard let payload = items.first else { return false }
+                return viewModel.handleDrop(payload, onBranch: branch, option: NSEvent.modifierFlags.contains(.option))
+            }
             .contextMenu {
                 BranchContextMenu(
                     branch: branch,
@@ -141,6 +146,11 @@ struct BranchContextMenu: View {
             .disabled(branch.isHEAD)
         }
         Button("New Branch from \u{201C}\(branch.name)\u{201D}…", systemImage: "arrow.triangle.branch", action: onCreateBranch)
+        if let gitFlow = viewModel.gitFlow, let flow = gitFlow.config?.classify(branch: branch.name) {
+            Button("Finish \(flow.kind.title) \u{201C}\(flow.name)\u{201D}…", systemImage: flow.kind.symbol) {
+                gitFlow.present(.finish(flow.kind, name: flow.name))
+            }
+        }
         if let pullRequest = viewModel.refs.openPullRequest(for: branch) {
             OpenPullRequestButton(pullRequest: pullRequest)
         }

@@ -38,6 +38,10 @@ protocol RepositoryManagerProtocol: AnyObject, Observable {
         progress: (@Sendable (CloneProgress) -> Void)?
     ) async throws -> any GitRepositoryProtocol
 
+    /// `git svn clone` of a Subversion repository; `standardLayout` maps trunk, branches and tags.
+    @discardableResult
+    func cloneSVNRepository(url: String, to destination: URL, standardLayout: Bool) async throws -> any GitRepositoryProtocol
+
     /// Initialise a new empty repository at the given URL.
     @discardableResult
     func initRepository(at url: URL) async throws -> any GitRepositoryProtocol

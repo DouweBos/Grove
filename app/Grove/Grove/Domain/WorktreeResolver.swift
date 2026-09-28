@@ -57,7 +57,9 @@ nonisolated enum WorktreeResolver {
     private static func commonDirectory(ofAdminDirectory adminDir: URL) -> URL? {
         guard let raw = try? String(contentsOf: adminDir.appendingPathComponent("commondir"), encoding: .utf8) else {
             // Older git omits `commondir`; the admin dir then sits at `<common>/worktrees/<name>`.
-            return adminDir.deletingLastPathComponent().deletingLastPathComponent()
+            // A submodule's `.git/modules/<path>` has no commondir either, but isn't a worktree.
+            let parent = adminDir.deletingLastPathComponent()
+            return parent.lastPathComponent == "worktrees" ? parent.deletingLastPathComponent() : nil
         }
         return resolve(raw.trimmingCharacters(in: .whitespacesAndNewlines), relativeTo: adminDir)
     }

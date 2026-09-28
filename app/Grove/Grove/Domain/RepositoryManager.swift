@@ -115,6 +115,16 @@ final class RepositoryManager: RepositoryManagerProtocol {
     }
 
     @discardableResult
+    func cloneSVNRepository(url: String, to destination: URL, standardLayout: Bool) async throws -> any GitRepositoryProtocol {
+        Logger.repositoryManager.info("git svn clone \(url, privacy: .public) to \(destination.path, privacy: .public)")
+        let shell = try await SVNSupport.shell(in: destination.deletingLastPathComponent())
+        try await shell.run(["svn", "clone"] + (standardLayout ? ["--stdlayout"] : []) + [url, destination.path])
+        let repo = try await GitRepository(path: destination)
+        try addBookmark(path: destination.path, displayName: destination.lastPathComponent, groupID: nil)
+        return repo
+    }
+
+    @discardableResult
     func initRepository(at url: URL) async throws -> any GitRepositoryProtocol {
         Logger.repositoryManager.info("Initializing repository at \(url.path, privacy: .public)")
 

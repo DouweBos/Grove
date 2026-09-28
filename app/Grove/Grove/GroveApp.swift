@@ -32,9 +32,12 @@ struct GroveApp: App {
                 .onAppear { AppAppearance.applyStored() }
         }
         .defaultSize(width: 1100, height: 700)
+        // grove:// URLs go to the app delegate, which opens a tab; left to SwiftUI they'd each open a blank window too.
+        .handlesExternalEvents(matching: [])
         .commands {
             GroveCommands()
             UpdateCommands(updater: updater)
+            CommandLineToolCommands()
         }
 
         // Standard macOS Preferences window (Cmd+,).

@@ -10,6 +10,7 @@ struct RepositorySettingsView: View {
     /// Owned by the session so revisits show the last values and any unsaved draft.
     let viewModel: RepositorySettingsViewModel
     private var repository: any GitRepositoryProtocol { viewModel.repository }
+    private var profiles: [UserProfile] { UserProfileStore.shared.profiles }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -44,14 +45,25 @@ struct RepositorySettingsView: View {
     private var form: some View {
         Form {
             Section {
+                if !profiles.isEmpty {
+                    Picker("Profile", selection: Binding(get: { viewModel.matchingProfile(in: profiles)?.id },
+                                                         set: { id in profiles.first { $0.id == id }.map(viewModel.applyProfile) })) {
+                        Text("Custom").tag(UserProfile.ID?.none)
+                        ForEach(profiles) { Text("\($0.title) \u{2014} \($0.email)").tag(Optional($0.id)) }
+                    }
+                }
                 TextField("Name", text: Binding(get: { viewModel.draft.userName }, set: viewModel.setUserName),
                           prompt: Text("Use global name"))
                 TextField("Email", text: Binding(get: { viewModel.draft.userEmail }, set: viewModel.setUserEmail),
                           prompt: Text("Use global email"))
+                TextField("Signing Key", text: Binding(get: { viewModel.draft.userSigningKey }, set: viewModel.setUserSigningKey),
+                          prompt: Text("Use global signing key"))
+                    .font(.monoCaption)
             } header: {
                 Text("Commit Identity")
             } footer: {
-                Text("Overrides your global identity for commits in this repository only. Leave empty to use the global value.")
+                Text("Overrides your global identity for commits in this repository only. Leave empty to use the global value. "
+                     + "Profiles are managed in Settings.")
                     .font(.caption).foregroundStyle(Theme.textSecondary)
             }
 
@@ -59,6 +71,15 @@ struct RepositorySettingsView: View {
                 Picker("When pulling", selection: Binding(get: { viewModel.draft.pullStrategy }, set: viewModel.setPullStrategy)) {
                     ForEach(RepositorySettingsViewModel.PullStrategy.allCases) { Text($0.title).tag($0) }
                 }
+            }
+
+            Section {
+                EnvironmentVariablesEditor(variables: Binding(get: { viewModel.draft.environment }, set: viewModel.setEnvironment))
+            } header: {
+                Text("Environment Variables")
+            } footer: {
+                Text("Passed to every git command Grove runs here, and so to hooks, on top of the global ones in Settings.")
+                    .font(.caption).foregroundStyle(Theme.textSecondary)
             }
 
             Section("Remotes") {

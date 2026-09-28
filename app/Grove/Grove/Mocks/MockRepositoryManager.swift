@@ -130,6 +130,11 @@ final class MockRepositoryManager: RepositoryManagerProtocol {
     }
 
     @discardableResult
+    func cloneSVNRepository(url: String, to destination: URL, standardLayout: Bool) async throws -> any GitRepositoryProtocol {
+        try await cloneRepository(url: url, to: destination, progress: nil)
+    }
+
+    @discardableResult
     func initRepository(at url: URL) async throws -> any GitRepositoryProtocol {
         try? await Task.sleep(nanoseconds: 80_000_000)
         return MockGitRepository(path: url, displayName: url.lastPathComponent)

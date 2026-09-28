@@ -18,6 +18,9 @@ struct CloneDialogView: View {
     @State private var isCloning = false
     @State private var cloneProgress: CloneProgress?
     @State private var errorMessage: String?
+    /// Clone from Subversion with git svn instead of from a git remote.
+    @State private var isSubversion = false
+    @State private var standardLayout = true
 
     init(initialURL: String? = nil) {
         _cloneURL = State(initialValue: initialURL ?? "")
@@ -29,9 +32,11 @@ struct CloneDialogView: View {
 
     private var trimmedURL: String { cloneURL.trimmingCharacters(in: .whitespacesAndNewlines) }
 
-    /// "grove" from "git@github.com:org/grove.git" or "https://host/org/grove".
+    /// "grove" from "git@github.com:org/grove.git", "https://host/org/grove" or "https://svn.host/grove/trunk".
     private var suggestedName: String {
-        let last = trimmedURL.split(whereSeparator: { $0 == "/" || $0 == ":" }).last.map(String.init) ?? ""
+        var parts = trimmedURL.split(whereSeparator: { $0 == "/" || $0 == ":" }).map(String.init)
+        if isSubversion, parts.count > 1, parts.last == "trunk" { parts.removeLast() }
+        let last = parts.last ?? ""
         return last.hasSuffix(".git") ? String(last.dropLast(4)) : last
     }
 
@@ -55,10 +60,23 @@ struct CloneDialogView: View {
             onPrimary: performClone
         ) {
             DialogCard {
+                DialogField("From") {
+                    Picker("From", selection: $isSubversion) {
+                        Text("Git").tag(false)
+                        Text("Subversion").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                }
                 DialogField("URL") {
-                    TextField("https://github.com/org/repo.git", text: $cloneURL)
+                    TextField(isSubversion ? "https://svn.example.com/project" : "https://github.com/org/repo.git", text: $cloneURL)
                         .textFieldStyle(.roundedBorder)
                         .font(.monoCaption)
+                }
+                if isSubversion {
+                    DialogOptionRow(isOn: $standardLayout, label: "Standard Layout",
+                                    description: "Maps trunk, branches and tags to git branches and tags (git svn clone --stdlayout).")
                 }
                 DialogField("Name") {
                     TextField(suggestedName.isEmpty ? "Folder name" : suggestedName, text: $folderName)
@@ -75,7 +93,8 @@ struct CloneDialogView: View {
     }
 
     private var progressTitle: String {
-        switch cloneProgress?.phase {
+        if isSubversion { return "Importing SVN revisions…" }
+        return switch cloneProgress?.phase {
         case .indexing: "Indexing…"
         case .checkingOut: "Checking out files…"
         default: "Downloading objects…"
@@ -88,11 +107,16 @@ struct CloneDialogView: View {
         errorMessage = nil
         let url = trimmedURL
         let target = destination
+        let fromSubversion = isSubversion
+        let layout = standardLayout
         Task {
             do {
-                let repo = try await viewModel.manager.cloneRepository(url: url, to: target) { progress in
-                    Task { @MainActor in cloneProgress = progress }
-                }
+                // git svn replays every revision, so it has no object counts to report as it goes.
+                let repo = fromSubversion
+                    ? try await viewModel.manager.cloneSVNRepository(url: url, to: target, standardLayout: layout)
+                    : try await viewModel.manager.cloneRepository(url: url, to: target) { progress in
+                        Task { @MainActor in cloneProgress = progress }
+                    }
                 dismiss()
                 viewModel.openReference(RepositoryReference(path: repo.path.path))
             } catch {

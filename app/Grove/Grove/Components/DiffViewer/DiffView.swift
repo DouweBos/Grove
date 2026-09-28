@@ -45,12 +45,15 @@ struct DiffView: View {
     @State private var selectedLineIDs: Set<String> = []
     /// Pre-computed word-level highlights: (deletionID, additionID) → attributed strings.
     @State private var wordHighlights: [String: (AttributedString, AttributedString)] = [:]
+    @State private var showsLFSPointer = false
 
     // MARK: Body
 
     var body: some View {
         if diff.isBinary {
             binaryPlaceholder
+        } else if !showsLFSPointer, let pointers = LFSPointer.sides(of: diff) {
+            LFSPointerDiffView(old: pointers.old, new: pointers.new) { showsLFSPointer = true }
         } else if diff.hunks.isEmpty {
             EmptyStateView(
                 systemImage: "checkmark.circle",

@@ -33,6 +33,8 @@ final class RepositorySession {
     let gitUndoManager = GitUndoManager()
     let autoFetcher: AutoFetchScheduler
     let blameVM: BlameViewModel
+    let gitFlowVM: GitFlowViewModel
+    let svnVM: SVNViewModel
 
     // MARK: - Navigation
 
@@ -72,7 +74,11 @@ final class RepositorySession {
         self.reflogVM         = ReflogViewModel(repository: repository)
         self.branchesReviewVM = BranchesReviewViewModel(repository: repository, refs: refs)
         self.pullRequestsVM   = PullRequestsViewModel(repository: repository)
-        self.toolbarState     = RepositoryToolbarState(refs: refs)
+        let gitFlowVM = GitFlowViewModel(repository: repository, refs: refs)
+        let svnVM = SVNViewModel(repository: repository)
+        self.gitFlowVM        = gitFlowVM
+        self.svnVM            = svnVM
+        self.toolbarState     = RepositoryToolbarState(refs: refs, gitFlow: gitFlowVM, svn: svnVM)
         self.repositorySettingsVM = RepositorySettingsViewModel(repository: repository)
         self.autoFetcher      = AutoFetchScheduler(repository: repository)
         self.blameVM          = BlameViewModel(repository: repository)
@@ -98,6 +104,10 @@ final class RepositorySession {
         branchesReviewVM.onRepositoryChanged = refresh
         branchesReviewVM.undoManager = gitUndoManager
         pullRequestsVM.onRepositoryChanged = refresh
+        gitFlowVM.onRepositoryChanged = refresh
+        svnVM.onRepositoryChanged = refresh
+        sidebarVM.gitFlow = gitFlowVM
+        toolbarState.onAddSubmodule = { [sidebarVM] in sidebarVM.requestAddSubmodule() }
     }
 
     // MARK: - Lifecycle
@@ -148,7 +158,9 @@ final class RepositorySession {
             async let workingCopy: Void = workingCopyVM.refresh()
             async let history: Void = reload(visible)
             async let tab: Void = refreshSelectedTab()
-            _ = await (refsRead.value, workingCopy, history, tab)
+            async let flow: Void = gitFlowVM.refresh()
+            async let svn: Void = svnVM.refresh()
+            _ = await (refsRead.value, workingCopy, history, tab, flow, svn)
         } while needsAnotherRefresh
     }
 
@@ -180,9 +192,9 @@ final class RepositorySession {
         case .fetch:
             toolbarState.present(.fetch)
         case .pull:
-            toolbarState.present(.pull)
+            if svnVM.status.isSVN { svnVM.present(.fetch) } else { toolbarState.present(.pull) }
         case .push:
-            toolbarState.present(.push)
+            if svnVM.status.isSVN { svnVM.present(.dcommit) } else { toolbarState.present(.push) }
         case .newBranch:
             toolbarState.present(.branch)
         case .stash:

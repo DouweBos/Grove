@@ -234,6 +234,13 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
 
     /// Submodules declared in `.gitmodules`, with their checkout state.
     func submodules() async throws -> [SubmoduleInfo]
+    func initSubmodule(path: String) async throws
+    /// `toRemote` moves it to its tracked branch's tip instead of the commit this repository records.
+    func updateSubmodule(path: String, toRemote: Bool) async throws
+    func fetchSubmodule(path: String) async throws
+    func addSubmodule(url: String, path: String, branch: String?) async throws
+    /// Deinitializes, removes it from the index and `.gitmodules`, and deletes its clone under `.git/modules`.
+    func removeSubmodule(path: String) async throws
 
     // MARK: Worktrees
 
@@ -314,6 +321,37 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func conflictVersions(path: String) async throws -> ConflictVersions
     /// Resolve a conflicted file by taking one side wholesale and staging it.
     func resolveConflict(path: String, side: ConflictSide) async throws
+
+    // MARK: Git LFS (GitRepository+LFS.swift)
+
+    func lfsStatus() async -> LFSStatus
+    /// Which of `paths` the repository's attributes route through the LFS filter.
+    func lfsTrackedPaths(among paths: [String]) async -> Set<String>
+    /// `git lfs track`, staging `.gitattributes`; `literal` tracks one file rather than a glob.
+    func trackWithLFS(pattern: String, literal: Bool) async throws
+
+    // MARK: git-flow (GitRepository+Flow.swift)
+
+    /// nil until git-flow is initialized in this repository.
+    func gitFlowConfig() async -> GitFlowConfig?
+    func initializeGitFlow(_ config: GitFlowConfig) async throws
+    /// `base` overrides where the branch starts; nil uses git-flow's default for `kind`.
+    func startFlowBranch(_ kind: GitFlowKind, name: String, base: String?, config: GitFlowConfig) async throws
+    func finishFlowBranch(_ kind: GitFlowKind, name: String, config: GitFlowConfig, options: GitFlowFinishOptions) async throws
+
+    // MARK: git-svn (GitRepository+SVN.swift)
+
+    func svnStatus() async -> SVNStatus
+    /// `git svn rebase`, or `git svn fetch` when `rebase` is false.
+    func svnFetch(rebase: Bool) async throws
+    func svnDcommit() async throws
+
+    // MARK: Branch Sync (GitRepository+BranchSync.swift)
+
+    /// Moves a local branch that isn't checked out to a remote branch, fast-forward only.
+    func fastForward(branch: String, fromRemote remote: String, branch remoteBranch: String) async throws
+    /// Pushes any local branch, checked out or not, to `remoteBranch` on `remote`.
+    func push(branch: String, to remote: String, as remoteBranch: String, setUpstream: Bool) async throws
 }
 
 // MARK: - GitRepositoryProtocol Default Arguments
@@ -363,6 +401,11 @@ extension GitRepositoryProtocol {
 
     func stashDiff(index: Int) async throws -> [FileDiff] { [] }
     func submodules() async throws -> [SubmoduleInfo] { [] }
+    func initSubmodule(path: String) async throws {}
+    func updateSubmodule(path: String, toRemote: Bool) async throws {}
+    func fetchSubmodule(path: String) async throws {}
+    func addSubmodule(url: String, path: String, branch: String?) async throws {}
+    func removeSubmodule(path: String) async throws {}
     func worktrees() async throws -> [WorktreeInfo] { [] }
     @discardableResult
     func createBranch(name: String, from: String?, checkout: Bool, track: Bool, parent: String?) async throws -> BranchInfo {
@@ -392,4 +435,16 @@ extension GitRepositoryProtocol {
     func setRemoteURL(_ url: String, forRemote name: String) async throws {}
     func pullRequestDiff(number: Int) async throws -> [FileDiff] { [] }
     func pullRequestCommits(number: Int) async throws -> [CommitInfo] { [] }
+    func lfsStatus() async -> LFSStatus { LFSStatus() }
+    func lfsTrackedPaths(among paths: [String]) async -> Set<String> { [] }
+    func trackWithLFS(pattern: String, literal: Bool) async throws {}
+    func gitFlowConfig() async -> GitFlowConfig? { nil }
+    func initializeGitFlow(_ config: GitFlowConfig) async throws {}
+    func startFlowBranch(_ kind: GitFlowKind, name: String, base: String?, config: GitFlowConfig) async throws {}
+    func finishFlowBranch(_ kind: GitFlowKind, name: String, config: GitFlowConfig, options: GitFlowFinishOptions) async throws {}
+    func svnStatus() async -> SVNStatus { SVNStatus() }
+    func svnFetch(rebase: Bool) async throws {}
+    func svnDcommit() async throws {}
+    func fastForward(branch: String, fromRemote remote: String, branch remoteBranch: String) async throws {}
+    func push(branch: String, to remote: String, as remoteBranch: String, setUpstream: Bool) async throws {}
 }

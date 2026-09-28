@@ -13,6 +13,8 @@ struct FileStatusRow: View {
     let isSelected: Bool
     /// Tree mode already shows the directory in a group header.
     var showsDirectory = true
+    /// Stored through Git LFS, so its diff is a pointer rather than content.
+    var isLFS = false
     var onToggleStage: (() -> Void)?
 
     @State private var isHovered = false
@@ -32,6 +34,15 @@ struct FileStatusRow: View {
             StatusIcon(status: status)
             pathLabel
             Spacer(minLength: 0)
+            if isLFS {
+                Text("LFS")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(Theme.info)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(Theme.info.opacity(0.14), in: Capsule())
+                    .help("Stored with Git LFS")
+            }
         }
         .padding(.horizontal, Theme.Spacing.sm)
         .padding(.vertical, 5)
@@ -62,7 +73,7 @@ struct FileStatusRow: View {
     VStack(spacing: 2) {
         ForEach(Array(MockData.statusEntries.prefix(5).enumerated()), id: \.offset) { idx, entry in
             FileStatusRow(entry: entry, status: entry.workdirStatus, isStaged: idx.isMultiple(of: 2),
-                          isSelected: idx == 1, onToggleStage: {})
+                          isSelected: idx == 1, isLFS: idx == 2, onToggleStage: {})
         }
     }
     .padding(Theme.Spacing.sm)

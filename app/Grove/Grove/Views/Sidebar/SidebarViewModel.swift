@@ -159,6 +159,8 @@ final class SidebarViewModel {
     /// Set by the session so a sidebar mutation refreshes every view, not just the sidebar.
     var onRepositoryChanged: (() async -> Void)?
     var undoManager: GitUndoManager?
+    /// Set by the session so flow branches offer Finish in their context menu.
+    var gitFlow: GitFlowViewModel?
 
     /// Call after anything that changed refs or the working tree.
     func didChangeRepository() async {
@@ -323,14 +325,32 @@ final class SidebarViewModel {
         }
     }
 
-    /// Updates a submodule at the given path.
-    func updateSubmodule(path: String) async {
+    // MARK: - Submodules (actions in SidebarViewModel+Submodules.swift)
+
+    /// A running submodule action, e.g. "Cloning vendor/icons…", shown under the sidebar.
+    private(set) var activity: String?
+    private(set) var isAddingSubmodule = false
+
+    // MARK: - Drops (SidebarViewModel+Drops.swift)
+
+    /// A drop waiting for confirmation, e.g. merging one branch into another.
+    var pendingDrop: SidebarDropAction?
+    var dropError: String?
+    var isRunningDrop = false
+
+    func requestAddSubmodule() { isAddingSubmodule = true }
+    func dismissAddSubmodule() { isAddingSubmodule = false }
+
+    /// Runs a git mutation with `title` showing, then refreshes every view.
+    func perform(_ title: String, _ work: () async throws -> Void) async {
+        activity = title
+        defer { activity = nil }
         do {
-            try await repository.updateSubmodule(path: path)
-            await didChangeRepository()
+            try await work()
         } catch {
             errorMessage = error.localizedDescription
         }
+        await didChangeRepository()
     }
 
     /// Removes a linked worktree.
