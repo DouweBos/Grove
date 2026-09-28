@@ -24,10 +24,11 @@ struct SidebarBranchRow: View {
     var body: some View {
         SidebarRow(
             title: displayName,
-            symbol: branch.isHEAD ? "checkmark.circle.fill" : (worktree == nil ? "arrow.triangle.branch" : "tree"),
-            tint: branch.isHEAD ? Theme.accent : (worktree == nil ? Theme.textSecondary : Theme.info),
+            symbol: branch.isHEAD ? "checkmark.circle.fill" : "arrow.triangle.branch",
+            tint: branch.isHEAD ? Theme.accent : Theme.textSecondary,
             detail: pullRequest?.label,
-            isEmphasized: branch.isHEAD
+            isEmphasized: branch.isHEAD,
+            badgeSymbol: worktree == nil ? nil : "tree.circle.fill"
         ) {
             HStack(spacing: Theme.Spacing.xs) {
                 if isPinned {

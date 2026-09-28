@@ -21,6 +21,9 @@ struct SidebarRow<Accessory: View>: View {
     var tint: Color = Theme.textSecondary
     var detail: String?
     var isEmphasized = false
+    /// Small symbol overlaid on the icon's corner, e.g. a branch that's also checked out in a worktree.
+    var badgeSymbol: String?
+    var badgeTint: Color = Theme.info
     @ViewBuilder var accessory: () -> Accessory
 
     @Environment(\.backgroundProminence) private var prominence
@@ -34,6 +37,16 @@ struct SidebarRow<Accessory: View>: View {
                 .font(.system(size: 12))
                 .foregroundStyle(isOnSelection ? AnyShapeStyle(.primary) : AnyShapeStyle(tint))
                 .frame(width: 16)
+                .overlay(alignment: .bottomTrailing) {
+                    if let badgeSymbol {
+                        Image(systemName: badgeSymbol)
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(isOnSelection ? AnyShapeStyle(.primary) : AnyShapeStyle(badgeTint))
+                            // A ring in the row background separates the badge from the icon beneath it.
+                            .background(Circle().fill(Theme.background).padding(-1.5))
+                            .offset(x: 3, y: 3)
+                    }
+                }
             Text(title)
                 .font(.system(size: 13, weight: isEmphasized ? .semibold : .regular))
                 .foregroundStyle(isOnSelection ? AnyShapeStyle(.primary) : AnyShapeStyle(Theme.textPrimary))
@@ -54,8 +67,10 @@ struct SidebarRow<Accessory: View>: View {
 }
 
 extension SidebarRow where Accessory == EmptyView {
-    init(title: String, symbol: String, tint: Color = Theme.textSecondary, detail: String? = nil, isEmphasized: Bool = false) {
-        self.init(title: title, symbol: symbol, tint: tint, detail: detail, isEmphasized: isEmphasized) { EmptyView() }
+    init(title: String, symbol: String, tint: Color = Theme.textSecondary, detail: String? = nil, isEmphasized: Bool = false,
+         badgeSymbol: String? = nil) {
+        self.init(title: title, symbol: symbol, tint: tint, detail: detail, isEmphasized: isEmphasized,
+                  badgeSymbol: badgeSymbol) { EmptyView() }
     }
 }
 
