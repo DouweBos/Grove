@@ -184,15 +184,37 @@ extension GitRepository {
 
     // MARK: - Interactive Rebase
 
-    func rebaseInteractive(onto: String, commitCount: Int) async throws {
+    /// Runs `steps` (oldest first) on top of `base`. A conflict leaves the rebase stopped for the conflict
+    /// banner to resolve and throws ``GitRepositoryError/rebaseStopped``.
+    func rebaseInteractive(onto base: String, steps: [RebaseStep]) async throws {
         Logger.gitRepository.info(
-            "Interactive rebase of \(commitCount, privacy: .public) commits onto \(onto, privacy: .public) in \(self.displayName, privacy: .public)"
+            "Interactive rebase of \(steps.count, privacy: .public) commits onto \(base, privacy: .public) in \(self.displayName, privacy: .public)"
         )
-        // GIT_SEQUENCE_EDITOR=true accepts the default todo list unchanged.
-        try await shell.run(
-            ["rebase", "-i", "\(onto)~\(commitCount)"],
-            environment: ["GIT_SEQUENCE_EDITOR": "true"]
-        )
+        var scratch: [URL] = []
+        defer { scratch.forEach { try? FileManager.default.removeItem(at: $0) } }
+        var messageFiles: [String: String] = [:]
+        for step in steps where step.action == .reword {
+            guard let message = step.message else { continue }
+            let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("grove-msg-\(UUID().uuidString)")
+            try message.write(to: url, atomically: true, encoding: .utf8)
+            scratch.append(url)
+            messageFiles[step.sha] = shellEscape(url.path)
+        }
+        let todoURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("grove-todo-\(UUID().uuidString)")
+        try RebasePlan.todo(steps) { messageFiles[$0] }.write(to: todoURL, atomically: true, encoding: .utf8)
+        scratch.append(todoURL)
+        // The sequence editor swaps git's proposed todo for ours; squashes keep git's combined message.
+        let editor = try writeTemporaryScript("#!/bin/sh\ncat \(shellEscape(todoURL.path)) > \"$1\"\n")
+        scratch.append(editor)
+
+        do {
+            try await shell.run(["rebase", "-i", base], environment: ["GIT_SEQUENCE_EDITOR": editor.path, "GIT_EDITOR": "true"])
+        } catch {
+            repositoryState = await Self.loadRepositoryState(path: path)
+            currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+            if repositoryState != .normal { throw GitRepositoryError.rebaseStopped }
+            throw error
+        }
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
         repositoryState = await Self.loadRepositoryState(path: path)
     }

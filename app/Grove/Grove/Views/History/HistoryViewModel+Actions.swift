@@ -12,6 +12,7 @@ enum HistoryAction: Identifiable {
     case reword(CommitInfo)
     case squash(CommitInfo)
     case squashCommits([CommitInfo])
+    case interactiveRebase(CommitInfo)
     case drop(CommitInfo)
     case fileHistory(String)
     case compare(BranchInfo)
@@ -24,6 +25,7 @@ enum HistoryAction: Identifiable {
         case .reset(let c): "reset-\(c.id)"
         case .reword(let c): "reword-\(c.id)"
         case .squash(let c): "squash-\(c.id)"
+        case .interactiveRebase(let base): "rebase-\(base.id)"
         case .squashCommits(let commits): "squash-" + commits.map(\.id).joined(separator: "-")
         case .drop(let c): "drop-\(c.id)"
         case .fileHistory(let path): "file-\(path)"

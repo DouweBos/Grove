@@ -116,7 +116,7 @@ private final class FailingMockRepository: GitRepositoryProtocol {
     func bisectGood(commit: String?) async throws { try await backing.bisectGood(commit: commit) }
     func bisectReset() async throws { try await backing.bisectReset() }
     func bisectLog() async throws -> [String] { try await backing.bisectLog() }
-    func rebaseInteractive(onto: String, commitCount: Int) async throws { try await backing.rebaseInteractive(onto: onto, commitCount: commitCount) }
+    func rebaseInteractive(onto base: String, steps: [RebaseStep]) async throws { try await backing.rebaseInteractive(onto: base, steps: steps) }
     func squashCommits(_ commits: [String], message: String) async throws { try await backing.squashCommits(commits, message: message) }
     func rewordCommit(_ commit: String, newMessage: String) async throws { try await backing.rewordCommit(commit, newMessage: newMessage) }
     func dropCommit(_ commit: String) async throws { try await backing.dropCommit(commit) }

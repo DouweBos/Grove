@@ -59,6 +59,73 @@ struct HistoryRewriteTests {
         #expect(vm.canSquash([vm.commits[3], vm.commits[4]]))
     }
 
+    @Test func interactiveRebaseRunsTheEditedPlan() async throws {
+        let vm = try await loadedHistory()
+        let base = vm.commits[4]
+        let candidates = try #require(vm.rebaseCandidates(onto: base))
+        #expect(candidates.map(\.summary) == ["commit 5", "commit 4", "commit 3", "commit 2"])
+
+        let planner = InteractiveRebaseViewModel(base: base, commits: candidates)
+        let steps = planner.steps
+        planner.setAction(.fixup, for: steps[0])
+        planner.setAction(.reword, for: steps[1])
+        planner.setMessage("four, reworded", for: planner.steps[1])
+        planner.setAction(.drop, for: steps[2])
+        // Newest first on screen: moving "commit 2" to the top makes it replay last.
+        planner.move(fromOffsets: [3], toOffset: 0)
+        #expect(planner.problem == nil)
+
+        var stopped = false
+        vm.onRebaseStopped = { stopped = true }
+        await vm.rebaseInteractively(onto: base, plan: planner.plan)
+        #expect(vm.errorMessage == nil)
+        #expect(!stopped)
+        let subjects = try git(["log", "--format=%s"]).split(separator: "\n")
+        #expect(subjects == ["commit 2", "four, reworded", "commit 1"])
+        let files = try git(["ls-files"])
+        #expect(!files.contains("f3.txt") && files.contains("f5.txt"))
+        #expect(vm.undoManager?.undoDescription == "Interactive Rebase")
+    }
+
+    @Test func conflictLeavesTheRebaseStoppedForTheBanner() async throws {
+        try write("x.txt", "one\n")
+        try commitAll("add x")
+        try write("x.txt", "two\n")
+        try commitAll("change x")
+        let vm = try await loadedHistory()
+        let base = vm.commits[2]
+        let planner = InteractiveRebaseViewModel(base: base, commits: try #require(vm.rebaseCandidates(onto: base)))
+        planner.move(fromOffsets: [1], toOffset: 0)
+
+        var stopped = false
+        vm.onRebaseStopped = { stopped = true }
+        await vm.rebaseInteractively(onto: base, plan: planner.plan)
+        #expect(stopped)
+        #expect(vm.pendingAction == nil)
+        #expect(vm.errorMessage == GitRepositoryError.rebaseStopped.errorDescription)
+        #expect(vm.repository.repositoryState == .rebaseInteractive)
+        try await vm.repository.abortRebase()
+    }
+
+    @Test func invalidPlanNeverStartsARebase() async throws {
+        let vm = try await loadedHistory()
+        let head = try git(["rev-parse", "HEAD"])
+        let base = vm.commits[2]
+        let plan = try #require(vm.rebaseCandidates(onto: base)).reversed().map { RebaseStep(sha: $0.id, action: .fixup) }
+        await vm.rebaseInteractively(onto: base, plan: plan)
+        #expect(vm.errorMessage != nil)
+        #expect(vm.repository.repositoryState == .normal)
+        #expect(try git(["rev-parse", "HEAD"]) == head)
+    }
+
+    @Test func planRejectsFoldingTheFirstCommit() {
+        let steps = [RebaseStep(sha: "a", action: .drop), RebaseStep(sha: "b", action: .fixup)]
+        #expect(RebasePlan.problem(with: steps) != nil)
+        #expect(RebasePlan.todo([RebaseStep(sha: "a", action: .drop)]) { _ in nil } == "noop\n")
+        let reword = RebaseStep(sha: "a", action: .reword, message: "m")
+        #expect(RebasePlan.todo([reword]) { _ in "'/tmp/m'" } == "pick a\nexec git commit --amend --no-verify --allow-empty -q -F '/tmp/m'\n")
+    }
+
     // MARK: Helpers
 
     private func write(_ file: String, _ text: String) throws {

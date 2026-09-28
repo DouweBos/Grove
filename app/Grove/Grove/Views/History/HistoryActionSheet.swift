@@ -41,6 +41,8 @@ struct HistoryActionSheet: View {
                               message: "Combines these commits into one commit. " + rewriteNote(from: oldest),
                               warning: pushedWarning(from: oldest), initialText: viewModel.squashMessage(for: commits),
                               primaryTitle: "Squash") { await viewModel.squash(commits, message: $0) }
+        case .interactiveRebase(let base):
+            InteractiveRebaseSheet(base: base, commits: viewModel.rebaseCandidates(onto: base) ?? [])
         case .drop(let commit):
             CommitActionSheet(commits: [commit], symbol: "trash", title: "Delete Commit",
                               message: "Removes this commit and its changes from the branch. " + rewriteNote(from: commit),
@@ -60,11 +62,7 @@ struct HistoryActionSheet: View {
     }
 
     private func pushedWarning(from oldest: CommitInfo) -> String? {
-        let rewritten = viewModel.firstParentLine(reaching: [oldest.id]).compactMap { viewModel.commit(withID: $0) }
-        let pushed = viewModel.pushedCommits(in: rewritten).count
-        guard pushed > 0 else { return nil }
-        return "\(pushed) of these commit\(pushed == 1 ? " is" : "s are") already on \(viewModel.upstreamName ?? "the upstream"); "
-            + "pushing afterwards needs a force push."
+        viewModel.pushedWarning(for: viewModel.firstParentLine(reaching: [oldest.id]).compactMap { viewModel.commit(withID: $0) })
     }
 }
 

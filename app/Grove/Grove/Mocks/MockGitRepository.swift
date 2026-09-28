@@ -338,7 +338,7 @@ final class MockGitRepository: GitRepositoryProtocol {
 
     // MARK: Interactive Rebase
 
-    func rebaseInteractive(onto: String, commitCount: Int) async throws {
+    func rebaseInteractive(onto base: String, steps: [RebaseStep]) async throws {
         await simulateLatency(150_000_000)
     }
 

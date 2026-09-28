@@ -41,6 +41,8 @@ struct CommitContextMenu: View {
             Button("Squash with Parent\u{2026}") { viewModel.request(.squash(commit)) }
                 .disabled(!viewModel.canSquashWithParent(commit))
         }
+        Button("Interactive Rebase from Here\u{2026}") { viewModel.request(.interactiveRebase(commit)) }
+            .disabled(!viewModel.canRebaseInteractively(onto: commit))
         Button("Delete \u{201C}\(commit.shortSHA)\u{201D}\u{2026}", role: .destructive) { viewModel.request(.drop(commit)) }
             .disabled(!viewModel.canRewrite(commit))
     }

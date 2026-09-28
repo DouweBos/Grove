@@ -59,13 +59,44 @@ extension HistoryViewModel {
         return commits.filter { !outgoingSHAs.contains($0.id) && !incomingSHAs.contains($0.id) }
     }
 
+    /// Warns before rewriting `commits` when some are already pushed.
+    func pushedWarning(for commits: [CommitInfo]) -> String? {
+        let pushed = pushedCommits(in: commits).count
+        guard pushed > 0 else { return nil }
+        return "\(pushed) of these commit\(pushed == 1 ? " is" : "s are") already on \(upstreamName ?? "the upstream"); "
+            + "pushing afterwards needs a force push."
+    }
+
     /// How many commits a rewrite starting at `oldest` replaces: it and everything above it on HEAD's line.
     func rewrittenCount(from oldest: CommitInfo) -> Int {
         let line = firstParentLine(reaching: [oldest.id])
         return (line.firstIndex(of: oldest.id) ?? 0) + 1
     }
 
+    /// Commits an interactive rebase onto `base` replays: those above it on HEAD's line, newest first.
+    /// Nil when `base` isn't on that line or a merge sits above it, which a linear plan would flatten.
+    func rebaseCandidates(onto base: CommitInfo) -> [CommitInfo]? {
+        guard filterBranch == nil else { return nil }
+        let line = firstParentLine(reaching: [base.id])
+        guard let index = line.firstIndex(of: base.id), index > 0 else { return nil }
+        let above = line[..<index].compactMap { commit(withID: $0) }
+        return above.contains(where: \.isMerge) ? nil : above
+    }
+
+    func canRebaseInteractively(onto base: CommitInfo) -> Bool {
+        rebaseCandidates(onto: base) != nil
+    }
+
     // MARK: - Mutations
+
+    /// `plan` is oldest first. A conflict leaves the rebase stopped and hands over to the Changes banner.
+    func rebaseInteractively(onto base: CommitInfo, plan: [RebaseStep]) async {
+        if let problem = RebasePlan.problem(with: plan) { return errorMessage = problem }
+        await performRewrite("Interactive Rebase") { try await $0.rebaseInteractive(onto: base.id, steps: plan) }
+        guard repository.repositoryState != .normal else { return }
+        dismissAction()
+        onRebaseStopped?()
+    }
 
     func reword(_ commit: CommitInfo, message: String) async {
         await performRewrite("Reword \(commit.shortSHA)") { try await $0.rewordCommit(commit.id, newMessage: message) }

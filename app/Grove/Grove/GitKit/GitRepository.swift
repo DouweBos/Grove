@@ -30,6 +30,7 @@ enum GitRepositoryError: LocalizedError {
     case stashIndexOutOfRange(Int)
     case applyPatchFailed(String)
     case historyRewriteConflict
+    case rebaseStopped
 
     var errorDescription: String? {
         switch self {
@@ -55,6 +56,8 @@ enum GitRepositoryError: LocalizedError {
             return "Failed to apply patch: \(detail)"
         case .historyRewriteConflict:
             return "Newer commits depend on these changes, so rewriting history would conflict. Nothing was changed."
+        case .rebaseStopped:
+            return "The rebase stopped on a conflict. Resolve it in Changes, then continue the rebase."
         }
     }
 }

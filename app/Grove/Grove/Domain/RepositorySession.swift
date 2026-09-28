@@ -89,6 +89,7 @@ final class RepositorySession {
         workingCopyVM.undoManager = gitUndoManager
         historyVM.onRepositoryChanged = refresh
         historyVM.undoManager = gitUndoManager
+        historyVM.onRebaseStopped = { [weak self] in self?.sidebarVM.select(.workingCopy) }
         stashesVM.onRepositoryChanged = refresh
         reflogVM.onRepositoryChanged = refresh
         reflogVM.undoManager = gitUndoManager

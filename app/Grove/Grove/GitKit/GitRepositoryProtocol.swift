@@ -166,10 +166,8 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
 
     // MARK: Interactive Rebase
 
-    /// Start an interactive rebase covering `commitCount` commits onto `onto`.
-    ///
-    /// Uses `GIT_SEQUENCE_EDITOR` to automate the todo-list manipulation.
-    func rebaseInteractive(onto: String, commitCount: Int) async throws
+    /// Replays `steps` (oldest first) onto `base` as an interactive rebase driven by `GIT_SEQUENCE_EDITOR`.
+    func rebaseInteractive(onto base: String, steps: [RebaseStep]) async throws
     /// Squash the given `commits` into a single commit with `message`.
     func squashCommits(_ commits: [String], message: String) async throws
     /// Change the commit message of `commit` to `newMessage` via interactive rebase.
