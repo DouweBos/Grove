@@ -33,6 +33,7 @@ final class RepositorySession {
     let gitUndoManager = GitUndoManager()
     let autoFetcher: AutoFetchScheduler
     let blameVM: BlameViewModel
+    let gitFlowVM: GitFlowViewModel
 
     // MARK: - Navigation
 
@@ -72,7 +73,9 @@ final class RepositorySession {
         self.reflogVM         = ReflogViewModel(repository: repository)
         self.branchesReviewVM = BranchesReviewViewModel(repository: repository, refs: refs)
         self.pullRequestsVM   = PullRequestsViewModel(repository: repository)
-        self.toolbarState     = RepositoryToolbarState(refs: refs)
+        let gitFlowVM = GitFlowViewModel(repository: repository, refs: refs)
+        self.gitFlowVM        = gitFlowVM
+        self.toolbarState     = RepositoryToolbarState(refs: refs, gitFlow: gitFlowVM)
         self.repositorySettingsVM = RepositorySettingsViewModel(repository: repository)
         self.autoFetcher      = AutoFetchScheduler(repository: repository)
         self.blameVM          = BlameViewModel(repository: repository)
@@ -95,6 +98,8 @@ final class RepositorySession {
         branchesReviewVM.onRepositoryChanged = refresh
         branchesReviewVM.undoManager = gitUndoManager
         pullRequestsVM.onRepositoryChanged = refresh
+        gitFlowVM.onRepositoryChanged = refresh
+        sidebarVM.gitFlow = gitFlowVM
     }
 
     // MARK: - Lifecycle
@@ -145,7 +150,8 @@ final class RepositorySession {
             async let workingCopy: Void = workingCopyVM.refresh()
             async let history: Void = reload(visible)
             async let tab: Void = refreshSelectedTab()
-            _ = await (refsRead.value, workingCopy, history, tab)
+            async let flow: Void = gitFlowVM.refresh()
+            _ = await (refsRead.value, workingCopy, history, tab, flow)
         } while needsAnotherRefresh
     }
 

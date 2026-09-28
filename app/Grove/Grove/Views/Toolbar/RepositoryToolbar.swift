@@ -28,9 +28,11 @@ final class RepositoryToolbarState {
 
     /// Sheets read branches and remotes from here, so they open without waiting for git.
     let refs: RepositoryRefs
+    let gitFlow: GitFlowViewModel
 
-    init(refs: RepositoryRefs) {
+    init(refs: RepositoryRefs, gitFlow: GitFlowViewModel) {
         self.refs = refs
+        self.gitFlow = gitFlow
     }
 
     enum Sheet { case fetch, pull, push, sync, branch, tag, stash, merge, rebase }
@@ -86,35 +88,7 @@ struct RepositoryToolbar: ToolbarContent {
             syncButton
         }
         ToolbarItem(placement: .primaryAction) {
-            Menu {
-                ForEach(RepositoryTab.secondary, id: \.self) { tab in
-                    Button {
-                        onNavigate(tab.item)
-                    } label: {
-                        Label(tab.title, systemImage: tab.symbol)
-                    }
-                }
-                Divider()
-                Button {
-                    toolbarState.present(.stash)
-                } label: {
-                    Label("Stash Changes…", systemImage: "tray.and.arrow.down")
-                }
-                Divider()
-                Button {
-                    toolbarState.present(.branch)
-                } label: {
-                    Label("New Branch…", systemImage: "arrow.triangle.branch")
-                }
-                Button {
-                    toolbarState.present(.tag)
-                } label: {
-                    Label("New Tag…", systemImage: "tag")
-                }
-            } label: {
-                Label("More", systemImage: "ellipsis.circle")
-            }
-            .help("More actions")
+            RepositoryMoreMenu(toolbarState: toolbarState, onNavigate: onNavigate)
         }
     }
 
@@ -247,6 +221,10 @@ struct RepositoryToolbarSheets<Content: View>: View {
             .sheet(isPresented: $toolbarState.isRebasePresented) {
                 RebaseDialogView(repository: repository, localBranches: refs.localBranches, onComplete: onComplete)
             }
+            .sheet(item: Binding(get: { toolbarState.gitFlow.sheet },
+                                 set: { if $0 == nil { toolbarState.gitFlow.dismissSheet() } })) { sheet in
+                GitFlowSheetView(viewModel: toolbarState.gitFlow, sheet: sheet)
+            }
     }
 }
 
@@ -271,7 +249,8 @@ extension View {
 
 #Preview {
     let repo = MockGitRepository()
-    let state = RepositoryToolbarState(refs: RepositoryRefs(repository: repo))
+    let refs = RepositoryRefs(repository: repo)
+    let state = RepositoryToolbarState(refs: refs, gitFlow: GitFlowViewModel(repository: repo, refs: refs))
     return NavigationStack {
         Text("Repository Content")
             .frame(width: 800, height: 600)

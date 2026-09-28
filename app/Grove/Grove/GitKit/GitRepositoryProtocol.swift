@@ -318,6 +318,15 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func lfsTrackedPaths(among paths: [String]) async -> Set<String>
     /// `git lfs track`, staging `.gitattributes`; `literal` tracks one file rather than a glob.
     func trackWithLFS(pattern: String, literal: Bool) async throws
+
+    // MARK: git-flow (GitRepository+Flow.swift)
+
+    /// nil until git-flow is initialized in this repository.
+    func gitFlowConfig() async -> GitFlowConfig?
+    func initializeGitFlow(_ config: GitFlowConfig) async throws
+    /// `base` overrides where the branch starts; nil uses git-flow's default for `kind`.
+    func startFlowBranch(_ kind: GitFlowKind, name: String, base: String?, config: GitFlowConfig) async throws
+    func finishFlowBranch(_ kind: GitFlowKind, name: String, config: GitFlowConfig, options: GitFlowFinishOptions) async throws
 }
 
 // MARK: - GitRepositoryProtocol Default Arguments
@@ -396,4 +405,8 @@ extension GitRepositoryProtocol {
     func lfsStatus() async -> LFSStatus { LFSStatus() }
     func lfsTrackedPaths(among paths: [String]) async -> Set<String> { [] }
     func trackWithLFS(pattern: String, literal: Bool) async throws {}
+    func gitFlowConfig() async -> GitFlowConfig? { nil }
+    func initializeGitFlow(_ config: GitFlowConfig) async throws {}
+    func startFlowBranch(_ kind: GitFlowKind, name: String, base: String?, config: GitFlowConfig) async throws {}
+    func finishFlowBranch(_ kind: GitFlowKind, name: String, config: GitFlowConfig, options: GitFlowFinishOptions) async throws {}
 }

@@ -148,6 +148,8 @@ final class SidebarViewModel {
     /// Set by the session so a sidebar mutation refreshes every view, not just the sidebar.
     var onRepositoryChanged: (() async -> Void)?
     var undoManager: GitUndoManager?
+    /// Set by the session so flow branches offer Finish in their context menu.
+    var gitFlow: GitFlowViewModel?
 
     /// Call after anything that changed refs or the working tree.
     func didChangeRepository() async {

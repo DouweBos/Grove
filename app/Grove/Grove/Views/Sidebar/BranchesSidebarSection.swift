@@ -141,6 +141,11 @@ struct BranchContextMenu: View {
             .disabled(branch.isHEAD)
         }
         Button("New Branch from \u{201C}\(branch.name)\u{201D}…", systemImage: "arrow.triangle.branch", action: onCreateBranch)
+        if let gitFlow = viewModel.gitFlow, let flow = gitFlow.config?.classify(branch: branch.name) {
+            Button("Finish \(flow.kind.title) \u{201C}\(flow.name)\u{201D}…", systemImage: flow.kind.symbol) {
+                gitFlow.present(.finish(flow.kind, name: flow.name))
+            }
+        }
         if let pullRequest = viewModel.refs.openPullRequest(for: branch) {
             OpenPullRequestButton(pullRequest: pullRequest)
         }
