@@ -140,7 +140,7 @@ extension GitRepository {
         Logger.gitRepository.info("Push complete in \(self.displayName, privacy: .public)")
     }
 
-    func push(remote: String, branch: String, forceWithLease: Bool, setUpstream: Bool,
+    func push(remote: String, branch: String, forceWithLease: Bool, setUpstream: Bool, options: PushOptions,
               progress: (@Sendable (Double) -> Void)?) async throws {
         Logger.gitRepository.info(
             "Pushing to \(remote, privacy: .public)/\(branch, privacy: .public) in \(self.displayName, privacy: .public)"
@@ -148,6 +148,8 @@ extension GitRepository {
         var args = ["push"]
         if forceWithLease { args.append("--force-with-lease") }
         if setUpstream { args.append("-u") }
+        if let mode = options.recurseSubmodules { args.append("--recurse-submodules=\(mode.rawValue)") }
+        if options.skipHooks { args.append("--no-verify") }
         args += [remote, "HEAD:refs/heads/\(branch)"]
         try await shell.run(args)
         progress?(1.0)

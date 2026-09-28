@@ -18,6 +18,8 @@ struct PushDialogView: View {
     @State private var setUpstream: Bool
     @State private var pushAllTags = false
     @State private var forceWithLease = false
+    @State private var options = PushOptions()
+    @State private var submoduleMode = SubmodulePushMode.check
     @State private var isConfirmingForce = false
     @State private var isPushing = false
     @State private var errorMessage: String?
@@ -105,6 +107,26 @@ struct PushDialogView: View {
                     label: "Force Push (with Lease)",
                     description: "Overwrites the remote branch, unless someone else pushed to it since your last fetch."
                 )
+                DialogOptionRow(
+                    isOn: recurseSubmodules,
+                    label: "Recurse Submodules",
+                    description: "Makes sure the submodule commits this branch references are on their remotes."
+                )
+                Picker("Submodules", selection: $submoduleMode) {
+                    ForEach(SubmodulePushMode.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .labelsHidden()
+                .fixedSize()
+                .padding(.leading, 20)
+                .disabled(options.recurseSubmodules == nil)
+                .onChange(of: submoduleMode) { _, mode in
+                    if options.recurseSubmodules != nil { options.recurseSubmodules = mode }
+                }
+                DialogOptionRow(
+                    isOn: $options.skipHooks,
+                    label: "Skip Hooks",
+                    description: "Bypasses the pre-push hook."
+                )
             }
         }
         .task {
@@ -123,6 +145,11 @@ struct PushDialogView: View {
         }
     }
 
+    private var recurseSubmodules: Binding<Bool> {
+        Binding(get: { options.recurseSubmodules != nil },
+                set: { options.recurseSubmodules = $0 ? submoduleMode : nil })
+    }
+
     private var targetField: some View {
         HStack(spacing: Theme.Spacing.xs) {
             Text("\(selectedRemote)/")
@@ -138,7 +165,7 @@ struct PushDialogView: View {
         Task {
             do {
                 try await repository.push(remote: selectedRemote, branch: trimmedTarget, forceWithLease: forceWithLease,
-                                          setUpstream: setUpstream, progress: nil)
+                                          setUpstream: setUpstream, options: options, progress: nil)
                 if pushAllTags {
                     try await repository.pushAllTags(remote: selectedRemote)
                 }

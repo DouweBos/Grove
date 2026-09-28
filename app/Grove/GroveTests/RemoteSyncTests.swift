@@ -91,10 +91,28 @@ struct RemoteSyncTests {
         try commit("a", file: "feature.txt", message: "feature")
 
         let repo = try await GitRepository(path: root.appendingPathComponent("a"))
-        try await repo.push(remote: "origin", branch: "review/feature", forceWithLease: false, setUpstream: true, progress: nil)
+        try await repo.push(remote: "origin", branch: "review/feature", forceWithLease: false, setUpstream: true,
+                            options: PushOptions(), progress: nil)
 
         #expect(repo.currentBranch?.upstreamShortName == "origin/review/feature")
         #expect(try git(["branch", "--list", "review/feature"], in: "origin.git").contains("review/feature"))
+    }
+
+    @Test func skipHooksBypassesPrePushHook() async throws {
+        try commit("a", file: "a.txt", message: "local")
+        let hook = root.appendingPathComponent("a/.git/hooks/pre-push")
+        try Data("#!/bin/sh\nexit 1\n".utf8).write(to: hook)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hook.path)
+
+        let repo = try await GitRepository(path: root.appendingPathComponent("a"))
+        await #expect(throws: (any Error).self) {
+            try await repo.push(remote: "origin", branch: "main", forceWithLease: false, setUpstream: false,
+                                options: PushOptions(), progress: nil)
+        }
+        try await repo.push(remote: "origin", branch: "main", forceWithLease: false, setUpstream: false,
+                            options: PushOptions(skipHooks: true), progress: nil)
+
+        #expect(try git(["log", "-1", "--format=%s", "main"], in: "origin.git").contains("local"))
     }
 
     @Test func syncPublishesBranchWithoutUpstream() async throws {
