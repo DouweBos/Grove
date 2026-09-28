@@ -139,7 +139,9 @@ struct CreateRemoteRepositorySheet: View {
 #Preview {
     let account = CatalogAccount(id: "gh", kind: .github, host: "github.com", title: "me")
     let owner = RemoteRepositoryOwner(login: "me", isAccount: true, accountID: "gh")
-    let section = RemoteRepositoriesViewModel.Section(catalog: GitHubCatalog(login: account.title), owners: [owner])
+    let hosting = HostingAccount(kind: .github, username: account.title)
+    let catalog = GitHubCatalog(hostingAccount: hosting, client: RESTClient(credentials: RESTCredentials(account: hosting, secret: "")))
+    let section = RemoteRepositoriesViewModel.Section(catalog: catalog, owners: [owner])
     return CreateRemoteRepositorySheet(viewModel: CreateRemoteRepositoryViewModel(sections: { [section] }, owner: owner, targets: [],
                                                                                    preferredTarget: nil))
         .environment(WindowViewModel(manager: MockRepositoryManager()))

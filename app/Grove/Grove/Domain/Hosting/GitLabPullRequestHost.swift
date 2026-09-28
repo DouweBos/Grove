@@ -1,89 +1,104 @@
 // Domain/Hosting/GitLabPullRequestHost.swift
 // Grove
 //
-// GitLab merge requests: reads through `glab api` (GitLab's REST shapes), writes through glab where it has a command.
+// GitLab and self-hosted GitLab merge requests over the v4 REST API.
 
 import Foundation
 
 nonisolated struct GitLabPullRequestHost: PullRequestHost {
-    let directory: URL
     let location: RemoteLocation
+    let client: RESTClient
     var kind: HostingServiceKind { .gitlab }
 
-    private var project: String { GitLabCLI.projectPath(location) }
+    private var project: String { "\(client.credentials.account.apiBase)/\(GitLabParser.projectPath(location))" }
 
-    private func api(_ path: String, method: String = "GET", fields: [String: String] = [:], paginate: Bool = false) async throws -> String {
-        try await GitLabCLI.api(path, host: location.host, method: method, fields: fields, paginate: paginate)
+    private func url(_ path: String) throws -> URL {
+        guard let url = URL(string: project + path) else { throw HostingError.unsupported("Bad GitLab URL: \(path)") }
+        return url
     }
 
     func pullRequests() async throws -> [PullRequestInfo] {
-        let output = try await api("\(project)/merge_requests?state=all&order_by=updated_at&per_page=100")
-        return HostingJSON.objects(output).compactMap(GitLabParser.mergeRequest)
+        HostingJSON.objects(String(bytes: try await client.get(try url("/merge_requests?state=all&order_by=updated_at&per_page=100")),
+                                   encoding: .utf8) ?? "")
+            .compactMap(GitLabParser.mergeRequest)
     }
 
     func openPullRequests() async throws -> [String: OpenPullRequest] {
-        let output = try await api("\(project)/merge_requests?state=opened&per_page=100", paginate: true)
-        let requests = HostingJSON.objects(output)
+        let requests = try await client.getPages(try url("/merge_requests?state=opened&per_page=100"))
         let urls = Dictionary(requests.compactMap { raw in (raw["iid"] as? Int).map { ($0, raw["web_url"] as? String ?? "") } },
                               uniquingKeysWith: { first, _ in first })
         return HostingJSON.openIndex(requests.compactMap(GitLabParser.mergeRequest)) { urls[$0] ?? "" }
     }
 
     func pullRequest(number: Int) async throws -> PullRequestInfo {
-        guard let request = GitLabParser.mergeRequest(HostingJSON.objects(try await api("\(project)/merge_requests/\(number)")).first ?? [:])
+        guard let request = HostingJSON.object(try await client.get(try url("/merge_requests/\(number)"))).flatMap(GitLabParser.mergeRequest)
         else { throw HostingError.unsupported("GitLab returned no merge request !\(number).") }
         return request
     }
 
     func comments(number: Int) async throws -> [PRComment] {
-        GitLabParser.discussions(HostingJSON.objects(try await discussions(number))).comments
+        GitLabParser.discussions(try await discussions(number)).comments
     }
 
     func reviewComments(number: Int) async throws -> [PRReviewComment] {
-        GitLabParser.discussions(HostingJSON.objects(try await discussions(number))).lineComments
+        GitLabParser.discussions(try await discussions(number)).lineComments
     }
 
-    private func discussions(_ number: Int) async throws -> String {
-        try await api("\(project)/merge_requests/\(number)/discussions?per_page=100", paginate: true)
+    private func discussions(_ number: Int) async throws -> [HostingJSON.Object] {
+        try await client.getPages(try url("/merge_requests/\(number)/discussions?per_page=100"))
     }
 
     func commits(number: Int) async throws -> [CommitInfo] {
-        HostingJSON.objects(try await api("\(project)/merge_requests/\(number)/commits?per_page=100", paginate: true))
-            .compactMap(GitLabParser.commit)
+        try await client.getPages(try url("/merge_requests/\(number)/commits?per_page=100")).compactMap(GitLabParser.commit)
     }
 
     func diff(number: Int) async throws -> String? {
-        try await GitLabCLI.run(["mr", "diff", "\(number)", "--raw"], in: directory)
+        GitLabParser.unifiedDiff(try await client.getPages(try url("/merge_requests/\(number)/diffs?per_page=100")))
     }
 
     func merge(number: Int) async throws {
-        _ = try await api("\(project)/merge_requests/\(number)/merge", method: "PUT")
+        try await client.send("PUT", try url("/merge_requests/\(number)/merge"), json: [:])
     }
 
     func close(number: Int) async throws {
-        _ = try await api("\(project)/merge_requests/\(number)", method: "PUT", fields: ["state_event": "close"])
+        try await client.send("PUT", try url("/merge_requests/\(number)"), json: ["state_event": "close"])
     }
 
     func comment(number: Int, body: String) async throws {
-        _ = try await api("\(project)/merge_requests/\(number)/notes", method: "POST", fields: ["body": body])
+        try await client.send("POST", try url("/merge_requests/\(number)/notes"), json: ["body": body])
     }
 
+    /// Reviewers are looked up by username first, since GitLab takes their ids.
     func create(_ draft: PullRequestDraft) async throws -> String {
-        let output = try await GitLabCLI.run(GitLabParser.createArguments(draft), in: directory)
-        return GitLabParser.mergeRequestURL(in: output) ?? ""
+        var ids: [Int] = []
+        for username in draft.reviewers {
+            guard let lookup = URL(string: "\(client.credentials.account.apiBase)/users?username=\(username)") else { continue }
+            if let id = HostingJSON.objects(String(bytes: try await client.get(lookup), encoding: .utf8) ?? "").first?["id"] as? Int {
+                ids.append(id)
+            }
+        }
+        let data = try await client.send("POST", try url("/merge_requests"), json: GitLabParser.createBody(draft, reviewerIDs: ids))
+        return HostingJSON.object(data)?["web_url"] as? String ?? ""
     }
 
     func webURL(number: Int) async throws -> URL? {
         URL(string: "https://\(location.host)/\(location.fullName)/-/merge_requests/\(number)")
     }
 
-    func checkout(number: Int) async throws -> Bool {
-        _ = try await GitLabCLI.run(["mr", "checkout", "\(number)"], in: directory)
-        return true
-    }
+    func headRef(number: Int) -> String? { "refs/merge-requests/\(number)/head" }
 }
 
 nonisolated enum GitLabParser {
+
+    /// GitLab addresses a project by its URL-encoded full path.
+    static func projectPath(_ location: RemoteLocation) -> String {
+        "projects/" + encoded(location.fullName)
+    }
+
+    static func encoded(_ path: String) -> String {
+        let unreserved = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._~"))
+        return path.addingPercentEncoding(withAllowedCharacters: unreserved) ?? path
+    }
 
     /// One entry of `GET projects/:id/merge_requests`.
     static func mergeRequest(_ raw: HostingJSON.Object) -> PullRequestInfo? {
@@ -149,17 +164,28 @@ nonisolated enum GitLabParser {
                                   authored: HostingJSON.date(raw["authored_date"]), committed: HostingJSON.date(raw["committed_date"]))
     }
 
-    static func createArguments(_ draft: PullRequestDraft) -> [String] {
-        var arguments = ["mr", "create", "--source-branch", draft.head, "--target-branch", draft.base,
-                         "--title", draft.title, "--description", draft.body, "--yes", "--no-editor"]
-        if draft.isDraft { arguments.append("--draft") }
-        if !draft.reviewers.isEmpty { arguments += ["--reviewer", draft.reviewers.joined(separator: ",")] }
-        return arguments
+    /// GitLab returns each file's hunks without git's headers; they're added back so the diff parser reads them.
+    static func unifiedDiff(_ files: [HostingJSON.Object]) -> String {
+        files.map { file in
+            let old = file["old_path"] as? String ?? ""
+            let new = file["new_path"] as? String ?? old
+            var header = "diff --git a/\(old) b/\(new)\n"
+            if file["new_file"] as? Bool == true { header += "new file mode 100644\n" }
+            if file["deleted_file"] as? Bool == true { header += "deleted file mode 100644\n" }
+            if file["renamed_file"] as? Bool == true { header += "rename from \(old)\nrename to \(new)\n" }
+            let from = file["new_file"] as? Bool == true ? "/dev/null" : "a/\(old)"
+            let to = file["deleted_file"] as? Bool == true ? "/dev/null" : "b/\(new)"
+            let hunks = file["diff"] as? String ?? ""
+            return header + (hunks.isEmpty ? "" : "--- \(from)\n+++ \(to)\n" + hunks + (hunks.hasSuffix("\n") ? "" : "\n"))
+        }
+        .joined()
     }
 
-    /// glab prints progress and then the merge request's URL.
-    static func mergeRequestURL(in output: String) -> String? {
-        output.split(whereSeparator: \.isWhitespace).map(String.init)
-            .last { $0.hasPrefix("http") && $0.contains("/merge_requests/") }
+    /// GitLab marks drafts by a "Draft:" title prefix.
+    static func createBody(_ draft: PullRequestDraft, reviewerIDs: [Int]) -> [String: Any] {
+        var body: [String: Any] = ["source_branch": draft.head, "target_branch": draft.base,
+                                   "title": draft.isDraft ? "Draft: \(draft.title)" : draft.title, "description": draft.body]
+        if !reviewerIDs.isEmpty { body["reviewer_ids"] = reviewerIDs }
+        return body
     }
 }

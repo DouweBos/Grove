@@ -7,24 +7,19 @@ import Foundation
 
 extension GitHubCatalog {
 
-    /// `gh repo create` creates under the signed-in account unless the name carries an organization.
-    static func createArguments(_ request: NewRemoteRepository) -> [String] {
-        let name = request.owner.isAccount ? request.name : "\(request.owner.login)/\(request.name)"
-        var arguments = ["repo", "create", name, request.isPrivate ? "--private" : "--public"]
-        if !request.description.isEmpty { arguments += ["--description", request.description] }
-        return arguments
+    static func createBody(_ request: NewRemoteRepository) -> [String: Any] {
+        ["name": request.name, "description": request.description, "private": request.isPrivate]
     }
 
+    /// The account's own repositories go to `/user/repos`, an organization's to `/orgs/{org}/repos`.
     func createRepository(_ request: NewRemoteRepository) async throws -> RemoteRepository {
-        _ = try await GitHubCLI.run(Self.createArguments(request))
-        let owner = request.owner.login
-        let name = request.name
-        return RemoteRepository(
-            nameWithOwner: "\(owner)/\(name)", name: name, owner: owner,
-            description: request.description.isEmpty ? nil : request.description, isPrivate: request.isPrivate,
-            isFork: false, isArchived: false, updatedAt: Date(), webURL: "https://github.com/\(owner)/\(name)",
-            sshURL: "git@github.com:\(owner)/\(name).git", defaultBranch: nil, language: nil
-        )
+        let path = request.owner.isAccount ? "/user/repos" : "/orgs/\(request.owner.login)/repos"
+        guard let url = URL(string: hostingAccount.apiBase + path) else { throw HostingError.unsupported("Bad owner name.") }
+        let data = try await client.send("POST", url, json: Self.createBody(request))
+        guard let created = HostingJSON.object(data).flatMap({ GitHubParser.repository($0, host: hostingAccount.host) }) else {
+            throw HostingError.unsupported("GitHub didn't return the new repository.")
+        }
+        return created
     }
 }
 
@@ -39,8 +34,8 @@ extension GitLabCatalog {
     }
 
     func createRepository(_ request: NewRemoteRepository) async throws -> RemoteRepository {
-        let output = try await GitLabCLI.api("projects", host: host, method: "POST", fields: Self.createFields(request))
-        guard let created = HostingJSON.objects(output).first.flatMap(CatalogParser.gitlabProject) else {
+        let data = try await client.send("POST", try url("/projects"), json: Self.createFields(request))
+        guard let created = HostingJSON.object(data).flatMap(CatalogParser.gitlabProject) else {
             throw HostingError.unsupported("GitLab didn't return the new project.")
         }
         return created

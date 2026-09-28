@@ -79,7 +79,7 @@ final class RepositoryRefs {
         return branch.name.split(separator: "/", maxSplits: 1).last.flatMap { openPullRequests[String($0)] }
     }
 
-    /// Runs beside ref reads without holding them up; a failure (no `gh`, no GitHub remote) keeps the last result.
+    /// Runs beside ref reads without holding them up; a failure (no account, no hosted remote) keeps the last result.
     func refreshPullRequests(force: Bool = false) {
         guard pullRequestTask == nil else { return }
         if !force, let pullRequestsFetchedAt, Date().timeIntervalSince(pullRequestsFetchedAt) < 60 { return }

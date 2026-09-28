@@ -17,8 +17,7 @@ struct RemoteRepositoriesContent: View {
                 EmptyStateView(
                     systemImage: "person.crop.circle.badge.exclamationmark",
                     title: "No Accounts",
-                    subtitle: "\(message) Sign in with \u{201C}gh auth login\u{201D} or \u{201C}glab auth login\u{201D}, "
-                        + "or add a Bitbucket or Azure DevOps account in Settings > Accounts.",
+                    subtitle: "\(message) Add a GitHub, GitLab, Bitbucket or Azure DevOps account in Settings > Accounts.",
                     actionTitle: "Add an Account\u{2026}"
                 ) { openAccounts() }
             case .unknown, .loading:

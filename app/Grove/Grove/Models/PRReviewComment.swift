@@ -17,29 +17,21 @@ nonisolated struct PRReviewComment: Identifiable, Hashable, Sendable {
     let diffHunk: String
     let createdDate: Date
 
-    /// `gh api repos/{owner}/{repo}/pulls/N/comments --paginate --jq '.[]'`: one object per line, oldest first.
+    /// One entry of GitHub's `GET /repos/…/pulls/N/comments`.
+    static func gitHub(_ raw: HostingJSON.Object) -> PRReviewComment? {
+        guard let id = raw["id"] as? Int else { return nil }
+        return PRReviewComment(
+            id: id, replyTo: raw["in_reply_to_id"] as? Int,
+            authorName: (raw["user"] as? HostingJSON.Object)?["login"] as? String ?? "ghost",
+            body: raw["body"] as? String ?? "", path: raw["path"] as? String ?? "",
+            line: raw["line"] as? Int ?? raw["original_line"] as? Int, diffHunk: raw["diff_hunk"] as? String ?? "",
+            createdDate: HostingJSON.date(raw["created_at"])
+        )
+    }
+
+    /// A page (or several, or one object per line) of GitHub line comments, oldest first.
     static func parseGitHub(_ output: String) throws -> [PRReviewComment] {
-        struct Row: Decodable {
-            struct User: Decodable { let login: String }
-            let id: Int
-            let inReplyToId: Int?
-            let user: User?
-            let body: String
-            let path: String
-            let line: Int?
-            let originalLine: Int?
-            let diffHunk: String?
-            let createdAt: String
-        }
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try output.split(whereSeparator: \.isNewline).map { line in
-            let row = try decoder.decode(Row.self, from: Data(line.utf8))
-            return PRReviewComment(id: row.id, replyTo: row.inReplyToId, authorName: row.user?.login ?? "ghost", body: row.body,
-                                   path: row.path, line: row.line ?? row.originalLine, diffHunk: row.diffHunk ?? "",
-                                   createdDate: GitDate.parse(row.createdAt) ?? .distantPast)
-        }
-        .sorted { $0.createdDate < $1.createdDate }
+        HostingJSON.objects(output).compactMap(gitHub).sorted { $0.createdDate < $1.createdDate }
     }
 }
 

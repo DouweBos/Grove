@@ -32,73 +32,82 @@ extension RepositoryCatalog {
 @MainActor
 enum RepositoryCatalogs {
 
-    /// Every account Grove can list repositories for: gh and glab sign-ins, then the stored REST accounts.
+    /// A catalog for every account in Settings > Accounts that has a token.
     static func all(accounts: HostingAccountStore? = nil, http: any HTTPClient = URLSessionHTTPClient()) async -> [any RepositoryCatalog] {
-        var catalogs: [any RepositoryCatalog] = []
-        if GitHubCLI.isInstalled, let signedIn = try? await GitHubCLI.authStatus() {
-            // gh's repository listing follows its default host; other GitHub hosts are left to their own clients.
-            for status in signedIn where status.host == "github.com" {
-                catalogs.append(GitHubCatalog(login: status.account ?? ""))
-            }
-        }
-        for status in await GitLabCLI.authStatus() {
-            catalogs.append(GitLabCatalog(host: status.host, username: status.account ?? ""))
-        }
         let store = accounts ?? .shared
-        for account in store.accounts {
-            guard let secret = store.secret(for: account) else { continue }
-            let client = RESTClient(credentials: RESTCredentials(account: account, secret: secret), http: http)
+        return store.accounts.compactMap { account -> (any RepositoryCatalog)? in
+            guard let credentials = store.credentials(for: account) else { return nil }
+            let client = RESTClient(credentials: credentials, http: http)
             switch account.kind {
-            case .bitbucket: catalogs.append(BitbucketCatalog(hostingAccount: account, client: client))
-            case .azureDevOps: catalogs.append(AzureDevOpsCatalog(hostingAccount: account, client: client))
-            case .github, .gitlab: break
+            case .github: return GitHubCatalog(hostingAccount: account, client: client)
+            case .gitlab: return GitLabCatalog(hostingAccount: account, client: client)
+            case .bitbucket: return BitbucketCatalog(hostingAccount: account, client: client)
+            case .azureDevOps: return AzureDevOpsCatalog(hostingAccount: account, client: client)
             }
         }
-        return catalogs
     }
 }
 
 // MARK: - GitHub
 
 nonisolated struct GitHubCatalog: RepositoryCatalog {
-    let login: String
-    var account: CatalogAccount { CatalogAccount(id: "github:github.com:\(login)", kind: .github, host: "github.com", title: login) }
+    let hostingAccount: HostingAccount
+    let client: RESTClient
+    var account: CatalogAccount {
+        CatalogAccount(id: "github:\(hostingAccount.id)", kind: .github, host: hostingAccount.host, title: hostingAccount.title)
+    }
 
+    private func url(_ path: String) throws -> URL {
+        guard let url = URL(string: hostingAccount.apiBase + path) else { throw HostingError.unsupported("Bad GitHub URL: \(path)") }
+        return url
+    }
+
+    /// The account itself, then its organizations.
     func owners() async throws -> [RemoteRepositoryOwner] {
-        try await GitHubCLI.repositoryOwners().map {
-            RemoteRepositoryOwner(login: $0.login, isAccount: $0.isAccount, accountID: account.id)
-        }
+        let orgs = try await client.getPages(try url("/user/orgs?per_page=100")).compactMap { $0["login"] as? String }
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        return [RemoteRepositoryOwner(login: hostingAccount.username, isAccount: true, accountID: account.id)]
+            + orgs.map { RemoteRepositoryOwner(login: $0, isAccount: false, accountID: account.id) }
     }
 
     func repositories(of owner: RemoteRepositoryOwner) async throws -> [RemoteRepository] {
-        try await GitHubCLI.repositories(of: owner)
+        let path = owner.isAccount ? "/user/repos?affiliation=owner&sort=pushed&per_page=100"
+            : "/orgs/\(owner.login)/repos?sort=pushed&per_page=100"
+        return try await client.getPages(try url(path), maxPages: 20).compactMap { GitHubParser.repository($0, host: hostingAccount.host) }
+            .sorted { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
     }
 }
 
 // MARK: - GitLab
 
 nonisolated struct GitLabCatalog: RepositoryCatalog {
-    let host: String
-    let username: String
-    var account: CatalogAccount { CatalogAccount(id: "gitlab:\(host):\(username)", kind: .gitlab, host: host, title: username) }
+    let hostingAccount: HostingAccount
+    let client: RESTClient
+    var account: CatalogAccount {
+        CatalogAccount(id: "gitlab:\(hostingAccount.id)", kind: .gitlab, host: hostingAccount.host, title: hostingAccount.title)
+    }
+
+    func url(_ path: String) throws -> URL {
+        guard let url = URL(string: hostingAccount.apiBase + path) else { throw HostingError.unsupported("Bad GitLab URL: \(path)") }
+        return url
+    }
 
     func owners() async throws -> [RemoteRepositoryOwner] {
-        let groups = HostingJSON.objects(try await GitLabCLI.api("groups?min_access_level=10&per_page=100", host: host, paginate: true))
+        let groups = try await client.getPages(try url("/groups?min_access_level=10&per_page=100"))
             .compactMap { group -> RemoteRepositoryOwner? in
                 guard let path = group["full_path"] as? String else { return nil }
                 return RemoteRepositoryOwner(login: path, isAccount: false, accountID: account.id,
                                              serviceID: (group["id"] as? Int).map(String.init))
             }
             .sorted { $0.login.localizedCaseInsensitiveCompare($1.login) == .orderedAscending }
-        return [RemoteRepositoryOwner(login: username, isAccount: true, accountID: account.id)] + groups
+        return [RemoteRepositoryOwner(login: hostingAccount.username, isAccount: true, accountID: account.id)] + groups
     }
 
     func repositories(of owner: RemoteRepositoryOwner) async throws -> [RemoteRepository] {
         let path = owner.isAccount
-            ? "projects?owned=true&per_page=100&order_by=last_activity_at"
-            : "groups/\(owner.login.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? owner.login)/projects"
-                + "?include_subgroups=true&per_page=100&order_by=last_activity_at"
-        return HostingJSON.objects(try await GitLabCLI.api(path, host: host, paginate: true)).compactMap(CatalogParser.gitlabProject)
+            ? "/projects?owned=true&per_page=100&order_by=last_activity_at"
+            : "/groups/\(GitLabParser.encoded(owner.login))/projects?include_subgroups=true&per_page=100&order_by=last_activity_at"
+        return try await client.getPages(try url(path)).compactMap(CatalogParser.gitlabProject)
     }
 }
 

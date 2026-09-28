@@ -182,16 +182,22 @@ struct HostingProviderTests {
         #expect(threads.count == 1 && threads[0].replies.map(\.body) == ["Reply"])
     }
 
-    @Test func gitlabCreateArgumentsAndURL() {
+    @Test func gitlabCreateBodyAndProjectPath() {
         let draft = PullRequestDraft(base: "main", head: "feat", title: "T", body: "B", isDraft: true, reviewers: ["a"])
-        let arguments = GitLabParser.createArguments(draft)
-        #expect(arguments.starts(with: ["mr", "create", "--source-branch", "feat", "--target-branch", "main"]))
-        #expect(arguments.contains("--draft") && arguments.contains("--yes") && arguments.suffix(2) == ["--reviewer", "a"])
-        let output = "Creating merge request for feat into main in group/app\n\n!12 T (feat)\n https://gitlab.com/group/app/-/merge_requests/12\n"
-        #expect(GitLabParser.mergeRequestURL(in: output) == "https://gitlab.com/group/app/-/merge_requests/12")
-        #expect(GitLabCLI.parseAuthStatus("gitlab.com\n  ✓ Logged in to gitlab.com as jane (/Users/j/.config/glab-cli/config.yml)\n")
-                    .first?.account == "jane")
-        #expect(GitLabCLI.projectPath(RemoteLocation(kind: .gitlab, host: "gitlab.com", owner: "group/sub", name: "app"))
+        let body = GitLabParser.createBody(draft, reviewerIDs: [7])
+        #expect(body["source_branch"] as? String == "feat" && body["target_branch"] as? String == "main")
+        #expect(body["title"] as? String == "Draft: T" && body["reviewer_ids"] as? [Int] == [7])
+        #expect(GitLabParser.projectPath(RemoteLocation(kind: .gitlab, host: "gitlab.com", owner: "group/sub", name: "app"))
                 == "projects/group%2Fsub%2Fapp")
+    }
+
+    @Test func gitlabDiffsGetGitHeadersBack() {
+        let files: [[String: Any]] = [
+            ["old_path": "a.txt", "new_path": "a.txt", "diff": "@@ -1 +1 @@\n-old\n+new\n"],
+            ["old_path": "b.txt", "new_path": "b.txt", "new_file": true, "diff": "@@ -0,0 +1 @@\n+hi\n"]
+        ]
+        let diffs = DiffParser.parse(GitLabParser.unifiedDiff(files))
+        #expect(diffs.map(\.filePath) == ["a.txt", "b.txt"])
+        #expect(GitLabParser.unifiedDiff(files).contains("--- /dev/null\n+++ b/b.txt"))
     }
 }

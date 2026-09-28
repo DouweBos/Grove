@@ -24,11 +24,19 @@ struct CreateRemoteRepositoryTests {
 
     // MARK: Requests
 
-    @Test func githubCreatesUnderTheOrganizationOnlyWhenAsked() {
-        let mine = NewRemoteRepository(owner: owner("me", isAccount: true), name: "app", description: "", isPrivate: true)
-        #expect(GitHubCatalog.createArguments(mine) == ["repo", "create", "app", "--private"])
-        let org = NewRemoteRepository(owner: owner("team"), name: "app", description: "Tools", isPrivate: false)
-        #expect(GitHubCatalog.createArguments(org) == ["repo", "create", "team/app", "--public", "--description", "Tools"])
+    @Test func githubCreatesUnderTheOrganizationOnlyWhenAsked() async throws {
+        let http = FakeHTTPClient { _ in (201, #"{"name":"app","full_name":"team/app","owner":{"login":"team"},"private":false}"#) }
+        let account = HostingAccount(kind: .github, username: "me")
+        let catalog = GitHubCatalog(hostingAccount: account, client: RESTClient(credentials: RESTCredentials(account: account, secret: "t"),
+                                                                                http: http))
+        _ = try await catalog.createRepository(NewRemoteRepository(owner: owner("me", isAccount: true), name: "app", isPrivate: true))
+        let created = try await catalog.createRepository(NewRemoteRepository(owner: owner("team"), name: "app", description: "Tools",
+                                                                             isPrivate: false))
+        #expect(created.nameWithOwner == "team/app")
+        #expect(http.requests.map { $0.url?.path ?? "" } == ["/user/repos", "/orgs/team/repos"])
+        #expect(http.requests.allSatisfy { $0.httpMethod == "POST" })
+        let body = try #require(http.requests.last?.httpBody.flatMap { try JSONSerialization.jsonObject(with: $0) as? [String: Any] })
+        #expect(body["private"] as? Bool == false && body["description"] as? String == "Tools")
     }
 
     @Test func gitlabGroupsGetTheirNamespace() {

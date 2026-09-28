@@ -78,7 +78,6 @@ nonisolated struct BitbucketPullRequestHost: PullRequestHost {
         URL(string: "https://bitbucket.org/\(location.fullName)/pull-requests/\(number)")
     }
 
-    func checkout(number: Int) async throws -> Bool { false }
 }
 
 nonisolated enum BitbucketParser {

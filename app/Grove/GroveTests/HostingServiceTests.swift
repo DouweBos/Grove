@@ -75,27 +75,26 @@ struct HostingServiceTests {
 
     @Test func serviceWithoutAccountAsksForOne() {
         let store = makeAccountStore()
+        #expect(throws: HostingError.noAccount(.github, host: "github.com")) {
+            _ = try PullRequestHostResolver.resolve(remotes: [remote("git@github.com:o/r.git")], accounts: store)
+        }
         #expect(throws: HostingError.noAccount(.bitbucket, host: "bitbucket.org")) {
-            _ = try PullRequestHostResolver.resolve(remotes: [remote("git@bitbucket.org:w/r.git")], directory: URL(fileURLWithPath: "/tmp"),
-                                                    accounts: store)
+            _ = try PullRequestHostResolver.resolve(remotes: [remote("git@bitbucket.org:w/r.git")], accounts: store)
         }
         #expect(throws: HostingError.noHostedRemote) {
-            _ = try PullRequestHostResolver.resolve(remotes: [remote("/tmp/x.git")], directory: URL(fileURLWithPath: "/tmp"),
-                                                    accounts: store)
+            _ = try PullRequestHostResolver.resolve(remotes: [remote("/tmp/x.git")], accounts: store)
         }
     }
 
     @Test func accountsServeOnlyTheirOrganization() throws {
         let store = makeAccountStore()
         store.add(HostingAccount(kind: .azureDevOps, username: "me", organization: "contoso"), secret: "pat")
-        let url = URL(fileURLWithPath: "/tmp")
         let resolved = try PullRequestHostResolver.resolve(
             remotes: [remote("/tmp/local", name: "backup"), remote("https://dev.azure.com/contoso/p/_git/r", name: "upstream")],
-            directory: url, accounts: store)
+            accounts: store)
         #expect(resolved.host.kind == .azureDevOps && resolved.remote == "upstream")
         #expect(throws: HostingError.noAccount(.azureDevOps, host: "dev.azure.com/fabrikam")) {
-            _ = try PullRequestHostResolver.resolve(remotes: [remote("https://dev.azure.com/fabrikam/p/_git/r")], directory: url,
-                                                    accounts: store)
+            _ = try PullRequestHostResolver.resolve(remotes: [remote("https://dev.azure.com/fabrikam/p/_git/r")], accounts: store)
         }
     }
 
@@ -121,9 +120,8 @@ struct HostingServiceTests {
 
     @Test func loadFailuresNameTheFix() {
         #expect(PRLoadFailure(HostingError.noAccount(.bitbucket, host: "bitbucket.org")) == .noAccount(.bitbucket, host: "bitbucket.org"))
-        #expect(PRLoadFailure(HostingError.cliMissing(.gitlab)) == .cliMissing(.gitlab))
-        #expect(PRLoadFailure(GitHubCLI.Failure.notAuthenticated) == .notSignedIn(.github))
-        #expect(PRLoadFailure(GitHubCLI.Failure.failed("none of the git remotes point to a known GitHub host")) == .noHostedRemote)
+        #expect(PRLoadFailure(HostingError.notSignedIn(.gitlab)) == .notSignedIn(.gitlab))
+        #expect(PRLoadFailure(HostingError.noHostedRemote) == .noHostedRemote)
     }
 
     @Test func concatenatedPagesAndLinesAllParse() {

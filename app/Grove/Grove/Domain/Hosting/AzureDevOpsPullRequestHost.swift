@@ -98,7 +98,6 @@ nonisolated struct AzureDevOpsPullRequestHost: PullRequestHost {
         return "https://dev.azure.com/\(location.owner)/\(project)/_git/\(location.name)/pullrequest/\(number)"
     }
 
-    func checkout(number: Int) async throws -> Bool { false }
 }
 
 nonisolated enum AzureDevOpsParser {

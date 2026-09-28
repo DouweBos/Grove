@@ -10,7 +10,7 @@ extension GitRepository {
 
     /// Read each time so a remote added or changed in Settings takes effect at once.
     private func resolvedHost() async throws -> (host: any PullRequestHost, remote: String) {
-        try PullRequestHostResolver.resolve(remotes: try await remotes(), directory: path)
+        try PullRequestHostResolver.resolve(remotes: try await remotes())
     }
 
     private func host() async throws -> any PullRequestHost {
@@ -66,15 +66,17 @@ extension GitRepository {
         try await host().webURL(number: number)
     }
 
-    /// Services without a checkout command get a fetch of the source branch and a tracking branch for it.
+    /// Fetches the pull request's head with git and checks it out as its source branch. The service's head ref
+    /// (`refs/pull/N/head`) also works for forks; without one the source branch is fetched and tracked.
     func checkoutPullRequest(number: Int) async throws {
         Logger.gitRepository.info("Checking out PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
         let (host, remote) = try await resolvedHost()
-        if try await !host.checkout(number: number) {
-            let branch = try await host.pullRequest(number: number).sourceBranch
-            try await shell.run(["fetch", remote, branch])
-            let hasLocal = try await shell.runAllowingFailure(["rev-parse", "--verify", "--quiet", "refs/heads/\(branch)"]).isSuccess
-            try await shell.run(hasLocal ? ["checkout", branch] : ["checkout", "-b", branch, "--track", "\(remote)/\(branch)"])
+        let branch = try await host.pullRequest(number: number).sourceBranch
+        let hasLocal = try await shell.runAllowingFailure(["rev-parse", "--verify", "--quiet", "refs/heads/\(branch)"]).isSuccess
+        let onRemote = try await shell.runAllowingFailure(["ls-remote", "--exit-code", "--heads", remote, branch]).isSuccess
+        for step in Self.checkoutSteps(branch: branch, remote: remote, headRef: host.headRef(number: number),
+                                       hasLocalBranch: hasLocal, branchOnRemote: onRemote) {
+            try await shell.run(step)
         }
         currentBranch   = try? await Self.loadCurrentBranch(shell: shell)
         repositoryState = await Self.loadRepositoryState(path: path)
@@ -99,5 +101,21 @@ extension GitRepository {
     func commentOnPullRequest(number: Int, body: String) async throws {
         Logger.gitRepository.info("Commenting on PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
         try await host().comment(number: number, body: body)
+    }
+
+    /// The git commands that bring a pull request's head into `branch`: a tracking branch when the branch is on the remote,
+    /// otherwise the head ref fetched into it; an existing branch is checked out and fast-forwarded.
+    nonisolated static func checkoutSteps(branch: String, remote: String, headRef: String?, hasLocalBranch: Bool,
+                                          branchOnRemote: Bool) -> [[String]] {
+        if branchOnRemote {
+            return [["fetch", remote, branch],
+                    hasLocalBranch ? ["checkout", branch] : ["checkout", "-b", branch, "--track", "\(remote)/\(branch)"]]
+                + (hasLocalBranch ? [["merge", "--ff-only", "\(remote)/\(branch)"]] : [])
+        }
+        let ref = headRef ?? branch
+        if hasLocalBranch {
+            return [["checkout", branch], ["fetch", remote, ref], ["merge", "--ff-only", "FETCH_HEAD"]]
+        }
+        return [["fetch", remote, "\(ref):refs/heads/\(branch)"], ["checkout", branch]]
     }
 }

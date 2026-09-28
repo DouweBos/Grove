@@ -3,7 +3,7 @@
 
 import SwiftUI
 
-/// Pull request list on the left, the selected PR on the right. Data comes from the `gh` CLI.
+/// Pull request list on the left, the selected PR on the right. Data comes from the remote's hosting service.
 struct PullRequestsView: View {
 
     @Environment(PullRequestsViewModel.self) private var viewModel

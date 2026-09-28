@@ -52,13 +52,11 @@ struct CreatePullRequestTests {
         #expect(BranchPublishState(branch: branches.first { $0.name == "develop" }) == .published)
     }
 
-    @Test func ghArgumentsCarryDraftAndReviewers() {
+    @Test func githubBodyCarriesDraft() {
         let draft = PullRequestDraft(base: "main", head: "feat", title: "T", body: "B", isDraft: true, reviewers: ["a", "b"])
-        #expect(GitHubCLI.createPullRequestArguments(draft)
-                == ["pr", "create", "--base", "main", "--head", "feat", "--title", "T", "--body", "B", "--draft", "--reviewer", "a,b"])
-        let plain = PullRequestDraft(base: "main", head: "feat", title: "T", body: "")
-        #expect(!GitHubCLI.createPullRequestArguments(plain).contains("--draft"))
-        #expect(!GitHubCLI.createPullRequestArguments(plain).contains("--reviewer"))
+        let body = GitHubParser.createBody(draft)
+        #expect(body["head"] as? String == "feat" && body["base"] as? String == "main" && body["draft"] as? Bool == true)
+        #expect(body["reviewers"] == nil, "Reviewers go in their own request")
     }
 
     // MARK: View model
