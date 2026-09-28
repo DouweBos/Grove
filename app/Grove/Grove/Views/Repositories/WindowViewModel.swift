@@ -176,10 +176,10 @@ final class WindowViewModel {
 
     private func filtered(_ list: [RepositoryBookmarkData]) -> [RepositoryBookmarkData] {
         let query = searchText.trimmingCharacters(in: .whitespaces)
-        let matches = query.isEmpty ? list : list.filter { bookmark in
+        let found = query.isEmpty ? list : list.filter { bookmark in
             matches(bookmark, query) || worktreeRows(of: bookmark).contains { matches($0, query) }
         }
-        return matches.sorted { $0.sortOrder < $1.sortOrder }
+        return found.sorted { $0.sortOrder < $1.sortOrder }
     }
 
     private func matches(_ bookmark: RepositoryBookmarkData, _ query: String) -> Bool {
