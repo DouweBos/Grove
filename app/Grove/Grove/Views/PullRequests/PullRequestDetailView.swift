@@ -36,7 +36,7 @@ struct PullRequestDetailView: View {
                         .foregroundStyle(Theme.textPrimary)
                         .textSelection(.enabled)
                     HStack(spacing: Theme.Spacing.sm) {
-                        stateBadge(pr)
+                        stateBadge(pr).fixedSize()
                         Text("#\(String(pr.id)) \u{00B7} \(pr.authorName) \u{00B7} opened \(pr.createdDate.formatted(.relative(presentation: .named)))")
                             .font(.monoCaption)
                             .foregroundStyle(Theme.textSecondary)
@@ -146,16 +146,7 @@ struct PullRequestDetailView: View {
                     }
                 }
             }
-            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                SectionLabel(title: "Conversation", count: viewModel.comments.count)
-                if viewModel.isLoadingComments {
-                    ProgressView().controlSize(.small)
-                } else if viewModel.comments.isEmpty {
-                    Text("No comments yet.").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
-                } else {
-                    ForEach(viewModel.comments) { PRCommentView(comment: $0) }
-                }
-            }
+            PRConversationView()
         }
     }
 

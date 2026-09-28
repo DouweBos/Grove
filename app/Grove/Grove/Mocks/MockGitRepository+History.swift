@@ -74,4 +74,13 @@ extension MockGitRepository {
     }
 
     func defaultBranch(of remote: String) async -> String? { "main" }
+
+    func commentOnPullRequest(number: Int, body: String) async throws {
+        await simulateLatency(120_000_000)
+    }
+
+    func pullRequestReviewComments(number: Int) async throws -> [PRReviewComment] {
+        await simulateLatency(60_000_000)
+        return MockData.prReviewComments
+    }
 }

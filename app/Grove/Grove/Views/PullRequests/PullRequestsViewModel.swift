@@ -60,6 +60,10 @@ final class PullRequestsViewModel {
     private(set) var selectedPR: PullRequestInfo?
     private(set) var activeDetailTab: PRDetailTab = .overview
     private(set) var comments: [PRComment] = []
+    private(set) var reviewThreads: [PRReviewThread] = []
+    private(set) var commentDraft = ""
+    private(set) var isPostingComment = false
+    private(set) var commentError: String?
     private(set) var isLoadingComments = false
     private(set) var prCommits: [CommitInfo] = []
     private(set) var isLoadingPRCommits = false
@@ -149,6 +153,8 @@ final class PullRequestsViewModel {
         selectedPR = pr
         let cached = detailCache.value(for: PRDetailKey(pr))
         comments = cached?.comments ?? []
+        reviewThreads = cached?.reviewThreads ?? []
+        commentError = nil
         prCommits = cached?.commits ?? []
         prChangeset = cached?.changeset ?? []
         selectedChangesetPath = prChangeset.first?.path
@@ -195,9 +201,40 @@ final class PullRequestsViewModel {
         let showSpinner = detailCache.peek(key)?.comments == nil
         if showSpinner { isLoadingComments = true }
         defer { if selectedPR?.id == pr.id { isLoadingComments = false } }
-        guard let loaded = try? await repository.pullRequestComments(number: pr.id) else { return }
-        detailCache.update(key, default: PRDetails()) { $0.comments = loaded }
-        if selectedPR?.id == pr.id { comments = loaded }
+        async let conversation = try? repository.pullRequestComments(number: pr.id)
+        async let review = try? repository.pullRequestReviewComments(number: pr.id)
+        let (loaded, lineComments) = await (conversation, review)
+        let threads = lineComments.map(PRReviewThread.threads(from:))
+        if let loaded { detailCache.update(key, default: PRDetails()) { $0.comments = loaded } }
+        if let threads { detailCache.update(key, default: PRDetails()) { $0.reviewThreads = threads } }
+        guard selectedPR?.id == pr.id else { return }
+        if let loaded { comments = loaded }
+        if let threads { reviewThreads = threads }
+    }
+
+    // MARK: - Commenting
+
+    func setCommentDraft(_ text: String) {
+        commentDraft = text
+    }
+
+    var canPostComment: Bool {
+        selectedPR != nil && !isPostingComment && !commentDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// Posts the draft on the selected pull request, then re-reads its conversation.
+    func postComment() async {
+        guard canPostComment, let pr = selectedPR else { return }
+        isPostingComment = true
+        commentError = nil
+        defer { isPostingComment = false }
+        do {
+            try await repository.commentOnPullRequest(number: pr.id, body: commentDraft.trimmingCharacters(in: .whitespacesAndNewlines))
+            commentDraft = ""
+            await loadComments(for: pr)
+        } catch {
+            commentError = error.localizedDescription
+        }
     }
 
     private func loadTabContent(force: Bool = false) async {
@@ -324,6 +361,7 @@ struct PRDetailKey: Hashable {
 /// Detail tabs of one pull request; each fills in when its tab is first shown.
 struct PRDetails {
     var comments: [PRComment]?
+    var reviewThreads: [PRReviewThread]?
     var commits: [CommitInfo]?
     var changeset: [FileDiff]?
 }

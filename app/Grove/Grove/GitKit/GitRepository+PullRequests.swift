@@ -75,4 +75,15 @@ extension GitRepository {
         // gh prints progress lines before the URL; the URL is the last line.
         return result.stdout.split(whereSeparator: \.isNewline).last.map(String.init) ?? ""
     }
+
+    func commentOnPullRequest(number: Int, body: String) async throws {
+        Logger.gitRepository.info("Commenting on PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
+        try await ghRun(["pr", "comment", "\(number)", "--body", body])
+    }
+
+    func pullRequestReviewComments(number: Int) async throws -> [PRReviewComment] {
+        // gh fills in {owner}/{repo} from the repository's GitHub remote.
+        let result = try await ghRun(["api", "repos/{owner}/{repo}/pulls/\(number)/comments", "--paginate", "--jq", ".[]"])
+        return try PRReviewComment.parseGitHub(result.stdout)
+    }
 }

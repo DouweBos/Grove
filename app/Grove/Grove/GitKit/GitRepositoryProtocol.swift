@@ -294,6 +294,10 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func closePullRequest(number: Int) async throws
     /// Merge a pull request using the merge strategy.
     func mergePullRequest(number: Int) async throws
+    /// Posts a general comment on a pull request's conversation.
+    func commentOnPullRequest(number: Int, body: String) async throws
+    /// Comments left on lines of a pull request's diff.
+    func pullRequestReviewComments(number: Int) async throws -> [PRReviewComment]
     /// Opens a pull request on the host and returns its web URL.
     func createPullRequest(_ draft: PullRequestDraft) async throws -> String
     /// Pushes a local branch that needn't be checked out to `target` on `remote`, and tracks it (`push -u`).
@@ -391,6 +395,8 @@ extension GitRepositoryProtocol {
     func pullRequestDiff(number: Int) async throws -> [FileDiff] { [] }
     func pullRequestCommits(number: Int) async throws -> [CommitInfo] { [] }
     func createPullRequest(_ draft: PullRequestDraft) async throws -> String { "" }
+    func commentOnPullRequest(number: Int, body: String) async throws {}
+    func pullRequestReviewComments(number: Int) async throws -> [PRReviewComment] { [] }
     func publishBranch(_ name: String, to remote: String, as target: String) async throws {}
     func defaultBranch(of remote: String) async -> String? { nil }
 }
