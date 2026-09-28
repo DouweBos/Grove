@@ -23,14 +23,8 @@ struct BranchesSidebarSection: View {
             }
             ForEach(viewModel.localBranchGroups, id: \.prefix) { group in
                 if let prefix = group.prefix {
-                    DisclosureGroup {
-                        ForEach(group.branches) { branch in
-                            branchRow(branch, isPinned: viewModel.pinnedBranchNames.contains(branch.name))
-                        }
-                    } label: {
-                        SidebarRow(title: prefix, symbol: "folder", tint: Theme.textSecondary) {
-                            Text("\(group.branches.count)").font(.system(size: 11, design: .monospaced))
-                        }
+                    BranchFolder(prefix: prefix, branches: group.branches) { branch in
+                        branchRow(branch, isPinned: viewModel.pinnedBranchNames.contains(branch.name))
                     }
                 } else {
                     ForEach(group.branches) { branch in
@@ -82,6 +76,37 @@ struct BranchesSidebarSection: View {
                     onDelete: { branchToDelete = branch }
                 )
             }
+    }
+}
+
+/// A "prefix/" group of branches; it opens when it holds the checked-out branch, so HEAD is always visible.
+private struct BranchFolder<Row: View>: View {
+    let prefix: String
+    let branches: [BranchInfo]
+    @ViewBuilder let row: (BranchInfo) -> Row
+    @State private var isExpanded: Bool
+
+    init(prefix: String, branches: [BranchInfo], @ViewBuilder row: @escaping (BranchInfo) -> Row) {
+        self.prefix = prefix
+        self.branches = branches
+        self.row = row
+        _isExpanded = State(initialValue: branches.contains(where: \.isHEAD))
+    }
+
+    private var containsHEAD: Bool { branches.contains(where: \.isHEAD) }
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $isExpanded) {
+            ForEach(branches) { row($0) }
+        } label: {
+            SidebarRow(title: prefix, symbol: "folder", tint: Theme.textSecondary) {
+                Text("\(branches.count)").font(.system(size: 11, design: .monospaced))
+            }
+        }
+        // A checkout into this folder opens it; it never closes on its own, so manual toggles stick.
+        .onChange(of: containsHEAD) { _, contains in
+            if contains { isExpanded = true }
+        }
     }
 }
 
