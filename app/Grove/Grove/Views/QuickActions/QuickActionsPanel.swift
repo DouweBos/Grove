@@ -1,89 +1,46 @@
 // Views/QuickActions/QuickActionsPanel.swift
 // Grove
+//
+// Floating command palette (Cmd+Shift+A): commands, views, refs, commits and files.
 
 import SwiftUI
 
-// MARK: - QuickActionsPanel
-
-/// Floating command palette overlay.
-///
-/// Presents as a centered modal with a dimmed background.  The panel contains:
-/// - A search field at the top.
-/// - An Items / Filename tab switcher.
-/// - A scrollable list of matching results.
-///
-/// Keyboard handling:
-/// - **Up / Down arrows** navigate the result list.
-/// - **Return** activates the selected result and dismisses the panel.
-/// - **Escape** dismisses without activating.
-///
-/// `onActivate` is called with the chosen ``SidebarItem`` (if any) so the
-/// parent window can update its navigation selection.
 struct QuickActionsPanel: View {
 
-    // MARK: - Properties
-
     @State private var viewModel: QuickActionsViewModel
+    @FocusState private var isSearchFocused: Bool
 
-    /// Called when the user activates a result that maps to a sidebar destination.
-    var onActivate: ((SidebarItem) -> Void)?
+    private static let width: CGFloat = 600
+    private static let listHeight: CGFloat = 380
 
-    // MARK: - Focus State
-
-    @FocusState private var searchFieldFocused: Bool
-
-    // MARK: - Constants
-
-    private static let panelWidth: CGFloat  = 520
-    private static let maxListHeight: CGFloat = 360
-
-    // MARK: - Init
-
-    init(
-        repository: any GitRepositoryProtocol,
-        onActivate: ((SidebarItem) -> Void)? = nil
-    ) {
-        _viewModel = State(
-            initialValue: QuickActionsViewModel(repository: repository)
-        )
-        self.onActivate = onActivate
+    init(session: RepositorySession) {
+        _viewModel = State(initialValue: QuickActionsViewModel(session: session))
     }
 
-    // MARK: - Body
-
     var body: some View {
-        // Dimmed full-screen overlay
-        ZStack {
+        ZStack(alignment: .top) {
             if viewModel.isPresented {
-                // Background dim
-                Color.black.opacity(0.35)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        viewModel.close()
-                    }
-
-                // Floating panel
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { viewModel.close() }
                 panel
-                    .frame(width: Self.panelWidth)
-                    .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 8)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .frame(width: Self.width)
+                    .padding(.top, 60)
+                    .transition(.scale(scale: 0.97, anchor: .top).combined(with: .opacity))
             }
         }
-        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: viewModel.isPresented)
-        // Listen for GroveAction.quickActions notifications to toggle the palette.
-        .onReceive(
-            NotificationCenter.default.publisher(for: GroveAction.notificationName)
-        ) { notification in
-            guard
-                let action = GroveAction(notification: notification),
-                action == .quickActions
-            else { return }
-            if viewModel.isPresented {
-                viewModel.close()
-            } else {
-                viewModel.open()
-                searchFieldFocused = true
-            }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(.snappy(duration: 0.18), value: viewModel.isPresented)
+        .onReceive(NotificationCenter.default.publisher(for: GroveAction.notificationName)) { note in
+            guard GroveAction(notification: note) == .quickActions else { return }
+            viewModel.toggle()
+            isSearchFocused = viewModel.isPresented
+        }
+        .alert("Couldn't Open", isPresented: Binding(get: { viewModel.errorMessage != nil },
+                                                    set: { if !$0 { viewModel.dismissError() } })) {
+            Button("OK") { viewModel.dismissError() }
+        } message: {
+            Text(viewModel.errorMessage ?? "")
         }
     }
 
@@ -91,214 +48,152 @@ struct QuickActionsPanel: View {
 
     private var panel: some View {
         VStack(spacing: 0) {
-            // Search field
-            searchField
-
-            Divider()
-
-            // Tab switcher
-            tabSwitcher
-
-            Divider()
-
-            // Results list
-            resultsList
+            searchRow
+            PillTabBar(tabs: QuickActionsTab.allCases.map { PillTab(id: $0, title: $0.rawValue, symbol: $0 == .items ? "command" : "doc.text") },
+                       selection: viewModel.selectedTab, compact: true) { viewModel.selectTab($0) }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Theme.Spacing.md)
+                .padding(.bottom, Theme.Spacing.sm)
+            Rectangle().fill(Theme.border).frame(height: 0.5)
+            results
+            footer
         }
-        .background(.ultraThickMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.primary.opacity(0.15), lineWidth: 1)
-        )
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 0.5))
+        .shadow(radius: 28, y: 12)
     }
 
-    // MARK: - Search Field
-
-    private var searchField: some View {
-        HStack(spacing: 8) {
+    private var searchRow: some View {
+        HStack(spacing: Theme.Spacing.md) {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-                .font(.system(size: 15))
-
-            TextField("Search\u{2026}", text: Binding(
-                get: { viewModel.searchText },
-                set: { viewModel.searchText = $0 }
-            ))
-            .textFieldStyle(.plain)
-            .font(.system(size: 15))
-            .focused($searchFieldFocused)
-            .onSubmit {
-                activate()
-            }
-            .onKeyPress(.upArrow) {
-                viewModel.selectPrevious()
-                return .handled
-            }
-            .onKeyPress(.downArrow) {
-                viewModel.selectNext()
-                return .handled
-            }
-            .onKeyPress(.escape) {
-                viewModel.close()
-                return .handled
-            }
-
-            if !viewModel.searchText.isEmpty {
-                Button {
-                    viewModel.searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Theme.textSecondary)
+            TextField(viewModel.selectedTab == .items ? "Run a command, jump to a branch or commit\u{2026}" : "Find a file to blame\u{2026}",
+                      text: Binding(get: { viewModel.searchText }, set: viewModel.setSearchText))
+                .textFieldStyle(.plain)
+                .font(.system(size: 17))
+                .foregroundStyle(Theme.textPrimary)
+                .focused($isSearchFocused)
+                .onSubmit { viewModel.activateSelected() }
+                .onKeyPress(.upArrow) { viewModel.moveSelection(by: -1); return .handled }
+                .onKeyPress(.downArrow) { viewModel.moveSelection(by: 1); return .handled }
+                .onKeyPress(.escape) { viewModel.close(); return .handled }
+                .onKeyPress(.tab) {
+                    viewModel.selectTab(viewModel.selectedTab == .items ? .files : .items)
+                    return .handled
                 }
-                .buttonStyle(.plain)
-            }
+                .onKeyPress(keys: [.return], phases: .down) { press in
+                    guard press.modifiers.contains(.command) else { return .ignored }
+                    viewModel.activateSelected(alternate: true)
+                    return .handled
+                }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
+        .padding(.horizontal, Theme.Spacing.lg)
+        .padding(.vertical, Theme.Spacing.md)
     }
-
-    // MARK: - Tab Switcher
-
-    private var tabSwitcher: some View {
-        Picker("Search mode", selection: Binding(
-            get: { viewModel.selectedTab },
-            set: { viewModel.selectedTab = $0 }
-        )) {
-            ForEach(QuickActionsTab.allCases) { tab in
-                Text(tab.rawValue).tag(tab)
-            }
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-    }
-
-    // MARK: - Results List
 
     @ViewBuilder
-    private var resultsList: some View {
+    private var results: some View {
         if viewModel.results.isEmpty {
-            emptyResultsView
+            Text(viewModel.searchText.isEmpty ? "Loading\u{2026}" : "No matches for \u{201C}\(viewModel.searchText)\u{201D}")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, Theme.Spacing.xl)
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 2) {
                         ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, result in
-                            QuickActionRow(
-                                result: result,
-                                isSelected: index == viewModel.selectedIndex,
-                                onMoveToFront: {
-                                    moveToFront(resultID: result.id)
+                            QuickActionRow(result: result)
+                                .selectableRow(isSelected: index == viewModel.selectedIndex)
+                                .id(result.id)
+                                .onTapGesture {
+                                    viewModel.highlight(index)
+                                    viewModel.activateSelected()
                                 }
-                            )
-                            .id(result.id)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                viewModel.selectedIndex = index
-                                activate()
-                            }
                         }
                     }
-                    .padding(6)
+                    .padding(Theme.Spacing.sm)
                 }
-                .frame(maxHeight: Self.maxListHeight)
-                // Keep the selected row visible when navigating with keyboard.
-                .onChange(of: viewModel.selectedIndex) { _, newIndex in
-                    if viewModel.results.indices.contains(newIndex) {
-                        withAnimation(.easeInOut(duration: 0.1)) {
-                            proxy.scrollTo(viewModel.results[newIndex].id, anchor: .center)
-                        }
-                    }
+                .frame(maxHeight: Self.listHeight)
+                .fixedSize(horizontal: false, vertical: true)
+                .onChange(of: viewModel.selectedIndex) { _, index in
+                    guard viewModel.results.indices.contains(index) else { return }
+                    proxy.scrollTo(viewModel.results[index].id)
                 }
             }
         }
     }
 
-    private var emptyResultsView: some View {
-        VStack(spacing: 6) {
-            Text(viewModel.searchText.isEmpty ? "No items" : "No results")
-                .foregroundStyle(.secondary)
-                .font(.subheadline)
+    private var footer: some View {
+        HStack(spacing: Theme.Spacing.lg) {
+            hint("\u{2191}\u{2193}", "navigate")
+            hint("\u{21A9}", viewModel.selectedTab == .files ? "blame" : "run")
+            if viewModel.selectedTab == .files { hint("\u{2318}\u{21A9}", "open in editor") }
+            hint("\u{21E5}", "switch tab")
+            Spacer()
+            hint("esc", "close")
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
+        .padding(.horizontal, Theme.Spacing.lg)
+        .padding(.vertical, Theme.Spacing.sm)
+        .overlay(alignment: .top) { Rectangle().fill(Theme.border).frame(height: 0.5) }
     }
 
-    // MARK: - Actions
-
-    private func activate() {
-        if let item = viewModel.activateSelected() {
-            onActivate?(item)
-        }
-    }
-
-    private func moveToFront(resultID: String) {
-        // Bubble the matching result to the top of the list.
-        // A full implementation would persist this ordering;
-        // for now we reorder in-place within the current session.
-        guard
-            let from = viewModel.results.firstIndex(where: { $0.id == resultID }),
-            from > 0
-        else { return }
-        let item = viewModel.results.remove(at: from)
-        viewModel.results.insert(item, at: 0)
-        viewModel.selectedIndex = 0
-    }
-}
-
-// MARK: - QuickActionsToggleModifier
-
-/// View modifier that attaches a ``QuickActionsPanel`` overlay to any view.
-///
-/// Use this on the root view of a repository window:
-/// ```swift
-/// RepositoryContentRouter(session: session, repository: repository)
-///     .quickActions(repository: repository) { item in
-///         sidebarSelection = item
-///     }
-/// ```
-struct QuickActionsToggleModifier: ViewModifier {
-
-    let repository: any GitRepositoryProtocol
-    var onActivate: ((SidebarItem) -> Void)?
-
-    func body(content: Content) -> some View {
-        ZStack {
-            content
-            QuickActionsPanel(repository: repository, onActivate: onActivate)
+    private func hint(_ key: String, _ label: String) -> some View {
+        HStack(spacing: Theme.Spacing.xs) {
+            Text(key).font(.monoCaption).foregroundStyle(Theme.textPrimary)
+            Text(label).font(.system(size: 11)).foregroundStyle(Theme.textSecondary)
         }
     }
 }
+
+// MARK: - Row
+
+private struct QuickActionRow: View {
+    let result: QuickActionResult
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.md) {
+            Image(systemName: result.symbol)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Theme.accent)
+                .frame(width: 26, height: 26)
+                .background(Theme.subtleFill, in: RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(result.title)
+                    .font(.rowTitle)
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+                if let subtitle = result.subtitle {
+                    Text(subtitle)
+                        .font(.monoCaption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+            Spacer(minLength: Theme.Spacing.sm)
+            Text(result.kind)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Theme.textSecondary)
+        }
+    }
+}
+
+// MARK: - Mounting
 
 extension View {
-    /// Attaches the Quick Actions command palette to this view.
-    func quickActions(
-        repository: any GitRepositoryProtocol,
-        onActivate: ((SidebarItem) -> Void)? = nil
-    ) -> some View {
-        modifier(QuickActionsToggleModifier(
-            repository: repository,
-            onActivate: onActivate
-        ))
+    /// Overlays the Quick Actions palette; it opens on `GroveAction.quickActions`.
+    func quickActions(session: RepositorySession) -> some View {
+        overlay { QuickActionsPanel(session: session) }
     }
 }
 
-// MARK: - Preview
-
 #Preview {
-    let repo = MockGitRepository()
-
-    ZStack {
-        // Simulated app background
-        Color(NSColor.windowBackgroundColor)
-            .frame(width: 900, height: 600)
-
-        QuickActionsPanel(repository: repo, onActivate: { item in
-            print("Activated: \(item)")
-        })
-        .onAppear {
-            // Auto-open for preview convenience.
-        }
-    }
-    .frame(width: 900, height: 600)
+    let session = RepositorySession(repository: MockGitRepository())
+    return Theme.background
+        .frame(width: 900, height: 600)
+        .quickActions(session: session)
+        .onAppear { GroveAction.quickActions.post() }
 }

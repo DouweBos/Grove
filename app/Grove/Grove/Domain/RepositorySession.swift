@@ -30,6 +30,7 @@ final class RepositorySession {
     let toolbarState = RepositoryToolbarState()
     let gitUndoManager = GitUndoManager()
     let autoFetcher: AutoFetchScheduler
+    let blameVM: BlameViewModel
 
     // MARK: - Navigation
 
@@ -56,6 +57,19 @@ final class RepositorySession {
         self.branchesReviewVM = BranchesReviewViewModel(repository: repository)
         self.pullRequestsVM   = PullRequestsViewModel(repository: repository)
         self.autoFetcher      = AutoFetchScheduler(repository: repository)
+        self.blameVM          = BlameViewModel(repository: repository)
+        wireFeatureViewModels()
+    }
+
+    /// Lets feature VMs refresh the whole session and record undoable actions.
+    private func wireFeatureViewModels() {
+        let refresh: () async -> Void = { [weak self] in await self?.refreshAll() }
+        stashesVM.onRepositoryChanged = refresh
+        reflogVM.onRepositoryChanged = refresh
+        reflogVM.undoManager = gitUndoManager
+        branchesReviewVM.onRepositoryChanged = refresh
+        branchesReviewVM.undoManager = gitUndoManager
+        pullRequestsVM.onRepositoryChanged = refresh
     }
 
     // MARK: - Lifecycle
@@ -90,6 +104,7 @@ final class RepositorySession {
             for vm in filteredHistoryVMs.values { await vm.reload() }
             if !stashesVM.stashes.isEmpty || selectedItem == .stashes { await stashesVM.refresh() }
             if selectedItem == .reflog { await reflogVM.refresh() }
+            if selectedItem == .branchesReview { await branchesReviewVM.refresh() }
         } while needsAnotherRefresh
     }
 
@@ -118,6 +133,10 @@ final class RepositorySession {
             sidebarVM.select(.pullRequests)
         case .navigateBranchesReview:
             sidebarVM.select(.branchesReview)
+        case .navigateBlame:
+            sidebarVM.select(.blame)
+        case .navigateSettings:
+            sidebarVM.select(.settings)
         case .fetch:
             Task {
                 toolbarState.remotes = (try? await repository.remotes()) ?? []

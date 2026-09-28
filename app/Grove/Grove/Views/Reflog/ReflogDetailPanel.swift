@@ -3,304 +3,201 @@
 
 import SwiftUI
 
-// MARK: - ReflogDetailPanel
-
-/// The right panel of the Reflog view — shows details for the selected entry.
-///
-/// Displays the action description, the referenced commit info (SHA, author,
-/// message, date), and provides "Reset HEAD" and "Create Branch" actions.
+/// Detail card for the selected reflog entry: what happened, the commit it points at, restore actions.
 struct ReflogDetailPanel: View {
 
     @Environment(ReflogViewModel.self) private var viewModel
 
-    // MARK: - Sheet State
-
-    @State private var isCreateBranchPresented = false
-    @State private var newBranchName = ""
-
-    // MARK: - Body
-
     var body: some View {
-        if let entry = viewModel.selectedEntry {
-            VStack(alignment: .leading, spacing: 0) {
-                entryHeader(entry)
-                Divider()
-                commitDetail(entry)
+        Group {
+            if let entry = viewModel.selectedEntry {
+                VStack(spacing: 0) {
+                    header(entry)
+                    Rectangle().fill(Theme.border).frame(height: 0.5)
+                    ScrollView {
+                        commitSection(entry)
+                            .padding(Theme.Spacing.lg)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            } else {
+                EmptyStateView(systemImage: "clock.arrow.circlepath", title: "No Entry Selected",
+                               subtitle: "Select a reflog entry to inspect it or restore HEAD to that point.")
             }
-        } else {
-            emptyState
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .panel()
     }
 
-    // MARK: - Entry Header
+    // MARK: - Header
 
-    @ViewBuilder
-    private func entryHeader(_ entry: ReflogEntry) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Action buttons row
-            HStack(spacing: 8) {
-                Menu("Restore\u{2026}") {
-                    Button("Mixed Reset (keep working tree)") {
-                        Task { await viewModel.resetToEntry(entry, mode: .mixed) }
-                    }
-                    Button("Soft Reset (keep staged)") {
-                        Task { await viewModel.resetToEntry(entry, mode: .soft) }
-                    }
-                    Divider()
-                    Button("Hard Reset (discard all changes)", role: .destructive) {
-                        Task { await viewModel.resetToEntry(entry, mode: .hard) }
-                    }
+    private func header(_ entry: ReflogEntry) -> some View {
+        let action = viewModel.actionType(for: entry)
+        return HStack(alignment: .top, spacing: Theme.Spacing.md) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                HStack(spacing: Theme.Spacing.sm) {
+                    Text("HEAD@{\(viewModel.index(of: entry))}")
+                        .font(.system(size: 17, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Theme.textPrimary)
+                    Label(action.displayName, systemImage: action.systemImage)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(action.color)
+                        .padding(.horizontal, Theme.Spacing.sm)
+                        .padding(.vertical, 3)
+                        .background(action.color.opacity(0.14), in: Capsule())
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-
-                Button("Create Branch\u{2026}") {
-                    newBranchName = ""
-                    isCreateBranchPresented = true
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-
-                Spacer()
-
-                Button {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(entry.newSHA, forType: .string)
-                } label: {
-                    Image(systemName: "doc.on.doc")
-                        .imageScale(.small)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .help("Copy commit SHA")
-            }
-
-            // Entry summary card
-            VStack(alignment: .leading, spacing: 6) {
-                let idx = viewModel.index(of: entry)
-                let actionType = viewModel.actionType(for: entry)
-
-                HStack(spacing: 6) {
-                    Image(systemName: actionType.systemImage)
-                        .foregroundStyle(actionColor(actionType))
-                    Text("HEAD@{\(idx)}")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .fontDesign(.monospaced)
-                    Text(actionType.displayName)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(actionColor(actionType))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(actionColor(actionType).opacity(0.12), in: Capsule())
-                }
-
                 Text(entry.message)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.textSecondary)
                     .textSelection(.enabled)
-
-                HStack(spacing: 10) {
-                    Label(entry.committerName, systemImage: "person")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(entry.date.formatted(.dateTime.year().month().day().hour().minute()))
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+                    .lineLimit(2)
+                HStack(spacing: Theme.Spacing.md) {
+                    Text("\(entry.oldSHA.prefix(7)) \u{2192} \(entry.newSHA.prefix(7))")
+                    Text(entry.date.formatted(date: .abbreviated, time: .shortened)).lineLimit(1)
                 }
+                .font(.monoCaption)
+                .foregroundStyle(Theme.textSecondary)
             }
-            .padding(10)
-            .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 8))
+            Spacer(minLength: Theme.Spacing.md)
+            HStack(spacing: Theme.Spacing.sm) {
+                Button("Create Branch\u{2026}") { viewModel.beginCreateBranch(from: entry) }
+                Menu("Reset HEAD") {
+                    Button("Soft \u{2014} keep index and files\u{2026}") { viewModel.requestReset(to: entry, mode: .soft) }
+                    Button("Mixed \u{2014} keep files\u{2026}") { viewModel.requestReset(to: entry, mode: .mixed) }
+                    Divider()
+                    Button("Hard \u{2014} discard all changes\u{2026}", role: .destructive) {
+                        viewModel.requestReset(to: entry, mode: .hard)
+                    }
+                }
+                .fixedSize()
+            }
         }
-        .padding(12)
-        .sheet(isPresented: $isCreateBranchPresented) {
-            createBranchSheet(entry)
+        .padding(Theme.Spacing.lg)
+    }
+
+    // MARK: - Commit
+
+    @ViewBuilder
+    private func commitSection(_ entry: ReflogEntry) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            SectionLabel(title: "Commit")
+            if viewModel.isLoadingDetail {
+                ProgressView().controlSize(.small)
+            } else if let commit = viewModel.selectedCommit {
+                commitCard(commit)
+            } else {
+                Banner(symbol: "questionmark.circle",
+                       message: "Commit \(entry.newSHA.prefix(7)) is no longer in the object database.")
+            }
         }
     }
 
-    // MARK: - Commit Detail
-
-    @ViewBuilder
-    private func commitDetail(_ entry: ReflogEntry) -> some View {
-        if viewModel.isLoadingDetail {
-            VStack {
-                Spacer()
-                ProgressView("Loading commit\u{2026}")
-                Spacer()
-            }
-        } else if let commit = viewModel.selectedCommit {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Referenced Commit")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.top, 12)
-
-                    commitInfoCard(commit)
-                        .padding(.horizontal, 12)
-
-                    Spacer(minLength: 12)
-                }
-            }
-        } else {
-            // Entry exists but commit could not be resolved (e.g. after GC)
-            VStack(spacing: 8) {
-                Spacer()
-                Image(systemName: "questionmark.circle")
-                    .font(.system(size: 32))
-                    .foregroundStyle(.tertiary)
-                Text("Commit no longer available")
-                    .foregroundStyle(.secondary)
-                Text(String(entry.newSHA.prefix(7)))
-                    .font(.caption)
-                    .fontDesign(.monospaced)
-                    .foregroundStyle(.tertiary)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
-        }
-    }
-
-    // MARK: - Commit Info Card
-
-    @ViewBuilder
-    private func commitInfoCard(_ commit: CommitInfo) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // SHA row
-            HStack(spacing: 4) {
-                Text("SHA:")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(commit.id)
-                    .font(.caption)
-                    .fontDesign(.monospaced)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-
-            Divider()
-
-            // Author
-            HStack(spacing: 6) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(commit.authorName)
-                        .fontWeight(.medium)
-                    Text(commit.authorEmail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Text(commit.authorDate.formatted(.dateTime.year().month().day().hour().minute()))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Divider()
-
-            // Commit message
-            VStack(alignment: .leading, spacing: 4) {
+    private func commitCard(_ commit: CommitInfo) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 Text(commit.summary)
-                    .fontWeight(.medium)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
                     .textSelection(.enabled)
-
                 if let body = commit.body, !body.isEmpty {
                     Text(body)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.textSecondary)
                         .textSelection(.enabled)
                 }
             }
-
-            if commit.isSigned {
-                Label("Verified signature", systemImage: "checkmark.seal.fill")
-                    .font(.caption)
-                    .foregroundStyle(.green)
-            }
-        }
-        .padding(12)
-        .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    // MARK: - Create Branch Sheet
-
-    @ViewBuilder
-    private func createBranchSheet(_ entry: ReflogEntry) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Create Branch")
-                .font(.headline)
-
-            Text("Create a new branch at HEAD@{\(viewModel.index(of: entry))} (\(String(entry.newSHA.prefix(7)))).")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-
-            TextField("Branch name", text: $newBranchName)
-                .textFieldStyle(.roundedBorder)
-
-            HStack {
-                Spacer()
-                Button("Cancel", role: .cancel) {
-                    isCreateBranchPresented = false
+            Grid(alignment: .leading, horizontalSpacing: Theme.Spacing.lg, verticalSpacing: Theme.Spacing.xs) {
+                GridRow {
+                    Text("Author").foregroundStyle(Theme.textSecondary)
+                    Text("\(commit.authorName) <\(commit.authorEmail)>").textSelection(.enabled)
                 }
-                .keyboardShortcut(.escape)
-
-                Button("Create") {
-                    let name = newBranchName.trimmingCharacters(in: .whitespaces)
-                    guard !name.isEmpty else { return }
-                    isCreateBranchPresented = false
-                    Task { await viewModel.createBranch(name: name, from: entry) }
+                GridRow {
+                    Text("Date").foregroundStyle(Theme.textSecondary)
+                    Text(commit.authorDate.formatted(date: .long, time: .shortened))
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(newBranchName.trimmingCharacters(in: .whitespaces).isEmpty)
-                .keyboardShortcut(.return)
+                GridRow {
+                    Text("SHA").foregroundStyle(Theme.textSecondary)
+                    HStack(spacing: Theme.Spacing.xs) {
+                        Text(commit.id).font(.monoCaption).textSelection(.enabled).lineLimit(1)
+                        Button { GroveClipboard.copy(commit.id) } label: { Image(systemName: "doc.on.doc") }
+                            .buttonStyle(.borderless)
+                            .help("Copy SHA")
+                    }
+                }
+                if commit.isSigned {
+                    GridRow {
+                        Text("Signature").foregroundStyle(Theme.textSecondary)
+                        StatusBadge(title: "Verified", symbol: "checkmark.seal.fill", tone: .positive)
+                    }
+                }
             }
+            .font(.system(size: 13))
+            .foregroundStyle(Theme.textPrimary)
         }
-        .padding(20)
-        .frame(width: 340)
-    }
-
-    // MARK: - Empty State
-
-    private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
-                .font(.system(size: 40))
-                .foregroundStyle(.tertiary)
-            Text("Select a reflog entry to view details")
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    // MARK: - Helpers
-
-    private func actionColor(_ type: ReflogActionType) -> Color {
-        switch type {
-        case .commit, .commitAmend:     return .green
-        case .checkout:                  return .blue
-        case .rebase:                    return .orange
-        case .merge:                     return .purple
-        case .pull:                      return .cyan
-        case .push:                      return .teal
-        case .reset:                     return .red
-        case .cherryPick:                return .pink
-        case .other:                     return .secondary
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Spacing.md)
+        .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous))
     }
 }
 
-// MARK: - Preview
+// MARK: - Create Branch Sheet
+
+struct ReflogCreateBranchSheet: View {
+    @Environment(ReflogViewModel.self) private var viewModel
+    let entry: ReflogEntry
+    let index: Int
+
+    @State private var name = ""
+    @State private var checkout = false
+
+    private var isValid: Bool {
+        ReflogViewModel.isValidBranchName(name.trimmingCharacters(in: .whitespaces))
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Branch name", text: $name, prompt: Text("feature/recovered-work"))
+                    .onSubmit(create)
+                Toggle("Check out after creating", isOn: $checkout)
+            } header: {
+                Text("New branch at HEAD@{\(index)} \u{00B7} \(entry.newSHA.prefix(7))")
+            } footer: {
+                if !name.isEmpty && !isValid {
+                    Text("Branch names can't contain spaces, \u{201C}..\u{201D}, or ~ ^ : ? * [ \\")
+                        .font(.caption)
+                        .foregroundStyle(Theme.danger)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 420)
+        .fixedSize(horizontal: false, vertical: true)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { viewModel.cancelCreateBranch() }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Create Branch", action: create).disabled(!isValid)
+            }
+        }
+    }
+
+    private func create() {
+        guard isValid else { return }
+        Task { await viewModel.createBranch(named: name, checkout: checkout) }
+    }
+}
 
 #Preview {
     let vm = ReflogViewModel(repository: MockGitRepository())
-    vm.selectedEntry = MockData.reflogEntries[0]
-    vm.selectedCommit = MockData.commits[0]
-
     return ReflogDetailPanel()
         .environment(vm)
-        .frame(width: 420, height: 500)
+        .frame(width: 560, height: 480)
+        .padding()
+        .background(Theme.background)
+        .task {
+            await vm.refresh()
+            if let first = vm.entries.first { await vm.select(first) }
+        }
 }

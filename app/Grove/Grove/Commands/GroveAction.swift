@@ -33,6 +33,10 @@ enum GroveAction: String, Sendable {
     case navigatePullRequests
     /// Navigate to the Branches Review view (Cmd+6).
     case navigateBranchesReview
+    /// Navigate to Blame (More menu).
+    case navigateBlame
+    /// Navigate to Repository Settings (More menu).
+    case navigateSettings
 
     // MARK: Remote Operations
 

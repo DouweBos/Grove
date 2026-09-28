@@ -18,6 +18,7 @@ struct GroveApp: App {
     var body: some Scene {
         Window("Grove", id: "main") {
             RootWindowHost(manager: manager)
+                .onAppear { AppAppearance.applyStored() }
         }
         .defaultSize(width: 1100, height: 700)
         .commands {

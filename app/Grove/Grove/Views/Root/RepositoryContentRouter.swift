@@ -78,7 +78,7 @@ struct RepositoryContentRouter: View {
                 }
 
         case .blame:
-            BlameFilePicker(repository: repository)
+            BlameView(viewModel: session.blameVM)
 
         case .pullRequests:
             PullRequestsView()

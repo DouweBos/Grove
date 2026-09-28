@@ -218,6 +218,26 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
 
     func reflog(maxCount: Int) async throws -> [ReflogEntry]
 
+    // MARK: Inspection & Local Config (implemented in GitRepository+Inspection.swift)
+
+    /// Files changed by a stash, including its untracked files.
+    func stashDiff(index: Int) async throws -> [FileDiff]
+    /// File text at `revision`, or the working-tree copy when `revision` is nil.
+    func fileContents(path: String, revision: String?) async throws -> String
+    /// Local branch names fully merged into `base`.
+    func mergedBranches(into base: String) async throws -> Set<String>
+    /// Commits `branch` has that `base` lacks (ahead) and vice versa (behind).
+    func aheadBehind(branch: String, base: String) async throws -> (ahead: Int, behind: Int)
+    /// Value from the repository's local `.git/config`, or nil when unset.
+    func localConfigValue(_ key: String) async throws -> String?
+    /// Writes a local config value; nil or empty unsets it.
+    func setLocalConfigValue(_ key: String, to value: String?) async throws
+    func setRemoteURL(_ url: String, forRemote name: String) async throws
+    /// Full diff of a pull request against its base, via `gh pr diff`.
+    func pullRequestDiff(number: Int) async throws -> [FileDiff]
+    /// Commits in a pull request, via `gh pr view --json commits`.
+    func pullRequestCommits(number: Int) async throws -> [CommitInfo]
+
     // MARK: Pull Requests
 
     /// Return the list of pull requests from the GitHub CLI.

@@ -3,407 +3,209 @@
 
 import SwiftUI
 
-/// Detail panel for a selected pull request.
-///
-/// Shows a tab bar at the top with three tabs:
-/// - **Overview** — PR title, author, branch flow, description, labels, checks, and comments.
-/// - **Commits** — ordered list of commits on the PR's source branch.
-/// - **Files** — combined file changeset across the whole PR.
-///
-/// The ``PRActionBar`` is pinned at the bottom in all tabs.
+/// Detail card for the selected pull request: header, actions, and Overview / Commits / Files tabs.
 struct PullRequestDetailView: View {
 
     @Environment(PullRequestsViewModel.self) private var viewModel
 
     var body: some View {
-        if let pr = viewModel.selectedPR {
-            VStack(spacing: 0) {
-                // MARK: Tab bar
-                tabBar(pr: pr)
-
-                Divider()
-
-                // MARK: Tab content
-                tabContent(pr: pr)
-
-                Divider()
-
-                // MARK: Action bar (always visible)
-                PRActionBar(
-                    pr: pr,
-                    onCheckout: { Task { await viewModel.checkout(pr: pr) } },
-                    onClose: { Task { await viewModel.close(pr: pr) } },
-                    onMerge: { Task { await viewModel.merge(pr: pr) } }
-                )
-            }
-            .alert("Action Failed", isPresented: Binding(
-                get: { viewModel.actionError != nil },
-                set: { if !$0 { viewModel.clearActionError() } }
-            )) {
-                Button("OK") { viewModel.clearActionError() }
-            } message: {
-                Text(viewModel.actionError ?? "")
-            }
-        } else {
-            emptyState
-        }
-    }
-
-    // MARK: - Tab Bar
-
-    private func tabBar(pr: PullRequestInfo) -> some View {
-        @Bindable var vm = viewModel
-        return HStack(spacing: 0) {
-            ForEach(PRDetailTab.allCases, id: \.self) { tab in
-                tabButton(tab: tab, pr: pr, selectedTab: $vm.activeDetailTab)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 8)
-        .background(.bar)
-    }
-
-    private func tabButton(
-        tab: PRDetailTab,
-        pr: PullRequestInfo,
-        selectedTab: Binding<PRDetailTab>
-    ) -> some View {
-        let isSelected = selectedTab.wrappedValue == tab
-        return Button {
-            selectedTab.wrappedValue = tab
-            // Trigger lazy loads when switching tabs.
-            switch tab {
-            case .commits:
-                Task { await viewModel.loadPRCommits(for: pr) }
-            case .files:
-                Task { await viewModel.loadChangeset(for: pr) }
-            case .overview:
-                break
-            }
-        } label: {
-            VStack(spacing: 0) {
-                Text(tab.rawValue)
-                    .font(.subheadline)
-                    .fontWeight(isSelected ? .semibold : .regular)
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-
-                // Selection indicator
-                Rectangle()
-                    .fill(isSelected ? Color.accentColor : Color.clear)
-                    .frame(height: 2)
-            }
-        }
-        .buttonStyle(.plain)
-        .contentShape(Rectangle())
-    }
-
-    // MARK: - Tab Content
-
-    @ViewBuilder
-    private func tabContent(pr: PullRequestInfo) -> some View {
-        switch viewModel.activeDetailTab {
-        case .overview:
-            overviewContent(pr: pr)
-        case .commits:
-            PRCommitsTab()
-        case .files:
-            PRChangesetTab()
-        }
-    }
-
-    // MARK: - Overview Content (previously the full body)
-
-    private func overviewContent(pr: PullRequestInfo) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                prHeader(pr)
-                Divider()
-                branchSection(pr)
-
-                if let body = pr.body, !body.isEmpty {
-                    Divider()
-                    bodySection(body)
+        Group {
+            if let pr = viewModel.selectedPR {
+                VStack(spacing: 0) {
+                    header(pr)
+                    Rectangle().fill(Theme.border).frame(height: 0.5)
+                    tabContent(pr)
                 }
-
-                if !pr.labels.isEmpty {
-                    Divider()
-                    labelsSection(pr.labels)
-                }
-
-                Divider()
-                checksSection(pr.checksStatus)
-
-                Divider()
-                commentsSection
+            } else {
+                EmptyStateView(systemImage: "arrow.triangle.pull", title: "No Pull Request Selected",
+                               subtitle: "Select a pull request to read its description, commits and changes.")
             }
-            .padding(16)
-        }
-    }
-
-    // MARK: - Empty State
-
-    private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "arrow.triangle.merge")
-                .font(.system(size: 40))
-                .foregroundStyle(.tertiary)
-            Text("Select a pull request to view details")
-                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .panel()
     }
 
-    // MARK: - PR Header
+    // MARK: - Header
+
+    private func header(_ pr: PullRequestInfo) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            HStack(alignment: .top, spacing: Theme.Spacing.md) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text(pr.title)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .textSelection(.enabled)
+                    HStack(spacing: Theme.Spacing.sm) {
+                        stateBadge(pr)
+                        Text("#\(pr.id) \u{00B7} \(pr.authorName) \u{00B7} opened \(pr.createdDate.formatted(.relative(presentation: .named)))")
+                            .font(.monoCaption)
+                            .foregroundStyle(Theme.textSecondary)
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                    HStack(spacing: Theme.Spacing.xs) {
+                        BranchLabel(name: pr.sourceBranch, kind: .localBranch(isHEAD: false))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Theme.textSecondary)
+                        BranchLabel(name: pr.targetBranch, kind: .remoteBranch)
+                    }
+                }
+                Spacer(minLength: Theme.Spacing.md)
+                actions(pr)
+            }
+            Picker("Section", selection: Binding(get: { viewModel.activeDetailTab },
+                                                 set: { tab in Task { await viewModel.selectTab(tab) } })) {
+                ForEach(PRDetailTab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 320)
+        }
+        .padding(Theme.Spacing.lg)
+    }
+
+    private func stateBadge(_ pr: PullRequestInfo) -> some View {
+        let tone: StatusBadge.Tone = switch pr.state {
+        case .open: pr.isDraft ? .neutral : .positive
+        case .merged: .neutral
+        case .closed: .negative
+        }
+        let title = pr.isDraft && pr.state == .open ? "Draft" : pr.state.rawValue.capitalized
+        return StatusBadge(title: title, symbol: pr.stateSymbol, tone: tone)
+    }
+
+    private func actions(_ pr: PullRequestInfo) -> some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            Button { viewModel.openInBrowser(pr) } label: { Image(systemName: "safari") }
+                .help("Open on GitHub")
+            Button("Check Out") { Task { await viewModel.checkout(pr) } }
+            if pr.state == .open {
+                Menu("More") {
+                    Button("Merge on GitHub\u{2026}") { viewModel.request(.merge, on: pr) }
+                        .disabled(pr.isDraft)
+                    Button("Close Pull Request\u{2026}", role: .destructive) { viewModel.request(.close, on: pr) }
+                }
+                .fixedSize()
+            }
+        }
+        .disabled(viewModel.isPerforming)
+    }
+
+    // MARK: - Tabs
 
     @ViewBuilder
-    private func prHeader(_ pr: PullRequestInfo) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Number + state pill
-            HStack(alignment: .center, spacing: 8) {
-                Text("#\(pr.id)")
-                    .font(.title3)
-                    .fontWeight(.bold)
-                    .fontDesign(.monospaced)
-                    .foregroundStyle(.secondary)
+    private func tabContent(_ pr: PullRequestInfo) -> some View {
+        switch viewModel.activeDetailTab {
+        case .overview:
+            ScrollView { overview(pr).padding(Theme.Spacing.lg).frame(maxWidth: .infinity, alignment: .leading) }
+        case .commits:
+            commits
+        case .files:
+            ChangesetBrowser(files: viewModel.prChangeset, selectedPath: viewModel.selectedChangesetPath,
+                             isLoading: viewModel.isLoadingChangeset, emptyTitle: "No File Changes") {
+                viewModel.selectChangesetFile($0)
+            }
+        }
+    }
 
-                prStatePill(pr.state)
-
-                if pr.isDraft {
-                    Text("Draft")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(Color.secondary.opacity(0.15), in: Capsule())
+    private func overview(_ pr: PullRequestInfo) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                SectionLabel(title: "Description")
+                if let body = pr.body, !body.isEmpty {
+                    MarkdownRenderer(markdown: body, fontSize: 13)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                } else {
+                    Text("No description provided.").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
                 }
             }
-
-            // Title
-            Text(pr.title)
-                .font(.title2)
-                .fontWeight(.semibold)
-                .textSelection(.enabled)
-
-            // Author row
-            HStack(spacing: 8) {
-                PRAuthorAvatarView(name: pr.authorName)
-                    .frame(width: 28, height: 28)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(pr.authorName)
-                        .fontWeight(.medium)
-                        .font(.subheadline)
-                    Text("opened \(pr.createdDate, style: .relative)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            HStack(alignment: .top, spacing: Theme.Spacing.xl) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    SectionLabel(title: "Checks")
+                    Label(checksText(pr.checksStatus), systemImage: pr.checksStatus.symbol)
+                        .font(.system(size: 13))
+                        .foregroundStyle(pr.checksStatus.color)
+                }
+                if !pr.reviewers.isEmpty {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                        SectionLabel(title: "Review Requested")
+                        Text(pr.reviewers.joined(separator: ", ")).font(.system(size: 13))
+                    }
+                }
+                if !pr.labels.isEmpty {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                        SectionLabel(title: "Labels")
+                        HStack(spacing: Theme.Spacing.xs) {
+                            ForEach(pr.labels) { StatusBadge(title: $0.name, symbol: "tag", tone: .neutral) }
+                        }
+                    }
+                }
+            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                SectionLabel(title: "Conversation", count: viewModel.comments.count)
+                if viewModel.isLoadingComments {
+                    ProgressView().controlSize(.small)
+                } else if viewModel.comments.isEmpty {
+                    Text("No comments yet.").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+                } else {
+                    ForEach(viewModel.comments) { PRCommentView(comment: $0) }
                 }
             }
         }
     }
 
-    // MARK: - State Pill
-
-    @ViewBuilder
-    private func prStatePill(_ state: PRState) -> some View {
-        let (label, color): (String, Color) = switch state {
-        case .open:   ("Open", .green)
-        case .closed: ("Closed", .red)
-        case .merged: ("Merged", .purple)
-        }
-
-        Text(label)
-            .font(.caption)
-            .fontWeight(.semibold)
-            .foregroundStyle(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(color, in: Capsule())
-    }
-
-    // MARK: - Branch Section
-
-    @ViewBuilder
-    private func branchSection(_ pr: PullRequestInfo) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            sectionTitle("Branches")
-
-            HStack(spacing: 6) {
-                Label(pr.sourceBranch, systemImage: "arrow.triangle.branch")
-                    .font(.subheadline)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
-
-                Image(systemName: "arrow.right")
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
-
-                Text(pr.targetBranch)
-                    .font(.subheadline)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
-            }
-        }
-    }
-
-    // MARK: - Body Section
-
-    @ViewBuilder
-    private func bodySection(_ body: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            sectionTitle("Description")
-            MarkdownRenderer(markdown: body, fontSize: 13)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    // MARK: - Labels Section
-
-    @ViewBuilder
-    private func labelsSection(_ labels: [PRLabel]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            sectionTitle("Labels")
-            FlowLayout(spacing: 6) {
-                ForEach(labels) { label in
-                    PRLabelPill(label: label)
-                }
-            }
-        }
-    }
-
-    // MARK: - Checks Section
-
-    @ViewBuilder
-    private func checksSection(_ status: PRChecksStatus) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            sectionTitle("Checks")
-
-            HStack(spacing: 8) {
-                checksIcon(status)
-                Text(checksLabel(status))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func checksIcon(_ status: PRChecksStatus) -> some View {
+    private func checksText(_ status: PRChecksStatus) -> String {
         switch status {
-        case .passing:
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-        case .failing:
-            Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
-        case .pending:
-            Image(systemName: "clock.circle.fill").foregroundStyle(.yellow)
-        case .none:
-            Image(systemName: "minus.circle").foregroundStyle(.tertiary)
+        case .passing: "All checks passed"
+        case .failing: "Some checks failed"
+        case .pending: "Checks in progress"
+        case .none: "No checks reported"
         }
     }
-
-    private func checksLabel(_ status: PRChecksStatus) -> String {
-        switch status {
-        case .passing: return "All checks passed"
-        case .failing: return "Some checks failed"
-        case .pending: return "Checks in progress"
-        case .none:    return "No checks configured"
-        }
-    }
-
-    // MARK: - Comments Section
 
     @ViewBuilder
-    private var commentsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionTitle("Comments")
-
-            if viewModel.isLoadingComments {
-                HStack {
-                    Spacer()
-                    ProgressView("Loading comments\u{2026}")
-                    Spacer()
+    private var commits: some View {
+        if viewModel.isLoadingPRCommits {
+            ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if viewModel.prCommits.isEmpty {
+            EmptyStateView(systemImage: "clock", title: "No Commits")
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 2) {
+                    ForEach(viewModel.prCommits) { commit in
+                        HStack(spacing: Theme.Spacing.md) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(commit.summary).font(.rowTitle).foregroundStyle(Theme.textPrimary).lineLimit(1)
+                                Text("\(commit.authorName) \u{00B7} \(commit.authorDate.formatted(.relative(presentation: .named)))")
+                                    .font(.monoCaption)
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+                            Spacer()
+                            Text(commit.shortSHA).font(.monoCaption).foregroundStyle(Theme.accent)
+                        }
+                        .selectableRow(isSelected: false)
+                        .contextMenu {
+                            Button("Copy SHA", systemImage: "doc.on.doc") { GroveClipboard.copy(commit.id) }
+                        }
+                    }
                 }
-                .padding(.vertical, 8)
-            } else if viewModel.comments.isEmpty {
-                Text("No comments yet.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 4)
-            } else {
-                ForEach(viewModel.comments) { comment in
-                    PRCommentView(comment: comment)
-                }
+                .padding(Theme.Spacing.sm)
             }
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func sectionTitle(_ title: String) -> some View {
-        Text(title)
-            .font(.caption)
-            .fontWeight(.semibold)
-            .foregroundStyle(.secondary)
-            .textCase(.uppercase)
-    }
-}
-
-// MARK: - FlowLayout
-
-/// A simple wrapping horizontal layout for label pills.
-private struct FlowLayout: Layout {
-
-    let spacing: CGFloat
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
-        let maxWidth = proposal.width ?? .infinity
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x + size.width > maxWidth, x > 0 {
-                y += rowHeight + spacing
-                x = 0
-                rowHeight = 0
-            }
-            x += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-        }
-        y += rowHeight
-        return CGSize(width: maxWidth, height: y)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
-        var x = bounds.minX
-        var y = bounds.minY
-        var rowHeight: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x + size.width > bounds.maxX, x > bounds.minX {
-                y += rowHeight + spacing
-                x = bounds.minX
-                rowHeight = 0
-            }
-            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
-            x += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
         }
     }
 }
 
 #Preview {
     let vm = PullRequestsViewModel(repository: MockGitRepository())
-    vm.selectedPR = MockData.pullRequests[0]
-    vm.comments   = MockData.prComments
-
     return PullRequestDetailView()
         .environment(vm)
-        .frame(width: 480, height: 680)
+        .frame(width: 620, height: 640)
+        .padding()
+        .background(Theme.background)
+        .task {
+            await vm.refresh()
+            if let first = vm.pullRequests.first { await vm.select(first) }
+        }
 }

@@ -953,7 +953,7 @@ final class GitRepository: GitRepositoryProtocol {
         let result = try await ghRun([
             "pr", "list",
             "--json", "number,title,body,author,state,headRefName,baseRefName,createdAt,updatedAt,isDraft,labels,reviewRequests,statusCheckRollup",
-            "--limit", "50"
+            "--state", "all", "--limit", "100"
         ])
         let prs = try PRParser.parseList(result.stdout)
         Logger.gitRepository.info("Fetched \(prs.count, privacy: .public) pull requests in \(self.displayName, privacy: .public)")

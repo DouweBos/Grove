@@ -24,6 +24,8 @@ struct Banner: View {
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
+                // Without a floor, zero-width sizing passes wrap per character and inflate the window.
+                .frame(minWidth: 160, alignment: .leading)
             Spacer(minLength: Theme.Spacing.sm)
             if let actionTitle, let action {
                 Button(actionTitle, action: action).controlSize(.small)

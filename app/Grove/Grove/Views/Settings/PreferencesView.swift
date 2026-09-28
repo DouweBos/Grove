@@ -1,13 +1,10 @@
 // Views/Settings/PreferencesView.swift
 // Grove
 //
-// Preferences window structure with all tab panels.
+// Preferences window (Cmd+,). Every control here is read somewhere; see GrovePreferences.
 
 import SwiftUI
 
-// MARK: - PreferencesView
-
-/// macOS Preferences window with an icon tab bar.
 struct PreferencesView: View {
 
     let manager: any RepositoryManagerProtocol
@@ -15,124 +12,94 @@ struct PreferencesView: View {
     var body: some View {
         TabView {
             GeneralPreferencesTab()
-                .tabItem {
-                    Label("General", systemImage: "gearshape")
-                }
-                .tag("general")
-
-            AppearancePreferencesTab()
-                .tabItem {
-                    Label("Appearance", systemImage: "paintbrush")
-                }
-                .tag("appearance")
-
+                .tabItem { Label("General", systemImage: "gearshape") }
             GitConfigPreferencesTab()
-                .tabItem {
-                    Label("Git Config", systemImage: "terminal")
-                }
-                .tag("gitconfig")
-
-            UserProfilesPreferencesTab()
-                .tabItem {
-                    Label("Profiles", systemImage: "person.circle")
-                }
-                .tag("profiles")
-
+                .tabItem { Label("Git", systemImage: "terminal") }
             ServicesPreferencesTab()
-                .tabItem {
-                    Label("Services", systemImage: "network")
-                }
-                .tag("services")
-
+                .tabItem { Label("Accounts", systemImage: "person.crop.circle") }
             EditorPreferencesTab()
-                .tabItem {
-                    Label("Editor", systemImage: "pencil.and.outline")
-                }
-                .tag("editor")
-
-            CommitTemplatesPreferencesTab()
-                .tabItem {
-                    Label("Templates", systemImage: "doc.text")
-                }
-                .tag("templates")
-
-            KeyboardShortcutsPreferencesTab()
-                .tabItem {
-                    Label("Shortcuts", systemImage: "keyboard")
-                }
-                .tag("shortcuts")
-
+                .tabItem { Label("Tools", systemImage: "hammer") }
             AdvancedPreferencesTab(manager: manager)
-                .tabItem {
-                    Label("Advanced", systemImage: "gearshape.2")
-                }
-                .tag("advanced")
+                .tabItem { Label("Advanced", systemImage: "gearshape.2") }
         }
-        .frame(width: 600, height: 480)
+        .frame(width: 560, height: 520)
     }
 }
 
-// MARK: - GeneralPreferencesTab
+// MARK: - General
 
-/// General preferences tab.
 struct GeneralPreferencesTab: View {
 
-    @AppStorage("defaultCloneDirectory") private var defaultCloneDirectory = "~/Projects"
-    @AppStorage("terminalApp") private var terminalApp = "Terminal"
-    @AppStorage("autoFetchMinutes") private var autoFetchMinutes = 0
-    @AppStorage("warnOnHunkDiscard") private var warnOnHunkDiscard = true
-    @AppStorage("showQuickStartOnLaunch") private var showQuickStartOnLaunch = true
-    @AppStorage("compactToolbar") private var compactToolbar = false
-    @AppStorage("commitHistoryLimit") private var commitHistoryLimit = 500
+    @AppStorage(GrovePreferences.Key.appearance) private var appearance = GrovePreferences.Default.appearance
+    @AppStorage(GrovePreferences.Key.defaultCloneDirectory) private var defaultCloneDirectory = "~/Projects"
+    @AppStorage(GrovePreferences.Key.terminalApp) private var terminalApp = GrovePreferences.Default.terminalApp
+    @AppStorage(GrovePreferences.Key.autoFetchMinutes) private var autoFetchMinutes = GrovePreferences.Default.autoFetchMinutes
+    @AppStorage(GrovePreferences.Key.warnOnHunkDiscard) private var warnOnHunkDiscard = GrovePreferences.Default.warnOnHunkDiscard
+    @AppStorage(GrovePreferences.Key.staleBranchDays) private var staleBranchDays = GrovePreferences.Default.staleBranchDays
 
     var body: some View {
         Form {
+            Section("Appearance") {
+                Picker("Appearance", selection: $appearance) {
+                    ForEach(AppAppearance.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: appearance) { _, _ in AppAppearance.applyStored() }
+            }
+
             Section("Repositories") {
-                LabeledContent("Default clone directory") {
-                    TextField("~/Projects", text: $defaultCloneDirectory)
-                }
-                LabeledContent("Terminal application") {
-                    Picker("", selection: $terminalApp) {
-                        Text("Terminal").tag("Terminal")
-                        Text("iTerm").tag("iTerm")
-                        Text("Warp").tag("Warp")
+                LabeledContent("Clone into") {
+                    HStack {
+                        TextField("Clone into", text: $defaultCloneDirectory, prompt: Text("~/Projects"))
+                            .labelsHidden()
+                            .font(.monoCaption)
+                        Button("Choose\u{2026}", action: chooseCloneDirectory)
                     }
-                    .labelsHidden()
-                    .frame(maxWidth: 160)
                 }
-            }
-
-            Section("Fetching") {
-                LabeledContent("Auto-fetch interval") {
-                    Picker("", selection: $autoFetchMinutes) {
-                        Text("Never").tag(0)
-                        Text("Every 5 minutes").tag(5)
-                        Text("Every 10 minutes").tag(10)
-                        Text("Every 30 minutes").tag(30)
+                Picker("Terminal", selection: $terminalApp) {
+                    ForEach(TerminalApp.allCases) { app in
+                        Text(app.isInstalled ? app.rawValue : "\(app.rawValue) (not installed)").tag(app.rawValue)
                     }
-                    .labelsHidden()
-                    .frame(maxWidth: 180)
                 }
             }
 
-            Section("Behavior") {
-                Toggle("Warn when discarding a hunk", isOn: $warnOnHunkDiscard)
-                Toggle("Show Quick Start window on launch", isOn: $showQuickStartOnLaunch)
-                Toggle("Compact toolbar layout", isOn: $compactToolbar)
+            Section {
+                Picker("Fetch remotes automatically", selection: $autoFetchMinutes) {
+                    Text("Off").tag(0)
+                    Text("Every 5 minutes").tag(5)
+                    Text("Every 15 minutes").tag(15)
+                    Text("Every 30 minutes").tag(30)
+                    Text("Every hour").tag(60)
+                }
+            } header: {
+                Text("Fetching")
+            } footer: {
+                Text("Runs in the background for open repositories. Takes effect immediately.")
+                    .font(.caption).foregroundStyle(Theme.textSecondary)
             }
 
-            Section("History") {
-                LabeledContent("Commit history limit") {
-                    TextField("500", value: $commitHistoryLimit, format: .number)
-                        .frame(maxWidth: 80)
-                }
+            Section("Safety") {
+                Toggle("Confirm before discarding a hunk or lines", isOn: $warnOnHunkDiscard)
+            }
+
+            Section("Branches Review") {
+                Stepper("Stale after \(staleBranchDays) days without commits", value: $staleBranchDays, in: 7...365, step: 7)
             }
         }
         .formStyle(.grouped)
     }
-}
 
-// MARK: - Preview
+    private func chooseCloneDirectory() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.directoryURL = URL(fileURLWithPath: (defaultCloneDirectory as NSString).expandingTildeInPath)
+        if panel.runModal() == .OK, let url = panel.url {
+            defaultCloneDirectory = (url.path as NSString).abbreviatingWithTildeInPath
+        }
+    }
+}
 
 #Preview {
     PreferencesView(manager: MockRepositoryManager())

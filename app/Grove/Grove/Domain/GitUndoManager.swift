@@ -4,6 +4,7 @@
 // Tracks git operations that can be undone/redone via Cmd+Z / Cmd+Shift+Z.
 // Dispatches through GroveAction so the menu bar and window view stay decoupled.
 
+import AppKit
 import Foundation
 import Observation
 import os
@@ -95,6 +96,7 @@ final class GitUndoManager {
     ///
     /// - Throws: Any error thrown by the underlying undo command.
     func undo() async throws {
+        if Self.forwardTextEdit(undo: true) { return }
         guard let action = undoStack.last else { return }
         undoStack.removeLast()
         do {
@@ -116,6 +118,7 @@ final class GitUndoManager {
     ///
     /// - Throws: Any error thrown by the underlying redo command.
     func redo() async throws {
+        if Self.forwardTextEdit(undo: false) { return }
         guard let action = redoStack.last else { return }
         redoStack.removeLast()
         do {
@@ -128,6 +131,36 @@ final class GitUndoManager {
             Logger.ui.error("GitUndoManager: redo failed for '\(action.description, privacy: .public)': \(error.localizedDescription, privacy: .public)")
             throw error
         }
+    }
+
+    // MARK: - Text Editing Fallback
+
+    /// Edit-menu titles: text editing wins while a text field has something to undo.
+    var menuUndoTitle: String {
+        Self.textCanUndo ? "Undo" : undoDescription.map { "Undo \($0)" } ?? "Undo"
+    }
+
+    var menuRedoTitle: String {
+        Self.textCanRedo ? "Redo" : redoDescription.map { "Redo \($0)" } ?? "Redo"
+    }
+
+    /// Whether Edit > Undo should be enabled (git history or the focused text field).
+    var menuCanUndo: Bool { canUndo || Self.textCanUndo }
+    var menuCanRedo: Bool { canRedo || Self.textCanRedo }
+
+    private static var focusedTextUndoManager: UndoManager? {
+        (NSApp.keyWindow?.firstResponder as? NSText)?.undoManager
+    }
+
+    static var textCanUndo: Bool { focusedTextUndoManager?.canUndo ?? false }
+    static var textCanRedo: Bool { focusedTextUndoManager?.canRedo ?? false }
+
+    /// Sends undo:/redo: down the responder chain when a text field can handle it.
+    /// Also usable without a repository window (e.g. the Preferences window).
+    @discardableResult
+    static func forwardTextEdit(undo: Bool) -> Bool {
+        guard undo ? textCanUndo : textCanRedo else { return false }
+        return NSApp.sendAction(Selector((undo ? "undo:" : "redo:")), to: nil, from: nil)
     }
 
     // MARK: - Convenience Factories

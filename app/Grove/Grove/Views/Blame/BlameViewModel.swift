@@ -4,151 +4,147 @@
 import Foundation
 import Observation
 
-// MARK: - BlameViewModel
+/// One rendered line of a blamed file.
+struct BlameLine: Identifiable, Hashable {
+    let number: Int
+    let text: String
+    let entry: BlameEntry?
+    /// First line of a run attributed to the same commit; carries the annotation.
+    let startsBlock: Bool
+    var id: Int { number }
+}
 
-/// ViewModel for ``BlameView``.
-///
-/// Owns the blame annotation data and the file's raw source lines.
-/// Navigation between revisions updates ``revision`` and re-fetches both
-/// the blame output and the file content for that revision.
+/// Owns the tracked-file picker and the blame of the chosen file.
+/// Session-owned so Quick Actions can open a file directly.
+@MainActor
 @Observable
 final class BlameViewModel {
 
-    // MARK: - Inputs
+    // MARK: - File Picker
 
-    /// Path to the file being blamed, relative to the repository root.
-    let filePath: String
+    private(set) var trackedFiles: [String] = []
+    private(set) var isLoadingFiles = false
+    private(set) var filterText = ""
 
-    // MARK: - State
+    var filteredFiles: [String] {
+        let query = filterText.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !query.isEmpty else { return trackedFiles }
+        return trackedFiles.filter { $0.lowercased().contains(query) }
+    }
 
-    /// The revision currently displayed. `nil` means HEAD.
-    var revision: String?
+    // MARK: - Blame
 
-    /// Blame annotation blocks loaded from the repository.
-    var blameEntries: [BlameEntry] = []
+    private(set) var selectedFile: String?
+    /// Revision being blamed; nil blames the working tree.
+    private(set) var revision: String?
+    /// Newer revisions visited before stepping back, most recent last.
+    private var revisionStack: [String?] = []
+    private(set) var lines: [BlameLine] = []
+    private(set) var isLoadingBlame = false
+    private(set) var errorMessage: String?
 
-    /// Raw source lines of the file at the current revision.
-    var sourceLines: [String] = []
+    var canGoForward: Bool { !revisionStack.isEmpty }
+    var isAtWorkingTree: Bool { revision == nil }
+    var commitCount: Int { Set(lines.compactMap { $0.entry?.commitSHA }).count }
 
-    /// Revision history used to navigate backwards.
-    ///
-    /// Each time ``navigateToPreviousRevision()`` is called the current
-    /// revision is pushed here so ``navigateToCurrentRevision()`` can
-    /// pop back to HEAD.
-    private var revisionHistory: [String] = []
+    let repository: any GitRepositoryProtocol
 
-    /// Whether a load is in progress.
-    var isLoading = false
-
-    /// Non-nil when the last load produced an error.
-    var errorMessage: String?
-
-    // MARK: - Dependencies
-
-    private let repository: any GitRepositoryProtocol
-
-    // MARK: - Init
-
-    /// - Parameters:
-    ///   - filePath: Repository-relative path to the file being blamed.
-    ///   - revision: Starting revision. Pass `nil` to start at HEAD.
-    ///   - repository: The backing Git repository.
-    init(
-        filePath: String,
-        revision: String? = nil,
-        repository: any GitRepositoryProtocol
-    ) {
-        self.filePath = filePath
-        self.revision = revision
+    init(repository: any GitRepositoryProtocol) {
         self.repository = repository
     }
 
-    // MARK: - Loading
+    // MARK: - Files
 
-    /// Fetches blame annotations and source lines for the current ``revision``.
-    func loadBlame() async {
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
+    func loadFilesIfNeeded() async {
+        guard trackedFiles.isEmpty else { return }
+        await reloadFiles()
+    }
 
-        do {
-            // Blame entries give us the annotation blocks.
-            let entries = try await repository.blame(
-                file: filePath,
-                revision: revision
-            )
-            blameEntries = entries
-
-            // Derive source lines from the blame entry summaries so the view
-            // can show real content without a separate file-read API.
-            // WS5/GitKit will supply actual file content; for now we
-            // reconstruct lines from the blame block metadata.
-            sourceLines = Self.buildSourceLines(from: entries)
-        } catch {
-            errorMessage = error.localizedDescription
+    func reloadFiles() async {
+        isLoadingFiles = true
+        defer { isLoadingFiles = false }
+        trackedFiles = ((try? await repository.listTrackedFiles()) ?? []).sorted {
+            $0.localizedStandardCompare($1) == .orderedAscending
         }
     }
 
-    // MARK: - Revision Navigation
+    func setFilter(_ text: String) {
+        filterText = text
+    }
 
-    /// Steps back to the parent commit of the commit that introduced the first
-    /// change block, allowing the user to walk the file's history.
-    func navigateToPreviousRevision() async {
-        // If there are blame entries, use the SHA of the oldest visible block
-        // as the next revision anchor (the real engine will resolve its parent).
-        guard let anchor = blameEntries.last?.commitSHA else { return }
-        if let current = revision {
-            revisionHistory.append(current)
-        }
-        revision = anchor
+    // MARK: - Blame
+
+    func open(file: String) async {
+        selectedFile = file
+        revision = nil
+        revisionStack = []
         await loadBlame()
     }
 
-    /// Returns to HEAD (the most recent revision of the file).
-    func navigateToCurrentRevision() async {
-        revisionHistory.removeAll()
+    /// Re-blames at the parent of `sha`, i.e. how these lines looked before that commit.
+    func blameBefore(_ sha: String) async {
+        revisionStack.append(revision)
+        revision = "\(sha)^"
+        await loadBlame()
+    }
+
+    /// Steps back through the file's history from the newest commit shown.
+    func goToPreviousRevision() async {
+        guard let newest = lines.compactMap(\.entry).max(by: { $0.authorDate < $1.authorDate }) else { return }
+        await blameBefore(newest.commitSHA)
+    }
+
+    func goForward() async {
+        guard let newer = revisionStack.popLast() else { return }
+        revision = newer
+        await loadBlame()
+    }
+
+    func goToWorkingTree() async {
+        revisionStack = []
         revision = nil
         await loadBlame()
     }
 
-    // MARK: - Helpers
+    func reload() async {
+        await loadBlame()
+    }
 
-    /// Total number of source lines in the file.
-    var lineCount: Int { sourceLines.count }
-
-    /// Returns the ``BlameEntry`` that covers `lineNumber` (1-based).
-    func entry(for lineNumber: Int) -> BlameEntry? {
-        blameEntries.first { entry in
-            lineNumber >= entry.lineStart &&
-            lineNumber < entry.lineStart + entry.lineCount
+    private func loadBlame() async {
+        guard let file = selectedFile else { return }
+        let requested = revision
+        isLoadingBlame = true
+        errorMessage = nil
+        defer { isLoadingBlame = false }
+        do {
+            async let entries = repository.blame(file: file, revision: requested)
+            async let contents = repository.fileContents(path: file, revision: requested)
+            let (blame, text) = try await (entries, contents)
+            guard selectedFile == file, revision == requested else { return }
+            lines = Self.buildLines(text: text, entries: blame)
+        } catch {
+            lines = []
+            errorMessage = requested == nil
+                ? error.localizedDescription
+                : "This file has no earlier revision (it may have been added or renamed in that commit)."
         }
     }
 
-    /// True when navigating back from HEAD is possible.
-    var canNavigateToPrevious: Bool { !blameEntries.isEmpty }
-
-    /// True when there is a revision history to return from.
-    var canNavigateToCurrent: Bool { revision != nil }
-
-    // MARK: - Private Helpers
-
-    /// Reconstructs a flat array of source-line strings from blame blocks.
-    ///
-    /// Each blame entry covers `lineCount` lines.  We fill them with
-    /// `entry.summary` as placeholder text; the real engine will replace
-    /// this with the actual file content.
-    private static func buildSourceLines(from entries: [BlameEntry]) -> [String] {
-        guard !entries.isEmpty else { return [] }
-        let totalLines = entries.map { $0.lineStart + $0.lineCount - 1 }.max() ?? 0
-        var lines = Array(repeating: "", count: totalLines)
+    nonisolated static func buildLines(text: String, entries: [BlameEntry]) -> [BlameLine] {
+        var source = text.components(separatedBy: "\n")
+        if source.last == "" { source.removeLast() }
+        var owner = [BlameEntry?](repeating: nil, count: source.count)
         for entry in entries {
             for offset in 0..<entry.lineCount {
-                let lineIndex = entry.lineStart + offset - 1   // convert to 0-based
-                guard lineIndex < lines.count else { continue }
-                // Use summary as stand-in; real content provided by GitKit.
-                lines[lineIndex] = offset == 0 ? entry.summary : "    // \(entry.summary)"
+                let index = entry.lineStart - 1 + offset
+                if owner.indices.contains(index) { owner[index] = entry }
             }
         }
-        return lines
+        return source.enumerated().map { index, line in
+            let entry = owner[index]
+            let previous = index > 0 ? owner[index - 1] : nil
+            return BlameLine(number: index + 1, text: line, entry: entry,
+                             startsBlock: entry?.commitSHA != previous?.commitSHA || index == 0)
+        }
     }
 }

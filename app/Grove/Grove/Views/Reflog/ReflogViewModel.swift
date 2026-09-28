@@ -8,54 +8,38 @@ import Observation
 
 /// Categorised action derived from a ``ReflogEntry`` message prefix.
 enum ReflogActionType: String, Sendable {
-    case commit       = "commit"
-    case commitAmend  = "commit (amend)"
-    case checkout     = "checkout"
-    case rebase       = "rebase"
-    case merge        = "merge"
-    case pull         = "pull"
-    case push         = "push"
-    case reset        = "reset"
-    case cherryPick   = "cherry-pick"
-    case other        = "other"
+    case commit, commitAmend, checkout, rebase, merge, pull, push, reset, cherryPick, other
 
-    // MARK: Display
-
-    /// Human-readable label shown in the UI.
     var displayName: String {
         switch self {
-        case .commit:       return "Commit"
-        case .commitAmend:  return "Amend"
-        case .checkout:     return "Checkout"
-        case .rebase:       return "Rebase"
-        case .merge:        return "Merge"
-        case .pull:         return "Pull"
-        case .push:         return "Push"
-        case .reset:        return "Reset"
-        case .cherryPick:   return "Cherry-pick"
-        case .other:        return "Other"
+        case .commit: "Commit"
+        case .commitAmend: "Amend"
+        case .checkout: "Checkout"
+        case .rebase: "Rebase"
+        case .merge: "Merge"
+        case .pull: "Pull"
+        case .push: "Push"
+        case .reset: "Reset"
+        case .cherryPick: "Cherry-pick"
+        case .other: "Other"
         }
     }
 
-    /// SF Symbol name representing this action.
     var systemImage: String {
         switch self {
-        case .commit:       return "checkmark.circle"
-        case .commitAmend:  return "pencil.circle"
-        case .checkout:     return "arrow.left.arrow.right.circle"
-        case .rebase:       return "arrow.triangle.2.circlepath"
-        case .merge:        return "arrow.triangle.merge"
-        case .pull:         return "arrow.down.circle"
-        case .push:         return "arrow.up.circle"
-        case .reset:        return "arrow.uturn.backward.circle"
-        case .cherryPick:   return "heart.circle"
-        case .other:        return "circle"
+        case .commit: "checkmark.circle"
+        case .commitAmend: "pencil.circle"
+        case .checkout: "arrow.left.arrow.right.circle"
+        case .rebase: "arrow.triangle.2.circlepath"
+        case .merge: "arrow.triangle.merge"
+        case .pull: "arrow.down.circle"
+        case .push: "arrow.up.circle"
+        case .reset: "arrow.uturn.backward.circle"
+        case .cherryPick: "arrow.turn.down.right"
+        case .other: "circle"
         }
     }
 
-    // MARK: Parsing
-
-    /// Infer the action type from a raw reflog message string.
     static func from(message: String) -> ReflogActionType {
         let lower = message.lowercased()
         if lower.hasPrefix("commit (amend)") { return .commitAmend }
@@ -73,94 +57,155 @@ enum ReflogActionType: String, Sendable {
 
 // MARK: - ReflogViewModel
 
-/// ViewModel for the Reflog browser view.
-///
-/// Loads ``ReflogEntry`` items from the repository and manages selection,
-/// commit detail loading, and HEAD-reset actions.
+@MainActor
 @Observable
 final class ReflogViewModel {
 
+    struct PendingReset: Identifiable {
+        let entry: ReflogEntry
+        let index: Int
+        let mode: ResetMode
+        var id: String { "\(entry.id)-\(mode)" }
+    }
+
     // MARK: - State
 
-    var entries: [ReflogEntry] = []
-    var selectedEntry: ReflogEntry?
-    var selectedCommit: CommitInfo?
-    var isLoading = false
-    var isLoadingDetail = false
+    private(set) var entries: [ReflogEntry] = []
+    private(set) var selectedEntry: ReflogEntry?
+    private(set) var selectedCommit: CommitInfo?
+    private(set) var isLoading = false
+    private(set) var isLoadingDetail = false
     var errorMessage: String?
-
-    // MARK: - Configuration
+    var pendingReset: PendingReset?
+    /// Entry the Create Branch sheet is open for.
+    var branchSource: ReflogEntry?
 
     /// Maximum number of reflog entries to load.
-    var maxCount: Int = 500
+    let maxCount = 500
 
-    // MARK: - Dependencies
+    var onRepositoryChanged: (() async -> Void)?
+    var undoManager: GitUndoManager?
 
     let repository: any GitRepositoryProtocol
-
-    // MARK: - Init
 
     init(repository: any GitRepositoryProtocol) {
         self.repository = repository
     }
 
-    // MARK: - Actions
+    // MARK: - Loading
 
-    /// Reload all reflog entries from the repository.
     func refresh() async {
         isLoading = true
-        errorMessage = nil
         defer { isLoading = false }
         do {
-            entries = try await repository.reflog(maxCount: maxCount)
+            let loaded = try await repository.reflog(maxCount: maxCount)
+            // Parser ids repeat for identical moves (e.g. two stashes); number from the oldest end so ids survive new entries.
+            entries = loaded.enumerated().map { index, entry in
+                ReflogEntry(id: "\(loaded.count - 1 - index)-\(entry.newSHA)", oldSHA: entry.oldSHA, newSHA: entry.newSHA,
+                            committerName: entry.committerName, committerEmail: entry.committerEmail,
+                            date: entry.date, message: entry.message)
+            }
+            if let selected = selectedEntry, !entries.contains(where: { $0.id == selected.id }) {
+                selectedEntry = nil
+                selectedCommit = nil
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    /// Select a reflog entry and load the associated commit detail.
-    func selectEntry(_ entry: ReflogEntry) async {
+    func select(_ entry: ReflogEntry) async {
+        guard entry.id != selectedEntry?.id else { return }
         selectedEntry = entry
         selectedCommit = nil
         isLoadingDetail = true
         defer { isLoadingDetail = false }
-        do {
-            selectedCommit = try await repository.commitDetail(entry.newSHA)
-        } catch {
-            // Non-fatal: the entry may reference a SHA that no longer exists
-            // (e.g. after a garbage collection). Show partial info from the entry.
-            errorMessage = nil
-        }
+        // A missing commit (e.g. after gc) is expected; the panel shows entry data only.
+        let commit = try? await repository.commitDetail(entry.newSHA)
+        if selectedEntry?.id == entry.id { selectedCommit = commit }
     }
 
-    /// Reset HEAD to the commit referenced by `entry` using the given mode.
-    func resetToEntry(_ entry: ReflogEntry, mode: ResetMode) async {
+    // MARK: - Reset
+
+    func requestReset(to entry: ReflogEntry, mode: ResetMode) {
+        pendingReset = PendingReset(entry: entry, index: index(of: entry), mode: mode)
+    }
+
+    func cancelReset() {
+        pendingReset = nil
+    }
+
+    /// Takes the dialog item because the dialog clears `pendingReset` before running its action.
+    func confirmReset(_ pending: PendingReset) async {
+        pendingReset = nil
+        let previousHead = entries.first?.newSHA
         do {
-            try await repository.resetToCommit(entry.newSHA, mode: mode)
-            await refresh()
+            try await repository.resetToCommit(pending.entry.newSHA, mode: pending.mode)
+            if let previousHead, pending.mode != .hard {
+                recordResetUndo(from: previousHead, to: pending.entry.newSHA, mode: pending.mode)
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
+        await refresh()
+        await onRepositoryChanged?()
     }
 
-    /// Create a new branch pointing at the commit referenced by `entry`.
-    func createBranch(name: String, from entry: ReflogEntry) async {
+    // MARK: - Create Branch
+
+    func beginCreateBranch(from entry: ReflogEntry) {
+        branchSource = entry
+    }
+
+    func cancelCreateBranch() {
+        branchSource = nil
+    }
+
+    func createBranch(named rawName: String, checkout: Bool) async {
+        guard let entry = branchSource else { return }
+        let name = rawName.trimmingCharacters(in: .whitespaces)
+        guard Self.isValidBranchName(name) else { return }
+        branchSource = nil
         do {
-            try await repository.createBranch(name: name, from: entry.newSHA, checkout: false)
+            try await repository.createBranch(name: name, from: entry.newSHA, checkout: checkout)
+            if !checkout {
+                undoManager?.record(GitUndoManager.createBranchAction(branchName: name, repository: repository))
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
+        await onRepositoryChanged?()
+    }
+
+    func dismissError() {
+        errorMessage = nil
     }
 
     // MARK: - Derived
 
-    /// Return the index of `entry` in the entries array (HEAD@{N} label).
     func index(of entry: ReflogEntry) -> Int {
         entries.firstIndex(where: { $0.id == entry.id }) ?? 0
     }
 
-    /// Infer the action type for an entry.
     func actionType(for entry: ReflogEntry) -> ReflogActionType {
         ReflogActionType.from(message: entry.message)
+    }
+
+    /// Mirrors the common `git check-ref-format` rules closely enough for inline validation.
+    static func isValidBranchName(_ name: String) -> Bool {
+        guard !name.isEmpty, !name.hasPrefix("-"), !name.hasPrefix("/"), !name.hasSuffix("/"),
+              !name.hasSuffix("."), !name.hasSuffix(".lock"), !name.contains(".."), !name.contains("@{"),
+              !name.contains("//") else { return false }
+        let forbidden = CharacterSet(charactersIn: " ~^:?*[\\").union(.controlCharacters)
+        return name.unicodeScalars.allSatisfy { !forbidden.contains($0) }
+    }
+
+    private func recordResetUndo(from oldHead: String, to newHead: String, mode: ResetMode) {
+        let repository = repository
+        undoManager?.record(GitUndoManager.GitAction(
+            description: "Reset to \(newHead.prefix(7))",
+            undoCommand: { try await repository.resetToCommit(oldHead, mode: mode) },
+            redoCommand: { try await repository.resetToCommit(newHead, mode: mode) }
+        ))
     }
 }

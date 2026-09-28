@@ -91,14 +91,14 @@ struct RootWindowHost: View {
         if let ref = windowVM.openRepo {
             if let loaded = windowVM.currentSession {
                 RepositoryContentRouter(session: loaded.session, repository: loaded.repository)
-                    .quickActions(repository: loaded.repository) { loaded.session.sidebarVM.select($0) }
+                    .quickActions(session: loaded.session)
                     .repositoryToolbar(
                         repository: loaded.repository,
                         state: loaded.session.toolbarState,
                         sidebarVM: loaded.session.sidebarVM
                     )
                     .environment(loaded.session.gitUndoManager)
-                    .focusedValue(\.gitUndoManager, loaded.session.gitUndoManager)
+                    .focusedSceneValue(\.gitUndoManager, loaded.session.gitUndoManager)
                     .id(ref.path)
             } else if let error = windowVM.sessionErrors[ref.path] {
                 ContentUnavailableView(

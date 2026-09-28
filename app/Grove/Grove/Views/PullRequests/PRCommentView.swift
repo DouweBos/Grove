@@ -3,66 +3,40 @@
 
 import SwiftUI
 
-/// A single comment or review in the pull request detail panel.
-///
-/// Shows the author avatar, name, date, a review indicator, and the comment body.
+/// One comment or review in a pull request conversation.
 struct PRCommentView: View {
 
     let comment: PRComment
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Header row
-            HStack(alignment: .center, spacing: 8) {
-                PRAuthorAvatarView(name: comment.authorName)
-                    .frame(width: 24, height: 24)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 6) {
-                        Text(comment.authorName)
-                            .font(.caption)
-                            .fontWeight(.semibold)
-
-                        if comment.isReview {
-                            reviewBadge
-                        }
-                    }
-
-                    Text(comment.createdDate, style: .relative)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            HStack(spacing: Theme.Spacing.sm) {
+                Text(comment.authorName)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                if comment.isReview {
+                    StatusBadge(title: "Review", symbol: "checkmark.seal.fill", tone: .neutral)
                 }
-
                 Spacer()
+                Text(comment.createdDate, format: .relative(presentation: .named))
+                    .font(.monoCaption)
+                    .foregroundStyle(Theme.textSecondary)
             }
-
-            // Comment body
             MarkdownRenderer(markdown: comment.body, fontSize: 13)
                 .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
         }
-        .padding(10)
-        .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    // MARK: - Review Badge
-
-    private var reviewBadge: some View {
-        Label("Review", systemImage: "checkmark.seal.fill")
-            .font(.caption2)
-            .fontWeight(.semibold)
-            .foregroundStyle(.white)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(Color.purple, in: Capsule())
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Spacing.md)
+        .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous))
     }
 }
 
 #Preview {
     VStack(spacing: 8) {
-        ForEach(MockData.prComments) { comment in
-            PRCommentView(comment: comment)
-        }
+        ForEach(MockData.prComments) { PRCommentView(comment: $0) }
     }
     .padding()
-    .frame(width: 420)
+    .frame(width: 440)
+    .background(Theme.surface)
 }

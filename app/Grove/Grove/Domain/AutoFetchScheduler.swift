@@ -28,9 +28,8 @@ final class AutoFetchScheduler {
 
     /// How often to fetch, in minutes. `0` disables automatic fetching.
     ///
-    /// Initialized from the `autoFetchMinutes` key in `UserDefaults` so that
-    /// the preference set in General Preferences takes effect automatically.
-    var intervalMinutes: Int = UserDefaults.standard.integer(forKey: "autoFetchMinutes") {
+    /// Follows the General preference live while the scheduler is running.
+    var intervalMinutes: Int = GrovePreferences.autoFetchMinutes {
         didSet {
             guard oldValue != intervalMinutes else { return }
             // Restart the timer whenever the interval changes so the new
@@ -52,6 +51,7 @@ final class AutoFetchScheduler {
 
     private var timer: Timer?
     private var isStarted: Bool = false
+    private var preferenceObserver: Task<Void, Never>?
     private let repository: any GitRepositoryProtocol
 
     // MARK: - Init
@@ -67,7 +67,9 @@ final class AutoFetchScheduler {
     /// Calling `start()` when the scheduler is already running restarts the timer.
     func start() {
         isStarted = true
+        intervalMinutes = GrovePreferences.autoFetchMinutes
         scheduleTimer()
+        observePreference()
         Logger.ui.info("AutoFetchScheduler: started (interval=\(self.intervalMinutes, privacy: .public) min) for \(self.repository.displayName, privacy: .public)")
     }
 
@@ -77,6 +79,8 @@ final class AutoFetchScheduler {
     func stop() {
         isStarted = false
         cancelTimer()
+        preferenceObserver?.cancel()
+        preferenceObserver = nil
         Logger.ui.info("AutoFetchScheduler: stopped for \(self.repository.displayName, privacy: .public)")
     }
 
@@ -109,6 +113,17 @@ final class AutoFetchScheduler {
         RunLoop.main.add(newTimer, forMode: .common)
         timer = newTimer
         Logger.ui.debug("AutoFetchScheduler: timer scheduled every \(self.intervalMinutes, privacy: .public) minute(s)")
+    }
+
+    private func observePreference() {
+        preferenceObserver?.cancel()
+        preferenceObserver = Task { [weak self] in
+            for await _ in NotificationCenter.default.notifications(named: UserDefaults.didChangeNotification) {
+                guard let self else { return }
+                let minutes = GrovePreferences.autoFetchMinutes
+                if minutes != self.intervalMinutes { self.intervalMinutes = minutes }
+            }
+        }
     }
 
     private func cancelTimer() {

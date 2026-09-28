@@ -4,206 +4,193 @@
 import Foundation
 import Observation
 
-// MARK: - BranchCategory
-
-/// How a branch is classified for review purposes.
 enum BranchCategory: String, CaseIterable, Sendable {
-    /// Currently checked-out branch and any branch with recent activity.
-    case active  = "Active"
-    /// No commits in 30 or more days.
-    case stale   = "Stale"
-    /// Fully merged into the primary branch (main or master).
-    case merged  = "Merged"
+    case merged = "Merged"
+    case stale = "Stale"
+    case active = "Active"
 }
 
-// MARK: - ReviewedBranch
-
-/// A ``BranchInfo`` augmented with review metadata computed by ``BranchesReviewViewModel``.
 struct ReviewedBranch: Identifiable, Hashable, Sendable {
-    /// Matches ``BranchInfo/id`` for stable identification.
     let id: String
     let name: String
+    let sha: String
     let isCurrentBranch: Bool
-    let lastCommitDate: Date
+    let isPrimary: Bool
+    let lastCommitDate: Date?
+    let lastCommitSummary: String
     let authorName: String
-    let authorEmail: String
-    /// Commits ahead of the primary branch (main/master).
-    let aheadOfMain: Int
-    /// Commits behind the primary branch.
-    let behindMain: Int
+    /// Relative to the primary branch.
+    let ahead: Int
+    let behind: Int
     let category: BranchCategory
+    let daysSinceLastCommit: Int?
+
+    var isDeletable: Bool { !isCurrentBranch && !isPrimary }
 }
 
-// MARK: - BranchesReviewViewModel
-
-/// ViewModel for the Branches Review view.
-///
-/// Loads all local branches, categorises them as active / stale / merged, and
-/// supports batch deletion of selected stale or merged branches.
+@MainActor
 @Observable
 final class BranchesReviewViewModel {
 
+    struct PendingDelete: Identifiable {
+        let branches: [ReviewedBranch]
+        var id: [String] { branches.map(\.id) }
+        /// Unmerged branches need `-D`, which loses their unique commits.
+        var needsForce: Bool { branches.contains { $0.category != .merged } }
+    }
+
     // MARK: - State
 
-    var branches: [ReviewedBranch] = []
-    var selectedBranches: Set<String> = []
-    var isLoading = false
-    var isDeletingBranches = false
+    private(set) var branches: [ReviewedBranch] = []
+    private(set) var primaryBranch = "main"
+    private(set) var selectedIDs: Set<String> = []
+    private(set) var categoryFilter: BranchCategory?
+    private(set) var isLoading = false
+    private(set) var isDeleting = false
     var errorMessage: String?
+    var pendingDelete: PendingDelete?
 
-    // MARK: - Configuration
-
-    /// Number of days without a new commit before a branch is considered stale.
-    let staleDaysThreshold: Int = 30
-
-    // MARK: - Dependencies
+    var onRepositoryChanged: (() async -> Void)?
+    var undoManager: GitUndoManager?
 
     let repository: any GitRepositoryProtocol
-
-    // MARK: - Init
 
     init(repository: any GitRepositoryProtocol) {
         self.repository = repository
     }
 
-    // MARK: - Actions
+    var staleDays: Int { GrovePreferences.staleBranchDays }
 
-    /// Load all local branches and classify each one.
+    // MARK: - Derived
+
+    var visibleBranches: [ReviewedBranch] {
+        guard let categoryFilter else { return branches }
+        return branches.filter { $0.category == categoryFilter }
+    }
+
+    func count(of category: BranchCategory) -> Int {
+        branches.filter { $0.category == category }.count
+    }
+
+    var selectedBranches: [ReviewedBranch] {
+        branches.filter { selectedIDs.contains($0.id) }
+    }
+
+    // MARK: - Loading
+
     func refresh() async {
         isLoading = true
-        errorMessage = nil
         defer { isLoading = false }
-
         do {
-            let localBranches = try await repository.localBranches()
-            let primary = primaryBranchName(from: localBranches)
+            let local = try await repository.localBranches()
+            let primary = Self.primaryBranchName(from: local)
+            let merged = (try? await repository.mergedBranches(into: primary)) ?? []
             var reviewed: [ReviewedBranch] = []
-
-            for branch in localBranches {
-                // Load the most recent commit on the branch for date / author metadata
-                let commits = (try? await repository.log(maxCount: 1, skip: 0, branch: branch.name)) ?? []
-                let latestCommit = commits.first
-
-                let lastDate = latestCommit?.authorDate ?? Date.distantPast
-                let authorName = latestCommit?.authorName ?? branch.name
-                let authorEmail = latestCommit?.authorEmail ?? ""
-
-                let category = categorise(
-                    branch: branch,
-                    lastCommitDate: lastDate,
-                    primaryBranchName: primary
-                )
-
-                reviewed.append(ReviewedBranch(
-                    id: branch.id,
-                    name: branch.name,
-                    isCurrentBranch: branch.isHEAD,
-                    lastCommitDate: lastDate,
-                    authorName: authorName,
-                    authorEmail: authorEmail,
-                    aheadOfMain: branch.ahead,
-                    behindMain: branch.behind,
-                    category: category
-                ))
+            for branch in local {
+                reviewed.append(await review(branch, primary: primary, merged: merged))
             }
-
-            // Sort: current first, then by last-commit date descending
-            branches = reviewed.sorted {
-                if $0.isCurrentBranch != $1.isCurrentBranch { return $0.isCurrentBranch }
-                return $0.lastCommitDate > $1.lastCommitDate
-            }
+            primaryBranch = primary
+            branches = reviewed.sorted(by: Self.displayOrder)
+            selectedIDs.formIntersection(branches.filter(\.isDeletable).map(\.id))
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    /// Delete all branches that are currently selected.
-    ///
-    /// The current branch is always excluded even if it appears in the selection.
-    func deleteSelected() async {
-        let toDelete = selectedBranches
-            .compactMap { id in branches.first(where: { $0.id == id }) }
-            .filter { !$0.isCurrentBranch }
+    private func review(_ branch: BranchInfo, primary: String, merged: Set<String>) async -> ReviewedBranch {
+        let latest = (try? await repository.log(maxCount: 1, skip: 0, branch: branch.name))?.first
+        var counts: (ahead: Int, behind: Int) = (0, 0)
+        if branch.name != primary, let result = try? await repository.aheadBehind(branch: branch.name, base: primary) {
+            counts = result
+        }
+        let days = latest.map { Calendar.current.dateComponents([.day], from: $0.authorDate, to: .now).day ?? 0 }
+        let isPrimary = branch.name == primary
+        let category: BranchCategory
+        if !isPrimary && !branch.isHEAD && merged.contains(branch.name) {
+            category = .merged
+        } else if !isPrimary && !branch.isHEAD, let days, days >= staleDays {
+            category = .stale
+        } else {
+            category = .active
+        }
+        return ReviewedBranch(
+            id: branch.id, name: branch.name, sha: branch.targetSHA, isCurrentBranch: branch.isHEAD,
+            isPrimary: isPrimary, lastCommitDate: latest?.authorDate, lastCommitSummary: latest?.summary ?? "",
+            authorName: latest?.authorName ?? "", ahead: counts.ahead, behind: counts.behind,
+            category: category, daysSinceLastCommit: days
+        )
+    }
 
-        guard !toDelete.isEmpty else { return }
+    // MARK: - Selection & Filter
 
-        isDeletingBranches = true
-        defer { isDeletingBranches = false }
+    func toggleSelection(_ branch: ReviewedBranch) {
+        guard branch.isDeletable else { return }
+        if selectedIDs.contains(branch.id) { selectedIDs.remove(branch.id) } else { selectedIDs.insert(branch.id) }
+    }
 
-        for branch in toDelete {
+    func selectAllVisible() {
+        selectedIDs.formUnion(visibleBranches.filter(\.isDeletable).map(\.id))
+    }
+
+    func clearSelection() {
+        selectedIDs.removeAll()
+    }
+
+    func toggleFilter(_ category: BranchCategory) {
+        categoryFilter = categoryFilter == category ? nil : category
+    }
+
+    // MARK: - Delete
+
+    func requestDelete(_ branches: [ReviewedBranch]) {
+        let deletable = branches.filter(\.isDeletable)
+        guard !deletable.isEmpty else { return }
+        pendingDelete = PendingDelete(branches: deletable)
+    }
+
+    func cancelDelete() {
+        pendingDelete = nil
+    }
+
+    /// Takes the dialog item because the dialog clears `pendingDelete` before running its action.
+    func confirmDelete(_ pending: PendingDelete) async {
+        pendingDelete = nil
+        isDeleting = true
+        defer { isDeleting = false }
+        var failures: [String] = []
+        for branch in pending.branches {
             do {
-                // Use force: false — the user can retry with force if needed
-                try await repository.deleteBranch(name: branch.name, force: false)
-                selectedBranches.remove(branch.id)
+                try await repository.deleteBranch(name: branch.name, force: branch.category != .merged)
+                selectedIDs.remove(branch.id)
+                undoManager?.record(GitUndoManager.deleteBranchAction(branchName: branch.name, sha: branch.sha,
+                                                                       repository: repository))
             } catch {
-                errorMessage = "Failed to delete \"\(branch.name)\": \(error.localizedDescription)"
-                // Continue attempting to delete the remaining selected branches
+                failures.append("\(branch.name): \(error.localizedDescription)")
             }
         }
-
+        if !failures.isEmpty { errorMessage = failures.joined(separator: "\n") }
         await refresh()
+        await onRepositoryChanged?()
     }
 
-    /// Toggle the selection state of a branch.
-    func toggleSelection(for branch: ReviewedBranch) {
-        guard !branch.isCurrentBranch else { return }
-        if selectedBranches.contains(branch.id) {
-            selectedBranches.remove(branch.id)
-        } else {
-            selectedBranches.insert(branch.id)
+    func dismissError() {
+        errorMessage = nil
+    }
+
+    // MARK: - Helpers
+
+    static func primaryBranchName(from branches: [BranchInfo]) -> String {
+        for name in ["main", "master", "trunk", "develop"] where branches.contains(where: { $0.name == name }) {
+            return name
         }
+        return branches.first(where: \.isHEAD)?.name ?? "main"
     }
 
-    // MARK: - Derived
-
-    /// Branches grouped by category, respecting the canonical display order.
-    var groupedBranches: [(category: BranchCategory, branches: [ReviewedBranch])] {
-        BranchCategory.allCases.compactMap { cat in
-            let items = branches.filter { $0.category == cat }
-            guard !items.isEmpty else { return nil }
-            return (category: cat, branches: items)
-        }
-    }
-
-    /// Number of branches that can be deleted (stale or merged, not current).
-    var deletableCount: Int {
-        selectedBranches
-            .compactMap { id in branches.first(where: { $0.id == id }) }
-            .filter { !$0.isCurrentBranch && ($0.category == .stale || $0.category == .merged) }
-            .count
-    }
-
-    // MARK: - Private Helpers
-
-    /// Determine the name of the primary integration branch.
-    private func primaryBranchName(from branches: [BranchInfo]) -> String {
-        let candidates = ["main", "master", "trunk", "develop"]
-        for name in candidates {
-            if branches.contains(where: { $0.name == name }) { return name }
-        }
-        return branches.first(where: { $0.isHEAD })?.name ?? "main"
-    }
-
-    /// Categorise a single branch given its metadata.
-    private func categorise(
-        branch: BranchInfo,
-        lastCommitDate: Date,
-        primaryBranchName: String
-    ) -> BranchCategory {
-        // Current branch is always Active
-        if branch.isHEAD { return .active }
-
-        // Branches that are fully merged (zero ahead, have upstream tracking, or name implies it)
-        // We use ahead == 0 and the branch has an upstream as a heuristic for "merged".
-        // A more accurate check (git branch --merged) is not in the protocol — so we approximate:
-        // if behind > 0 and ahead == 0 it is likely merged (or just stale without unique commits).
-        let daysSinceLastCommit = Calendar.current.dateComponents([.day], from: lastCommitDate, to: Date()).day ?? 0
-        let isStale = daysSinceLastCommit >= staleDaysThreshold
-
-        // Heuristic: behind main + 0 unique commits = merged
-        if branch.ahead == 0 && branch.behind > 0 { return .merged }
-
-        if isStale { return .stale }
-        return .active
+    private static func displayOrder(_ lhs: ReviewedBranch, _ rhs: ReviewedBranch) -> Bool {
+        let rank: [BranchCategory: Int] = [.merged: 0, .stale: 1, .active: 2]
+        if lhs.category != rhs.category { return rank[lhs.category]! < rank[rhs.category]! }
+        let (l, r) = (lhs.lastCommitDate ?? .distantPast, rhs.lastCommitDate ?? .distantPast)
+        // Cleanup candidates oldest first; active work newest first.
+        return lhs.category == .active ? l > r : l < r
     }
 }

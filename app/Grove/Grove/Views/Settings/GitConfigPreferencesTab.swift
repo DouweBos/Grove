@@ -1,184 +1,149 @@
 // Views/Settings/GitConfigPreferencesTab.swift
 // Grove
 //
-// Git configuration preferences: global identity, editor, merge/diff tools, pull behavior.
+// Global git config (`git config --global`), written only when the user clicks Save.
 
 import SwiftUI
 
-// MARK: - GitConfigPreferencesTab
+@MainActor
+@Observable
+final class GlobalGitConfigModel {
 
-/// Preferences tab exposing frequently used global git config settings.
+    /// Keys this tab edits; booleans are stored as "true"/"false", empty means unset.
+    static let keys = ["user.name", "user.email", "core.editor", "init.defaultBranch",
+                       "pull.rebase", "push.autoSetupRemote", "fetch.prune"]
+
+    private(set) var saved: [String: String] = [:]
+    private(set) var draft: [String: String] = [:]
+    private(set) var isSaving = false
+    private(set) var errorMessage: String?
+    private(set) var didSave = false
+
+    var hasChanges: Bool { saved != draft }
+
+    /// Honors GIT_CONFIG_GLOBAL so tests can point at a scratch file.
+    var configFileURL: URL {
+        if let override = ProcessInfo.processInfo.environment["GIT_CONFIG_GLOBAL"], !override.isEmpty {
+            return URL(fileURLWithPath: override)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".gitconfig")
+    }
+
+    private let shell = GitShell(workingDirectory: FileManager.default.homeDirectoryForCurrentUser)
+
+    func load() async {
+        var values: [String: String] = [:]
+        for key in Self.keys {
+            let result = try? await shell.runAllowingFailure(["config", "--global", "--get", key])
+            if let result, result.isSuccess {
+                values[key] = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+        saved = values
+        draft = values
+    }
+
+    func value(_ key: String) -> String { draft[key] ?? "" }
+    func bool(_ key: String) -> Bool { value(key).lowercased() == "true" }
+
+    func set(_ key: String, _ value: String) {
+        draft[key] = value.isEmpty ? nil : value
+        didSave = false
+    }
+
+    func setBool(_ key: String, _ on: Bool) {
+        // Turning off a key that was never set leaves it unset rather than writing "false".
+        set(key, on ? "true" : (saved[key] == nil ? "" : "false"))
+    }
+
+    func revert() {
+        draft = saved
+    }
+
+    func save() async {
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            for key in Self.keys where draft[key] != saved[key] {
+                let value = draft[key]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                if value.isEmpty {
+                    let result = try await shell.runAllowingFailure(["config", "--global", "--unset", key])
+                    guard result.isSuccess || result.exitCode == 5 else {
+                        throw GitShellError.nonZeroExit(command: "config", exitCode: result.exitCode, stderr: result.stderr)
+                    }
+                } else {
+                    try await shell.run(["config", "--global", key, value])
+                }
+            }
+            errorMessage = nil
+            await load()
+            didSave = true
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func dismissError() {
+        errorMessage = nil
+    }
+}
+
 struct GitConfigPreferencesTab: View {
 
-    // MARK: - Identity
-
-    @State private var userName = ""
-    @State private var userEmail = ""
-
-    // MARK: - Tools
-
-    @State private var coreEditor: CoreEditor = .vim
-    @State private var mergeTool: MergeTool = .opendiff
-    @State private var diffTool: DiffTool = .opendiff
-
-    // MARK: - Pull / Push Behavior
-
-    @State private var pullRebase = false
-    @State private var pushAutoSetupRemote = false
+    @State private var model = GlobalGitConfigModel()
 
     var body: some View {
         Form {
-            identitySection
-            toolsSection
-            behaviorSection
-            rawConfigSection
+            Section("Identity") {
+                TextField("Name", text: binding("user.name"), prompt: Text("Your Name"))
+                TextField("Email", text: binding("user.email"), prompt: Text("you@example.com"))
+            }
+            Section("Defaults") {
+                TextField("Editor (core.editor)", text: binding("core.editor"), prompt: Text("vim"))
+                TextField("Initial branch", text: binding("init.defaultBranch"), prompt: Text("master"))
+            }
+            Section("Pull, Push & Fetch") {
+                Toggle("Rebase when pulling", isOn: boolBinding("pull.rebase"))
+                Toggle("Set upstream automatically on first push", isOn: boolBinding("push.autoSetupRemote"))
+                Toggle("Prune deleted remote branches when fetching", isOn: boolBinding("fetch.prune"))
+            }
+            Section {
+                LabeledContent("File") {
+                    Text(model.configFileURL.path).font(.monoCaption).foregroundStyle(Theme.textSecondary)
+                        .lineLimit(1).truncationMode(.middle)
+                }
+                if let error = model.errorMessage {
+                    Text(error).font(.caption).foregroundStyle(Theme.danger)
+                }
+                HStack {
+                    Button("Open in Editor") { try? ExternalToolLauncher.openInEditor([model.configFileURL]) }
+                    Spacer()
+                    if model.didSave && !model.hasChanges {
+                        Label("Saved", systemImage: "checkmark.circle.fill").foregroundStyle(Theme.success)
+                    }
+                    Button("Revert") { model.revert() }.disabled(!model.hasChanges)
+                    Button("Save") { Task { await model.save() } }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!model.hasChanges || model.isSaving)
+                }
+            } footer: {
+                Text("Changes apply to every repository without its own override, and are written only when you click Save.")
+                    .font(.caption).foregroundStyle(Theme.textSecondary)
+            }
         }
         .formStyle(.grouped)
+        .task { await model.load() }
     }
 
-    // MARK: - Identity Section
-
-    @ViewBuilder
-    private var identitySection: some View {
-        Section("Identity") {
-            LabeledContent("Name") {
-                TextField("Your Name", text: $userName)
-            }
-            LabeledContent("Email") {
-                TextField("you@example.com", text: $userEmail)
-                    .textContentType(.emailAddress)
-            }
-        }
+    private func binding(_ key: String) -> Binding<String> {
+        Binding(get: { model.value(key) }, set: { model.set(key, $0) })
     }
 
-    // MARK: - Tools Section
-
-    @ViewBuilder
-    private var toolsSection: some View {
-        Section("Tools") {
-            LabeledContent("Core editor") {
-                Picker("", selection: $coreEditor) {
-                    ForEach(CoreEditor.allCases) { editor in
-                        Text(editor.label).tag(editor)
-                    }
-                }
-                .labelsHidden()
-                .frame(maxWidth: 200)
-            }
-
-            LabeledContent("Merge tool") {
-                Picker("", selection: $mergeTool) {
-                    ForEach(MergeTool.allCases) { tool in
-                        Text(tool.label).tag(tool)
-                    }
-                }
-                .labelsHidden()
-                .frame(maxWidth: 200)
-            }
-
-            LabeledContent("Diff tool") {
-                Picker("", selection: $diffTool) {
-                    ForEach(DiffTool.allCases) { tool in
-                        Text(tool.label).tag(tool)
-                    }
-                }
-                .labelsHidden()
-                .frame(maxWidth: 200)
-            }
-        }
-    }
-
-    // MARK: - Behavior Section
-
-    @ViewBuilder
-    private var behaviorSection: some View {
-        Section("Pull & Push") {
-            Toggle("Rebase instead of merge on pull (pull.rebase)", isOn: $pullRebase)
-            Toggle("Auto-setup remote on push (push.autoSetupRemote)", isOn: $pushAutoSetupRemote)
-        }
-    }
-
-    // MARK: - Raw Config Section
-
-    @ViewBuilder
-    private var rawConfigSection: some View {
-        Section("Raw Config") {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Open the global .gitconfig file in your default external editor.")
-                    .foregroundStyle(.secondary)
-                    .font(.callout)
-
-                Button("Edit .gitconfig") {
-                    openGitConfig()
-                }
-            }
-        }
-    }
-
-    // MARK: - Actions
-
-    private func openGitConfig() {
-        let url = URL(fileURLWithPath: NSString("~/.gitconfig").expandingTildeInPath)
-        NSWorkspace.shared.open(url)
+    private func boolBinding(_ key: String) -> Binding<Bool> {
+        Binding(get: { model.bool(key) }, set: { model.setBool(key, $0) })
     }
 }
-
-// MARK: - Supporting Types
-
-extension GitConfigPreferencesTab {
-
-    enum CoreEditor: String, CaseIterable, Identifiable {
-        case vim, nano, emacs, vscode, xcode
-
-        var id: String { rawValue }
-
-        var label: String {
-            switch self {
-            case .vim: return "Vim"
-            case .nano: return "Nano"
-            case .emacs: return "Emacs"
-            case .vscode: return "VS Code"
-            case .xcode: return "Xcode"
-            }
-        }
-    }
-
-    enum MergeTool: String, CaseIterable, Identifiable {
-        case opendiff, kaleidoscope, vimdiff, meld, beyond
-
-        var id: String { rawValue }
-
-        var label: String {
-            switch self {
-            case .opendiff: return "opendiff (FileMerge)"
-            case .kaleidoscope: return "Kaleidoscope"
-            case .vimdiff: return "vimdiff"
-            case .meld: return "Meld"
-            case .beyond: return "Beyond Compare"
-            }
-        }
-    }
-
-    enum DiffTool: String, CaseIterable, Identifiable {
-        case opendiff, kaleidoscope, vimdiff, meld, beyond
-
-        var id: String { rawValue }
-
-        var label: String {
-            switch self {
-            case .opendiff: return "opendiff (FileMerge)"
-            case .kaleidoscope: return "Kaleidoscope"
-            case .vimdiff: return "vimdiff"
-            case .meld: return "Meld"
-            case .beyond: return "Beyond Compare"
-            }
-        }
-    }
-}
-
-// MARK: - Preview
 
 #Preview {
-    GitConfigPreferencesTab()
-        .frame(width: 540, height: 440)
+    GitConfigPreferencesTab().frame(width: 520, height: 560)
 }

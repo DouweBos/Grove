@@ -36,7 +36,7 @@ struct AdvancedPreferencesTab: View {
             if towerInstalled {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Import your repository bookmarks and groups from Tower into Grove.")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
 
                     Toggle("Clear existing Grove data before import", isOn: $clearBeforeImport)
 
@@ -54,11 +54,11 @@ struct AdvancedPreferencesTab: View {
                                 + (skippedCount > 0 ? " (\(skippedCount) skipped — path not found)" : ""),
                             systemImage: "checkmark.circle.fill"
                         )
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Theme.success)
 
                     case .error(let message):
                         Label(message, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.danger)
                     }
 
                     HStack {
@@ -73,7 +73,7 @@ struct AdvancedPreferencesTab: View {
                     "Tower is not installed. Install Tower or ensure its data exists at ~/Library/Application Support/com.fournova.Tower3/",
                     systemImage: "info.circle"
                 )
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textSecondary)
             }
         } header: {
             Text("Tower Import")
@@ -87,7 +87,7 @@ struct AdvancedPreferencesTab: View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Remove all repository bookmarks and groups from Grove. This does not delete any repositories from disk.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
 
                 Button("Clear All Data", role: .destructive) {
                     showClearConfirmation = true
@@ -117,7 +117,7 @@ struct AdvancedPreferencesTab: View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Reset all preferences to their default values. This does not affect your repository bookmarks.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
 
                 Button("Reset to Defaults", role: .destructive) {
                     showResetConfirmation = true
@@ -140,16 +140,7 @@ struct AdvancedPreferencesTab: View {
     }
 
     private func resetAllPreferences() {
-        let keys = [
-            "defaultCloneDirectory", "terminalApp", "autoFetchMinutes",
-            "warnOnHunkDiscard", "showQuickStartOnLaunch", "compactToolbar",
-            "commitHistoryLimit", "externalEditorName", "externalDiffToolPath",
-            "externalDiffToolArguments", "externalMergeToolPath",
-            "externalMergeToolArguments", "externalEditorPath"
-        ]
-        for key in keys {
-            UserDefaults.standard.removeObject(forKey: key)
-        }
+        GrovePreferences.resetAll()
     }
 
     // MARK: - Actions

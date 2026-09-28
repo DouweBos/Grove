@@ -88,22 +88,47 @@ final class ExternalToolLauncher {
         try launch(executablePath: path, arguments: args)
     }
 
-    // MARK: - Editor
+    // MARK: - Preferred Apps
 
-    /// Launch the configured external editor for a file.
-    ///
-    /// - Parameters:
-    ///   - file: URL of the file to open.
-    ///   - editorPath: Absolute path to the editor executable. `nil` uses
-    ///     `NSWorkspace` to open with the default app.
-    static func launchEditor(file: URL, editorPath: String?) throws {
-        if let editorPath, !editorPath.isEmpty {
-            Logger.ui.info("Launching editor '\(editorPath, privacy: .public)' for \(file.lastPathComponent, privacy: .public)")
-            try launch(executablePath: editorPath, arguments: [file.path])
-        } else {
-            // Fall back to the system default app.
-            Logger.ui.info("Opening \(file.lastPathComponent, privacy: .public) with default app")
-            NSWorkspace.shared.open(file)
+    /// Opens `directory` in the terminal chosen in General preferences.
+    static func openInTerminal(_ directory: URL) throws {
+        let terminal = GrovePreferences.terminalApp
+        guard let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: terminal.bundleIdentifier) else {
+            throw ExternalToolLauncherError.toolNotFound(terminal.rawValue)
+        }
+        open([directory], with: app)
+    }
+
+    /// Opens files (or a folder) in the editor chosen in Editor preferences.
+    static func openInEditor(_ urls: [URL]) throws {
+        let editor = GrovePreferences.externalEditor
+        switch editor {
+        case .systemDefault:
+            urls.forEach { NSWorkspace.shared.open($0) }
+        case .custom:
+            guard let path = GrovePreferences.externalEditorPath else {
+                throw ExternalToolLauncherError.toolNotFound("Custom editor (not set)")
+            }
+            let url = URL(fileURLWithPath: path)
+            if url.pathExtension == "app" {
+                open(urls, with: url)
+            } else {
+                try launch(executablePath: path, arguments: urls.map(\.path))
+            }
+        default:
+            guard let id = editor.bundleIdentifier,
+                  let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else {
+                throw ExternalToolLauncherError.toolNotFound(editor.rawValue)
+            }
+            open(urls, with: app)
+        }
+    }
+
+    private static func open(_ urls: [URL], with app: URL) {
+        NSWorkspace.shared.open(urls, withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration()) { _, error in
+            if let error {
+                Logger.ui.error("Failed to open with \(app.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
         }
     }
 
@@ -162,7 +187,6 @@ enum AppToolPreferences {
     private static let diffToolArgsKey       = "externalDiffToolArguments"
     private static let mergeToolPathKey      = "externalMergeToolPath"
     private static let mergeToolArgsKey      = "externalMergeToolArguments"
-    private static let editorPathKey         = "externalEditorPath"
 
     // MARK: Accessors
 
@@ -191,12 +215,6 @@ enum AppToolPreferences {
     static var mergeArguments: String {
         UserDefaults.standard.string(forKey: mergeToolArgsKey)
             ?? "$LOCAL $REMOTE $BASE $MERGED"
-    }
-
-    /// Path to the configured external editor, or `nil` when unset.
-    static var editorPath: String? {
-        let path = UserDefaults.standard.string(forKey: editorPathKey) ?? ""
-        return path.isEmpty ? nil : path
     }
 }
 

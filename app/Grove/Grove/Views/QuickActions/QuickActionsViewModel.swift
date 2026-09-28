@@ -1,187 +1,224 @@
 // Views/QuickActions/QuickActionsViewModel.swift
 // Grove
 
+import AppKit
 import Foundation
 import Observation
 
-// MARK: - QuickActionsViewModel
+enum QuickActionsTab: String, CaseIterable, Identifiable {
+    case items = "Actions & Refs"
+    case files = "Files"
+    var id: String { rawValue }
+}
 
-/// ViewModel for the Quick Actions command palette.
-///
-/// Manages presentation state, search input, tab selection, the results list,
-/// and keyboard navigation.  Results are filtered synchronously from a cached
-/// data snapshot that is refreshed each time the palette opens.
+/// What activating a palette row does.
+enum QuickActionTarget {
+    case navigate(SidebarItem)
+    case command(GroveAction)
+    case commit(CommitInfo)
+    case blame(String)
+    case openInTerminal
+    case openInEditor
+    case revealInFinder
+}
+
+struct QuickActionResult: Identifiable {
+    let id: String
+    let title: String
+    let subtitle: String?
+    let symbol: String
+    let kind: String
+    let target: QuickActionTarget
+}
+
+@MainActor
 @Observable
 final class QuickActionsViewModel {
 
-    // MARK: - Presentation
+    private(set) var isPresented = false
+    private(set) var searchText = ""
+    private(set) var selectedTab: QuickActionsTab = .items
+    private(set) var results: [QuickActionResult] = []
+    private(set) var selectedIndex = 0
+    var errorMessage: String?
 
-    /// Whether the Quick Actions panel is currently visible.
-    var isPresented: Bool = false
+    private var itemCandidates: [QuickActionResult] = []
+    private var fileCandidates: [QuickActionResult] = []
 
-    // MARK: - Search State
+    let session: RepositorySession
+    private var repository: any GitRepositoryProtocol { session.repository }
 
-    /// The text the user has typed into the search field.
-    var searchText: String = "" {
-        didSet { updateResults() }
-    }
-
-    /// Which search tab is active.
-    var selectedTab: QuickActionsTab = .items {
-        didSet { updateResults() }
-    }
-
-    // MARK: - Results
-
-    /// The filtered results for the current search text and tab.
-    var results: [QuickActionResult] = []
-
-    /// Index of the currently highlighted result row.
-    var selectedIndex: Int = 0
-
-    // MARK: - Raw Data (populated on open)
-
-    private var allNavigationResults: [QuickActionResult] = []
-    private var allBranchResults: [QuickActionResult] = []
-    private var allTagResults: [QuickActionResult] = []
-    private var allFileResults: [QuickActionResult] = []
-    private var allCommitResults: [QuickActionResult] = []
-
-    // MARK: - Dependencies
-
-    private let repository: any GitRepositoryProtocol
-
-    // MARK: - Init
-
-    init(repository: any GitRepositoryProtocol) {
-        self.repository = repository
+    init(session: RepositorySession) {
+        self.session = session
+        itemCandidates = Self.staticItems
     }
 
     // MARK: - Presentation
 
-    /// Opens the palette and refreshes the searchable data snapshot.
+    func toggle() {
+        isPresented ? close() : open()
+    }
+
     func open() {
-        selectedIndex = 0
         searchText = ""
+        selectedIndex = 0
         isPresented = true
-        Task { await refreshData() }
+        updateResults()
+        Task { await loadCandidates() }
     }
 
-    /// Closes the palette and clears search state.
     func close() {
         isPresented = false
-        searchText = ""
     }
 
-    // MARK: - Keyboard Navigation
-
-    /// Moves the selection down one row, wrapping at the bottom.
-    func selectNext() {
-        guard !results.isEmpty else { return }
-        selectedIndex = (selectedIndex + 1) % results.count
+    func setSearchText(_ text: String) {
+        searchText = text
+        selectedIndex = 0
+        updateResults()
     }
 
-    /// Moves the selection up one row, wrapping at the top.
-    func selectPrevious() {
+    func selectTab(_ tab: QuickActionsTab) {
+        selectedTab = tab
+        selectedIndex = 0
+        updateResults()
+    }
+
+    func moveSelection(by offset: Int) {
         guard !results.isEmpty else { return }
-        selectedIndex = (selectedIndex - 1 + results.count) % results.count
+        selectedIndex = (selectedIndex + offset + results.count) % results.count
+    }
+
+    func highlight(_ index: Int) {
+        selectedIndex = index
+    }
+
+    func dismissError() {
+        errorMessage = nil
     }
 
     // MARK: - Activation
 
-    /// Activates the currently highlighted result and returns the
-    /// ``SidebarItem`` to navigate to (if any).
-    ///
-    /// - Returns: The sidebar destination, or `nil` for actions that
-    ///   require custom handling by the caller.
-    @discardableResult
-    func activateSelected() -> SidebarItem? {
-        guard results.indices.contains(selectedIndex) else { return nil }
+    /// Runs the highlighted row. `alternate` (Cmd+Return) opens files in the editor instead of Blame.
+    func activateSelected(alternate: Bool = false) {
+        guard results.indices.contains(selectedIndex) else { return }
         let result = results[selectedIndex]
         close()
-        return result.sidebarItem
+        perform(result.target, alternate: alternate)
     }
 
-    /// Activates a specific result by its index.
-    @discardableResult
-    func activate(at index: Int) -> SidebarItem? {
-        guard results.indices.contains(index) else { return nil }
-        selectedIndex = index
-        return activateSelected()
-    }
-
-    // MARK: - Data Refresh
-
-    private func refreshData() async {
-        // Build navigation results (always the same set).
-        allNavigationResults = [
-            .navigation(item: .workingCopy, title: "Working Copy"),
-            .navigation(item: .history, title: "History"),
-            .navigation(item: .stashes, title: "Stashes"),
-            .navigation(item: .pullRequests, title: "Pull Requests"),
-            .navigation(item: .branchesReview, title: "Branches Review"),
-            .navigation(item: .settings, title: "Settings")
-        ]
-
-        // Fetch live data from the repository.
+    private func perform(_ target: QuickActionTarget, alternate: Bool) {
         do {
-            async let localBranchesTask   = repository.localBranches()
-            async let remoteBranchesTask  = repository.remoteBranches()
-            async let tagsTask            = repository.tags()
-            async let commitsTask         = repository.log(maxCount: 50, skip: 0, branch: nil)
-            async let statusTask          = repository.status()
-
-            let (local, remote, tagList, commits, statusEntries) = try await (
-                localBranchesTask,
-                remoteBranchesTask,
-                tagsTask,
-                commitsTask,
-                statusTask
-            )
-
-            allBranchResults  = local.map(QuickActionResult.branch) +
-                                remote.map(QuickActionResult.branch)
-            allTagResults     = tagList.map(QuickActionResult.tag)
-            allCommitResults  = commits.map(QuickActionResult.commit)
-            allFileResults    = statusEntries.map { QuickActionResult.filePath($0.path) }
+            switch target {
+            case .navigate(let item):
+                session.sidebarVM.select(item)
+            case .command(let action):
+                session.handleAction(action)
+            case .commit(let commit):
+                session.sidebarVM.select(.history)
+                Task { await session.historyVM.selectCommit(commit) }
+            case .blame(let path) where alternate:
+                try ExternalToolLauncher.openInEditor([repository.path.appendingPathComponent(path)])
+            case .blame(let path):
+                session.sidebarVM.select(.blame)
+                Task { await session.blameVM.open(file: path) }
+            case .openInTerminal:
+                try ExternalToolLauncher.openInTerminal(repository.path)
+            case .openInEditor:
+                try ExternalToolLauncher.openInEditor([repository.path])
+            case .revealInFinder:
+                NSWorkspace.shared.activateFileViewerSelecting([repository.path])
+            }
         } catch {
-            // Non-fatal — the palette still shows navigation items.
+            errorMessage = error.localizedDescription
         }
+    }
 
+    // MARK: - Data
+
+    private func loadCandidates() async {
+        async let local = try? repository.localBranches()
+        async let remote = try? repository.remoteBranches()
+        async let tags = try? repository.tags()
+        async let commits = try? repository.log(maxCount: 200, skip: 0, branch: nil)
+        async let files = try? repository.listTrackedFiles()
+        let (localBranches, remoteBranches, tagList, commitList, fileList) = await (local, remote, tags, commits, files)
+
+        var items = Self.staticItems
+        items += (localBranches ?? []).map {
+            QuickActionResult(id: "branch-\($0.id)", title: $0.name, subtitle: $0.isHEAD ? "current branch" : $0.upstream,
+                              symbol: "arrow.triangle.branch", kind: "Branch", target: .navigate(.branch($0)))
+        }
+        items += (remoteBranches ?? []).map {
+            QuickActionResult(id: "remote-\($0.id)", title: $0.name, subtitle: nil, symbol: "cloud",
+                              kind: "Remote", target: .navigate(.remoteBranch($0)))
+        }
+        items += (tagList ?? []).map {
+            QuickActionResult(id: "tag-\($0.id)", title: $0.name, subtitle: String($0.targetSHA.prefix(7)), symbol: "tag",
+                              kind: "Tag", target: .navigate(.tag($0)))
+        }
+        items += (commitList ?? []).map {
+            QuickActionResult(id: "commit-\($0.id)", title: $0.summary, subtitle: "\($0.shortSHA) \u{00B7} \($0.authorName)",
+                              symbol: "smallcircle.filled.circle", kind: "Commit", target: .commit($0))
+        }
+        itemCandidates = items
+        fileCandidates = (fileList ?? []).map {
+            QuickActionResult(id: "file-\($0)", title: ($0 as NSString).lastPathComponent, subtitle: $0, symbol: "doc.text",
+                              kind: "File", target: .blame($0))
+        }
         updateResults()
     }
 
-    // MARK: - Filtering
-
     private func updateResults() {
+        let candidates = selectedTab == .items ? itemCandidates : fileCandidates
         let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
-
-        switch selectedTab {
-        case .items:
-            let candidates = allNavigationResults
-                + allBranchResults
-                + allTagResults
-                + allCommitResults
-            results = filter(candidates, query: query)
-
-        case .filename:
-            results = filter(allFileResults, query: query)
+        let limit = 200
+        guard !query.isEmpty else {
+            results = Array(candidates.prefix(limit))
+            return clampSelection()
         }
-
-        // Clamp selection so it remains valid after the results array shrinks.
-        if selectedIndex >= results.count {
-            selectedIndex = max(0, results.count - 1)
+        // Title prefix matches first, then any title/subtitle match.
+        let matches = candidates.filter {
+            $0.title.lowercased().contains(query) || ($0.subtitle?.lowercased().contains(query) ?? false)
         }
+        let prefixed = matches.filter { $0.title.lowercased().hasPrefix(query) }
+        let rest = matches.filter { !$0.title.lowercased().hasPrefix(query) }
+        results = Array((prefixed + rest).prefix(limit))
+        clampSelection()
     }
 
-    private func filter(
-        _ candidates: [QuickActionResult],
-        query: String
-    ) -> [QuickActionResult] {
-        guard !query.isEmpty else { return candidates }
-        return candidates.filter { result in
-            result.title.lowercased().contains(query) ||
-            (result.subtitle?.lowercased().contains(query) ?? false)
-        }
+    private func clampSelection() {
+        selectedIndex = min(selectedIndex, max(results.count - 1, 0))
     }
+
+    private static let staticItems: [QuickActionResult] = {
+        func command(_ title: String, _ symbol: String, _ action: GroveAction) -> QuickActionResult {
+            QuickActionResult(id: "cmd-\(title)", title: title, subtitle: nil, symbol: symbol, kind: "Command", target: .command(action))
+        }
+        func view(_ title: String, _ symbol: String, _ item: SidebarItem) -> QuickActionResult {
+            QuickActionResult(id: "nav-\(title)", title: title, subtitle: nil, symbol: symbol, kind: "View", target: .navigate(item))
+        }
+        func tool(_ title: String, _ symbol: String, _ target: QuickActionTarget) -> QuickActionResult {
+            QuickActionResult(id: "tool-\(title)", title: title, subtitle: nil, symbol: symbol, kind: "Open", target: target)
+        }
+        return [
+            command("Fetch\u{2026}", "arrow.down.circle", .fetch),
+            command("Pull\u{2026}", "arrow.down.to.line", .pull),
+            command("Push\u{2026}", "arrow.up.to.line", .push),
+            command("New Branch\u{2026}", "plus.square.on.square", .newBranch),
+            command("Stash Changes\u{2026}", "tray.and.arrow.down", .stash),
+            command("Merge\u{2026}", "arrow.triangle.merge", .merge),
+            command("Rebase\u{2026}", "arrow.triangle.2.circlepath", .rebase),
+            view("Changes", "tray", .workingCopy),
+            view("History", "clock", .history),
+            view("Stashes", "tray.2", .stashes),
+            view("Pull Requests", "arrow.triangle.pull", .pullRequests),
+            view("Reflog", "clock.arrow.circlepath", .reflog),
+            view("Branches Review", "checklist", .branchesReview),
+            view("Blame", "text.line.first.and.arrowtriangle.forward", .blame),
+            view("Repository Settings", "gearshape", .settings),
+            tool("Open in Terminal", "terminal", .openInTerminal),
+            tool("Open in Editor", "chevron.left.forwardslash.chevron.right", .openInEditor),
+            tool("Reveal in Finder", "folder", .revealInFinder)
+        ]
+    }()
 }
