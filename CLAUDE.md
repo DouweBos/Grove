@@ -29,6 +29,8 @@ Dev launch flags: `-GroveOpenRepository <path>` opens a repository on launch, `-
 
 Never perform git writes against real repositories while testing; use a scratch repo under `/tmp`.
 
+Releases: run the Release workflow on `main` (version + `beta` or `production` channel). It runs `fastlane mac release`, which signs, notarizes and appends to the Sparkle appcast served through houwert.dev/grove/updates.
+
 ## Conventions
 
 - Files under 500 lines, views under 300; split when approaching that.

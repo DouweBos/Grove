@@ -6,7 +6,7 @@ set -euo pipefail
 
 VERSION=$1
 CHANNEL=$2
-ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DIST="$ROOT/dist"
 FEED="$DIST/appcast"
 DOWNLOADS="https://houwert.dev/grove/updates/"

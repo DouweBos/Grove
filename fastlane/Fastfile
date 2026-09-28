@@ -39,7 +39,7 @@ platform :mac do
     )
     notarize(package: "#{DIST}/Grove.app", api_key: api_key, bundle_id: "com.houwert.Grove")
 
-    sh("../tools/release/package.sh", version, channel)
+    sh("./package.sh", version, channel)
   end
 
   def load_app_store_connect_api_key
