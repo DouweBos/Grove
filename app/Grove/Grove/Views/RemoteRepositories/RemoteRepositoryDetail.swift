@@ -35,7 +35,17 @@ struct RemoteRepositoriesContent: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background)
         .onChange(of: HostingAccountStore.shared.accounts) { Task { await viewModel.reloadAccount() } }
+        .sheet(item: Binding(get: { viewModel.creation }, set: { if $0 == nil { viewModel.endCreating() } })) { creation in
+            CreateRemoteRepositorySheet(viewModel: creation)
+        }
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("New Remote Repository\u{2026}", systemImage: "plus.rectangle.on.folder") {
+                    windowVM.showCreateRemoteRepository()
+                }
+                .help("Create a repository on one of your accounts")
+                .disabled(viewModel.account != .signedIn)
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button("Accounts\u{2026}", systemImage: "person.crop.circle") { openAccounts() }
                     .help("Open Settings to manage your accounts")

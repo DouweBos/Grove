@@ -218,6 +218,17 @@ final class WindowViewModel {
         Task { await remoteRepositories.loadIfNeeded() }
     }
 
+    /// "New Remote Repository…"; the new one can then be added as a remote of a bookmarked repository, the last opened first.
+    func showCreateRemoteRepository(owner: RemoteRepositoryOwner? = nil) {
+        let targets = manager.bookmarks.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+            .map { CreateRemoteRepositoryViewModel.Target(path: $0.path, name: $0.displayName) }
+        let manager = manager
+        remoteRepositories.beginCreating(owner: owner, targets: targets, preferredTarget: sessionOrder.last) { path, name, url in
+            let repository = try await manager.inspectRepository(at: URL(fileURLWithPath: path))
+            try await repository.addRemote(name: name, url: url)
+        }
+    }
+
     /// Opens a hosted repository's local clone, bookmarking nothing new.
     func openLocalClone(atPath path: String) {
         // Open first so history records the remote browser as the way back.

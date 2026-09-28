@@ -99,6 +99,9 @@ private struct RemoteOwnerSection: View {
             }
             .contextMenu {
                 Button("Reload", systemImage: "arrow.clockwise") { Task { await viewModel.refresh(owner) } }
+                Button("New Repository in \u{201C}\(owner.title)\u{201D}\u{2026}", systemImage: "plus.rectangle.on.folder") {
+                    windowVM.showCreateRemoteRepository(owner: owner)
+                }
             }
         }
     }

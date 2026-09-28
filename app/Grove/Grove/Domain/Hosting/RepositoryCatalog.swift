@@ -19,6 +19,14 @@ nonisolated protocol RepositoryCatalog: Sendable {
     var account: CatalogAccount { get }
     func owners() async throws -> [RemoteRepositoryOwner]
     func repositories(of owner: RemoteRepositoryOwner) async throws -> [RemoteRepository]
+    /// Creates an empty repository under `request.owner` and returns it.
+    func createRepository(_ request: NewRemoteRepository) async throws -> RemoteRepository
+    /// Azure DevOps sets visibility per project and has no repository description.
+    var supportsVisibilityAndDescription: Bool { get }
+}
+
+extension RepositoryCatalog {
+    var supportsVisibilityAndDescription: Bool { true }
 }
 
 @MainActor
@@ -76,10 +84,13 @@ nonisolated struct GitLabCatalog: RepositoryCatalog {
 
     func owners() async throws -> [RemoteRepositoryOwner] {
         let groups = HostingJSON.objects(try await GitLabCLI.api("groups?min_access_level=10&per_page=100", host: host, paginate: true))
-            .compactMap { $0["full_path"] as? String }
-            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
-        return [RemoteRepositoryOwner(login: username, isAccount: true, accountID: account.id)]
-            + groups.map { RemoteRepositoryOwner(login: $0, isAccount: false, accountID: account.id) }
+            .compactMap { group -> RemoteRepositoryOwner? in
+                guard let path = group["full_path"] as? String else { return nil }
+                return RemoteRepositoryOwner(login: path, isAccount: false, accountID: account.id,
+                                             serviceID: (group["id"] as? Int).map(String.init))
+            }
+            .sorted { $0.login.localizedCaseInsensitiveCompare($1.login) == .orderedAscending }
+        return [RemoteRepositoryOwner(login: username, isAccount: true, accountID: account.id)] + groups
     }
 
     func repositories(of owner: RemoteRepositoryOwner) async throws -> [RemoteRepository] {
@@ -131,9 +142,11 @@ nonisolated struct AzureDevOpsCatalog: RepositoryCatalog {
     func owners() async throws -> [RemoteRepositoryOwner] {
         guard let url = URL(string: "https://dev.azure.com/\(organization)/_apis/projects?$top=500&api-version=7.1") else { return [] }
         let values = HostingJSON.object(try await client.get(url))?["value"] as? [HostingJSON.Object] ?? []
-        return values.compactMap { $0["name"] as? String }
-            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
-            .map { RemoteRepositoryOwner(login: $0, isAccount: false, accountID: account.id) }
+        return values.compactMap { project -> RemoteRepositoryOwner? in
+            guard let name = project["name"] as? String else { return nil }
+            return RemoteRepositoryOwner(login: name, isAccount: false, accountID: account.id, serviceID: project["id"] as? String)
+        }
+        .sorted { $0.login.localizedCaseInsensitiveCompare($1.login) == .orderedAscending }
     }
 
     func repositories(of owner: RemoteRepositoryOwner) async throws -> [RemoteRepository] {

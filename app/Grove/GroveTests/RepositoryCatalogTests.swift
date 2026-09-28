@@ -17,9 +17,18 @@ struct FixedCatalog: RepositoryCatalog {
     }
 
     func repositories(of owner: RemoteRepositoryOwner) async throws -> [RemoteRepository] {
-        [RemoteRepository(nameWithOwner: "\(owner.login)/app", name: "app", owner: owner.login, description: nil, isPrivate: true,
-                          isFork: false, isArchived: false, updatedAt: nil, webURL: "https://\(account.host)/\(owner.login)/app",
-                          sshURL: "", defaultBranch: "main", language: nil, service: account.kind)]
+        [repository(owner.login, "app")]
+    }
+
+    func createRepository(_ request: NewRemoteRepository) async throws -> RemoteRepository {
+        if request.name == "taken" { throw HostingError.http(status: 422, message: "name already exists on this account") }
+        return repository(request.owner.login, request.name)
+    }
+
+    private func repository(_ owner: String, _ name: String) -> RemoteRepository {
+        RemoteRepository(nameWithOwner: "\(owner)/\(name)", name: name, owner: owner, description: nil, isPrivate: true,
+                         isFork: false, isArchived: false, updatedAt: nil, webURL: "https://\(account.host)/\(owner)/\(name)",
+                         sshURL: "git@\(account.host):\(owner)/\(name).git", defaultBranch: "main", language: nil, service: account.kind)
     }
 }
 

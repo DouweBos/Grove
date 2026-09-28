@@ -43,6 +43,9 @@ final class RemoteRepositoriesViewModel {
     /// Hosted repository key → local bookmark path, from each bookmark's remotes.
     private(set) var localClones: [String: String] = [:]
 
+    /// The open "New Remote Repository" sheet.
+    private(set) var creation: CreateRemoteRepositoryViewModel?
+
     /// Where the accounts come from; tests swap in fixed catalogs.
     @ObservationIgnored var catalogSource: () async -> [any RepositoryCatalog] = { await RepositoryCatalogs.all() }
 
@@ -132,6 +135,31 @@ final class RemoteRepositoriesViewModel {
         return repos.filter {
             $0.name.localizedCaseInsensitiveContains(query) || ($0.description?.localizedCaseInsensitiveContains(query) ?? false)
         }
+    }
+
+    // MARK: Creating
+
+    /// Opens the sheet on `owner` (the first account's own when nil); `targets` are local repositories to add it to as a remote.
+    func beginCreating(owner: RemoteRepositoryOwner? = nil, targets: [CreateRemoteRepositoryViewModel.Target] = [],
+                       preferredTarget: String? = nil,
+                       addRemote: ((String, String, String) async throws -> Void)? = nil) {
+        let creation = CreateRemoteRepositoryViewModel(sections: { [weak self] in self?.sections ?? [] }, owner: owner, targets: targets,
+                                                       preferredTarget: preferredTarget)
+        creation.addRemote = addRemote
+        creation.onCreated = { [weak self] repository, owner in self?.didCreate(repository, under: owner) }
+        self.creation = creation
+    }
+
+    func endCreating() { creation = nil }
+
+    /// Lists the new repository at the top of its owner and selects it, without a reload the service may not reflect yet.
+    private func didCreate(_ repository: RemoteRepository, under owner: RemoteRepositoryOwner) {
+        if case .loaded(let repos) = states[owner.id] {
+            states[owner.id] = .loaded([repository] + repos.filter { $0.id != repository.id })
+        } else {
+            states[owner.id] = .loaded([repository])
+        }
+        selectedID = repository.id
     }
 
     // MARK: Local clones

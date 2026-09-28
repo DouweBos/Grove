@@ -14,8 +14,24 @@ nonisolated struct RemoteRepositoryOwner: Identifiable, Hashable, Sendable {
     var accountID = ""
     /// Shown instead of `login` where the service has a friendlier name (Bitbucket workspaces, Azure projects).
     var displayName: String?
+    /// The service's own id, where creating a repository needs it (GitLab group, Azure DevOps project).
+    var serviceID: String?
 
     var title: String { displayName ?? login }
+}
+
+/// What "New Remote Repository" asks a service to create.
+nonisolated struct NewRemoteRepository: Equatable, Sendable {
+    var owner: RemoteRepositoryOwner
+    var name: String
+    var description = ""
+    var isPrivate = true
+
+    /// Bitbucket and GitLab address repositories by a slug: lowercase, dashes for spaces.
+    var slug: String {
+        name.trimmingCharacters(in: .whitespaces).lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+    }
 }
 
 nonisolated struct RemoteRepository: Identifiable, Hashable, Sendable {
