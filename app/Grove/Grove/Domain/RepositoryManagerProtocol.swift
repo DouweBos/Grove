@@ -46,6 +46,9 @@ protocol RepositoryManagerProtocol: AnyObject, Observable {
 
     func addBookmark(path: String, displayName: String, groupID: UUID?) throws
     func removeBookmark(id: UUID) throws
+    func renameBookmark(id: UUID, to name: String) throws
+    /// Lists `ids` in this order, reusing the positions they already hold so other bookmarks stay put.
+    func orderBookmarks(_ ids: [UUID]) throws
 
     // MARK: Group Management
 
@@ -55,6 +58,7 @@ protocol RepositoryManagerProtocol: AnyObject, Observable {
     func renameGroup(id: UUID, to name: String) throws
     func moveBookmark(id: UUID, toGroup: UUID?) throws
     func reorderBookmark(id: UUID, newSortOrder: Int) throws
+    func orderGroups(_ ids: [UUID]) throws
 
     // MARK: Bulk Operations
 

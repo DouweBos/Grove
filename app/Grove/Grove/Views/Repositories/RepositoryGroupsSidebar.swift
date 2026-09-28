@@ -93,15 +93,10 @@ private struct BookmarkActions: View {
 
     var body: some View {
         Button("Open", systemImage: "arrow.up.forward.app") { viewModel.openBookmark(bookmark) }
-        Button("Reveal in Finder", systemImage: "folder") {
-            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: bookmark.path)])
-        }
-        Button("Copy Path", systemImage: "doc.on.doc") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(bookmark.path, forType: .string)
-        }
+        FolderActions(path: bookmark.path)
         Divider()
-        Menu("Move to Group") {
+        Button("Rename\u{2026}", systemImage: "pencil") { viewModel.showRenameBookmarkDialog(bookmark) }
+        Menu("Move to Group", systemImage: "tray.and.arrow.down") {
             ForEach(viewModel.sortedGroups) { group in
                 Button(group.name) { viewModel.moveBookmark(bookmark, toGroup: group.id) }
                     .disabled(bookmark.groupID == group.id)
@@ -113,9 +108,34 @@ private struct BookmarkActions: View {
             Divider()
             Button("New Group…") { viewModel.showNewGroupDialog() }
         }
+        Button("Sort \(groupName) by Name", systemImage: "arrow.up.arrow.down") {
+            viewModel.sortBookmarksByName(inGroup: bookmark.groupID)
+        }
         Divider()
         Button("Remove from List", systemImage: "minus.circle", role: .destructive) {
             viewModel.removeBookmark(bookmark)
+        }
+    }
+
+    private var groupName: String {
+        viewModel.sortedGroups.first { $0.id == bookmark.groupID }?.name ?? "Repositories"
+    }
+}
+
+/// Opening the folder elsewhere; shared by bookmarks and nested worktrees.
+private struct FolderActions: View {
+    let path: String
+
+    var body: some View {
+        Button("Open in Terminal", systemImage: "terminal") {
+            try? ExternalToolLauncher.openInTerminal(URL(fileURLWithPath: path))
+        }
+        Button("Reveal in Finder", systemImage: "folder") {
+            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+        }
+        Button("Copy Path", systemImage: "doc.on.doc") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(path, forType: .string)
         }
     }
 }
@@ -129,13 +149,7 @@ private struct WorktreeActions: View {
 
     var body: some View {
         Button("Open", systemImage: "arrow.up.forward.app") { viewModel.openBookmark(row) }
-        Button("Reveal in Finder", systemImage: "folder") {
-            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: row.path)])
-        }
-        Button("Copy Path", systemImage: "doc.on.doc") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(row.path, forType: .string)
-        }
+        FolderActions(path: row.path)
     }
 }
 
@@ -164,6 +178,11 @@ private struct RepositoryGroupSection: View {
                 .contextMenu {
                     Button("Rename…", systemImage: "pencil") { viewModel.showRenameGroupDialog(group) }
                     Button("New Group…", systemImage: "folder.badge.plus") { viewModel.showNewGroupDialog() }
+                    Divider()
+                    Button("Sort Repositories by Name", systemImage: "arrow.up.arrow.down") {
+                        viewModel.sortBookmarksByName(inGroup: group.id)
+                    }
+                    Button("Sort Groups by Name", systemImage: "arrow.up.arrow.down") { viewModel.sortGroupsByName() }
                     Divider()
                     Button("Delete Group…", systemImage: "trash", role: .destructive, action: onDelete)
                 }

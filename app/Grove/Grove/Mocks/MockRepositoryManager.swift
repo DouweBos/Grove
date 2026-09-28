@@ -176,6 +176,26 @@ final class MockRepositoryManager: RepositoryManagerProtocol {
         }
     }
 
+    func renameBookmark(id: UUID, to name: String) throws {
+        guard let index = bookmarks.firstIndex(where: { $0.id == id }) else { return }
+        bookmarks[index].displayName = name
+    }
+
+    func orderBookmarks(_ ids: [UUID]) throws {
+        let slots = ids.compactMap { id in bookmarks.first { $0.id == id }?.sortOrder }.sorted()
+        for (id, slot) in zip(ids, slots) {
+            if let index = bookmarks.firstIndex(where: { $0.id == id }) { bookmarks[index].sortOrder = slot }
+        }
+        bookmarks.sort { $0.sortOrder < $1.sortOrder }
+    }
+
+    func orderGroups(_ ids: [UUID]) throws {
+        for (order, id) in ids.enumerated() {
+            if let index = bookmarkGroups.firstIndex(where: { $0.id == id }) { bookmarkGroups[index].sortOrder = order }
+        }
+        bookmarkGroups.sort { $0.sortOrder < $1.sortOrder }
+    }
+
     func renameGroup(id: UUID, to name: String) throws {
         guard let index = bookmarkGroups.firstIndex(where: { $0.id == id }) else { return }
         bookmarkGroups[index].name = name

@@ -3,7 +3,7 @@
 
 import SwiftUI
 
-/// Names a new bookmark group or renames an existing one.
+/// Names a new bookmark group, or renames a group or a repository.
 struct GroupNameSheet: View {
 
     @Environment(WindowViewModel.self) private var viewModel
@@ -11,32 +11,55 @@ struct GroupNameSheet: View {
 
     @State private var name = ""
 
-    private var isRename: Bool {
-        if case .rename = editor { return true }
-        return false
-    }
-
     var body: some View {
         DialogSheet(
-            title: isRename ? "Rename Group" : "New Group",
-            message: "Groups keep related repositories together in the sidebar.",
-            symbol: "folder",
+            title: title,
+            message: message,
+            symbol: isRepository ? "arrow.triangle.branch" : "folder",
             width: 400,
-            primaryTitle: isRename ? "Rename" : "Create",
+            primaryTitle: isNew ? "Create" : "Rename",
             isPrimaryDisabled: name.trimmingCharacters(in: .whitespaces).isEmpty,
             onCancel: { viewModel.dismissGroupEditor() },
             onPrimary: { viewModel.commitGroupEditor(name: name) }
         ) {
             DialogCard {
                 DialogField("Name") {
-                    TextField("Work", text: $name)
+                    TextField(isRepository ? "Name" : "Work", text: $name)
                         .textFieldStyle(.roundedBorder)
                 }
             }
         }
         .onAppear {
-            if case .rename(let group) = editor { name = group.name }
+            switch editor {
+            case .new: break
+            case .rename(let group): name = group.name
+            case .renameRepository(let bookmark): name = bookmark.displayName
+            }
         }
+    }
+
+    private var isNew: Bool {
+        if case .new = editor { return true }
+        return false
+    }
+
+    private var isRepository: Bool {
+        if case .renameRepository = editor { return true }
+        return false
+    }
+
+    private var title: String {
+        switch editor {
+        case .new: "New Group"
+        case .rename: "Rename Group"
+        case .renameRepository: "Rename Repository"
+        }
+    }
+
+    private var message: String {
+        isRepository
+            ? "The name shown in Grove. The folder on disk keeps its name."
+            : "Groups keep related repositories together in the sidebar."
     }
 }
 

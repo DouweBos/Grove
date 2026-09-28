@@ -313,6 +313,7 @@ final class WindowViewModel {
         switch editor {
         case .new: createGroup(name: trimmed)
         case .rename(let group): renameGroup(group, to: trimmed)
+        case .renameRepository(let bookmark): renameBookmark(bookmark, to: trimmed)
         }
         groupEditor = nil
     }
@@ -353,11 +354,13 @@ final class WindowViewModel {
 enum GroupEditor: Identifiable {
     case new
     case rename(BookmarkGroupData)
+    case renameRepository(RepositoryBookmarkData)
 
     var id: String {
         switch self {
         case .new: "new"
         case .rename(let group): group.id.uuidString
+        case .renameRepository(let bookmark): bookmark.id.uuidString
         }
     }
 }
