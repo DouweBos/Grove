@@ -24,7 +24,7 @@ Where the overhaul stands. Update this when a wave of work lands.
 
 - Home buttons: cloud and disk in the sidebar (top bar when collapsed) leave the repository; the cloud browses GitHub repositories of the `gh` account and its organizations (clone, or open the local clone), the disk lists local ones. File menu: Local/Remote Repositories (Shift-Cmd-L / Shift-Cmd-K).
 
-- Windows: any number (File > New Window, Open in New Window on a repository); menu commands and mouse navigation go to the key window; two windows on one repository share its fetches. Deleting a repository asks Keep Files or Move to Trash.
+- Windows and tabs: any number (File > New Tab ⌘T, the tab bar +, New Window ⌥⌘N, Open in New Tab / Window on a repository); menu commands and mouse navigation go to the key window; two windows on one repository share its fetches. Deleting a repository asks Keep Files or Move to Trash.
 
 - Background fetch: closing the window keeps Grove running; cached repositories keep auto-fetching (every 5 minutes by default) and the reopened window resumes where it was. History logs the branch with its upstream, marking unpulled and unpushed commits.
 

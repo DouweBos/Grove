@@ -39,6 +39,8 @@ private struct GroveFileCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
+            Button("New Tab") { WindowStore.newTabHandler?() }
+                .keyboardShortcut("t", modifiers: .command)
             Button("New Window") { openWindow(id: GroveApp.mainWindowID) }
                 .keyboardShortcut("n", modifiers: [.command, .option])
             Divider()

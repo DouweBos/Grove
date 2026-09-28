@@ -28,6 +28,7 @@ struct GroveApp: App {
         // The value is the window's repository, so opening one already on screen brings that window forward.
         WindowGroup("Grove", id: Self.mainWindowID, for: RepositoryReference.self) { $reference in
             WindowRoot(store: windows, reference: $reference)
+                .environment(windows)
                 .onAppear { AppAppearance.applyStored() }
         }
         .defaultSize(width: 1100, height: 700)

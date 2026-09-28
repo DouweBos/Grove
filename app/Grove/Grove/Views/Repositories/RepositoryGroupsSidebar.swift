@@ -137,8 +137,13 @@ private struct BookmarkActions: View {
 private struct OpenInNewWindowButton: View {
     let path: String
     @Environment(\.openWindow) private var openWindow
+    @Environment(WindowStore.self) private var windows
 
     var body: some View {
+        Button("Open in New Tab", systemImage: "plus.rectangle.on.rectangle") {
+            windows.requestTab()
+            openWindow(id: GroveApp.mainWindowID, value: RepositoryReference(path: path))
+        }
         Button("Open in New Window", systemImage: "macwindow.badge.plus") {
             openWindow(id: GroveApp.mainWindowID, value: RepositoryReference(path: path))
         }

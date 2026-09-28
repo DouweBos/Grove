@@ -3,7 +3,7 @@
 //
 // Hands each window its WindowViewModel and keeps closed windows' models alive.
 
-import Foundation
+import AppKit
 import Observation
 
 /// App-wide owner of window state: a closed window's sessions keep fetching in the background,
@@ -17,6 +17,10 @@ final class WindowStore {
     /// Most recently closed last; only these few keep fetching.
     private var closedWindows: [WindowViewModel] = []
     private var hasHandledLaunchArguments = false
+    /// The window a requested tab should join, and when it was asked for; stale requests are dropped.
+    private var pendingTab: (parent: NSWindow, requested: Date)?
+    /// Opens a Grove window; set by the first window, since only views can reach `openWindow`.
+    static var newTabHandler: (() -> Void)?
     static let closedWindowLimit = 3
 
     init(manager: any RepositoryManagerProtocol) {
@@ -46,6 +50,21 @@ final class WindowStore {
     func windowReappeared(_ window: WindowViewModel) {
         closedWindows.removeAll { $0 === window }
         if !openWindows.contains(where: { $0 === window }) { openWindows.append(window) }
+    }
+
+    /// The next Grove window to appear joins `parent` (the key window by default) as a tab.
+    func requestTab(in parent: NSWindow? = NSApp.keyWindow) {
+        pendingTab = parent.map { ($0, Date()) }
+    }
+
+    func attach(_ window: NSWindow) {
+        window.tabbingIdentifier = Self.tabbingIdentifier
+        guard let pending = pendingTab else { return }
+        pendingTab = nil
+        // openWindow on a repository already on screen focuses it instead of opening one.
+        guard pending.parent !== window, Date().timeIntervalSince(pending.requested) < 2 else { return }
+        pending.parent.addTabbedWindow(window, ordered: .above)
+        window.makeKeyAndOrderFront(nil)
     }
 
     /// Dev launch flags apply to the first window only, not to every restored one.

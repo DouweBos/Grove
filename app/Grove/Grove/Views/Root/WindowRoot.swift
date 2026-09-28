@@ -11,6 +11,7 @@ struct WindowRoot: View {
 
     @State private var windowVM: WindowViewModel?
     @State private var handlesLaunchArguments = false
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Group {
@@ -21,7 +22,12 @@ struct WindowRoot: View {
                 Theme.background
             }
         }
+        .background(WindowTabbingAccessor(store: store))
         .onAppear {
+            WindowStore.newTabHandler = { [store, openWindow] in
+                store.requestTab()
+                openWindow(id: GroveApp.mainWindowID)
+            }
             // A tabbed window's content can disappear and come back without the window closing.
             if let windowVM { return store.windowReappeared(windowVM) }
             handlesLaunchArguments = store.consumeLaunchArguments()
