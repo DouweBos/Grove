@@ -32,6 +32,10 @@ extension MockGitRepository {
         await simulateLatency()
     }
 
+    func commitTemplate() async -> String? {
+        nil
+    }
+
     @discardableResult
     func saveSnapshot(message: String, includeUntracked: Bool) async throws -> Bool {
         await simulateLatency()

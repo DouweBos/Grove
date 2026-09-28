@@ -92,6 +92,10 @@ final class WorkingCopyViewModel {
     var isCommitting = false
     /// HEAD's message as loaded for amend, so turning amend off can drop an untouched prefill.
     var amendPrefill: (subject: String, body: String)?
+    let templateStore: CommitTemplateStore
+    /// The repository's `commit.template`, offered first and prefilled into an empty composer once per commit.
+    var gitTemplate: CommitTemplate?
+    var didPrefillGitTemplate = false
 
     var hasSubject: Bool { !commitSubject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     var canCommit: Bool { hasSubject && (isAmend || !stagedFiles.isEmpty) && conflictedFiles.isEmpty && !isCommitting }
@@ -132,8 +136,9 @@ final class WorkingCopyViewModel {
     var isChoosingPatch = false
     var errorMessage: String?
 
-    init(repository: any GitRepositoryProtocol) {
+    init(repository: any GitRepositoryProtocol, templateStore: CommitTemplateStore = .shared) {
         self.repository = repository
+        self.templateStore = templateStore
     }
 
     // MARK: - Refresh
@@ -154,7 +159,9 @@ final class WorkingCopyViewModel {
         async let signing = try? repository.isSigningConfigured()
         async let commitIdentity = repository.commitIdentity()
         async let context = isInOperation ? repository.operationContext() : nil
+        async let template = repository.commitTemplate()
         cachedRecentCommits = await recent ?? []
+        setGitTemplate(await template)
         isSigningAvailable = await signing ?? false
         identity = await commitIdentity
         operationContext = await context

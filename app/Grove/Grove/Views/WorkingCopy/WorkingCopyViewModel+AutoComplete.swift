@@ -61,8 +61,10 @@ extension WorkingCopyViewModel {
         let triggerPrefix = prefix(for: trigger)
         // Find the last occurrence of the trigger prefix and replace from there.
         if let range = commitSubject.range(of: triggerPrefix, options: .backwards) {
-            commitSubject = commitSubject.replacingCharacters(in: range, with: suggestion.insertText)
+            // Replace the trigger and the query typed after it.
+            commitSubject = String(commitSubject[..<range.lowerBound]) + suggestion.insertText
         }
+        if trigger == .template { completeTemplate(suggestion) }
         dismissAutoComplete()
     }
 
@@ -228,37 +230,4 @@ extension WorkingCopyViewModel {
         }
     }
 
-    // MARK: Private — Template Suggestions
-
-    /// Built-in templates; a future version could load these from SwiftData.
-    private func templateSuggestions(query: String) -> [AutoCompleteSuggestion] {
-        let builtIn: [(String, String, String)] = [
-            // (id, name, prefix)
-            ("conventional-feat", "feat: New Feature", "feat: "),
-            ("conventional-fix", "fix: Bug Fix", "fix: "),
-            ("conventional-docs", "docs: Documentation", "docs: "),
-            ("conventional-style", "style: Formatting", "style: "),
-            ("conventional-refactor", "refactor: Code Refactoring", "refactor: "),
-            ("conventional-test", "test: Tests", "test: "),
-            ("conventional-chore", "chore: Maintenance", "chore: "),
-            ("conventional-perf", "perf: Performance", "perf: "),
-            ("conventional-ci", "ci: CI/CD", "ci: ")
-        ]
-
-        let filtered = query.isEmpty
-            ? builtIn
-            : builtIn.filter {
-                $0.1.lowercased().contains(query) || $0.2.lowercased().contains(query)
-            }
-
-        return filtered.map { id, name, prefix in
-            AutoCompleteSuggestion(
-                id: id,
-                icon: "text.badge.plus",
-                title: name,
-                subtitle: prefix,
-                insertText: prefix
-            )
-        }
-    }
 }

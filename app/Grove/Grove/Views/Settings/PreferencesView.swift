@@ -8,21 +8,43 @@ import SwiftUI
 struct PreferencesView: View {
 
     let manager: any RepositoryManagerProtocol
+    @AppStorage(PreferencesTab.storageKey) private var tab = PreferencesTab.general.rawValue
 
     var body: some View {
-        TabView {
+        TabView(selection: $tab) {
             GeneralPreferencesTab()
                 .tabItem { Label("General", systemImage: "gearshape") }
+                .tag(PreferencesTab.general.rawValue)
             GitConfigPreferencesTab()
                 .tabItem { Label("Git", systemImage: "terminal") }
+                .tag(PreferencesTab.git.rawValue)
             ServicesPreferencesTab()
                 .tabItem { Label("Accounts", systemImage: "person.crop.circle") }
+                .tag(PreferencesTab.accounts.rawValue)
+            CommitTemplatesPreferencesTab()
+                .tabItem { Label("Templates", systemImage: "text.badge.plus") }
+                .tag(PreferencesTab.templates.rawValue)
             EditorPreferencesTab()
                 .tabItem { Label("Tools", systemImage: "hammer") }
+                .tag(PreferencesTab.tools.rawValue)
             AdvancedPreferencesTab(manager: manager)
                 .tabItem { Label("Advanced", systemImage: "gearshape.2") }
+                .tag(PreferencesTab.advanced.rawValue)
         }
         .frame(width: 560, height: 520)
+    }
+}
+
+/// Preferences tabs, so other windows can open Preferences on the one they need.
+enum PreferencesTab: String {
+    case general, git, accounts, templates, tools, advanced
+
+    static let storageKey = "preferencesTab"
+
+    @MainActor
+    func open(_ openSettings: OpenSettingsAction) {
+        UserDefaults.standard.set(rawValue, forKey: Self.storageKey)
+        openSettings()
     }
 }
 

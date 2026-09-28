@@ -65,6 +65,8 @@ extension WorkingCopyViewModel {
         isAmend = false
         amendPrefill = nil
         dismissAutoComplete()
+        didPrefillGitTemplate = false
+        prefillGitTemplateIfNeeded()
         await repositoryChanged()
     }
 }

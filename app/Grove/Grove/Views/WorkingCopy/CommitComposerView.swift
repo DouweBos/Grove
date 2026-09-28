@@ -22,6 +22,7 @@ struct CommitComposerView: View {
                 subjectField(text: $vm.commitSubject)
                 Rectangle().fill(Theme.border).frame(height: 0.5)
                 bodyEditor(text: $vm.commitBody)
+                CommitComposerAccessories()
             }
             .background(Theme.background, in: RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.border, lineWidth: 0.5))

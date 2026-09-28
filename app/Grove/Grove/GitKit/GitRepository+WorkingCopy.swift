@@ -17,6 +17,13 @@ extension GitRepository {
         return CommitIdentity(name: name ?? "Unknown", email: email ?? "")
     }
 
+    func commitTemplate() async -> String? {
+        guard let configured = await configValue("commit.template") else { return nil }
+        let expanded = (configured as NSString).expandingTildeInPath
+        let file = expanded.hasPrefix("/") ? URL(fileURLWithPath: expanded) : path.appendingPathComponent(expanded)
+        return try? String(contentsOf: file, encoding: .utf8)
+    }
+
     func operationContext() async -> OperationContext? {
         guard let gitDir = await absoluteGitDir() else { return nil }
         let current = currentBranch?.name ?? "HEAD"

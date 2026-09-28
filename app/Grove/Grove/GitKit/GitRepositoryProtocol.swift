@@ -305,6 +305,8 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func commit(message: String, body: String?, amend: Bool, sign: Bool, signOff: Bool) async throws -> CommitInfo
     /// The effective `user.name` / `user.email`, or `nil` when unset.
     func commitIdentity() async -> CommitIdentity?
+    /// Contents of the file git's `commit.template` points at, or `nil` when unset or unreadable.
+    func commitTemplate() async -> String?
     /// Branch names for both sides of the in-progress merge/rebase/cherry-pick/revert.
     func operationContext() async -> OperationContext?
     /// Continue the in-progress operation after conflicts are resolved.
