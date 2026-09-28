@@ -148,8 +148,10 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 
     @MainActor
     static func applyStored() {
-        let stored = AppAppearance(rawValue: UserDefaults.standard.string(forKey: GrovePreferences.Key.appearance) ?? "") ?? .system
-        stored.apply()
+        // `-GroveAppearance dark|light` wins so both modes can be checked without changing the preference.
+        let defaults = UserDefaults.standard
+        let raw = defaults.string(forKey: "GroveAppearance") ?? defaults.string(forKey: GrovePreferences.Key.appearance) ?? ""
+        (AppAppearance(rawValue: raw) ?? .system).apply()
     }
 
     @MainActor

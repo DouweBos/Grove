@@ -65,13 +65,7 @@ struct RootWindowHost: View {
             windowVM.stopAllSessions()
         }
         // `-GroveOpenRepository <path>` opens a repository on launch.
-        // `-GroveAppearance dark|light` forces one appearance, for checking both without changing the system.
         .task {
-            switch UserDefaults.standard.string(forKey: "GroveAppearance") {
-            case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
-            case "light": NSApp.appearance = NSAppearance(named: .aqua)
-            default: break
-            }
             if let path = UserDefaults.standard.string(forKey: "GroveOpenRepository") {
                 windowVM.openReference(RepositoryReference(path: path))
             }
