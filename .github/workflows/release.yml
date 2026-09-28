@@ -33,11 +33,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Select Xcode 27
+      # The macos-26 image tops out at Xcode 26.x, which builds the 26.2 deployment target fine.
+      - name: Select newest Xcode
         run: |
-          XCODE=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
-          [ -n "$XCODE" ] || { echo "No Xcode 27 on this runner"; ls /Applications | grep Xcode; exit 1; }
+          XCODE=$(ls -d /Applications/Xcode_2[6-9]*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$XCODE" ] || { echo "No Xcode 26+ on this runner"; ls /Applications | grep Xcode; exit 1; }
           sudo xcode-select -s "$XCODE"
+          xcodebuild -version
 
       - uses: ruby/setup-ruby@v1
         with:
