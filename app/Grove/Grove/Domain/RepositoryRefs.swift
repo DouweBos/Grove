@@ -17,6 +17,8 @@ final class RepositoryRefs {
     private(set) var remotes: [RemoteInfo] = []
     private(set) var worktrees: [WorktreeInfo] = []
     private(set) var submodules: [SubmoduleInfo] = []
+    /// Parent branch recorded when a branch was created, keyed by branch name.
+    private(set) var parents: [String: String] = [:]
     /// Staged or unstaged entries, for the Changes badge.
     private(set) var changedCount = 0
     private(set) var hasLoaded = false
@@ -87,6 +89,7 @@ final class RepositoryRefs {
         async let status = readsStatus ? attempt { try await repository.status() } : nil
         async let worktreeList = attempt { try await repository.worktrees() }
         async let submoduleList = attempt { try await repository.submodules() }
+        async let parentMap = attempt { try await repository.branchParents() }
         let (locals, remoteRefs, tagRefs) = await (local, remote, tagList)
         let (newRemotes, entries, newWorktrees, newSubmodules) = await (remoteList, status, worktreeList, submoduleList)
 
@@ -94,6 +97,7 @@ final class RepositoryRefs {
         if let newRemotes, newRemotes != remotes { remotes = newRemotes }
         if let newWorktrees, newWorktrees != worktrees { worktrees = newWorktrees }
         if let newSubmodules, newSubmodules != submodules { submodules = newSubmodules }
+        if let newParents = await parentMap, newParents != parents { parents = newParents }
         if let entries {
             changedCount = entries.filter { $0.indexStatus != .unmodified || $0.workdirStatus != .unmodified }.count
         }

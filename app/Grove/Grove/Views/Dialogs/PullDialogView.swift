@@ -42,7 +42,8 @@ struct PullDialogView: View {
             DialogCard {
                 DialogField("From") {
                     HStack(spacing: Theme.Spacing.sm) {
-                        PullSourcePicker(branches: remoteBranches, upstream: upstream, selection: $source)
+                        PullSourcePicker(branches: remoteBranches, upstream: upstream,
+                                         parent: branch.flatMap { refs.parents[$0.name] }, selection: $source)
                         if let branch, source == upstream, branch.behind > 0 {
                             StatusBadge(title: "\(branch.behind) behind", symbol: "arrow.down", tone: .caution)
                         }
@@ -112,9 +113,9 @@ struct PullDialogView: View {
         guard let source, source != upstream else { return nil }
         let name = branch?.name ?? "HEAD"
         switch strategy {
-        case .rebase: return "Rebases '\(name)' onto \(source)."
-        case .merge: return "Merges \(source) into '\(name)'."
-        case .fastForwardOnly: return "Moves '\(name)' forward to \(source), if it hasn't diverged."
+        case .rebase: return "Rebases '\(name)' onto \(PullSourcePicker.displayName(source))."
+        case .merge: return "Merges \(PullSourcePicker.displayName(source)) into '\(name)'."
+        case .fastForwardOnly: return "Moves '\(name)' forward to \(PullSourcePicker.displayName(source)), if it hasn't diverged."
         }
     }
 
@@ -128,7 +129,7 @@ struct PullDialogView: View {
 
     private func performPull() {
         guard let source else { return }
-        run("Pulling from \(source)…") {
+        run("Pulling from \(PullSourcePicker.displayName(source))…") {
             let didStash = autoStash ? try await stashIfDirty(repository, message: "Grove: auto-stash before pull") : false
             if source == upstream {
                 try await repository.pull(remote: nil, branch: nil, strategy: strategy, options: options, progress: nil)

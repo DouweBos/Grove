@@ -69,7 +69,7 @@ struct BranchesSidebarSection: View {
 
     private func branchRow(_ branch: BranchInfo, isPinned: Bool, showsFullName: Bool = false) -> some View {
         SidebarBranchRow(branch: branch, isPinned: isPinned, showsFullName: showsFullName,
-                         worktree: viewModel.worktree(checkingOut: branch))
+                         worktree: viewModel.worktree(checkingOut: branch), parent: viewModel.refs.parents[branch.name])
             .tag(SidebarItem.branch(branch))
             .draggable(branch.name)
             .contextMenu {

@@ -159,7 +159,7 @@ final class SidebarViewModel {
     // MARK: - Private
 
     private var pinnedBranchesDefaultsKey: String {
-        "grove.pinnedBranches.\(repository.path.path)"
+        BranchPins.key(forRepositoryAt: repository.path.path)
     }
 
     private var archivedBranchesDefaultsKey: String {
@@ -190,6 +190,8 @@ final class SidebarViewModel {
 
     func refresh() async {
         await refs.refresh()
+        // The New Branch dialog can pin a branch it creates.
+        pinnedBranchNames = BranchPins.names(forRepositoryAt: repository.path.path)
     }
 
     /// The session normally loads refs first; this only covers a sidebar shown on its own, e.g. in previews.

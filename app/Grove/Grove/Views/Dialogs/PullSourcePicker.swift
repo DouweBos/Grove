@@ -7,7 +7,16 @@ import SwiftUI
 struct PullSourcePicker: View {
     let branches: [BranchInfo]
     let upstream: String?
+    /// Parent recorded when the branch was created; suggested both as its remote branch and locally.
+    var parent: String?
     @Binding var selection: String?
+
+    /// Local sources are written `./branch`: `git pull . branch` integrates a local branch.
+    static func localSource(_ branch: String) -> String { "./" + branch }
+
+    static func displayName(_ source: String) -> String {
+        source.hasPrefix("./") ? String(source.dropFirst(2)) + " (local)" : source
+    }
 
     /// Branch names teams usually integrate from, in the order they're suggested.
     private static let mainlineNames = ["main", "master", "develop", "trunk"]
@@ -29,7 +38,7 @@ struct PullSourcePicker: View {
         } label: {
             HStack(spacing: Theme.Spacing.xs) {
                 Image(systemName: "cloud")
-                Text(selection ?? "Choose a remote branch").font(.monoCaption).lineLimit(1).truncationMode(.middle)
+                Text(selection.map(Self.displayName) ?? "Choose a remote branch").font(.monoCaption).lineLimit(1).truncationMode(.middle)
                 if let selection, selection == upstream {
                     Text("upstream").font(.system(size: 11)).foregroundStyle(Theme.textSecondary)
                 }
@@ -51,7 +60,15 @@ struct PullSourcePicker: View {
     }
 
     private func title(_ name: String) -> String {
-        name == upstream ? "\(name)  (upstream)" : name
+        if name == upstream { return "\(name)  (upstream)" }
+        if parentSources.contains(name) { return "\(Self.displayName(name))  (parent)" }
+        return name
+    }
+
+    /// The parent's remote-tracking branches, then the local parent itself.
+    private var parentSources: [String] {
+        guard let parent else { return [] }
+        return names.filter { $0.split(separator: "/", maxSplits: 1).last.map(String.init) == parent } + [Self.localSource(parent)]
     }
 
     private var names: [String] {
@@ -61,6 +78,7 @@ struct PullSourcePicker: View {
     /// The upstream, then each remote's mainline branch.
     private var suggested: [String] {
         var result: [String] = upstream.map { [$0] } ?? []
+        result += parentSources.filter { !result.contains($0) }
         for group in byRemote {
             if let mainline = Self.mainlineNames.lazy.map({ "\(group.remote)/\($0)" }).first(where: group.names.contains),
                !result.contains(mainline) {

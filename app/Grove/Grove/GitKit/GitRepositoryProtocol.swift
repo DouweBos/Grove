@@ -94,6 +94,11 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func remoteBranches() async throws -> [BranchInfo]
     @discardableResult
     func createBranch(name: String, from: String?, checkout: Bool) async throws -> BranchInfo
+    /// `track` makes the new branch push to and pull from `from`; `parent` is recorded in the repository's config.
+    @discardableResult
+    func createBranch(name: String, from: String?, checkout: Bool, track: Bool, parent: String?) async throws -> BranchInfo
+    /// Parent branch recorded at creation, keyed by branch name.
+    func branchParents() async throws -> [String: String]
     func checkout(branch: String) async throws
     func deleteBranch(name: String, force: Bool) async throws
     func deleteRemoteBranch(name: String, remote: String) async throws
@@ -339,6 +344,11 @@ extension GitRepositoryProtocol {
     func stashDiff(index: Int) async throws -> [FileDiff] { [] }
     func submodules() async throws -> [SubmoduleInfo] { [] }
     func worktrees() async throws -> [WorktreeInfo] { [] }
+    @discardableResult
+    func createBranch(name: String, from: String?, checkout: Bool, track: Bool, parent: String?) async throws -> BranchInfo {
+        try await createBranch(name: name, from: from, checkout: checkout)
+    }
+    func branchParents() async throws -> [String: String] { [:] }
     func pull(remote: String?, branch: String?, strategy: PullStrategy, options: PullOptions,
               progress: (@Sendable (Double) -> Void)?) async throws {
         try await pull(remote: remote, strategy: strategy, progress: progress)

@@ -20,15 +20,18 @@ extension GitRepository {
 
     @discardableResult
     func createBranch(name: String, from: String?, checkout: Bool) async throws -> BranchInfo {
-        var args: [String]
-        if checkout {
-            args = ["checkout", "-b", name]
-            if let from { args.append(from) }
-        } else {
-            args = ["branch", name]
-            if let from { args.append(from) }
-        }
+        try await createBranch(name: name, from: from, checkout: checkout, track: false, parent: nil)
+    }
+
+    @discardableResult
+    func createBranch(name: String, from: String?, checkout: Bool, track: Bool, parent: String?) async throws -> BranchInfo {
+        var args = checkout ? ["checkout", "-b", name] : ["branch", name]
+        if track { args.append("--track") }
+        if let from { args.append(from) }
         try await shell.run(args)
+        if let parent, !parent.isEmpty {
+            try await shell.run(["config", "--local", Self.parentConfigKey(for: name), parent])
+        }
 
         let branches = try await localBranches()
         guard let branch = branches.first(where: { $0.name == name }) else {
@@ -39,6 +42,28 @@ extension GitRepository {
             currentBranch = branch
         }
         return branch
+    }
+
+    /// Parent recorded for each branch created with one, from a single config read.
+    func branchParents() async throws -> [String: String] {
+        let result = try await shell.runAllowingFailure(["config", "--local", "--get-regexp", #"^branch\..*\.grove-parent$"#])
+        // Exit 1 just means no branch has a parent yet.
+        guard result.isSuccess else { return [:] }
+        return Self.parseBranchParents(result.stdout)
+    }
+
+    nonisolated static func parentConfigKey(for branch: String) -> String { "branch.\(branch).grove-parent" }
+
+    /// `branch.feature/x.grove-parent main` lines → ["feature/x": "main"].
+    nonisolated static func parseBranchParents(_ output: String) -> [String: String] {
+        var parents: [String: String] = [:]
+        for line in output.split(whereSeparator: \.isNewline) {
+            let parts = line.split(separator: " ", maxSplits: 1).map(String.init)
+            guard parts.count == 2, parts[0].hasPrefix("branch."), parts[0].hasSuffix(".grove-parent") else { continue }
+            let branch = parts[0].dropFirst("branch.".count).dropLast(".grove-parent".count)
+            parents[String(branch)] = parts[1]
+        }
+        return parents
     }
 
     func checkout(branch: String) async throws {

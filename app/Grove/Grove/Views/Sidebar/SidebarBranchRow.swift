@@ -12,6 +12,8 @@ struct SidebarBranchRow: View {
     var showsFullName = false
     /// Another worktree that has this branch checked out.
     var worktree: WorktreeInfo?
+    /// Parent recorded when the branch was created.
+    var parent: String?
 
     var displayName: String {
         guard !showsFullName, let slashIndex = branch.name.firstIndex(of: "/") else { return branch.name }
@@ -40,7 +42,8 @@ struct SidebarBranchRow: View {
     }
 
     private var tooltip: String {
-        let name = branch.upstreamShortName.map { "\(branch.name) → \($0)" } ?? branch.name
+        var name = branch.upstreamShortName.map { "\(branch.name) → \($0)" } ?? branch.name
+        if let parent { name += "\nParent: \(parent)" }
         guard let worktree else { return name }
         let place = worktree.isMain ? "the main worktree" : "worktree \(worktree.folderName)"
         return "\(name)\nChecked out in \(place). Double-click to switch to it."

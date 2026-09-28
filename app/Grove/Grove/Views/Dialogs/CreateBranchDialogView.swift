@@ -15,6 +15,10 @@ struct CreateBranchDialogView: View {
     @State private var branchName = ""
     @State private var startingPoint: String
     @State private var checkoutAfterCreate = true
+    @State private var trackBranch = false
+    @State private var pinBranch = false
+    /// Recorded in the repository's config so pulls can offer it; empty means none.
+    @State private var parentBranch: String
     @State private var isCreating = false
     @State private var errorMessage: String?
     @State private var commitSubject: String?
@@ -29,7 +33,9 @@ struct CreateBranchDialogView: View {
         self.localBranches = localBranches
         self.onCreated = onCreated
         let head = localBranches.first(where: { $0.isHEAD })?.name ?? repository.currentBranch?.name ?? "HEAD"
-        _startingPoint = State(initialValue: fromRef ?? head)
+        let start = fromRef ?? head
+        _startingPoint = State(initialValue: start)
+        _parentBranch = State(initialValue: localBranches.contains { $0.name == start } ? start : "")
     }
 
     private var trimmedName: String { branchName.trimmingCharacters(in: .whitespaces) }
@@ -66,8 +72,32 @@ struct CreateBranchDialogView: View {
                     }
                     .labelsHidden()
                 }
-                DialogOptionRow(isOn: $checkoutAfterCreate, label: "Check Out After Creating")
+                DialogOptionRow(isOn: $trackBranch, label: "Track Branch",
+                                description: "The new branch pushes to and pulls from \(label(for: startingPoint)).")
+                DialogOptionRow(isOn: $pinBranch, label: "Pin Branch",
+                                description: "Adds it to the pinned branches at the top of the sidebar.")
+                DialogOptionRow(isOn: $checkoutAfterCreate, label: "Check Out Branch",
+                                description: "Checks out the new branch right after creating it.")
             }
+            DialogOptionsSection {
+                DialogField("Parent Branch") {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                        Picker("Parent Branch", selection: $parentBranch) {
+                            Text("None").tag("")
+                            ForEach(localBranches.map(\.name), id: \.self) { Text($0).tag($0) }
+                        }
+                        .labelsHidden()
+                        Text("Pull offers the parent as a source, so the new branch can be kept up to date with it.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+        .onChange(of: startingPoint) { old, new in
+            // Follow the starting point until the user picks a different parent.
+            if parentBranch == old || parentBranch.isEmpty, localBranches.contains(where: { $0.name == new }) { parentBranch = new }
         }
         .task(id: startingPoint) {
             commitSubject = isCommitSHA(startingPoint) ? try? await repository.commitDetail(startingPoint).summary : nil
@@ -92,7 +122,11 @@ struct CreateBranchDialogView: View {
         errorMessage = nil
         Task {
             do {
-                let branch = try await repository.createBranch(name: trimmedName, from: startingPoint, checkout: checkoutAfterCreate)
+                let branch = try await repository.createBranch(
+                    name: trimmedName, from: startingPoint, checkout: checkoutAfterCreate,
+                    track: trackBranch, parent: parentBranch.isEmpty ? nil : parentBranch
+                )
+                if pinBranch { BranchPins.pin(branch.name, inRepositoryAt: repository.path.path) }
                 onCreated?(branch)
                 dismiss()
             } catch {
