@@ -40,10 +40,10 @@ extension WindowViewModel {
     }
 
     /// Sorts the repositories of one group, or the ungrouped ones when `groupID` is nil.
-    func sortBookmarksByName(inGroup groupID: UUID?) {
+    func sortBookmarks(inGroup groupID: UUID?, by key: BookmarkSortKey) {
         let members = manager.bookmarks.filter { $0.groupID == groupID }
         do {
-            try manager.orderBookmarks(Self.byName(members, \.displayName).map(\.id))
+            try manager.orderBookmarks(Self.sorted(members, by: key).map(\.id))
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -57,7 +57,31 @@ extension WindowViewModel {
         }
     }
 
+    /// Dates sort newest first; ties and missing dates fall back to name order.
+    private static func sorted(_ bookmarks: [RepositoryBookmarkData], by key: BookmarkSortKey) -> [RepositoryBookmarkData] {
+        let named = byName(bookmarks, \.displayName)
+        let date: (RepositoryBookmarkData) -> Date?
+        switch key {
+        case .name: return named
+        case .lastOpened: date = { $0.displayLastOpenedDate }
+        case .dateAdded: date = { $0.addedDate }
+        }
+        return named.sorted { (date($0) ?? .distantPast) > (date($1) ?? .distantPast) }
+    }
+
     private static func byName<T>(_ items: [T], _ name: KeyPath<T, String>) -> [T] {
         items.sorted { $0[keyPath: name].localizedStandardCompare($1[keyPath: name]) == .orderedAscending }
+    }
+}
+
+enum BookmarkSortKey: CaseIterable {
+    case name, lastOpened, dateAdded
+
+    var title: String {
+        switch self {
+        case .name: "Name"
+        case .lastOpened: "Last Opened"
+        case .dateAdded: "Date Added"
+        }
     }
 }

@@ -31,7 +31,7 @@ struct RepositoryGroupsSidebar: View {
             if !groups.isEmpty {
                 Section {
                     ForEach(groups) { group in
-                        RepositoryGroupSection(group: group) { groupPendingDelete = group }
+                        RepositoryGroupSection(group: group)
                     }
                 } header: {
                     SectionLabel(title: "Groups")
@@ -55,7 +55,9 @@ struct RepositoryGroupsSidebar: View {
             draggedIDs.compactMap { id in viewModel.manager.bookmarks.first { $0.id == id } }
         }
         .contextMenu(forSelectionType: UUID.self) { selectedIDs in
-            if let id = selectedIDs.first, let row = viewModel.row(withID: id) {
+            if let id = selectedIDs.first, let group = viewModel.group(withID: id) {
+                GroupActions(group: group) { groupPendingDelete = group }
+            } else if let id = selectedIDs.first, let row = viewModel.row(withID: id) {
                 if viewModel.isSyntheticWorktreeRow(row) {
                     WorktreeActions(row: row)
                 } else {
@@ -122,15 +124,8 @@ private struct BookmarkActions: View {
             Divider()
             Button("New Group…") { viewModel.showNewGroupDialog() }
         }
-        Button("Sort \(groupName) by Name", systemImage: "arrow.up.arrow.down") {
-            viewModel.sortBookmarksByName(inGroup: bookmark.groupID)
-        }
         Divider()
         Button("Delete\u{2026}", systemImage: "trash", role: .destructive) { viewModel.requestDelete(bookmark) }
-    }
-
-    private var groupName: String {
-        viewModel.sortedGroups.first { $0.id == bookmark.groupID }?.name ?? "Repositories"
     }
 }
 
@@ -188,7 +183,6 @@ private struct RepositoryGroupSection: View {
 
     @Environment(WindowViewModel.self) private var viewModel
     let group: BookmarkGroupData
-    let onDelete: () -> Void
     @State private var isExpanded = true
 
     var body: some View {
@@ -204,17 +198,42 @@ private struct RepositoryGroupSection: View {
                     items.forEach { viewModel.moveBookmark($0, toGroup: group.id) }
                     return !items.isEmpty
                 }
-                .contextMenu {
-                    Button("Rename…", systemImage: "pencil") { viewModel.showRenameGroupDialog(group) }
-                    Button("New Group…", systemImage: "folder.badge.plus") { viewModel.showNewGroupDialog() }
-                    Divider()
-                    Button("Sort Repositories by Name", systemImage: "arrow.up.arrow.down") {
-                        viewModel.sortBookmarksByName(inGroup: group.id)
-                    }
-                    Button("Sort Groups by Name", systemImage: "arrow.up.arrow.down") { viewModel.sortGroupsByName() }
-                    Divider()
-                    Button("Delete Group…", systemImage: "trash", role: .destructive, action: onDelete)
-                }
+                // Tagged so the list-level context menu, which overrides row menus, sees the group.
+                .tag(group.id)
+        }
+    }
+}
+
+// MARK: - GroupActions
+
+private struct GroupActions: View {
+    @Environment(WindowViewModel.self) private var viewModel
+    let group: BookmarkGroupData
+    let onDelete: () -> Void
+
+    var body: some View {
+        Button("Rename…", systemImage: "pencil") { viewModel.showRenameGroupDialog(group) }
+        Button("New Group…", systemImage: "folder.badge.plus") { viewModel.showNewGroupDialog() }
+        Divider()
+        SortBookmarksMenu(title: "Sort Repositories By", groupID: group.id)
+        Button("Sort Groups by Name", systemImage: "arrow.up.arrow.down") { viewModel.sortGroupsByName() }
+        Divider()
+        Button("Delete Group…", systemImage: "trash", role: .destructive, action: onDelete)
+    }
+}
+
+// MARK: - SortBookmarksMenu
+
+private struct SortBookmarksMenu: View {
+    @Environment(WindowViewModel.self) private var viewModel
+    let title: String
+    let groupID: UUID?
+
+    var body: some View {
+        Menu(title, systemImage: "arrow.up.arrow.down") {
+            ForEach(BookmarkSortKey.allCases, id: \.self) { key in
+                Button(key.title) { viewModel.sortBookmarks(inGroup: groupID, by: key) }
+            }
         }
     }
 }

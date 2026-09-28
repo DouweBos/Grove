@@ -235,7 +235,15 @@ final class WindowViewModel {
 
     func setSearchText(_ text: String) { searchText = text }
 
-    func selectBookmark(_ id: UUID?) { selectedBookmarkID = id }
+    /// Group rows carry a tag for their context menu; clicking one keeps the current selection.
+    func selectBookmark(_ id: UUID?) {
+        guard id.flatMap(group(withID:)) == nil else { return }
+        selectedBookmarkID = id
+    }
+
+    func group(withID id: UUID) -> BookmarkGroupData? {
+        manager.bookmarkGroups.first { $0.id == id }
+    }
 
     /// Menu-bar actions that make sense without an open repository.
     /// Returns false when the action belongs to the repository session.
