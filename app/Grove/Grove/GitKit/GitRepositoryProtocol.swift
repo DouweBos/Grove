@@ -310,6 +310,15 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func conflictVersions(path: String) async throws -> ConflictVersions
     /// Resolve a conflicted file by taking one side wholesale and staging it.
     func resolveConflict(path: String, side: ConflictSide) async throws
+
+    // MARK: File Actions (implemented in GitRepository+FileActions.swift)
+
+    /// Appends gitignore patterns to `.gitignore`, or to `.git/info/exclude` when `localOnly`.
+    func ignore(patterns: [String], localOnly: Bool) async throws
+    /// Removes paths from the index but keeps them on disk (`git rm --cached`).
+    func stopTracking(paths: [String]) async throws
+    /// Renames or moves a file: `git mv` when tracked, a plain move when untracked.
+    func moveFile(from source: String, to destination: String) async throws
 }
 
 // MARK: - GitRepositoryProtocol Default Arguments

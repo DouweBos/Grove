@@ -142,6 +142,9 @@ private final class FailingMockRepository: GitRepositoryProtocol {
     func checkoutPullRequest(number: Int) async throws { try await backing.checkoutPullRequest(number: number) }
     func closePullRequest(number: Int) async throws { try await backing.closePullRequest(number: number) }
     func mergePullRequest(number: Int) async throws { try await backing.mergePullRequest(number: number) }
+    func ignore(patterns: [String], localOnly: Bool) async throws { try await backing.ignore(patterns: patterns, localOnly: localOnly) }
+    func stopTracking(paths: [String]) async throws { try await backing.stopTracking(paths: paths) }
+    func moveFile(from source: String, to destination: String) async throws { try await backing.moveFile(from: source, to: destination) }
 }
 
 // MARK: - SidebarViewModelTests

@@ -214,6 +214,8 @@ private struct FileSection<Accessory: View>: View {
             NSWorkspace.shared.activateFileViewerSelecting([viewModel.repository.path.appendingPathComponent(entry.path)])
         }
         Divider()
+        FileActionsMenu(entries: viewModel.actionEntries(for: entry, side: side))
+        Divider()
         Button("Discard Changes…", role: .destructive) { viewModel.requestDiscard(entry) }
     }
 

@@ -127,6 +127,7 @@ final class WorkingCopyViewModel {
     private(set) var hasLoadedStatus = false
     private(set) var pendingDiscard: StatusEntry?
     private(set) var pendingHunkDiscard: PendingHunkDiscard?
+    var pendingFileAction: PendingFileAction?
     var errorMessage: String?
 
     init(repository: any GitRepositoryProtocol) {
