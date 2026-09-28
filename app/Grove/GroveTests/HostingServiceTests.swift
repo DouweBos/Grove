@@ -109,6 +109,8 @@ struct HostingServiceTests {
     }
 
     @Test func credentialsUseEachServicesBasicAuth() {
+        let github = RESTCredentials(account: HostingAccount(kind: .github, username: "me"), secret: "tok")
+        #expect(github.authorizationHeader == "Bearer tok")
         let bitbucket = RESTCredentials(account: HostingAccount(kind: .bitbucket, username: "me"), secret: "pw")
         #expect(bitbucket.authorizationHeader == "Basic " + Data("me:pw".utf8).base64EncodedString())
         let azure = RESTCredentials(account: HostingAccount(kind: .azureDevOps, username: "me", organization: "o"), secret: "pat")
@@ -135,20 +137,21 @@ struct HostingServiceTests {
     @Test func addingVerifiesTheTokenFirst() async {
         let refused = FakeHTTPClient { _ in (401, "") }
         let viewModel = AccountsViewModel(store: makeAccountStore(), http: refused)
+        viewModel.cliLogins = { [] }
         viewModel.beginAdding(.bitbucket)
-        viewModel.updateForm { $0.username = "me"; $0.secret = "bad" }
-        await viewModel.submitAddition()
+        viewModel.updateForm { $0.username = "me"; $0.token = "bad" }
+        await viewModel.submitForm()
         #expect(viewModel.accounts.isEmpty)
-        #expect(viewModel.addition?.error != nil)
+        #expect(viewModel.form?.error != nil)
         #expect(refused.requests.first?.url?.absoluteString == "https://api.bitbucket.org/2.0/user")
         #expect(refused.requests.first?.httpMethod == "GET")
 
         let accepted = FakeHTTPClient { _ in (200, "{}") }
         let second = AccountsViewModel(store: makeAccountStore(), http: accepted)
         second.beginAdding(.azureDevOps)
-        second.updateForm { $0.organization = "contoso"; $0.secret = "pat" }
-        await second.submitAddition()
-        #expect(second.addition == nil)
+        second.updateForm { $0.organization = "contoso"; $0.token = "pat" }
+        await second.submitForm()
+        #expect(second.form == nil)
         #expect(second.accounts.first?.organization == "contoso")
         #expect(accepted.requests.first?.url?.host == "dev.azure.com")
     }

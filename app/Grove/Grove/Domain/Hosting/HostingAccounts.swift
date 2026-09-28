@@ -1,31 +1,58 @@
 // Domain/Hosting/HostingAccounts.swift
 // Grove
 //
-// Accounts for services reached over REST (Bitbucket, Azure DevOps). GitHub and GitLab sign in through their CLIs.
+// Accounts Grove signs in to itself, like Tower: service, host and username here, the token in the Keychain.
 
 import Foundation
 import Observation
 import Security
 
-/// A signed-in account on a REST-backed service; its token lives in the Keychain under `id`.
+/// A signed-in account on a hosting service; its token lives in the Keychain under `id`.
 nonisolated struct HostingAccount: Identifiable, Codable, Hashable, Sendable {
     var id = UUID()
     let kind: HostingServiceKind
-    /// Bitbucket username or Atlassian email; an Azure DevOps display name.
-    let username: String
+    /// `github.com`, a GitHub Enterprise or self-hosted GitLab host, `bitbucket.org` or `dev.azure.com`.
+    var host: String
+    /// The login the service reported when the token was checked.
+    var username: String
     /// Azure DevOps organization the token belongs to.
     var organization: String?
+
+    init(id: UUID = UUID(), kind: HostingServiceKind, host: String? = nil, username: String, organization: String? = nil) {
+        self.id = id
+        self.kind = kind
+        self.host = (host ?? kind.defaultHost).lowercased()
+        self.username = username
+        self.organization = organization
+    }
 
     var title: String {
         if let organization { return "\(username) (\(organization))" }
         return username
     }
 
+    /// "GitHub", or "GitHub Enterprise" / "GitLab" with the host for self-hosted ones.
+    var serviceTitle: String {
+        host == kind.defaultHost ? kind.displayName : "\(kind.displayName) \u{00B7} \(host)"
+    }
+
     /// Whether this account can reach the repository at `location`.
     func serves(_ location: RemoteLocation) -> Bool {
-        guard location.kind == kind else { return false }
+        guard location.kind == kind, location.host.caseInsensitiveCompare(host) == .orderedSame else { return false }
         if kind == .azureDevOps { return organization?.caseInsensitiveCompare(location.owner) == .orderedSame }
         return true
+    }
+}
+
+extension HostingServiceKind {
+    /// Where the public service lives; GitHub and GitLab can also be self-hosted.
+    nonisolated var defaultHost: String {
+        switch self {
+        case .github: "github.com"
+        case .gitlab: "gitlab.com"
+        case .bitbucket: "bitbucket.org"
+        case .azureDevOps: "dev.azure.com"
+        }
     }
 }
 
@@ -35,8 +62,14 @@ nonisolated protocol SecretStore: Sendable {
     func setSecret(_ secret: String?, for account: UUID)
 }
 
+/// One generic-password item per account, under a service name that says it's Grove's.
 nonisolated struct KeychainSecretStore: SecretStore {
-    private let service = "com.houwert.grove.hosting-accounts"
+    static let defaultService = "Grove Hosting Account"
+    let service: String
+
+    init(service: String = defaultService) {
+        self.service = service
+    }
 
     func secret(for account: UUID) -> String? {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
@@ -54,17 +87,22 @@ nonisolated struct KeychainSecretStore: SecretStore {
         guard let secret else { return }
         var add = match
         add[kSecValueData as String] = Data(secret.utf8)
+        add[kSecAttrLabel as String] = service
         add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         SecItemAdd(add as CFDictionary, nil)
     }
 }
 
-/// The REST accounts added in Preferences > Accounts, shared by every window.
+/// The accounts in Preferences > Accounts, shared by every window.
 @MainActor
 @Observable
 final class HostingAccountStore {
 
-    static let shared = HostingAccountStore()
+    /// `-GroveKeychainService <name>` keeps a test run's tokens apart from the real ones.
+    static let shared = HostingAccountStore(
+        secrets: KeychainSecretStore(service: UserDefaults.standard.string(forKey: "GroveKeychainService")
+                                     ?? KeychainSecretStore.defaultService)
+    )
 
     private(set) var accounts: [HostingAccount] = []
     private let defaults: UserDefaults
@@ -80,10 +118,21 @@ final class HostingAccountStore {
         }
     }
 
+    /// Adds the account, or replaces the one with the same id (re-authenticating) or the same service, host and user.
     func add(_ account: HostingAccount, secret: String) {
-        secrets.setSecret(secret, for: account.id)
-        accounts.removeAll { $0.id == account.id }
-        accounts.append(account)
+        let replaced = accounts.first {
+            $0.id == account.id
+                || ($0.kind == account.kind && $0.host == account.host && $0.username.caseInsensitiveCompare(account.username) == .orderedSame
+                    && $0.organization == account.organization)
+        }
+        var stored = account
+        if let replaced { stored.id = replaced.id }
+        secrets.setSecret(secret, for: stored.id)
+        if let index = accounts.firstIndex(where: { $0.id == stored.id }) {
+            accounts[index] = stored
+        } else {
+            accounts.append(stored)
+        }
         save()
     }
 
@@ -95,12 +144,13 @@ final class HostingAccountStore {
 
     func secret(for account: HostingAccount) -> String? { secrets.secret(for: account.id) }
 
+    func credentials(for account: HostingAccount) -> RESTCredentials? {
+        secret(for: account).map { RESTCredentials(account: account, secret: $0) }
+    }
+
     /// The first account that can reach `location`, with its token.
     func credentials(for location: RemoteLocation) -> RESTCredentials? {
-        for account in accounts where account.serves(location) {
-            if let secret = secret(for: account) { return RESTCredentials(account: account, secret: secret) }
-        }
-        return nil
+        accounts.lazy.filter { $0.serves(location) }.compactMap(credentials(for:)).first
     }
 
     private func save() {
@@ -108,14 +158,17 @@ final class HostingAccountStore {
     }
 }
 
-/// An account and its token, handed to a REST client.
+/// An account and its token, handed to an API client.
 nonisolated struct RESTCredentials: Sendable {
     let account: HostingAccount
     let secret: String
 
-    /// Bitbucket takes `username:app-password`, Azure DevOps an empty user and the PAT.
+    /// GitHub and GitLab take the token as a bearer; Bitbucket `username:app-password`, Azure DevOps an empty user and the PAT.
     var authorizationHeader: String {
-        let user = account.kind == .azureDevOps ? "" : account.username
-        return "Basic " + Data("\(user):\(secret)".utf8).base64EncodedString()
+        switch account.kind {
+        case .github, .gitlab: "Bearer \(secret)"
+        case .bitbucket: "Basic " + Data("\(account.username):\(secret)".utf8).base64EncodedString()
+        case .azureDevOps: "Basic " + Data(":\(secret)".utf8).base64EncodedString()
+        }
     }
 }
