@@ -17,6 +17,8 @@ struct PillTabBar<ID: Hashable>: View {
     let selection: ID?
     /// Smaller type and padding so the bar fits in a window toolbar.
     var compact = false
+    /// Unselected tabs show only their icon, for narrow windows.
+    var iconsOnly = false
     let onSelect: (ID) -> Void
 
     @Namespace private var namespace
@@ -27,7 +29,11 @@ struct PillTabBar<ID: Hashable>: View {
                 let isSelected = tab.id == selection
                 Button { onSelect(tab.id) } label: {
                     HStack(spacing: 6) {
-                        Label(tab.title, systemImage: tab.symbol).labelStyle(.titleAndIcon)
+                        if iconsOnly && !isSelected {
+                            Image(systemName: tab.symbol)
+                        } else {
+                            Label(tab.title, systemImage: tab.symbol).labelStyle(.titleAndIcon)
+                        }
                         if let badge = tab.badge, badge > 0 {
                             Text("\(badge)")
                                 .font(.system(size: 11, weight: .semibold, design: .rounded))
@@ -48,6 +54,8 @@ struct PillTabBar<ID: Hashable>: View {
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .help(tab.title)
+                .accessibilityLabel(tab.title)
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }

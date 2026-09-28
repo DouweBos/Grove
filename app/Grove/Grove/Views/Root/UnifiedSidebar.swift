@@ -30,7 +30,6 @@ struct UnifiedSidebar: View {
             }
         }
         .animation(.easeInOut(duration: 0.15), value: session != nil)
-        .frame(minWidth: 320)
         .toolbar {
             if session == nil {
                 ToolbarItem(placement: .primaryAction) {

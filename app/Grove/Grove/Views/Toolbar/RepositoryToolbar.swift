@@ -46,6 +46,7 @@ struct RepositoryToolbar: ToolbarContent {
     let toolbarState: RepositoryToolbarState
     let selection: SidebarItem?
     let changeCount: Int
+    var iconsOnly = false
     let onNavigate: (SidebarItem) -> Void
 
     var body: some ToolbarContent {
@@ -55,7 +56,8 @@ struct RepositoryToolbar: ToolbarContent {
                     PillTab(id: $0, title: $0.title, symbol: $0.symbol, badge: $0 == .changes ? changeCount : nil)
                 },
                 selection: currentTab,
-                compact: true
+                compact: true,
+                iconsOnly: iconsOnly
             ) { onNavigate($0.item) }
         }
         ToolbarItemGroup(placement: .primaryAction) {
@@ -199,14 +201,19 @@ struct RepositoryToolbarSheets<Content: View>: View {
         self.content = content()
     }
 
+    @State private var isNarrow = false
+
     var body: some View {
         content
+            // Titled pills plus the remote actions need ~760pt; below that the toolbar would overflow.
+            .onGeometryChange(for: Bool.self) { $0.size.width < 760 } action: { isNarrow = $0 }
             .toolbar {
                 RepositoryToolbar(
                     repository: repository,
                     toolbarState: toolbarState,
                     selection: sidebarVM.selection,
-                    changeCount: sidebarVM.workingCopyBadgeCount
+                    changeCount: sidebarVM.workingCopyBadgeCount,
+                    iconsOnly: isNarrow
                 ) { sidebarVM.select($0) }
             }
             .sheet(isPresented: $toolbarState.isPushPresented) {

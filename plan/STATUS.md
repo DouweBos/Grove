@@ -13,11 +13,18 @@ Where the overhaul stands. Update this when a wave of work lands.
 - Settings: fake tabs removed; Repository Settings on `git config --local`; Git Config tab reads global config, writes on Save; Accounts shows `gh auth status`; auto-fetch interval is live.
 - `GitRepository` and `MockData` split into themed files; swiftlint clean.
 
-## In progress
+## Done in wave 2
 
-- Undo/redo: menu commands still replace text undo, so Cmd+Z in text fields is broken; only reflog and branch-review actions record undo; undo errors are never shown. Quick Open and Navigate > Blame/Settings are unwired.
-- Remote: pull can't force `--no-rebase`; push can't set upstream on first push; comparison shows one direction; branch review can force-delete when the merged check fails.
-- Diffs: the warn-before-hunk-discard preference is ignored; line wrapping differs between views; the diff panel is too narrow at 900pt; image diffs and external diff/merge tools are unwired; history arrow keys need a click first; dead components remain.
+- Undo/redo: text undo works in text fields; commit, amend, stage/unstage, checkout, branch delete and history rewrites are undoable; grouped multi-branch delete; failures show an alert. Quick Open and Navigate > Blame/Settings (Cmd+7/8) wired.
+- Remote: explicit pull strategy (merge/rebase/ff-only) overrides config; first push sets upstream; sync on new branches; force push is lease-only and confirmed; two-sided branch comparison; branch review blocks deletes when the merged check fails.
+- Diffs: hunk-discard confirmation with "don't ask again"; one no-wrap diff everywhere with pinned gutter and a remembered Wrap Lines toggle; image diffs; open in diff/merge tool; Changes stacks below ~650pt; history arrow keys; dead components removed.
+- Toolbar fits at the 900pt minimum: unselected pills collapse to icons when narrow, sidebar capped at 300pt. Unpublished branches show "Not published".
+
+## Open
+
+- Branches Review's merged-check error state and grouped-delete undo are unit-tested but not seen in the UI.
+- Image previews: stash untracked files show one side missing; PR changesets have none.
+- Undo in Preferences text fields is untested (typing there writes real settings).
 
 ## Known limits
 
