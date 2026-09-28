@@ -125,6 +125,7 @@ final class WorkingCopyViewModel {
     // MARK: Misc
 
     private(set) var hasLoadedStatus = false
+    private(set) var lfs = WorkingCopyLFS()
     private(set) var pendingDiscard: StatusEntry?
     private(set) var pendingHunkDiscard: PendingHunkDiscard?
     var errorMessage: String?
@@ -151,7 +152,9 @@ final class WorkingCopyViewModel {
         async let signing = try? repository.isSigningConfigured()
         async let commitIdentity = repository.commitIdentity()
         async let context = isInOperation ? repository.operationContext() : nil
+        async let lfsState = WorkingCopyLFS.load(repository, paths: statusEntries.map(\.path))
         cachedRecentCommits = await recent ?? []
+        lfs = await lfsState
         isSigningAvailable = await signing ?? false
         identity = await commitIdentity
         operationContext = await context

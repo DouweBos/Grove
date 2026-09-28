@@ -33,11 +33,11 @@ extension GitRepository {
         case .workingTree:
             return try Data(contentsOf: path.appendingPathComponent(file))
         case .index:
-            return try await inspectionShell.run(["show", ":\(file)"]).stdoutData
+            return await smudgedIfLFSPointer(try await inspectionShell.run(["show", ":\(file)"]).stdoutData, path: file)
         case .conflictStage(let stage):
-            return try await inspectionShell.run(["show", ":\(stage):\(file)"]).stdoutData
+            return await smudgedIfLFSPointer(try await inspectionShell.run(["show", ":\(stage):\(file)"]).stdoutData, path: file)
         case .commit(let rev):
-            return try await inspectionShell.run(["show", "\(rev):\(file)"]).stdoutData
+            return await smudgedIfLFSPointer(try await inspectionShell.run(["show", "\(rev):\(file)"]).stdoutData, path: file)
         }
     }
 

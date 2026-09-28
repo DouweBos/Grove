@@ -131,6 +131,8 @@ extension GitRepository {
         if let remote { args.append(remote) }
         if let branch { args.append(branch) }
         try await shell.run(args)
+        progress?(0.8)
+        try await pullLFSObjectsIfNeeded(remote: remote)
         progress?(1.0)
         currentBranch   = try? await Self.loadCurrentBranch(shell: shell)
         let previousState = repositoryState

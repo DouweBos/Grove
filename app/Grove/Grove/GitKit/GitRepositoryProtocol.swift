@@ -310,6 +310,14 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func conflictVersions(path: String) async throws -> ConflictVersions
     /// Resolve a conflicted file by taking one side wholesale and staging it.
     func resolveConflict(path: String, side: ConflictSide) async throws
+
+    // MARK: Git LFS (GitRepository+LFS.swift)
+
+    func lfsStatus() async -> LFSStatus
+    /// Which of `paths` the repository's attributes route through the LFS filter.
+    func lfsTrackedPaths(among paths: [String]) async -> Set<String>
+    /// `git lfs track`, staging `.gitattributes`; `literal` tracks one file rather than a glob.
+    func trackWithLFS(pattern: String, literal: Bool) async throws
 }
 
 // MARK: - GitRepositoryProtocol Default Arguments
@@ -385,4 +393,7 @@ extension GitRepositoryProtocol {
     func setRemoteURL(_ url: String, forRemote name: String) async throws {}
     func pullRequestDiff(number: Int) async throws -> [FileDiff] { [] }
     func pullRequestCommits(number: Int) async throws -> [CommitInfo] { [] }
+    func lfsStatus() async -> LFSStatus { LFSStatus() }
+    func lfsTrackedPaths(among paths: [String]) async -> Set<String> { [] }
+    func trackWithLFS(pattern: String, literal: Bool) async throws {}
 }

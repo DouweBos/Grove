@@ -158,6 +158,7 @@ private struct FileSection<Accessory: View>: View {
             isStaged: isStagedSection ?? false,
             isSelected: viewModel.isSelected(entry, side: side),
             showsDirectory: showsDirectory,
+            isLFS: viewModel.isLFS(entry),
             onToggleStage: isStagedSection.map { staged in
                 { Task { staged ? await viewModel.unstageFile(entry) : await viewModel.stageFile(entry) } }
             }
@@ -203,6 +204,14 @@ private struct FileSection<Accessory: View>: View {
             Button("Resolve…") { Task { await viewModel.select(entry) } }
             if !mergeToolPath.isEmpty {
                 Button("Open in Merge Tool") { Task { await viewModel.openInMergeTool(entry) } }
+            }
+        }
+        if !viewModel.isLFS(entry), entry.workdirStatus != .deleted {
+            Menu("Track with Git LFS") {
+                Button("This File") { Task { await viewModel.trackWithLFS(entry, byExtension: false) } }
+                if let pattern = WorkingCopyViewModel.lfsExtensionPattern(for: entry.path) {
+                    Button("All \(pattern) Files") { Task { await viewModel.trackWithLFS(entry, byExtension: true) } }
+                }
             }
         }
         Divider()
