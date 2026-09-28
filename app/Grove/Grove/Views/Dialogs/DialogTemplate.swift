@@ -168,6 +168,7 @@ func stashIfDirty(_ repository: any GitRepositoryProtocol, message: String) asyn
 struct DialogOptionsSection<Content: View>: View {
 
     @State private var isExpanded: Bool
+    @State private var contentHeight: CGFloat = 0
     let content: () -> Content
 
     init(isExpanded: Bool = false, @ViewBuilder content: @escaping () -> Content) {
@@ -176,18 +177,54 @@ struct DialogOptionsSection<Content: View>: View {
     }
 
     var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
+        VStack(alignment: .leading, spacing: 0) {
+            // The header spans the card's padding so the whole card toggles, not just the chevron.
+            Button {
+                withAnimation(.snappy(duration: 0.1)) { isExpanded.toggle() }
+            } label: {
+                HStack(spacing: Theme.Spacing.xs) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    Text("Options")
+                        .font(.sectionLabel)
+                }
+                .foregroundStyle(Theme.textSecondary)
+                .padding(Theme.Spacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 content()
             }
-            .padding(.top, Theme.Spacing.sm)
-        } label: {
-            Text("Options")
-                .font(.sectionLabel)
-                .foregroundStyle(Theme.textSecondary)
+            .padding([.horizontal, .bottom], Theme.Spacing.md)
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self, of: \.size.height) { contentHeight = $0 }
+            .modifier(RevealHeight(fullHeight: contentHeight, fraction: isExpanded ? 1 : 0))
+            .allowsHitTesting(isExpanded)
+            .accessibilityHidden(!isExpanded)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .card(padding: Theme.Spacing.md)
+        .card(padding: 0)
+    }
+}
+
+/// Clips to `fraction` of `fullHeight`; animatable so layout, and with it the sheet, grows every frame.
+private struct RevealHeight: ViewModifier, Animatable {
+    let fullHeight: CGFloat
+    var fraction: Double
+
+    var animatableData: Double {
+        get { fraction }
+        set { fraction = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .frame(height: fullHeight * fraction, alignment: .top)
+            .clipped()
+            .opacity(fraction)
     }
 }
 
