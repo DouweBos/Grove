@@ -58,6 +58,35 @@ final class WindowViewModel {
     /// Tab to reopen on after switching worktrees.
     private var pendingSelection: SidebarItem?
 
+    // MARK: History
+
+    /// Locations to return to, most recent last; see WindowViewModel+History.
+    private(set) var backHistory: [NavigationLocation] = []
+    private(set) var forwardHistory: [NavigationLocation] = []
+    /// Set while back/forward replays a location, so replaying doesn't record new history.
+    private(set) var isApplyingHistory = false
+
+    func pushBack(_ location: NavigationLocation) { backHistory.append(location) }
+    func popBack() { backHistory.removeLast() }
+    func pushForward(_ location: NavigationLocation) { forwardHistory.append(location) }
+    func popForward() { forwardHistory.removeLast() }
+    func clearForward() { forwardHistory.removeAll() }
+
+    func withHistoryApplying(_ body: () -> Void) {
+        isApplyingHistory = true
+        defer { isApplyingHistory = false }
+        body()
+    }
+
+    /// Opens `path` on `item`, stopping the current repository's session first.
+    func reopen(path: String, on item: SidebarItem?) {
+        if let current = openRepo, let loaded = sessions.removeValue(forKey: current.path) {
+            loaded.session.stop()
+        }
+        pendingSelection = item
+        openReference(RepositoryReference(path: path))
+    }
+
     /// Worktree links read from disk; rebuilt by `refreshWorktrees()`.
     private(set) var worktreeIndex = WorktreeIndex()
 
@@ -147,12 +176,14 @@ final class WindowViewModel {
 
     /// The disk button: leave any open repository and show local repositories.
     func showLocalRepositories() {
+        recordNavigation(to: .browser(.local))
         if !isBrowsing { closeRepository() }
         browserMode = .local
     }
 
     /// The cloud button: leave any open repository and show the signed-in account's hosted repositories.
     func showRemoteRepositories() {
+        recordNavigation(to: .browser(.remote))
         if !isBrowsing { closeRepository() }
         browserMode = .remote
         remoteRepositories.indexLocalClones(bookmarks: manager.bookmarks)
@@ -161,8 +192,9 @@ final class WindowViewModel {
 
     /// Opens a hosted repository's local clone, bookmarking nothing new.
     func openLocalClone(atPath path: String) {
-        browserMode = .local
+        // Open first so history records the remote browser as the way back.
         openReference(RepositoryReference(path: path))
+        browserMode = .local
     }
     func showCreateDialog() { isShowingCreateDialog = true }
     func showNewGroupDialog() { groupEditor = .new }
@@ -183,6 +215,8 @@ final class WindowViewModel {
         case .newGroup: showNewGroupDialog()
         case .showLocalRepositories: showLocalRepositories()
         case .showRemoteRepositories: showRemoteRepositories()
+        case .navigateBack: goBack()
+        case .navigateForward: goForward()
         default: return false
         }
         return true
@@ -199,6 +233,7 @@ final class WindowViewModel {
     }
 
     func openReference(_ reference: RepositoryReference) {
+        recordNavigation(to: .repository(path: reference.path, item: nil))
         sessionErrors[reference.path] = nil
         openRepo = reference
     }
@@ -207,6 +242,7 @@ final class WindowViewModel {
     /// The old worktree's session stops so each repository fetches and watches only once.
     func switchWorktree(to path: String) {
         guard let current = openRepo, current.path != path else { return }
+        recordNavigation(to: .repository(path: path, item: nil))
         if let loaded = sessions.removeValue(forKey: current.path) {
             pendingSelection = RepositoryTab(item: loaded.session.selectedItem).item
             loaded.session.stop()

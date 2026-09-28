@@ -98,6 +98,12 @@ private struct GroveNavigateCommands: Commands {
 
     var body: some Commands {
         CommandMenu("Navigate") {
+            Button("Back") { GroveAction.navigateBack.post() }
+                .keyboardShortcut("[", modifiers: .command)
+            Button("Forward") { GroveAction.navigateForward.post() }
+                .keyboardShortcut("]", modifiers: .command)
+            Divider()
+
             Button("Working Copy") {
                 GroveAction.navigateWorkingCopy.post()
             }

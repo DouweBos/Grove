@@ -14,6 +14,7 @@ import SwiftUI
 struct RepositoryContentRouter: View {
 
     let session: RepositorySession
+    @Environment(WindowViewModel.self) private var windowVM
     let repository: any GitRepositoryProtocol
 
     // MARK: Body
@@ -36,7 +37,9 @@ struct RepositoryContentRouter: View {
                 }
             }
             .onChange(of: session.sidebarVM.selection) { _, newItem in
-                if let item = newItem {
+                // Back/forward restores both at once, so only user-driven changes differ here.
+                if let item = newItem, item != session.selectedItem {
+                    windowVM.recordNavigation(to: .repository(path: session.repository.path.path, item: item))
                     session.selectedItem = item
                 }
             }

@@ -23,6 +23,7 @@ struct RootWindowHost: View {
     // MARK: Split View
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var mouseMonitor: Any?
 
     // MARK: Init
 
@@ -49,6 +50,21 @@ struct RootWindowHost: View {
             if columnVisibility == .detailOnly {
                 RepositoryHomeButtons(placement: .navigation)
             }
+            NavigationHistoryButtons()
+        }
+        // Mouse buttons 4 and 5 (back / forward) arrive as other-mouse clicks; SwiftUI has no handler for them.
+        .onAppear {
+            mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .otherMouseDown) { [windowVM] event in
+                switch event.buttonNumber {
+                case 3: windowVM.goBack()
+                case 4: windowVM.goForward()
+                default: return event
+                }
+                return nil
+            }
+        }
+        .onDisappear {
+            if let mouseMonitor { NSEvent.removeMonitor(mouseMonitor) }
         }
         .environment(windowVM)
         // Load session when openRepo changes
@@ -150,6 +166,35 @@ struct RootWindowHost: View {
             RepositoryBrowserContent()
                 .onAppear { EditUndoState.shared.attach(nil) }
         }
+    }
+}
+
+// MARK: - NavigationHistoryButtons
+
+/// Back / forward through the window's history, as one tight group like the home buttons.
+private struct NavigationHistoryButtons: ToolbarContent {
+    @Environment(WindowViewModel.self) private var viewModel
+
+    var body: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            HStack(spacing: 0) {
+                button("chevron.left", help: "Back (\u{2318}[)", enabled: viewModel.canGoBack) { viewModel.goBack() }
+                button("chevron.right", help: "Forward (\u{2318}])", enabled: viewModel.canGoForward) { viewModel.goForward() }
+            }
+        }
+    }
+
+    private func button(_ symbol: String, help: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .medium))
+                .frame(width: 28, height: 26)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(enabled ? Theme.textPrimary : Theme.textSecondary.opacity(0.5))
+        .disabled(!enabled)
+        .help(help)
     }
 }
 
