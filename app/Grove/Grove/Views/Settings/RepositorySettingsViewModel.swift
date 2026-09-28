@@ -42,6 +42,8 @@ final class RepositorySettingsViewModel {
         var userSigningKey = ""
         var pullStrategy = PullStrategy.inherit
         var remoteURLs: [String: String] = [:]
+        /// Kept in Grove's preferences rather than git config; see GitEnvironment.
+        var environment: [EnvironmentVariable] = []
     }
 
     private(set) var saved = Snapshot()
@@ -81,6 +83,7 @@ final class RepositorySettingsViewModel {
             let remotes = try await remoteList
             snapshot.remoteURLs = Dictionary(remotes.map { ($0.name, $0.url) }) { first, _ in first }
             remoteNames = remotes.map(\.name)
+            snapshot.environment = GitEnvironment.customVariables(environmentScope)
             draft = Self.rebase(draft: draft, from: saved, onto: snapshot)
             saved = snapshot
             hasLoaded = true
@@ -97,6 +100,7 @@ final class RepositorySettingsViewModel {
         if draft.userEmail != old.userEmail { result.userEmail = draft.userEmail }
         if draft.userSigningKey != old.userSigningKey { result.userSigningKey = draft.userSigningKey }
         if draft.pullStrategy != old.pullStrategy { result.pullStrategy = draft.pullStrategy }
+        if draft.environment != old.environment { result.environment = draft.environment }
         for (remote, url) in draft.remoteURLs where new.remoteURLs[remote] != nil && url != old.remoteURLs[remote] {
             result.remoteURLs[remote] = url
         }
@@ -108,6 +112,9 @@ final class RepositorySettingsViewModel {
     func setUserName(_ value: String) { edit { $0.userName = value } }
     func setUserEmail(_ value: String) { edit { $0.userEmail = value } }
     func setUserSigningKey(_ value: String) { edit { $0.userSigningKey = value } }
+    func setEnvironment(_ variables: [EnvironmentVariable]) { edit { $0.environment = variables } }
+
+    var environmentScope: GitEnvironment.Scope { .repository(repository.path.path) }
 
     /// Fills the identity fields from a profile; Save writes them.
     func applyProfile(_ profile: UserProfile) {
@@ -149,6 +156,9 @@ final class RepositorySettingsViewModel {
             }
             if target.userSigningKey != saved.userSigningKey {
                 try await repository.setLocalConfigValue("user.signingkey", to: trimmed(target.userSigningKey))
+            }
+            if target.environment != saved.environment {
+                GitEnvironment.setCustomVariables(target.environment.filter { !$0.name.isEmpty }, environmentScope)
             }
             if target.pullStrategy != saved.pullStrategy {
                 try await repository.setLocalConfigValue("pull.rebase", to: target.pullStrategy.configValue)

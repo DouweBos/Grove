@@ -73,6 +73,15 @@ struct RepositorySettingsView: View {
                 }
             }
 
+            Section {
+                EnvironmentVariablesEditor(variables: Binding(get: { viewModel.draft.environment }, set: viewModel.setEnvironment))
+            } header: {
+                Text("Environment Variables")
+            } footer: {
+                Text("Passed to every git command Grove runs here, and so to hooks, on top of the global ones in Settings.")
+                    .font(.caption).foregroundStyle(Theme.textSecondary)
+            }
+
             Section("Remotes") {
                 if viewModel.remoteNames.isEmpty {
                     Text("This repository has no remotes.").foregroundStyle(Theme.textSecondary)
