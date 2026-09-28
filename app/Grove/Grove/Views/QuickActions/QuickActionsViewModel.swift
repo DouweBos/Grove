@@ -115,7 +115,7 @@ final class QuickActionsViewModel {
                 session.handleAction(action)
             case .commit(let commit):
                 session.sidebarVM.select(.history)
-                Task { await session.historyVM.selectCommit(commit) }
+                Task { await session.historyVM.selectCommit(id: commit.id) }
             case .blame(let path) where alternate:
                 try ExternalToolLauncher.openInEditor([repository.path.appendingPathComponent(path)])
             case .blame(let path):

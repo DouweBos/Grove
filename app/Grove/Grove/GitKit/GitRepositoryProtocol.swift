@@ -302,4 +302,14 @@ extension GitRepositoryProtocol {
     }
 
     func filesInCommit(_ sha: String) async throws -> [String] { [] }
+
+    func stashDiff(index: Int) async throws -> [FileDiff] { [] }
+    func fileContents(path: String, revision: String?) async throws -> String { "" }
+    func mergedBranches(into base: String) async throws -> Set<String> { [] }
+    func aheadBehind(branch: String, base: String) async throws -> (ahead: Int, behind: Int) { (0, 0) }
+    func localConfigValue(_ key: String) async throws -> String? { nil }
+    func setLocalConfigValue(_ key: String, to value: String?) async throws {}
+    func setRemoteURL(_ url: String, forRemote name: String) async throws {}
+    func pullRequestDiff(number: Int) async throws -> [FileDiff] { [] }
+    func pullRequestCommits(number: Int) async throws -> [CommitInfo] { [] }
 }
