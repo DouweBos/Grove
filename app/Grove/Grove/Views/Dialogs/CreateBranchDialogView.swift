@@ -17,6 +17,7 @@ struct CreateBranchDialogView: View {
     @State private var checkoutAfterCreate = true
     @State private var isCreating = false
     @State private var errorMessage: String?
+    @State private var commitSubject: String?
 
     init(
         repository: any GitRepositoryProtocol,
@@ -61,13 +62,28 @@ struct CreateBranchDialogView: View {
                 }
                 DialogField("Starting At") {
                     Picker("Starting At", selection: $startingPoint) {
-                        ForEach(startingPoints, id: \.self) { Text($0).tag($0) }
+                        ForEach(startingPoints, id: \.self) { Text(label(for: $0)).tag($0) }
                     }
                     .labelsHidden()
                 }
                 DialogOptionRow(isOn: $checkoutAfterCreate, label: "Check Out After Creating")
             }
         }
+        .task(id: startingPoint) {
+            commitSubject = isCommitSHA(startingPoint) ? try? await repository.commitDetail(startingPoint).summary : nil
+        }
+    }
+
+    private func isCommitSHA(_ ref: String) -> Bool {
+        (7...40).contains(ref.count) && ref.allSatisfy(\.isHexDigit) && !localBranches.contains { $0.name == ref }
+    }
+
+    /// "Commit abc1234 · Subject" instead of a raw 40-character SHA.
+    private func label(for ref: String) -> String {
+        guard isCommitSHA(ref) else { return ref }
+        let short = "Commit \(ref.prefix(7))"
+        guard ref == startingPoint, let commitSubject else { return short }
+        return "\(short) \u{00B7} \(commitSubject.count > 40 ? commitSubject.prefix(40) + "\u{2026}" : commitSubject)"
     }
 
     private func performCreate() {
