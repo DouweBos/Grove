@@ -79,3 +79,15 @@ jobs:
           FASTLANE_SKIP_UPDATE_CHECK: "1"
           FASTLANE_HIDE_CHANGELOG: "1"
         run: bundle exec fastlane mac release channel:${{ inputs.channel }}
+
+      # Refreshes houwert.dev/grove's changelog; its sync workflow commits and redeploys. Skipped when the
+      # token (a fine-grained PAT with Actions: read and write on DouweBos/houwert.dev) isn't set.
+      - name: Notify houwert.dev
+        if: inputs.channel == 'production'
+        env:
+          GH_TOKEN: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "WEBSITE_DISPATCH_TOKEN not set; skipping"; exit 0; fi
+          VERSION=$(sed -n 's/^## \([0-9][0-9.]*\)$/\1/p' CHANGELOG.md | head -1)
+          gh api repos/DouweBos/houwert.dev/dispatches --method POST -f event_type=upstream-release \
+            -F "client_payload[product]=grove" -F "client_payload[version]=${VERSION}"
