@@ -59,6 +59,8 @@ enum BranchParser {
 
         let isLocal  = refname.hasPrefix("refs/heads/")
         let isRemote = refname.hasPrefix("refs/remotes/")
+        // refs/remotes/<remote>/HEAD only points at the remote's default branch.
+        if isRemote, refname.hasSuffix("/HEAD") { return nil }
         let isHEAD   = headMarker == "*"
 
         // Parse remote name from refs/remotes/<remote>/<branch>.

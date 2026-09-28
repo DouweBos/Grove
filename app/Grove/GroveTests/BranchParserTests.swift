@@ -107,6 +107,16 @@ struct BranchParserTests {
         #expect(branches[0].remoteName == "origin")
     }
 
+    @Test func branchParser_skipsRemoteHEAD() {
+        let output = [
+            makeBranchLine(refname: "refs/remotes/origin/HEAD", shortName: "origin"),
+            makeBranchLine(refname: "refs/remotes/origin/main", shortName: "origin/main")
+        ].joined(separator: "\n")
+        let branches = BranchParser.parse(output)
+
+        #expect(branches.map(\.id) == ["refs/remotes/origin/main"])
+    }
+
     @Test func branchParser_localBranch_remoteNameIsNil() {
         let line = makeBranchLine(refname: "refs/heads/main", shortName: "main")
         let branches = BranchParser.parse(line)
