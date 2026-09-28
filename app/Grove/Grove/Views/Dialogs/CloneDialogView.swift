@@ -4,7 +4,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Clones a remote repository into a new folder and opens it.
+/// Starts cloning a remote repository into a new folder; the clone runs in the background and its row shows progress.
 struct CloneDialogView: View {
 
     @Environment(WindowViewModel.self) private var viewModel
@@ -15,8 +15,6 @@ struct CloneDialogView: View {
     @State private var folderName = ""
     @State private var parentOverride: URL?
     @State private var isPickerPresented = false
-    @State private var isCloning = false
-    @State private var cloneProgress: CloneProgress?
     @State private var errorMessage: String?
 
     init(initialURL: String? = nil) {
@@ -44,10 +42,8 @@ struct CloneDialogView: View {
     var body: some View {
         DialogSheet(
             title: "Clone Repository",
-            message: "Downloads a copy of a remote repository, adds it to your list and opens it.",
+            message: "Downloads a copy of a remote repository in the background and adds it to your list.",
             symbol: "square.and.arrow.down",
-            progress: isCloning ? progressTitle : nil,
-            progressDetail: destination.lastPathComponent,
             errorMessage: errorMessage,
             primaryTitle: "Clone",
             isPrimaryDisabled: !canClone,
@@ -56,12 +52,12 @@ struct CloneDialogView: View {
         ) {
             DialogCard {
                 DialogField("URL") {
-                    TextField("https://github.com/org/repo.git", text: $cloneURL)
+                    TextField("https://github.com/org/repo.git", text: $cloneURL.onSet { errorMessage = nil })
                         .textFieldStyle(.roundedBorder)
                         .font(.monoCaption)
                 }
                 DialogField("Name") {
-                    TextField(suggestedName.isEmpty ? "Folder name" : suggestedName, text: $folderName)
+                    TextField(suggestedName.isEmpty ? "Folder name" : suggestedName, text: $folderName.onSet { errorMessage = nil })
                         .textFieldStyle(.roundedBorder)
                 }
                 DialogField("Location") {
@@ -74,37 +70,26 @@ struct CloneDialogView: View {
         }
     }
 
-    private var progressTitle: String {
-        switch cloneProgress?.phase {
-        case .indexing: "Indexing…"
-        case .checkingOut: "Checking out files…"
-        default: "Downloading objects…"
-        }
-    }
-
+    /// Hands the clone to the window's queue and closes at once.
     private func performClone() {
         guard canClone else { return }
-        isCloning = true
-        errorMessage = nil
-        let url = trimmedURL
-        let target = destination
-        Task {
-            do {
-                let repo = try await viewModel.manager.cloneRepository(url: url, to: target) { progress in
-                    Task { @MainActor in cloneProgress = progress }
-                }
-                dismiss()
-                viewModel.openReference(RepositoryReference(path: repo.path.path))
-            } catch {
-                errorMessage = error.localizedDescription
-                isCloning = false
-                cloneProgress = nil
-            }
+        if let problem = viewModel.clones.problem(cloning: trimmedURL, to: destination) {
+            errorMessage = problem
+            return
         }
+        viewModel.clones.start(url: trimmedURL, destination: destination)
+        dismiss()
     }
 }
 
 #Preview {
     CloneDialogView()
         .environment(WindowViewModel(manager: MockRepositoryManager()))
+}
+
+private extension Binding {
+    /// The same binding, also running `action` on every write.
+    func onSet(_ action: @escaping () -> Void) -> Binding {
+        Binding(get: { wrappedValue }, set: { wrappedValue = $0; action() })
+    }
 }

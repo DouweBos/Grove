@@ -44,4 +44,33 @@ struct PublishBranchTests {
         #expect(try await repo.remotes().contains { $0.name == "github" && $0.url == "git@github.com:example/new.git" })
         await #expect(throws: (any Error).self) { try await repo.addRemote(name: "github", url: "x") }
     }
+
+    @Test func streamingCloneReportsProgressAndCancelStopsTheProcess() async throws {
+        let fixture = try fixture()
+        defer { fixture.remove() }
+        let target = fixture.repo.deletingLastPathComponent().appendingPathComponent("streamed-clone")
+        let chunks = LockedStrings()
+        try await GitShell(workingDirectory: fixture.repo.deletingLastPathComponent())
+            .runStreaming(["clone", "--progress", "file://\(fixture.origin.path)", target.path]) { chunks.append($0) }
+        #expect(FileManager.default.fileExists(atPath: target.appendingPathComponent(".git").path))
+        #expect(chunks.joined.contains("Cloning into"))
+
+        let sleeper = Process()
+        sleeper.executableURL = URL(fileURLWithPath: "/bin/sleep")
+        sleeper.arguments = ["30"]
+        let started = Date()
+        let task = Task { try await ProcessRunner.runStreaming(sleeper) { _ in } }
+        try await Task.sleep(nanoseconds: 200_000_000)
+        task.cancel()
+        _ = try? await task.value
+        #expect(Date().timeIntervalSince(started) < 5)
+    }
+}
+
+/// Collects streamed chunks from a background reader.
+private final class LockedStrings: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [String] = []
+    func append(_ value: String) { lock.withLock { values.append(value) } }
+    var joined: String { lock.withLock { values.joined() } }
 }

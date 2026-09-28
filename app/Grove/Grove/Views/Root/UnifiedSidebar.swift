@@ -39,6 +39,10 @@ struct UnifiedSidebar: View {
             if !isCollapsed {
                 RepositoryHomeButtons(placement: .primaryAction)
             }
+            // In the browser the Cloning section shows progress; inside a repository this is the only sign.
+            if session != nil, viewModel.clones.runningCount > 0 {
+                ToolbarItem(placement: .primaryAction) { CloneActivityIndicator() }
+            }
             if session == nil {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {

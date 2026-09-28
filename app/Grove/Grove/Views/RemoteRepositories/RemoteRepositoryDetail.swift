@@ -113,6 +113,10 @@ struct RemoteRepositoryDetail: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                     .keyboardShortcut(.defaultAction)
+                } else if let clone = windowVM.clones.job(matching: repository.matchKey), clone.isRunning {
+                    Label("Cloning \(Int((clone.progress?.overallFraction ?? 0) * 100))%", systemImage: "arrow.down.circle")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
                 } else {
                     Button { windowVM.showCloneDialog(url: repository.sshURL) } label: {
                         Label("Clone…", systemImage: "square.and.arrow.down").padding(.horizontal, Theme.Spacing.sm)

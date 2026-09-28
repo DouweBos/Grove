@@ -67,6 +67,8 @@ final class WindowViewModel {
     enum BrowserMode { case local, remote }
     private(set) var browserMode: BrowserMode = .local
     let remoteRepositories = RemoteRepositoriesViewModel()
+    /// Clones running in the background; their rows show in the browser sidebar.
+    let clones: CloneQueue
     /// URL the clone sheet opens with, e.g. from the remote browser.
     private(set) var cloneURLPrefill: String?
 
@@ -186,7 +188,18 @@ final class WindowViewModel {
 
     init(manager: any RepositoryManagerProtocol) {
         self.manager = manager
+        clones = CloneQueue(manager: manager)
         refreshWorktrees()
+        clones.onFinished = { [weak self] path in self?.didFinishClone(at: path) }
+    }
+
+    /// The finished clone is bookmarked by now; list and select it without leaving what's on screen.
+    private func didFinishClone(at path: String) {
+        refreshWorktrees()
+        remoteRepositories.indexLocalClones(bookmarks: manager.bookmarks)
+        if isBrowsing, browserMode == .local {
+            selectedBookmarkID = manager.bookmarks.first { $0.path == path }?.id
+        }
     }
 
     /// Re-reads worktree links from disk; cheap enough to run on every bookmark change or activation.

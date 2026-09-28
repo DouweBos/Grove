@@ -141,6 +141,19 @@ final class GitShell: Sendable {
         return result
     }
 
+    /// Runs a long git command (clone), streaming stderr to `onStderr`; cancelling the task stops git.
+    nonisolated func runStreaming(_ arguments: [String], onStderr: @escaping @Sendable (String) -> Void) async throws {
+        let process = try buildProcess(arguments: arguments, environment: [:])
+        let output = try await ProcessRunner.runStreaming(process) { chunk in
+            onStderr(String(bytes: chunk, encoding: .utf8) ?? "")
+        }
+        try Task.checkCancellation()
+        guard output.status == 0 else {
+            throw GitShellError.nonZeroExit(command: arguments.first ?? "", exitCode: output.status,
+                                            stderr: String(bytes: output.stderr, encoding: .utf8) ?? "")
+        }
+    }
+
     /// Run a git subcommand, returning the result regardless of exit code.
     ///
     /// Use this when you need to inspect stderr or exit code without throwing.

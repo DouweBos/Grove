@@ -86,7 +86,8 @@ private struct RemoteOwnerSection: View {
                 Text(message).font(.system(size: 12)).foregroundStyle(Theme.danger).lineLimit(3).selectionDisabled()
             case .loaded:
                 ForEach(repositories) { repo in
-                    RemoteRepositoryRow(repository: repo, isCloned: viewModel.localPath(of: repo) != nil)
+                    RemoteRepositoryRow(repository: repo, isCloned: viewModel.localPath(of: repo) != nil,
+                                        clone: windowVM.clones.job(matching: repo.matchKey))
                         .tag(repo.id)
                 }
             }
@@ -112,6 +113,8 @@ private struct RemoteOwnerSection: View {
 struct RemoteRepositoryRow: View {
     let repository: RemoteRepository
     let isCloned: Bool
+    /// A clone of this repository running or failed in the background.
+    var clone: CloneQueue.Job?
 
     var body: some View {
         SidebarRow(
@@ -120,6 +123,13 @@ struct RemoteRepositoryRow: View {
             tint: isCloned ? Theme.success : Theme.textSecondary
         ) {
             HStack(spacing: Theme.Spacing.xs) {
+                if let clone {
+                    if clone.isRunning {
+                        ProgressView(value: clone.progress?.overallFraction ?? 0).progressViewStyle(.circular).controlSize(.mini)
+                    } else {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.danger).accessibilityLabel("Clone failed")
+                    }
+                }
                 if repository.isArchived { Image(systemName: "archivebox").accessibilityLabel("Archived") }
                 if repository.isPrivate { Image(systemName: "lock.fill").accessibilityLabel("Private") }
             }
@@ -141,6 +151,7 @@ struct RemoteRepositoryActions: View {
             Button("Open Local Clone", systemImage: "arrow.up.forward.app") { windowVM.openLocalClone(atPath: path) }
         }
         Button("Clone…", systemImage: "square.and.arrow.down") { windowVM.showCloneDialog(url: repository.sshURL) }
+            .disabled(windowVM.clones.job(matching: repository.matchKey)?.isRunning == true)
         Button("Open on \(repository.service.displayName)", systemImage: "safari") {
             if let url = URL(string: repository.webURL) { NSWorkspace.shared.open(url) }
         }
