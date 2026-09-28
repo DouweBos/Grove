@@ -232,6 +232,22 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func closePullRequest(number: Int) async throws
     /// Merge a pull request using the merge strategy.
     func mergePullRequest(number: Int) async throws
+
+    // MARK: Working Copy
+
+    /// Create a commit; `signOff` adds a `Signed-off-by` trailer (`--signoff`).
+    @discardableResult
+    func commit(message: String, body: String?, amend: Bool, sign: Bool, signOff: Bool) async throws -> CommitInfo
+    /// The effective `user.name` / `user.email`, or `nil` when unset.
+    func commitIdentity() async -> CommitIdentity?
+    /// Branch names for both sides of the in-progress merge/rebase/cherry-pick/revert.
+    func operationContext() async -> OperationContext?
+    /// Continue the in-progress operation after conflicts are resolved.
+    func continueOperation() async throws
+    /// Contents of stage 2 (ours) and stage 3 (theirs) for a conflicted file.
+    func conflictVersions(path: String) async throws -> ConflictVersions
+    /// Resolve a conflicted file by taking one side wholesale and staging it.
+    func resolveConflict(path: String, side: ConflictSide) async throws
 }
 
 // MARK: - GitRepositoryProtocol Default Arguments
@@ -240,6 +256,18 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
 /// that were written before signing support was added continue to compile
 /// without modification.
 extension GitRepositoryProtocol {
+
+    // Defaults so lightweight test doubles only implement what they exercise.
+    @discardableResult
+    func commit(message: String, body: String?, amend: Bool, sign: Bool, signOff: Bool) async throws -> CommitInfo {
+        try await commit(message: message, body: body, amend: amend, sign: sign)
+    }
+
+    func commitIdentity() async -> CommitIdentity? { nil }
+    func operationContext() async -> OperationContext? { nil }
+    func continueOperation() async throws {}
+    func conflictVersions(path: String) async throws -> ConflictVersions { ConflictVersions() }
+    func resolveConflict(path: String, side: ConflictSide) async throws {}
 
     @discardableResult
     func commit(message: String, body: String?, amend: Bool) async throws -> CommitInfo {

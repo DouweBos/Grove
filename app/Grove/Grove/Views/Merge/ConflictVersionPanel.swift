@@ -13,16 +13,6 @@
 
 import SwiftUI
 
-// MARK: - ConflictSide
-
-/// Which side of the conflict this panel represents.
-enum ConflictSide: Equatable {
-    /// The local / HEAD version ("ours").
-    case ours
-    /// The incoming / remote version ("theirs").
-    case theirs
-}
-
 // MARK: - ConflictVersionPanel
 
 /// One panel in the two-column ``ConflictWizardView``.
