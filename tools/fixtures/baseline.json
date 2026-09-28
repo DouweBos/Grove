@@ -1,0 +1,600 @@
+{
+  "date" : "2026-09-28T12:54:34Z",
+  "entries" : [
+    {
+      "medianMs" : 11.639125,
+      "name" : "single git call (rev-parse HEAD)",
+      "p90Ms" : 12.531,
+      "preset" : "small",
+      "samplesMs" : [
+        11.567625,
+        11.462291,
+        11.639125,
+        12.531,
+        12.235166
+      ]
+    },
+    {
+      "medianMs" : 12.033375,
+      "name" : "single git call (off main)",
+      "p90Ms" : 12.404125,
+      "preset" : "small",
+      "samplesMs" : [
+        12.1645,
+        11.384708,
+        12.404125,
+        12.033375,
+        11.331
+      ]
+    },
+    {
+      "medianMs" : 122.318125,
+      "name" : "open repository",
+      "p90Ms" : 591.143584,
+      "preset" : "small",
+      "samplesMs" : [
+        68.004583,
+        65.742417,
+        122.318125,
+        531.314583,
+        591.143584
+      ]
+    },
+    {
+      "medianMs" : 1578.588041,
+      "name" : "session start",
+      "p90Ms" : 1581.842209,
+      "preset" : "small",
+      "samplesMs" : [
+        675.641083,
+        1581.842209,
+        1581.7268330000002,
+        1413.262125,
+        1578.588041
+      ]
+    },
+    {
+      "medianMs" : 1595.17875,
+      "name" : "session refreshAll",
+      "p90Ms" : 1605.9748749999999,
+      "preset" : "small",
+      "samplesMs" : [
+        1598.7435,
+        1557.0192080000002,
+        1605.9748749999999,
+        1589.30625,
+        1595.17875
+      ]
+    },
+    {
+      "medianMs" : 998.10825,
+      "name" : "history loadInitial (main)",
+      "p90Ms" : 1018.303333,
+      "preset" : "small",
+      "samplesMs" : [
+        1003.078083,
+        983.647833,
+        994.918917,
+        998.10825,
+        1018.303333
+      ]
+    },
+    {
+      "medianMs" : 996.189458,
+      "name" : "history loadInitial (branch)",
+      "p90Ms" : 1004.255916,
+      "preset" : "small",
+      "samplesMs" : [
+        1004.255916,
+        991.403292,
+        996.189458,
+        978.7895,
+        1003.737083
+      ]
+    },
+    {
+      "medianMs" : 2872.563583,
+      "name" : "select 10 commits (cold)",
+      "p90Ms" : 2882.831834,
+      "preset" : "small",
+      "samplesMs" : [
+        2880.885625,
+        2872.563583,
+        2764.726458,
+        2882.831834,
+        2869.913625
+      ]
+    },
+    {
+      "medianMs" : 0.220167,
+      "name" : "revisit 10 commits (cached)",
+      "p90Ms" : 0.272417,
+      "preset" : "small",
+      "samplesMs" : [
+        0.220167,
+        0.272417,
+        0.118667,
+        0.216125,
+        0.235084
+      ]
+    },
+    {
+      "medianMs" : 595.935167,
+      "name" : "sidebar refresh",
+      "p90Ms" : 603.742875,
+      "preset" : "small",
+      "samplesMs" : [
+        593.477375,
+        595.935167,
+        590.471958,
+        603.742875,
+        601.557125
+      ]
+    },
+    {
+      "medianMs" : 302.223042,
+      "name" : "branches review refresh (cold)",
+      "p90Ms" : 305.861667,
+      "preset" : "small",
+      "samplesMs" : [
+        305.861667,
+        304.161375,
+        302.223042,
+        291.985708,
+        295.51
+      ]
+    },
+    {
+      "medianMs" : 196.694833,
+      "name" : "branches review refresh (warm)",
+      "p90Ms" : 202.848792,
+      "preset" : "small",
+      "samplesMs" : [
+        186.793291,
+        196.694833,
+        196.365958,
+        202.848792,
+        201.317209
+      ]
+    },
+    {
+      "medianMs" : 1090.78725,
+      "name" : "working copy refresh (dirty)",
+      "p90Ms" : 1102.768167,
+      "preset" : "small",
+      "samplesMs" : [
+        1077.926667,
+        1102.768167,
+        1089.357667,
+        1101.287292,
+        1090.78725
+      ]
+    },
+    {
+      "medianMs" : 497.674709,
+      "name" : "refs read (RepositoryRefs.refresh)",
+      "p90Ms" : 509.565208,
+      "preset" : "small",
+      "samplesMs" : [
+        500.899042,
+        485.5835,
+        509.565208,
+        493.729125,
+        497.674709
+      ]
+    },
+    {
+      "medianMs" : 196.431208,
+      "name" : "pull dialog load",
+      "p90Ms" : 198.829625,
+      "preset" : "small",
+      "samplesMs" : [
+        192.955791,
+        198.829625,
+        196.392333,
+        196.431208,
+        197.061458
+      ]
+    },
+    {
+      "medianMs" : 79.6225,
+      "name" : "single git call (rev-parse HEAD)",
+      "p90Ms" : 100.5625,
+      "preset" : "medium",
+      "samplesMs" : [
+        75.484625,
+        77.298209,
+        79.6225,
+        100.5625,
+        99.281541
+      ]
+    },
+    {
+      "medianMs" : 11.546708,
+      "name" : "single git call (off main)",
+      "p90Ms" : 16.75775,
+      "preset" : "medium",
+      "samplesMs" : [
+        16.75775,
+        13.754583,
+        11.546708,
+        10.277834,
+        9.431334
+      ]
+    },
+    {
+      "medianMs" : 597.389291,
+      "name" : "open repository",
+      "p90Ms" : 598.122833,
+      "preset" : "medium",
+      "samplesMs" : [
+        588.272375,
+        590.009958,
+        597.389291,
+        597.816166,
+        598.122833
+      ]
+    },
+    {
+      "medianMs" : 1696.9671250000001,
+      "name" : "session start",
+      "p90Ms" : 1708.5307090000001,
+      "preset" : "medium",
+      "samplesMs" : [
+        1702.315583,
+        1689.078583,
+        1688.520958,
+        1696.9671250000001,
+        1708.5307090000001
+      ]
+    },
+    {
+      "medianMs" : 1703.118292,
+      "name" : "session refreshAll",
+      "p90Ms" : 1768.5859580000001,
+      "preset" : "medium",
+      "samplesMs" : [
+        1711.740334,
+        1768.5859580000001,
+        1687.743583,
+        1507.562625,
+        1703.118292
+      ]
+    },
+    {
+      "medianMs" : 1116.895334,
+      "name" : "history loadInitial (main)",
+      "p90Ms" : 1152.039667,
+      "preset" : "medium",
+      "samplesMs" : [
+        860.574208,
+        1152.039667,
+        1116.895334,
+        1115.309667,
+        1128.641875
+      ]
+    },
+    {
+      "medianMs" : 1109.546542,
+      "name" : "history loadInitial (branch)",
+      "p90Ms" : 1139.415417,
+      "preset" : "medium",
+      "samplesMs" : [
+        1139.415417,
+        1096.628167,
+        1096.512666,
+        1109.546542,
+        1114.442333
+      ]
+    },
+    {
+      "medianMs" : 2853.1042079999997,
+      "name" : "select 10 commits (cold)",
+      "p90Ms" : 2913.874792,
+      "preset" : "medium",
+      "samplesMs" : [
+        2847.204042,
+        2820.585667,
+        2853.1042079999997,
+        2913.874792,
+        2858.300083
+      ]
+    },
+    {
+      "medianMs" : 0.153542,
+      "name" : "revisit 10 commits (cached)",
+      "p90Ms" : 0.187542,
+      "preset" : "medium",
+      "samplesMs" : [
+        0.153542,
+        0.111,
+        0.183667,
+        0.187542,
+        0.142458
+      ]
+    },
+    {
+      "medianMs" : 722.697875,
+      "name" : "sidebar refresh",
+      "p90Ms" : 736.903417,
+      "preset" : "medium",
+      "samplesMs" : [
+        717.792667,
+        727.898583,
+        722.697875,
+        709.734125,
+        736.903417
+      ]
+    },
+    {
+      "medianMs" : 295.354792,
+      "name" : "branches review refresh (cold)",
+      "p90Ms" : 315.669792,
+      "preset" : "medium",
+      "samplesMs" : [
+        296.47625,
+        295.354792,
+        293.847417,
+        292.895167,
+        315.669792
+      ]
+    },
+    {
+      "medianMs" : 195.996292,
+      "name" : "branches review refresh (warm)",
+      "p90Ms" : 202.156333,
+      "preset" : "medium",
+      "samplesMs" : [
+        202.156333,
+        195.853125,
+        198.030958,
+        195.996292,
+        195.393916
+      ]
+    },
+    {
+      "medianMs" : 1093.117791,
+      "name" : "working copy refresh (dirty)",
+      "p90Ms" : 1109.25025,
+      "preset" : "medium",
+      "samplesMs" : [
+        1085.353292,
+        1094.895,
+        1082.102,
+        1093.117791,
+        1109.25025
+      ]
+    },
+    {
+      "medianMs" : 610.440875,
+      "name" : "refs read (RepositoryRefs.refresh)",
+      "p90Ms" : 643.934083,
+      "preset" : "medium",
+      "samplesMs" : [
+        609.930875,
+        610.440875,
+        623.166291,
+        598.609417,
+        643.934083
+      ]
+    },
+    {
+      "medianMs" : 157.128417,
+      "name" : "pull dialog load",
+      "p90Ms" : 166.58175,
+      "preset" : "medium",
+      "samplesMs" : [
+        156.567291,
+        160.818417,
+        166.58175,
+        157.128417,
+        155.272416
+      ]
+    },
+    {
+      "medianMs" : 87.880042,
+      "name" : "single git call (rev-parse HEAD)",
+      "p90Ms" : 102.374917,
+      "preset" : "large",
+      "samplesMs" : [
+        77.29375,
+        81.048334,
+        87.880042,
+        90.373125,
+        102.374917
+      ]
+    },
+    {
+      "medianMs" : 12.375208,
+      "name" : "single git call (off main)",
+      "p90Ms" : 17.112666,
+      "preset" : "large",
+      "samplesMs" : [
+        17.112666,
+        13.4905,
+        12.375208,
+        10.710166,
+        10.063
+      ]
+    },
+    {
+      "medianMs" : 588.102041,
+      "name" : "open repository",
+      "p90Ms" : 606.668666,
+      "preset" : "large",
+      "samplesMs" : [
+        588.102041,
+        581.339875,
+        606.668666,
+        588.077625,
+        606.408291
+      ]
+    },
+    {
+      "medianMs" : 1832.878958,
+      "name" : "session start",
+      "p90Ms" : 1859.8828330000001,
+      "preset" : "large",
+      "samplesMs" : [
+        1845.06875,
+        1832.878958,
+        1859.8828330000001,
+        1819.869042,
+        1816.836167
+      ]
+    },
+    {
+      "medianMs" : 1817.447042,
+      "name" : "session refreshAll",
+      "p90Ms" : 1850.277459,
+      "preset" : "large",
+      "samplesMs" : [
+        1817.4440829999999,
+        1850.277459,
+        1819.2648749999998,
+        1817.447042,
+        1809.754125
+      ]
+    },
+    {
+      "medianMs" : 1238.8298340000001,
+      "name" : "history loadInitial (main)",
+      "p90Ms" : 1266.508666,
+      "preset" : "large",
+      "samplesMs" : [
+        1238.8298340000001,
+        1225.906416,
+        1218.603458,
+        1243.244916,
+        1266.508666
+      ]
+    },
+    {
+      "medianMs" : 1233.420667,
+      "name" : "history loadInitial (branch)",
+      "p90Ms" : 1260.176292,
+      "preset" : "large",
+      "samplesMs" : [
+        1259.403334,
+        1212.021542,
+        1233.420667,
+        1229.115666,
+        1260.176292
+      ]
+    },
+    {
+      "medianMs" : 2813.9584999999997,
+      "name" : "select 10 commits (cold)",
+      "p90Ms" : 2855.145459,
+      "preset" : "large",
+      "samplesMs" : [
+        2809.76075,
+        2787.4805420000002,
+        2855.145459,
+        2813.9584999999997,
+        2847.0625410000002
+      ]
+    },
+    {
+      "medianMs" : 0.152917,
+      "name" : "revisit 10 commits (cached)",
+      "p90Ms" : 0.167209,
+      "preset" : "large",
+      "samplesMs" : [
+        0.135166,
+        0.167209,
+        0.152917,
+        0.14425,
+        0.155542
+      ]
+    },
+    {
+      "medianMs" : 871.845792,
+      "name" : "sidebar refresh",
+      "p90Ms" : 889.715291,
+      "preset" : "large",
+      "samplesMs" : [
+        855.387083,
+        871.845792,
+        881.1505,
+        862.01775,
+        889.715291
+      ]
+    },
+    {
+      "medianMs" : 296.401083,
+      "name" : "branches review refresh (cold)",
+      "p90Ms" : 300.171083,
+      "preset" : "large",
+      "samplesMs" : [
+        296.650709,
+        291.56,
+        296.401083,
+        285.442625,
+        300.171083
+      ]
+    },
+    {
+      "medianMs" : 175.692041,
+      "name" : "branches review refresh (warm)",
+      "p90Ms" : 180.675417,
+      "preset" : "large",
+      "samplesMs" : [
+        171.157709,
+        176.48275,
+        175.692041,
+        168.9305,
+        180.675417
+      ]
+    },
+    {
+      "medianMs" : 1091.641416,
+      "name" : "working copy refresh (dirty)",
+      "p90Ms" : 1102.5161659999999,
+      "preset" : "large",
+      "samplesMs" : [
+        1099.7505409999999,
+        1102.5161659999999,
+        1091.641416,
+        1081.231625,
+        1088.9174170000001
+      ]
+    },
+    {
+      "medianMs" : 692.5095,
+      "name" : "refs read (RepositoryRefs.refresh)",
+      "p90Ms" : 705.984625,
+      "preset" : "large",
+      "samplesMs" : [
+        697.441666,
+        689.983125,
+        684.504292,
+        705.984625,
+        692.5095
+      ]
+    },
+    {
+      "medianMs" : 154.005834,
+      "name" : "pull dialog load",
+      "p90Ms" : 156.825167,
+      "preset" : "large",
+      "samplesMs" : [
+        156.825167,
+        151.99075,
+        156.610083,
+        152.527458,
+        154.005834
+      ]
+    }
+  ],
+  "fixtures" : {
+    "large clean" : "10000 commits, 30 local \/ 701 remote branches, 5000 tags, 7 worktrees; generated in 6.7s",
+    "large dirty" : "10000 commits, 30 local \/ 701 remote branches, 5000 tags, 7 worktrees; generated in 7.0s",
+    "medium clean" : "2000 commits, 50 local \/ 82 remote branches, 200 tags, 2 worktrees; generated in 1.0s",
+    "medium dirty" : "2000 commits, 50 local \/ 82 remote branches, 200 tags, 2 worktrees; generated in 1.0s",
+    "small clean" : "200 commits, 6 local \/ 10 remote branches, 10 tags, 0 worktrees; cached",
+    "small dirty" : "200 commits, 6 local \/ 10 remote branches, 10 tags, 0 worktrees; cached"
+  },
+  "git" : "git version 2.48.1",
+  "iterations" : 5
+}
