@@ -135,6 +135,14 @@ enum PullStrategy: String, CaseIterable, Sendable {
     }
 }
 
+/// Extra `git pull` flags; git only forwards them to merge, so a rebase ignores both.
+struct PullOptions: Sendable, Equatable {
+    /// `--verify-signatures`: refuse unless the fetched tip carries a valid signature.
+    var verifySignatures = false
+    /// `--no-verify`: skip the pre-merge-commit and commit-msg hooks.
+    var skipHooks = false
+}
+
 // MARK: - BranchComparison
 
 /// Both sides of `git log --left-right --cherry-mark base...compare`, plus the files `compare` changed since the merge base.

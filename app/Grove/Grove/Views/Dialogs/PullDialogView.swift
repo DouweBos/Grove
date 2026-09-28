@@ -14,6 +14,7 @@ struct PullDialogView: View {
 
     @State private var strategy: PullStrategy = .merge
     @State private var autoStash = false
+    @State private var options = PullOptions()
     @State private var remotes: [RemoteInfo] = []
     @State private var remoteBranches: [BranchInfo] = []
     /// Remote branch to pull, as `remote/branch`.
@@ -57,6 +58,25 @@ struct PullDialogView: View {
                     label: "Stash Local Changes",
                     description: "Stashes uncommitted changes first and restores them afterwards."
                 )
+            }
+            DialogOptionsSection {
+                DialogOptionRow(
+                    isOn: $options.verifySignatures,
+                    label: "Verify Signatures",
+                    description: "The pull is aborted if the tip commit of the pulled branch isn't signed with a valid key."
+                )
+                .disabled(strategy == .rebase)
+                DialogOptionRow(
+                    isOn: $options.skipHooks,
+                    label: "Skip Hooks",
+                    description: "Bypasses the pre-merge-commit and commit-msg hooks."
+                )
+                .disabled(strategy == .rebase)
+                if strategy == .rebase {
+                    Text("Git ignores these options when rebasing.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textSecondary)
+                }
             }
             if upstream == nil {
                 noUpstreamBanner
@@ -108,9 +128,10 @@ struct PullDialogView: View {
         run("Pulling from \(source)…") {
             let didStash = autoStash ? try await stashIfDirty(repository, message: "Grove: auto-stash before pull") : false
             if source == upstream {
-                try await repository.pull(remote: nil, strategy: strategy, progress: nil)
+                try await repository.pull(remote: nil, branch: nil, strategy: strategy, options: options, progress: nil)
             } else if let target = split(source) {
-                try await repository.pull(remote: target.remote, branch: target.branch, strategy: strategy, progress: nil)
+                try await repository.pull(remote: target.remote, branch: target.branch, strategy: strategy,
+                                          options: options, progress: nil)
             }
             if didStash {
                 try await repository.stashApply(index: 0, drop: true)

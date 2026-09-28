@@ -102,8 +102,10 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func remotes() async throws -> [RemoteInfo]
     func fetch(remote: String?, progress: (@Sendable (Double) -> Void)?) async throws
     func pull(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws
-    /// Pulls `branch` from `remote` into the checked-out branch; with `.rebase` that rebases it onto that branch.
-    func pull(remote: String, branch: String, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws
+    /// Pulls `branch` from `remote` into the checked-out branch (the upstream when both are nil);
+    /// with `.rebase` that rebases it onto that branch.
+    func pull(remote: String?, branch: String?, strategy: PullStrategy, options: PullOptions,
+              progress: (@Sendable (Double) -> Void)?) async throws
     /// Pushes HEAD; `setUpstream` adds `-u` so a branch's first push starts tracking the remote branch.
     func push(remote: String?, forceWithLease: Bool, setUpstream: Bool, progress: (@Sendable (Double) -> Void)?) async throws
     /// Fetch, pull, then push in sequence; a branch without an upstream is pushed with `-u`.
@@ -324,7 +326,8 @@ extension GitRepositoryProtocol {
     func stashDiff(index: Int) async throws -> [FileDiff] { [] }
     func submodules() async throws -> [SubmoduleInfo] { [] }
     func worktrees() async throws -> [WorktreeInfo] { [] }
-    func pull(remote: String, branch: String, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
+    func pull(remote: String?, branch: String?, strategy: PullStrategy, options: PullOptions,
+              progress: (@Sendable (Double) -> Void)?) async throws {
         try await pull(remote: remote, strategy: strategy, progress: progress)
     }
     func pruneWorktrees() async throws {}
