@@ -56,12 +56,53 @@ struct RepositorySidebar: View {
     }
 }
 
+// MARK: - WorktreeSwitcher
+
+/// Which worktree this window runs git in, with a menu to switch to another, like Charon's disk picker.
+private struct WorktreeSwitcher: View {
+    @Environment(SidebarViewModel.self) private var viewModel
+    let isLinkedWorktree: Bool
+
+    var body: some View {
+        Menu {
+            Section("Worktrees") {
+                ForEach(viewModel.worktrees) { worktree in
+                    Button { viewModel.switchTo(worktree) } label: {
+                        Label(title(worktree), systemImage: viewModel.isCurrent(worktree) ? "checkmark" : "tree")
+                    }
+                    .disabled(worktree.isPrunable)
+                }
+            }
+        } label: {
+            HStack(spacing: Theme.Spacing.xs) {
+                Image(systemName: "tree")
+                Text(isLinkedWorktree ? URL(fileURLWithPath: viewModel.repository.path.path).lastPathComponent : "Main worktree")
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold))
+            }
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(Theme.textSecondary)
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize(horizontal: false, vertical: true)
+        .help("Git commands run in \(abbreviatingHome(viewModel.repository.path.path)). Choose another worktree to switch.")
+    }
+
+    private func title(_ worktree: WorktreeInfo) -> String {
+        let name = worktree.branch ?? worktree.folderName
+        return worktree.isMain ? "\(name) (main)" : name
+    }
+}
+
 // MARK: - RepositorySummaryHeader
 
 /// Repository name, checked-out branch and its sync state, like Charon's disk summary.
 private struct RepositorySummaryHeader: View {
     @Environment(SidebarViewModel.self) private var viewModel
-    @Environment(WindowViewModel.self) private var windowViewModel
     /// Main repository path when this window shows a linked worktree.
     @State private var mainRepositoryPath: String?
 
@@ -75,14 +116,8 @@ private struct RepositorySummaryHeader: View {
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
                 .truncationMode(.middle)
-            if let mainRepositoryPath {
-                Button { windowViewModel.openReference(RepositoryReference(path: mainRepositoryPath)) } label: {
-                    Label("Worktree", systemImage: "tree")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Theme.textSecondary)
-                }
-                .buttonStyle(.plain)
-                .help("Worktree at \(viewModel.repository.path.path). Click to open the main repository.")
+            if viewModel.worktrees.count > 1 {
+                WorktreeSwitcher(isLinkedWorktree: mainRepositoryPath != nil)
             }
             HStack(spacing: Theme.Spacing.xs) {
                 Image(systemName: head == nil ? "exclamationmark.triangle" : "arrow.triangle.branch")

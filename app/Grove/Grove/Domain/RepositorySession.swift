@@ -209,6 +209,12 @@ final class RepositorySession {
         }
     }
 
+    /// Opens on `item` instead of Changes, e.g. to keep the tab when switching worktrees.
+    func restoreSelection(_ item: SidebarItem) {
+        sidebarVM.select(item)
+        selectedItem = item
+    }
+
     // MARK: - Helpers
 
     /// Returns a history ViewModel filtered to a specific branch or tag,

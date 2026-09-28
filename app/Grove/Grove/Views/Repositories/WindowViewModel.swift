@@ -48,6 +48,9 @@ final class WindowViewModel {
     var selectedGroupID: UUID?
     var selectedBookmarkID: UUID?
 
+    /// Tab to reopen on after switching worktrees.
+    private var pendingSelection: SidebarItem?
+
     /// Worktree links read from disk; rebuilt by `refreshWorktrees()`.
     private(set) var worktreeIndex = WorktreeIndex()
 
@@ -168,6 +171,17 @@ final class WindowViewModel {
         openRepo = reference
     }
 
+    /// Runs this window in another worktree of the same repository, keeping the current tab.
+    /// The old worktree's session stops so each repository fetches and watches only once.
+    func switchWorktree(to path: String) {
+        guard let current = openRepo, current.path != path else { return }
+        if let loaded = sessions.removeValue(forKey: current.path) {
+            pendingSelection = RepositoryTab(item: loaded.session.selectedItem).item
+            loaded.session.stop()
+        }
+        openReference(RepositoryReference(path: path))
+    }
+
     /// Closing stops the watcher and auto-fetch; reopening starts a fresh session.
     func closeRepository() {
         if let path = openRepo?.path, let loaded = sessions.removeValue(forKey: path) {
@@ -188,6 +202,11 @@ final class WindowViewModel {
                 // Through the manager so the bookmark's "Last Opened" date updates.
                 let repo = try await manager.openRepository(at: url)
                 let session = RepositorySession(repository: repo)
+                session.sidebarVM.onSwitchWorktree = { [weak self] path in self?.switchWorktree(to: path) }
+                if let pendingSelection {
+                    session.restoreSelection(pendingSelection)
+                    self.pendingSelection = nil
+                }
                 sessions[path] = LoadedSession(repository: repo, session: session)
                 await session.start()
                 Logger.ui.info("Repository ready: \(ref.displayName, privacy: .public)")

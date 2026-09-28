@@ -68,8 +68,11 @@ struct BranchesSidebarSection: View {
     }
 
     private func branchRow(_ branch: BranchInfo, isPinned: Bool, showsFullName: Bool = false) -> some View {
-        SidebarBranchRow(branch: branch, isPinned: isPinned, showsFullName: showsFullName)
+        SidebarBranchRow(branch: branch, isPinned: isPinned, showsFullName: showsFullName,
+                         worktree: viewModel.worktree(checkingOut: branch))
             .tag(SidebarItem.branch(branch))
+            // Simultaneous so a single click still selects the branch's history.
+            .simultaneousGesture(TapGesture(count: 2).onEnded { Task { await viewModel.activate(branch: branch) } })
             .draggable(branch.name)
             .contextMenu {
                 BranchContextMenu(
@@ -101,11 +104,18 @@ struct BranchContextMenu: View {
     let onRename: () -> Void
     let onDelete: () -> Void
 
+    /// Git refuses to check out, delete or archive a branch another worktree has checked out.
+    private var worktree: WorktreeInfo? { viewModel.worktree(checkingOut: branch) }
+
     var body: some View {
-        Button("Check Out \u{201C}\(branch.name)\u{201D}", systemImage: "arrow.uturn.backward") {
-            Task { await viewModel.checkout(branch: branch) }
+        if let worktree {
+            Button("Switch to Worktree", systemImage: "tree") { viewModel.switchTo(worktree) }
+        } else {
+            Button("Check Out \u{201C}\(branch.name)\u{201D}", systemImage: "arrow.uturn.backward") {
+                Task { await viewModel.checkout(branch: branch) }
+            }
+            .disabled(branch.isHEAD)
         }
-        .disabled(branch.isHEAD)
         Button("New Branch from \u{201C}\(branch.name)\u{201D}…", systemImage: "arrow.triangle.branch", action: onCreateBranch)
         Divider()
         Button("Merge into Current Branch", systemImage: "arrow.triangle.merge") {
@@ -122,14 +132,14 @@ struct BranchContextMenu: View {
             viewModel.togglePin(branch: branch)
         }
         Button("Archive", systemImage: "archivebox") { viewModel.archive(branch: branch) }
-            .disabled(branch.isHEAD)
+            .disabled(branch.isHEAD || worktree != nil)
         Button("Copy Name", systemImage: "doc.on.doc") {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(branch.name, forType: .string)
         }
         Divider()
         Button("Delete…", systemImage: "trash", role: .destructive, action: onDelete)
-            .disabled(branch.isHEAD)
+            .disabled(branch.isHEAD || worktree != nil)
     }
 }
 

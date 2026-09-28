@@ -16,8 +16,7 @@ struct CommitRefLabels: View {
         if !refs.isEmpty {
             HStack(spacing: Theme.Spacing.xs) {
                 ForEach(refs.prefix(Self.maxShown)) { ref in
-                    BranchLabel(name: ref.name, kind: ref.kind, isOnRemote: ref.isOnRemote, truncates: true)
-                        .frame(maxWidth: 170, alignment: .leading)
+                    BranchLabel(name: ref.name, kind: ref.kind, isOnRemote: ref.isOnRemote, maxNameWidth: 140)
                 }
                 if refs.count > Self.maxShown {
                     Text("+\(refs.count - Self.maxShown)")

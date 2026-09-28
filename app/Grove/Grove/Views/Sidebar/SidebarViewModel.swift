@@ -28,8 +28,37 @@ final class SidebarViewModel {
 
     /// Worktrees other than the one this window shows; from a linked worktree that includes the main one.
     var otherWorktrees: [WorktreeInfo] {
-        let current = repository.path.standardizedFileURL.resolvingSymlinksInPath().path
-        return worktrees.filter { URL(fileURLWithPath: $0.path).standardizedFileURL.resolvingSymlinksInPath().path != current }
+        worktrees.filter { !isCurrent($0) }
+    }
+
+    func isCurrent(_ worktree: WorktreeInfo) -> Bool {
+        Self.canonicalPath(worktree.path) == Self.canonicalPath(repository.path.path)
+    }
+
+    /// The other worktree that has `branch` checked out; git won't check it out here too.
+    func worktree(checkingOut branch: BranchInfo) -> WorktreeInfo? {
+        otherWorktrees.first { $0.branch == branch.name }
+    }
+
+    /// Set by the window: moves it to another worktree of this repository, where git commands then run.
+    var onSwitchWorktree: ((String) -> Void)?
+
+    func switchTo(_ worktree: WorktreeInfo) {
+        guard !worktree.isPrunable, !isCurrent(worktree) else { return }
+        onSwitchWorktree?(worktree.path)
+    }
+
+    /// Double-click on a branch: go to the worktree that has it, otherwise check it out here.
+    func activate(branch: BranchInfo) async {
+        if let worktree = worktree(checkingOut: branch) {
+            switchTo(worktree)
+        } else if !branch.isHEAD {
+            await checkout(branch: branch)
+        }
+    }
+
+    private static func canonicalPath(_ path: String) -> String {
+        URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
     }
 
     func select(_ item: SidebarItem) {

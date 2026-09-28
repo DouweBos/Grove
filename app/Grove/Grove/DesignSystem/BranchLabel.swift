@@ -17,13 +17,16 @@ struct BranchLabel: View {
     let kind: Kind
     /// A local branch whose same-named remote branch points at the same commit.
     var isOnRemote = false
-    /// Lets the name truncate in tight rows instead of forcing its full width.
-    var truncates = false
+    /// Longest the name may get before it truncates in the middle; nil shows it in full.
+    var maxNameWidth: CGFloat?
 
     var body: some View {
-        let label = HStack(spacing: 3) {
+        HStack(spacing: 3) {
             Image(systemName: symbol).font(.system(size: 9, weight: .semibold))
+            // Fixed size of a max-width frame is the smaller of the name's width and the cap.
             Text(name).lineLimit(1).truncationMode(.middle)
+                .frame(maxWidth: maxNameWidth, alignment: .leading)
+                .fixedSize()
             if isOnRemote {
                 Image(systemName: "cloud").font(.system(size: 9, weight: .semibold))
                     .accessibilityLabel("Also on remote")
@@ -34,11 +37,7 @@ struct BranchLabel: View {
         .padding(.horizontal, 7)
         .padding(.vertical, 2)
         .background(color.opacity(0.14), in: Capsule())
-        if truncates {
-            label.fixedSize(horizontal: false, vertical: true)
-        } else {
-            label.fixedSize()
-        }
+        .fixedSize()
     }
 
     private var symbol: String {

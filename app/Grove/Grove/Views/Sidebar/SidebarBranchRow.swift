@@ -10,6 +10,8 @@ struct SidebarBranchRow: View {
     var isPinned = false
     /// Show the full name instead of the part after the "group/" prefix.
     var showsFullName = false
+    /// Another worktree that has this branch checked out.
+    var worktree: WorktreeInfo?
 
     var displayName: String {
         guard !showsFullName, let slashIndex = branch.name.firstIndex(of: "/") else { return branch.name }
@@ -19,8 +21,8 @@ struct SidebarBranchRow: View {
     var body: some View {
         SidebarRow(
             title: displayName,
-            symbol: branch.isHEAD ? "checkmark.circle.fill" : "arrow.triangle.branch",
-            tint: branch.isHEAD ? Theme.accent : Theme.textSecondary,
+            symbol: branch.isHEAD ? "checkmark.circle.fill" : (worktree == nil ? "arrow.triangle.branch" : "tree"),
+            tint: branch.isHEAD ? Theme.accent : (worktree == nil ? Theme.textSecondary : Theme.info),
             isEmphasized: branch.isHEAD
         ) {
             HStack(spacing: Theme.Spacing.xs) {
@@ -34,7 +36,14 @@ struct SidebarBranchRow: View {
                 }
             }
         }
-        .help(branch.upstreamShortName.map { "\(branch.name) → \($0)" } ?? branch.name)
+        .help(tooltip)
+    }
+
+    private var tooltip: String {
+        let name = branch.upstreamShortName.map { "\(branch.name) → \($0)" } ?? branch.name
+        guard let worktree else { return name }
+        let place = worktree.isMain ? "the main worktree" : "worktree \(worktree.folderName)"
+        return "\(name)\nChecked out in \(place). Double-click to switch to it."
     }
 }
 
