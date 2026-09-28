@@ -273,14 +273,14 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     /// Writes a local config value; nil or empty unsets it.
     func setLocalConfigValue(_ key: String, to value: String?) async throws
     func setRemoteURL(_ url: String, forRemote name: String) async throws
-    /// Full diff of a pull request against its base, via `gh pr diff`.
+    /// Full diff of a pull request against its base.
     func pullRequestDiff(number: Int) async throws -> [FileDiff]
-    /// Commits in a pull request, via `gh pr view --json commits`.
+    /// Commits in a pull request.
     func pullRequestCommits(number: Int) async throws -> [CommitInfo]
 
     // MARK: Pull Requests
 
-    /// Return the list of pull requests from the GitHub CLI.
+    /// The repository's pull requests on its hosting service.
     func pullRequests() async throws -> [PullRequestInfo]
     /// Open pull requests keyed by head branch name.
     func openPullRequests() async throws -> [String: OpenPullRequest]
@@ -288,12 +288,16 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func pullRequestDetail(number: Int) async throws -> PullRequestInfo
     /// Return all comments and reviews for a pull request.
     func pullRequestComments(number: Int) async throws -> [PRComment]
-    /// Check out the branch for a pull request via `gh pr checkout`.
+    /// Check out the branch of a pull request.
     func checkoutPullRequest(number: Int) async throws
     /// Close a pull request without merging.
     func closePullRequest(number: Int) async throws
     /// Merge a pull request using the merge strategy.
     func mergePullRequest(number: Int) async throws
+    /// The service the repository's remote points at, even without an account for it.
+    func hostingService() async -> HostingServiceKind?
+    /// The pull request's page on its service.
+    func pullRequestWebURL(number: Int) async throws -> URL?
     /// Posts a general comment on a pull request's conversation.
     func commentOnPullRequest(number: Int, body: String) async throws
     /// Comments left on lines of a pull request's diff.
@@ -396,6 +400,8 @@ extension GitRepositoryProtocol {
     func pullRequestCommits(number: Int) async throws -> [CommitInfo] { [] }
     func createPullRequest(_ draft: PullRequestDraft) async throws -> String { "" }
     func commentOnPullRequest(number: Int, body: String) async throws {}
+    func hostingService() async -> HostingServiceKind? { .github }
+    func pullRequestWebURL(number: Int) async throws -> URL? { nil }
     func pullRequestReviewComments(number: Int) async throws -> [PRReviewComment] { [] }
     func publishBranch(_ name: String, to remote: String, as target: String) async throws {}
     func defaultBranch(of remote: String) async -> String? { nil }

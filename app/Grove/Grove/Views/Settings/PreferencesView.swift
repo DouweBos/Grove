@@ -5,22 +5,32 @@
 
 import SwiftUI
 
+enum PreferencesTab: String {
+    case general, git, accounts, tools, advanced
+}
+
 struct PreferencesView: View {
 
     let manager: any RepositoryManagerProtocol
+    @AppStorage(GrovePreferences.Key.preferencesTab) private var tab = PreferencesTab.general.rawValue
 
     var body: some View {
-        TabView {
+        TabView(selection: $tab) {
             GeneralPreferencesTab()
                 .tabItem { Label("General", systemImage: "gearshape") }
+                .tag(PreferencesTab.general.rawValue)
             GitConfigPreferencesTab()
                 .tabItem { Label("Git", systemImage: "terminal") }
+                .tag(PreferencesTab.git.rawValue)
             ServicesPreferencesTab()
                 .tabItem { Label("Accounts", systemImage: "person.crop.circle") }
+                .tag(PreferencesTab.accounts.rawValue)
             EditorPreferencesTab()
                 .tabItem { Label("Tools", systemImage: "hammer") }
+                .tag(PreferencesTab.tools.rawValue)
             AdvancedPreferencesTab(manager: manager)
                 .tabItem { Label("Advanced", systemImage: "gearshape.2") }
+                .tag(PreferencesTab.advanced.rawValue)
         }
         .frame(width: 560, height: 520)
     }

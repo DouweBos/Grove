@@ -21,6 +21,8 @@ enum GrovePreferences {
         static let diffToolArguments = "externalDiffToolArguments"
         static let mergeToolPath = "externalMergeToolPath"
         static let mergeToolArguments = "externalMergeToolArguments"
+        /// The Settings tab on screen, so a view can open Settings on a particular tab.
+        static let preferencesTab = "preferencesTab"
 
         static let all = [defaultCloneDirectory, terminalApp, autoFetchMinutes, warnOnHunkDiscard, staleBranchDays,
                           appearance, externalEditor, externalEditorPath, diffToolPath, diffToolArguments,

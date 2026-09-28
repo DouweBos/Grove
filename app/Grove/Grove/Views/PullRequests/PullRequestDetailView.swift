@@ -53,7 +53,7 @@ struct PullRequestDetailView: View {
                 }
                 Spacer(minLength: Theme.Spacing.md)
                 if viewModel.isRevalidating {
-                    ProgressView().controlSize(.small).help("Checking GitHub for changes")
+                    ProgressView().controlSize(.small).help("Checking \(viewModel.serviceName) for changes")
                 }
                 actions(pr)
             }
@@ -81,11 +81,11 @@ struct PullRequestDetailView: View {
     private func actions(_ pr: PullRequestInfo) -> some View {
         HStack(spacing: Theme.Spacing.sm) {
             Button { viewModel.openInBrowser(pr) } label: { Image(systemName: "safari") }
-                .help("Open on GitHub")
+                .help("Open on \(viewModel.serviceName)")
             Button("Check Out") { Task { await viewModel.checkout(pr) } }
             if pr.state == .open {
                 Menu("More") {
-                    Button("Merge on GitHub\u{2026}") { viewModel.request(.merge, on: pr) }
+                    Button("Merge on \(viewModel.serviceName)\u{2026}") { viewModel.request(.merge, on: pr) }
                         .disabled(pr.isDraft)
                     Button("Close Pull Request\u{2026}", role: .destructive) { viewModel.request(.close, on: pr) }
                 }

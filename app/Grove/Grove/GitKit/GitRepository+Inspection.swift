@@ -110,23 +110,6 @@ extension GitRepository {
         try await inspectionShell.run(["remote", "set-url", name, url])
     }
 
-    // MARK: Pull Requests
-
-    func pullRequestDiff(number: Int) async throws -> [FileDiff] {
-        let patch = try await GitHubCLI.run(["pr", "diff", "\(number)"], in: path)
-        let names = try await GitHubCLI.run(["pr", "diff", "\(number)", "--name-only"], in: path)
-        let diffs = DiffParser.parse(patch)
-        let listed = Set(names.split(separator: "\n").map(String.init))
-        return diffs
-            .filter { listed.isEmpty || listed.contains($0.filePath) }
-            .map { FileDiff(path: $0.filePath, status: Self.inferStatus($0), diff: $0, stats: $0.stats) }
-    }
-
-    func pullRequestCommits(number: Int) async throws -> [CommitInfo] {
-        let json = try await GitHubCLI.run(["pr", "view", "\(number)", "--json", "commits"], in: path)
-        return GitHubCLI.parseCommits(json)
-    }
-
     // MARK: Helpers
 
     nonisolated static func fileDiffs(patch: String, nameStatus: String) -> [FileDiff] {

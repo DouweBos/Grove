@@ -1,6 +1,7 @@
 // Views/PullRequests/PullRequestsViewModel.swift
 // Grove
 
+import AppKit
 import Foundation
 import Observation
 
@@ -14,24 +15,6 @@ enum PRDetailTab: String, CaseIterable, Hashable {
     case overview = "Overview"
     case commits = "Commits"
     case files = "Files"
-}
-
-/// Why the list couldn't load, so the view can offer the right fix.
-enum PRLoadFailure: Equatable {
-    case ghMissing
-    case notAuthenticated
-    case noGitHubRemote
-    case other(String)
-
-    init(_ error: Error) {
-        let text = error.localizedDescription
-        if case GitHubCLI.Failure.notInstalled = error { self = .ghMissing; return }
-        if case GitHubCLI.Failure.notAuthenticated = error { self = .notAuthenticated; return }
-        if !GitHubCLI.isInstalled { self = .ghMissing; return }
-        if text.contains("gh auth login") || text.contains("not logged") { self = .notAuthenticated; return }
-        if text.contains("known GitHub host") || text.contains("no git remotes") { self = .noGitHubRemote; return }
-        self = .other(text)
-    }
 }
 
 @MainActor
@@ -52,6 +35,8 @@ final class PullRequestsViewModel {
     private(set) var isLoading = false
     private(set) var hasLoaded = false
     private(set) var loadFailure: PRLoadFailure?
+    /// The service the repository's remote points at, for labels like "Open on GitLab".
+    private(set) var service: HostingServiceKind?
     private(set) var filterState: PRFilterState = .open
     private(set) var searchText = ""
 
@@ -123,6 +108,7 @@ final class PullRequestsViewModel {
     func refresh() async {
         isLoading = true
         defer { isLoading = false; hasLoaded = true }
+        service = await repository.hostingService()
         do {
             pullRequests = try await repository.pullRequests()
             loadFailure = nil
@@ -278,10 +264,14 @@ final class PullRequestsViewModel {
         await perform { try await self.repository.checkoutPullRequest(number: pr.id) }
     }
 
+    /// "GitHub", "GitLab", …; generic until the remote has been read.
+    var serviceName: String { service?.displayName ?? "the Host" }
+
     func openInBrowser(_ pr: PullRequestInfo) {
-        let path = repository.path
         Task {
-            do { _ = try await GitHubCLI.run(["pr", "view", "\(pr.id)", "--web"], in: path) } catch {
+            do {
+                if let url = try await repository.pullRequestWebURL(number: pr.id) { NSWorkspace.shared.open(url) }
+            } catch {
                 actionError = error.localizedDescription
             }
         }

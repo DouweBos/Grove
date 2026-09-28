@@ -9,7 +9,7 @@ import Foundation
 // MARK: - PRParserError
 
 /// Errors thrown when `gh` CLI JSON output cannot be decoded.
-enum PRParserError: LocalizedError {
+nonisolated enum PRParserError: LocalizedError {
     case invalidJSON(String)
     case missingField(String)
 
@@ -26,7 +26,7 @@ enum PRParserError: LocalizedError {
 // MARK: - PRParser
 
 /// Parses `gh pr list` and `gh pr view` JSON into domain types.
-enum PRParser {
+nonisolated enum PRParser {
 
     // MARK: - Parse List
 
