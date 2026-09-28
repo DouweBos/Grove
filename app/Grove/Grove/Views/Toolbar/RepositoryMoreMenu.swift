@@ -21,6 +21,7 @@ struct RepositoryMoreMenu: View {
             Divider()
             Button { toolbarState.present(.branch) } label: { Label("New Branch…", systemImage: "arrow.triangle.branch") }
             Button { toolbarState.present(.tag) } label: { Label("New Tag…", systemImage: "tag") }
+            Button { toolbarState.onAddSubmodule?() } label: { Label("Add Submodule…", systemImage: "shippingbox") }
             Divider()
             gitFlowMenu
         } label: {

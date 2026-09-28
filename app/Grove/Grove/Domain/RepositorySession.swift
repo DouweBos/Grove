@@ -100,6 +100,7 @@ final class RepositorySession {
         pullRequestsVM.onRepositoryChanged = refresh
         gitFlowVM.onRepositoryChanged = refresh
         sidebarVM.gitFlow = gitFlowVM
+        toolbarState.onAddSubmodule = { [sidebarVM] in sidebarVM.requestAddSubmodule() }
     }
 
     // MARK: - Lifecycle

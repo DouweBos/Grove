@@ -29,6 +29,8 @@ final class RepositoryToolbarState {
     /// Sheets read branches and remotes from here, so they open without waiting for git.
     let refs: RepositoryRefs
     let gitFlow: GitFlowViewModel
+    /// Set by the session: the Add Submodule sheet lives with the sidebar's submodules.
+    var onAddSubmodule: (() -> Void)?
 
     init(refs: RepositoryRefs, gitFlow: GitFlowViewModel) {
         self.refs = refs

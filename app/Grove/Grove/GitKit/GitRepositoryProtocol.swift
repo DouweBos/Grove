@@ -230,6 +230,13 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
 
     /// Submodules declared in `.gitmodules`, with their checkout state.
     func submodules() async throws -> [SubmoduleInfo]
+    func initSubmodule(path: String) async throws
+    /// `toRemote` moves it to its tracked branch's tip instead of the commit this repository records.
+    func updateSubmodule(path: String, toRemote: Bool) async throws
+    func fetchSubmodule(path: String) async throws
+    func addSubmodule(url: String, path: String, branch: String?) async throws
+    /// Deinitializes, removes it from the index and `.gitmodules`, and deletes its clone under `.git/modules`.
+    func removeSubmodule(path: String) async throws
 
     // MARK: Worktrees
 
@@ -373,6 +380,11 @@ extension GitRepositoryProtocol {
 
     func stashDiff(index: Int) async throws -> [FileDiff] { [] }
     func submodules() async throws -> [SubmoduleInfo] { [] }
+    func initSubmodule(path: String) async throws {}
+    func updateSubmodule(path: String, toRemote: Bool) async throws {}
+    func fetchSubmodule(path: String) async throws {}
+    func addSubmodule(url: String, path: String, branch: String?) async throws {}
+    func removeSubmodule(path: String) async throws {}
     func worktrees() async throws -> [WorktreeInfo] { [] }
     @discardableResult
     func createBranch(name: String, from: String?, checkout: Bool, track: Bool, parent: String?) async throws -> BranchInfo {

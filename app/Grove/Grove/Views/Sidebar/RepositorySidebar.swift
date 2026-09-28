@@ -51,10 +51,16 @@ struct RepositorySidebar: View {
             Task { await viewModel.activate(branch: branch) }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let message = viewModel.errorMessage {
+            if let activity = viewModel.activity {
+                ProgressStrip(title: activity, detail: "", fraction: nil)
+                    .padding(Theme.Spacing.sm)
+            } else if let message = viewModel.errorMessage {
                 Banner(symbol: "xmark.octagon", message: message, tone: .negative) { viewModel.dismissError() }
                     .padding(Theme.Spacing.sm)
             }
+        }
+        .sheet(isPresented: Binding(get: { viewModel.isAddingSubmodule }, set: { if !$0 { viewModel.dismissAddSubmodule() } })) {
+            AddSubmoduleDialogView(viewModel: viewModel)
         }
         .task {
             await viewModel.loadIfNeeded()

@@ -314,14 +314,25 @@ final class SidebarViewModel {
         }
     }
 
-    /// Updates a submodule at the given path.
-    func updateSubmodule(path: String) async {
+    // MARK: - Submodules (actions in SidebarViewModel+Submodules.swift)
+
+    /// A running submodule action, e.g. "Cloning vendor/icons…", shown under the sidebar.
+    private(set) var activity: String?
+    private(set) var isAddingSubmodule = false
+
+    func requestAddSubmodule() { isAddingSubmodule = true }
+    func dismissAddSubmodule() { isAddingSubmodule = false }
+
+    /// Runs a git mutation with `title` showing, then refreshes every view.
+    func perform(_ title: String, _ work: () async throws -> Void) async {
+        activity = title
+        defer { activity = nil }
         do {
-            try await repository.updateSubmodule(path: path)
-            await didChangeRepository()
+            try await work()
         } catch {
             errorMessage = error.localizedDescription
         }
+        await didChangeRepository()
     }
 
     /// Removes a linked worktree.
