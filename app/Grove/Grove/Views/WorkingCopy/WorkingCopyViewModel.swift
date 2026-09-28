@@ -84,14 +84,14 @@ final class WorkingCopyViewModel {
         didSet { updateAutoComplete(text: commitSubject) }
     }
     var commitBody = ""
-    private(set) var isAmend = false
-    private(set) var signOff = false
-    private(set) var signCommit = false
+    var isAmend = false
+    var signOff = false
+    var signCommit = false
     private(set) var isSigningAvailable = false
     private(set) var identity: CommitIdentity?
-    private(set) var isCommitting = false
+    var isCommitting = false
     /// HEAD's message as loaded for amend, so turning amend off can drop an untouched prefill.
-    private var amendPrefill: (subject: String, body: String)?
+    var amendPrefill: (subject: String, body: String)?
 
     var hasSubject: Bool { !commitSubject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     var canCommit: Bool { hasSubject && (isAmend || !stagedFiles.isEmpty) && conflictedFiles.isEmpty && !isCommitting }
@@ -112,7 +112,7 @@ final class WorkingCopyViewModel {
         }
     }
     private(set) var operationContext: OperationContext?
-    private(set) var isRunningOperation = false
+    var isRunningOperation = false
 
     // MARK: Autocomplete
 
@@ -326,105 +326,6 @@ final class WorkingCopyViewModel {
         await mutate { try await self.repository.discardChanges(paths: [entry.path]) }
     }
 
-    // MARK: - Commit
-
-    func setAmend(_ on: Bool) async {
-        isAmend = on
-        if on {
-            guard !hasSubject, commitBody.isEmpty,
-                  let head = try? await repository.commitDetail("HEAD") else { return }
-            let body = head.body?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            commitSubject = head.summary
-            commitBody = body
-            amendPrefill = (head.summary, body)
-            dismissAutoComplete()
-        } else if let prefill = amendPrefill {
-            if commitSubject == prefill.subject && commitBody == prefill.body {
-                commitSubject = ""
-                commitBody = ""
-            }
-            amendPrefill = nil
-        }
-    }
-
-    func setSignOff(_ on: Bool) {
-        signOff = on
-    }
-
-    func setSignCommit(_ on: Bool) {
-        signCommit = on
-    }
-
-    func commit() async {
-        guard canCommit else {
-            if !hasSubject { errorMessage = "Please enter a commit subject." }
-            return
-        }
-        isCommitting = true
-        defer { isCommitting = false }
-        do {
-            let message = commitSubject.trimmingCharacters(in: .whitespacesAndNewlines)
-            let trimmedBody = commitBody.trimmingCharacters(in: .whitespacesAndNewlines)
-            let body = trimmedBody.isEmpty ? nil : trimmedBody
-            // No previous HEAD means the first commit, which a soft reset can't undo.
-            let previousHead = try? await repository.commitDetail("HEAD").id
-            let (repo, amend, sign, signOff) = (repository, isAmend, signCommit, signOff)
-            let commit: @MainActor () async throws -> Void = {
-                try await repo.commit(message: message, body: body, amend: amend, sign: sign, signOff: signOff)
-            }
-            try await commit()
-            if let previousHead {
-                undoManager?.record(GitUndoManager.commitAction(amend: amend, previousHead: previousHead,
-                                                                repository: repo, recommit: commit))
-            }
-        } catch {
-            errorMessage = error.localizedDescription
-            return
-        }
-        commitSubject = ""
-        commitBody = ""
-        isAmend = false
-        amendPrefill = nil
-        dismissAutoComplete()
-        await repositoryChanged()
-    }
-
-    // MARK: - Conflicts
-
-    /// Jump to the first unresolved file so the diff panel shows the resolution UI.
-    func resolveNextConflict() async {
-        guard let first = conflictedFiles.first else { return }
-        await select(first)
-    }
-
-    func resolveConflict(taking side: ConflictSide) async {
-        guard let entry = selectedEntry, entry.isConflicted else { return }
-        await mutate { try await self.repository.resolveConflict(path: entry.path, side: side) }
-        if let next = conflictedFiles.first { await select(next) }
-    }
-
-    func abortOperation() async {
-        await runOperation {
-            let repo = self.repository
-            switch self.repositoryState {
-            case .rebase, .rebaseInteractive: try await repo.abortRebase()
-            case .cherrypick: try await repo.abortCherryPick()
-            case .revert: try await repo.abortRevert()
-            default: try await repo.abortMerge()
-            }
-        }
-    }
-
-    func continueOperation() async {
-        await runOperation { try await self.repository.continueOperation() }
-    }
-
-    private func runOperation(_ work: @escaping () async throws -> Void) async {
-        isRunningOperation = true
-        defer { isRunningOperation = false }
-        await mutate(work)
-    }
-
     // MARK: - Helpers
 
     func clearError() {
@@ -440,7 +341,7 @@ final class WorkingCopyViewModel {
         await repositoryChanged()
     }
 
-    private func repositoryChanged() async {
+    func repositoryChanged() async {
         if let onRepositoryChanged {
             await onRepositoryChanged()
         } else {
