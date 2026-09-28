@@ -58,6 +58,8 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func diff(for entry: StatusEntry, staged: Bool, ignoreWhitespace: Bool) async throws -> DiffResult
     /// Return all file diffs that belong to a commit.
     func diffForCommit(_ sha: String) async throws -> [FileDiff]
+    /// The commit's diff limited to one path; renames into that path show as additions.
+    func diffForCommit(_ sha: String, path: String) async throws -> [FileDiff]
     /// Every file path in the commit's tree (`git ls-tree -r`).
     func filesInCommit(_ sha: String) async throws -> [String]
 
@@ -324,6 +326,10 @@ extension GitRepositoryProtocol {
     }
 
     func filesInCommit(_ sha: String) async throws -> [String] { [] }
+
+    func diffForCommit(_ sha: String, path: String) async throws -> [FileDiff] {
+        try await diffForCommit(sha).filter { $0.path == path || $0.diff?.oldPath == path }
+    }
 
     func stashDiff(index: Int) async throws -> [FileDiff] { [] }
     func submodules() async throws -> [SubmoduleInfo] { [] }

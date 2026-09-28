@@ -38,8 +38,15 @@ final class MockGitRepository: GitRepositoryProtocol {
 
     // MARK: Helpers
 
+    /// How often each detail loader ran, so tests can tell a cache hit from a re-read.
+    @ObservationIgnored private(set) var callCounts: [String: Int] = [:]
+
+    func recordCall(_ name: String = #function) {
+        callCounts[name, default: 0] += 1
+    }
+
     /// Simulates a realistic async round-trip (50 ms by default).
-    private func simulateLatency(_ nanoseconds: UInt64 = 50_000_000) async {
+    func simulateLatency(_ nanoseconds: UInt64 = 50_000_000) async {
         try? await Task.sleep(nanoseconds: nanoseconds)
     }
 
@@ -55,6 +62,7 @@ final class MockGitRepository: GitRepositoryProtocol {
     }
 
     func listTrackedFiles() async throws -> [String] {
+        recordCall()
         await simulateLatency()
         return MockData.trackedFiles
     }
@@ -108,16 +116,19 @@ final class MockGitRepository: GitRepositoryProtocol {
     // MARK: Diff
 
     func diff(for entry: StatusEntry, staged: Bool, ignoreWhitespace: Bool = false) async throws -> DiffResult {
+        recordCall()
         await simulateLatency()
         return MockData.diffResult(for: entry.path)
     }
 
     func diffForCommit(_ sha: String) async throws -> [FileDiff] {
+        recordCall()
         await simulateLatency()
         return MockData.commitFileDiffs
     }
 
     func filesInCommit(_ sha: String) async throws -> [String] {
+        recordCall()
         await simulateLatency()
         return MockData.trackedFiles
     }
@@ -150,6 +161,7 @@ final class MockGitRepository: GitRepositoryProtocol {
     }
 
     func commitDetail(_ sha: String) async throws -> CommitInfo {
+        recordCall()
         await simulateLatency()
         return MockData.commits.first(where: { $0.id == sha }) ?? MockData.commits[0]
     }
@@ -431,64 +443,6 @@ final class MockGitRepository: GitRepositoryProtocol {
 
     func removeWorktree(path: String, force: Bool) async throws {
         await simulateLatency()
-    }
-
-    // MARK: Blame
-
-    func blame(file: String, revision: String?) async throws -> [BlameEntry] {
-        await simulateLatency(120_000_000)
-        return MockData.blameEntries
-    }
-
-    // MARK: Reflog
-
-    func reflog(maxCount: Int) async throws -> [ReflogEntry] {
-        await simulateLatency()
-        return Array(MockData.reflogEntries.prefix(maxCount))
-    }
-
-    // MARK: Pull Requests
-
-    func pullRequests() async throws -> [PullRequestInfo] {
-        await simulateLatency(80_000_000)
-        return MockData.pullRequests
-    }
-
-    func pullRequestDetail(number: Int) async throws -> PullRequestInfo {
-        await simulateLatency()
-        return MockData.pullRequests.first(where: { $0.id == number }) ?? MockData.pullRequests[0]
-    }
-
-    func pullRequestComments(number: Int) async throws -> [PRComment] {
-        await simulateLatency(60_000_000)
-        return MockData.prComments
-    }
-
-    func checkoutPullRequest(number: Int) async throws {
-        await simulateLatency(150_000_000)
-        if let pr = MockData.pullRequests.first(where: { $0.id == number }) {
-            currentBranch = BranchInfo(
-                id: "refs/heads/\(pr.sourceBranch)",
-                name: pr.sourceBranch,
-                isLocal: true,
-                isRemote: false,
-                isHEAD: true,
-                targetSHA: MockData.commits[0].id,
-                remoteName: nil,
-                upstream: nil,
-                ahead: 0,
-                behind: 0
-            )
-        }
-    }
-
-    func closePullRequest(number: Int) async throws {
-        await simulateLatency(80_000_000)
-    }
-
-    func mergePullRequest(number: Int) async throws {
-        await simulateLatency(200_000_000)
-        currentBranch = MockData.branches.first(where: { $0.isHEAD })
     }
 
     // MARK: Working Copy

@@ -27,7 +27,7 @@ struct FileStatusListView: View {
 
     private var viewModePicker: some View {
         Menu {
-            Picker("View", selection: Binding(get: { viewModel.fileViewMode }, set: { viewModel.setFileViewMode($0) })) {
+            Picker("View", selection: Binding(get: { viewModel.fileViewMode }, set: { mode in Task { await viewModel.setFileViewMode(mode) } })) {
                 ForEach(FileViewMode.allCases, id: \.self) { mode in
                     Label(mode.rawValue, systemImage: mode.symbol).tag(mode)
                 }

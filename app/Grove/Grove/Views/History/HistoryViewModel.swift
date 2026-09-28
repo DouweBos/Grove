@@ -59,6 +59,9 @@ final class HistoryViewModel {
     private let pageSize = 100
     private var hasLoaded = false
     private var detailTask: Task<Void, Never>?
+    private var prefetchTask: Task<Void, Never>?
+    // Keyed by SHA: a commit's diff, tree and signature never change, so revisits skip git entirely.
+    @ObservationIgnored private var detailCache = LRUCache<String, CommitDetails>(capacity: 50)
 
     init(repository: any GitRepositoryProtocol) {
         self.repository = repository
@@ -193,11 +196,17 @@ final class HistoryViewModel {
 
     func select(_ commit: CommitInfo) {
         guard selectedCommit?.id != commit.id else { return }
-        selectedCommit = commit
-        commitDiffs = []
-        expandedPaths = []
-        treeFiles = []
         detailTask?.cancel()
+        selectedCommit = commit
+        // A cached commit shows at once; a miss starts from a clean loading state, never the previous commit.
+        let cached = detailCache.value(for: commit.id)
+        commitDiffs = cached?.diffs ?? []
+        expandedPaths = Self.defaultExpanded(commitDiffs)
+        treeFiles = cached?.tree ?? []
+        selectedSignature = cached?.signature
+        isLoadingDiff = cached?.diffs == nil
+        isLoadingTree = false
+        guard cached?.isComplete(needsTree: detailTab == .tree) != true else { return }
         detailTask = Task { await loadDetails(for: commit) }
     }
 
@@ -221,6 +230,8 @@ final class HistoryViewModel {
         let current = selectedCommit.flatMap { sel in visible.firstIndex { $0.id == sel.id } }
         let index = min(max((current ?? -1) + offset, 0), visible.count - 1)
         select(visible[index])
+        let next = index + (offset < 0 ? -1 : 1)
+        if visible.indices.contains(next) { prefetchDiff(for: visible[next]) }
     }
 
     private func clearSelection() {
@@ -229,28 +240,51 @@ final class HistoryViewModel {
         commitDiffs = []
         expandedPaths = []
         treeFiles = []
+        selectedSignature = nil
+        isLoadingDiff = false
     }
 
     private func loadDetails(for commit: CommitInfo) async {
-        isLoadingDiff = true
-        selectedSignature = nil
+        let cached = detailCache.peek(commit.id)
         // Verifying a signature is slow, so only the selected commit is checked, alongside its diff.
-        async let verified = try? repository.commitDetail(commit.id)
-        do {
-            let diffs = try await repository.diffForCommit(commit.id)
-            // A newer selection may have started while this diff was loading.
+        let needsSignature = cached?.signature == nil
+        async let verified: CommitInfo? = needsSignature ? try? repository.commitDetail(commit.id) : nil
+        if cached?.diffs == nil {
+            do {
+                let diffs = try await repository.diffForCommit(commit.id)
+                detailCache.update(commit.id, default: CommitDetails()) { $0.diffs = diffs }
+                // A newer selection may have started while this diff was loading.
+                guard selectedCommit?.id == commit.id else { return }
+                commitDiffs = diffs
+                expandedPaths = Self.defaultExpanded(diffs)
+            } catch {
+                if selectedCommit?.id == commit.id { errorMessage = error.localizedDescription }
+            }
             guard selectedCommit?.id == commit.id else { return }
-            commitDiffs = diffs
-            if diffs.count == 1, let only = diffs.first { expandedPaths = [only.path] }
-        } catch {
-            if selectedCommit?.id == commit.id { errorMessage = error.localizedDescription }
+            isLoadingDiff = false
         }
-        guard selectedCommit?.id == commit.id else { return }
-        isLoadingDiff = false
-        if detailTab == .tree { await loadTree() }
-        if let isSigned = await verified?.isSigned, selectedCommit?.id == commit.id {
-            selectedSignature = isSigned ? .verified : .unsigned
+        if detailTab == .tree, treeFiles.isEmpty { await loadTree() }
+        if let isSigned = await verified?.isSigned {
+            let signature: SignatureStatus = isSigned ? .verified : .unsigned
+            detailCache.update(commit.id, default: CommitDetails()) { $0.signature = signature }
+            if selectedCommit?.id == commit.id { selectedSignature = signature }
         }
+    }
+
+    /// Warms the diff of the commit the arrow keys will land on next; debounced so held keys don't pile up git calls.
+    private func prefetchDiff(for commit: CommitInfo) {
+        prefetchTask?.cancel()
+        guard detailCache.peek(commit.id)?.diffs == nil else { return }
+        prefetchTask = Task {
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled, detailCache.peek(commit.id)?.diffs == nil,
+                  let diffs = try? await repository.diffForCommit(commit.id) else { return }
+            detailCache.update(commit.id, default: CommitDetails()) { $0.diffs = diffs }
+        }
+    }
+
+    private static func defaultExpanded(_ diffs: [FileDiff]) -> Set<String> {
+        diffs.count == 1 ? Set(diffs.map(\.path)) : []
     }
 
     // MARK: - Detail
@@ -280,10 +314,15 @@ final class HistoryViewModel {
 
     private func loadTree() async {
         guard let commit = selectedCommit else { return }
+        if let tree = detailCache.value(for: commit.id)?.tree {
+            treeFiles = tree
+            return
+        }
         isLoadingTree = true
         defer { if selectedCommit?.id == commit.id { isLoadingTree = false } }
         do {
             let files = try await repository.filesInCommit(commit.id)
+            detailCache.update(commit.id, default: CommitDetails()) { $0.tree = files }
             guard selectedCommit?.id == commit.id else { return }
             treeFiles = files
         } catch {
@@ -298,5 +337,16 @@ final class HistoryViewModel {
         graphNodes = Dictionary(nodes.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let widest = nodes.flatMap { node in node.lines.map { max($0.fromColumn, $0.toColumn) } + [node.column] }.max() ?? 0
         maxGraphColumns = widest + 1
+    }
+}
+
+/// Everything the detail pane shows for one commit; each part fills in as it loads.
+struct CommitDetails {
+    var diffs: [FileDiff]?
+    var tree: [String]?
+    var signature: SignatureStatus?
+
+    func isComplete(needsTree: Bool) -> Bool {
+        diffs != nil && signature != nil && (!needsTree || tree != nil)
     }
 }

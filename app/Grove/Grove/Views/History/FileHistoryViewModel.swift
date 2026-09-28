@@ -36,6 +36,8 @@ final class FileHistoryViewModel {
     let repository: any GitRepositoryProtocol
     /// Repository-relative path of the file whose history is shown.
     let filePath: String
+    // Keyed by SHA; the path is fixed per view model, so this is effectively (sha, path).
+    @ObservationIgnored private var diffCache = LRUCache<String, DiffResult>(capacity: 100)
 
     // MARK: - Init
 
@@ -64,26 +66,39 @@ final class FileHistoryViewModel {
         }
     }
 
-    /// Select a commit and load the file diff at that revision.
-    ///
-    /// Calls ``GitRepositoryProtocol/diffForCommit(_:)`` and filters for the
-    /// entry whose path matches ``filePath``.
+    /// Select a commit and load the file diff at that revision, from cache when revisited.
     func selectCommit(_ commit: CommitInfo) async {
         guard selectedCommit?.id != commit.id else { return }
         selectedCommit = commit
+        if let cached = diffCache.value(for: commit.id) {
+            fileDiff = cached
+            isLoadingDiff = false
+            return
+        }
         fileDiff = nil
         isLoadingDiff = true
         do {
-            let allDiffs = try await repository.diffForCommit(commit.id)
+            let diff = try await loadFileDiff(at: commit)
+            if let diff { diffCache.insert(diff, for: commit.id) }
             // A newer selection may have started while this diff was loading.
             guard selectedCommit?.id == commit.id else { return }
-            let match = allDiffs.first { $0.path == filePath || $0.diff?.oldPath == filePath }
-                ?? (allDiffs.count == 1 ? allDiffs.first : nil)
-            fileDiff = match?.diff
+            fileDiff = diff
         } catch {
             errorMessage = error.localizedDescription
         }
         if selectedCommit?.id == commit.id { isLoadingDiff = false }
+    }
+
+    /// Diffs only this file; falls back to the whole commit when it had another name there,
+    /// or when an addition is really the far side of a rename that `--follow` crossed.
+    private func loadFileDiff(at commit: CommitInfo) async throws -> DiffResult? {
+        let limited = try await repository.diffForCommit(commit.id, path: filePath)
+        let isOldest = commit.id == commits.last?.id
+        if let match = limited.first, match.status != .added || isOldest { return match.diff }
+        let allDiffs = try await repository.diffForCommit(commit.id)
+        let match = allDiffs.first { $0.path == filePath || $0.diff?.oldPath == filePath }
+            ?? (allDiffs.count == 1 ? allDiffs.first : nil)
+        return match?.diff ?? limited.first?.diff
     }
 
     /// Export the file at the selected commit to a user-chosen disk location.

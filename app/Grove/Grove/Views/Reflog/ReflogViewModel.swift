@@ -87,6 +87,8 @@ final class ReflogViewModel {
     var undoManager: GitUndoManager?
 
     let repository: any GitRepositoryProtocol
+    // Keyed by SHA: commit details are immutable and verifying signatures makes each lookup slow.
+    @ObservationIgnored private var commitCache = LRUCache<String, CommitInfo>(capacity: 100)
 
     init(repository: any GitRepositoryProtocol) {
         self.repository = repository
@@ -117,12 +119,19 @@ final class ReflogViewModel {
     func select(_ entry: ReflogEntry) async {
         guard entry.id != selectedEntry?.id else { return }
         selectedEntry = entry
+        if let cached = commitCache.value(for: entry.newSHA) {
+            selectedCommit = cached
+            isLoadingDetail = false
+            return
+        }
         selectedCommit = nil
         isLoadingDetail = true
-        defer { isLoadingDetail = false }
         // A missing commit (e.g. after gc) is expected; the panel shows entry data only.
         let commit = try? await repository.commitDetail(entry.newSHA)
-        if selectedEntry?.id == entry.id { selectedCommit = commit }
+        if let commit { commitCache.insert(commit, for: entry.newSHA) }
+        guard selectedEntry?.id == entry.id else { return }
+        selectedCommit = commit
+        isLoadingDetail = false
     }
 
     // MARK: - Reset

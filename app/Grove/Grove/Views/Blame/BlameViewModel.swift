@@ -48,6 +48,13 @@ final class BlameViewModel {
     var commitCount: Int { Set(lines.compactMap { $0.entry?.commitSHA }).count }
 
     let repository: any GitRepositoryProtocol
+    // Revisions are immutable; working-tree entries (nil revision) are shown at once but always re-read.
+    @ObservationIgnored private var blameCache = LRUCache<BlameKey, [BlameLine]>(capacity: 30)
+
+    private struct BlameKey: Hashable {
+        let file: String
+        let revision: String?
+    }
 
     init(repository: any GitRepositoryProtocol) {
         self.repository = repository
@@ -113,16 +120,30 @@ final class BlameViewModel {
     private func loadBlame() async {
         guard let file = selectedFile else { return }
         let requested = revision
-        isLoadingBlame = true
+        let key = BlameKey(file: file, revision: requested)
         errorMessage = nil
-        defer { isLoadingBlame = false }
+        // Never leave another file's or revision's lines on screen while this one loads.
+        if let cached = blameCache.value(for: key) {
+            lines = cached
+            if requested != nil {
+                isLoadingBlame = false
+                return
+            }
+        } else {
+            lines = []
+        }
+        isLoadingBlame = true
+        defer { if selectedFile == file, revision == requested { isLoadingBlame = false } }
         do {
             async let entries = repository.blame(file: file, revision: requested)
             async let contents = repository.fileContents(path: file, revision: requested)
             let (blame, text) = try await (entries, contents)
+            let built = Self.buildLines(text: text, entries: blame)
+            blameCache.insert(built, for: key)
             guard selectedFile == file, revision == requested else { return }
-            lines = Self.buildLines(text: text, entries: blame)
+            lines = built
         } catch {
+            guard selectedFile == file, revision == requested else { return }
             lines = []
             errorMessage = requested == nil
                 ? error.localizedDescription

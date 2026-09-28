@@ -66,8 +66,10 @@ final class PullRequestsViewModel {
     private(set) var prChangeset: [FileDiff] = []
     private(set) var selectedChangesetPath: String?
     private(set) var isLoadingChangeset = false
-    private var loadedCommitsFor: Int?
-    private var loadedChangesetFor: Int?
+    /// A cached PR is on screen while its details are re-fetched from GitHub.
+    private(set) var isRevalidating = false
+    // Keyed by number and updatedAt, so an edited PR misses instead of showing its old state.
+    @ObservationIgnored private var detailCache = LRUCache<PRDetailKey, PRDetails>(capacity: 30)
 
     var actionError: String?
     var pendingOperation: PendingOperation?
@@ -115,6 +117,9 @@ final class PullRequestsViewModel {
             loadFailure = nil
             if let selected = selectedPR {
                 selectedPR = pullRequests.first { $0.id == selected.id }
+                if let updated = selectedPR, updated.updatedDate != selected.updatedDate {
+                    await revalidateEdited(from: selected, to: updated)
+                }
             }
             if selectedPR == nil, let first = filteredPullRequests.first {
                 await select(first)
@@ -135,17 +140,21 @@ final class PullRequestsViewModel {
     func select(_ pr: PullRequestInfo) async {
         guard pr.id != selectedPR?.id else { return }
         selectedPR = pr
-        comments = []
-        prCommits = []
-        prChangeset = []
-        selectedChangesetPath = nil
-        loadedCommitsFor = nil
-        loadedChangesetFor = nil
-        await loadTabContent()
-        isLoadingComments = true
-        defer { isLoadingComments = false }
-        let loaded = (try? await repository.pullRequestComments(number: pr.id)) ?? []
-        if selectedPR?.id == pr.id { comments = loaded }
+        let cached = detailCache.value(for: PRDetailKey(pr))
+        comments = cached?.comments ?? []
+        prCommits = cached?.commits ?? []
+        prChangeset = cached?.changeset ?? []
+        selectedChangesetPath = prChangeset.first?.path
+        isLoadingComments = false
+        isLoadingPRCommits = false
+        isLoadingChangeset = false
+        isRevalidating = false
+        if cached == nil {
+            await loadTabContent()
+            await loadComments(for: pr)
+        } else {
+            await revalidate(pr)
+        }
     }
 
     func selectTab(_ tab: PRDetailTab) async {
@@ -157,31 +166,65 @@ final class PullRequestsViewModel {
         selectedChangesetPath = file.path
     }
 
-    private func loadTabContent() async {
+    /// Re-fetches what the cache already showed; the small header spinner replaces full-pane loading.
+    private func revalidate(_ pr: PullRequestInfo) async {
+        isRevalidating = true
+        defer { if selectedPR?.id == pr.id { isRevalidating = false } }
+        await loadTabContent(force: true)
+        await loadComments(for: pr)
+    }
+
+    /// The same PR changed on GitHub: keep its old details up under the small spinner until the new ones land.
+    private func revalidateEdited(from old: PullRequestInfo, to new: PullRequestInfo) async {
+        if let previous = detailCache.peek(PRDetailKey(old)) {
+            detailCache.removeValue(for: PRDetailKey(old))
+            detailCache.insert(previous, for: PRDetailKey(new))
+        }
+        await revalidate(new)
+    }
+
+    private func loadComments(for pr: PullRequestInfo) async {
+        let key = PRDetailKey(pr)
+        let showSpinner = detailCache.peek(key)?.comments == nil
+        if showSpinner { isLoadingComments = true }
+        defer { if selectedPR?.id == pr.id { isLoadingComments = false } }
+        guard let loaded = try? await repository.pullRequestComments(number: pr.id) else { return }
+        detailCache.update(key, default: PRDetails()) { $0.comments = loaded }
+        if selectedPR?.id == pr.id { comments = loaded }
+    }
+
+    private func loadTabContent(force: Bool = false) async {
         guard let pr = selectedPR else { return }
+        let cached = detailCache.peek(PRDetailKey(pr))
         switch activeDetailTab {
-        case .overview:
-            break
-        case .commits where loadedCommitsFor != pr.id:
-            loadedCommitsFor = pr.id
-            isLoadingPRCommits = true
-            defer { isLoadingPRCommits = false }
-            let commits = (try? await repository.pullRequestCommits(number: pr.id)) ?? []
-            if selectedPR?.id == pr.id { prCommits = commits }
-        case .files where loadedChangesetFor != pr.id:
-            loadedChangesetFor = pr.id
-            isLoadingChangeset = true
-            defer { isLoadingChangeset = false }
-            do {
-                let files = try await repository.pullRequestDiff(number: pr.id)
-                guard selectedPR?.id == pr.id else { return }
-                prChangeset = files
-                selectedChangesetPath = files.first?.path
-            } catch {
-                actionError = error.localizedDescription
-            }
-        default:
-            break
+        case .overview: break
+        case .commits where force || cached?.commits == nil: await loadCommits(for: pr)
+        case .files where force || cached?.changeset == nil: await loadChangeset(for: pr)
+        default: break
+        }
+    }
+
+    private func loadCommits(for pr: PullRequestInfo) async {
+        let key = PRDetailKey(pr)
+        if detailCache.peek(key)?.commits == nil { isLoadingPRCommits = true }
+        defer { if selectedPR?.id == pr.id { isLoadingPRCommits = false } }
+        guard let commits = try? await repository.pullRequestCommits(number: pr.id) else { return }
+        detailCache.update(key, default: PRDetails()) { $0.commits = commits }
+        if selectedPR?.id == pr.id { prCommits = commits }
+    }
+
+    private func loadChangeset(for pr: PullRequestInfo) async {
+        let key = PRDetailKey(pr)
+        if detailCache.peek(key)?.changeset == nil { isLoadingChangeset = true }
+        defer { if selectedPR?.id == pr.id { isLoadingChangeset = false } }
+        do {
+            let files = try await repository.pullRequestDiff(number: pr.id)
+            detailCache.update(key, default: PRDetails()) { $0.changeset = files }
+            guard selectedPR?.id == pr.id else { return }
+            prChangeset = files
+            if !files.contains(where: { $0.path == selectedChangesetPath }) { selectedChangesetPath = files.first?.path }
+        } catch {
+            actionError = error.localizedDescription
         }
     }
 
@@ -232,4 +275,22 @@ final class PullRequestsViewModel {
             actionError = error.localizedDescription
         }
     }
+}
+
+/// Identity of a pull request's detail content; `updatedAt` moves whenever GitHub sees a change.
+struct PRDetailKey: Hashable {
+    let number: Int
+    let updated: Date
+
+    init(_ pr: PullRequestInfo) {
+        number = pr.id
+        updated = pr.updatedDate
+    }
+}
+
+/// Detail tabs of one pull request; each fills in when its tab is first shown.
+struct PRDetails {
+    var comments: [PRComment]?
+    var commits: [CommitInfo]?
+    var changeset: [FileDiff]?
 }

@@ -112,13 +112,21 @@ extension GitRepository {
     }
 
     func diffForCommit(_ sha: String) async throws -> [FileDiff] {
+        try await diffForCommit(sha, paths: [])
+    }
+
+    func diffForCommit(_ sha: String, path: String) async throws -> [FileDiff] {
+        try await diffForCommit(sha, paths: [path])
+    }
+
+    private func diffForCommit(_ sha: String, paths: [String]) async throws -> [FileDiff] {
         // `show` handles root commits; merges diff against their first parent.
         let base = ["show", "--format=", "-M", "--diff-merges=first-parent", "--no-ext-diff", "--no-color"]
-        let diffResult = try await shell.run(base + ["-U3", sha, "--"])
+        let diffResult = try await shell.run(base + ["-U3", sha, "--"] + paths)
         // Without the final newline the parser doesn't read a phantom empty context line.
         let output = diffResult.stdout.hasSuffix("\n") ? String(diffResult.stdout.dropLast()) : diffResult.stdout
         let diffs = DiffParser.parse(output)
-        let statusResult = try await shell.run(base + ["--name-status", sha, "--"])
+        let statusResult = try await shell.run(base + ["--name-status", sha, "--"] + paths)
         let statusMap = parseNameStatus(statusResult.stdout)
 
         return diffs.map { diff in
