@@ -57,6 +57,7 @@ platform :mac do
     zip(path: app, output_path: archive, symlinks: true)
     appcast = update_appcast(feed, version, channel, notes)
     disk_image = make_disk_image(app, version)
+    notarize(package: disk_image, api_key: api_key, print_log: true)
 
     tag = "v#{version}"
     add_git_tag(tag: tag)
