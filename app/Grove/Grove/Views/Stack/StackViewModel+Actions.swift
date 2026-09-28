@@ -15,14 +15,14 @@ extension StackViewModel {
     /// Force-with-lease on every changed layer at once, so a push that loses a race changes nothing.
     func pushStack() async {
         guard let stack else { return }
-        await push(changedLayers(stack), title: "Pushing \(stack.name)")
+        await pushLayers(changedLayers(stack), title: "Pushing \(stack.name)")
     }
 
     func push(_ layer: StackLayer) async {
-        await push([layer], title: "Pushing \(layer.branch)")
+        await pushLayers([layer], title: "Pushing \(layer.branch)")
     }
 
-    private func push(_ layers: [StackLayer], title: String) async {
+    func pushLayers(_ layers: [StackLayer], title: String) async {
         guard !layers.isEmpty, let remote = StackReader.primaryRemote(refs.remotes) else {
             errorMessage = refs.remotes.isEmpty ? "Add a remote to push to." : nil
             return

@@ -67,6 +67,10 @@ nonisolated struct BitbucketPullRequestHost: PullRequestHost {
         _ = try await client.send("POST", try url("/\(number)/decline"), json: nil)
     }
 
+    func updateBase(number: Int, base: String) async throws {
+        _ = try await client.send("PUT", try url("/\(number)"), json: ["destination": ["branch": ["name": base]]])
+    }
+
     func comment(number: Int, body: String) async throws {
         _ = try await client.send("POST", try url("/\(number)/comments"), json: ["content": ["raw": body]])
     }

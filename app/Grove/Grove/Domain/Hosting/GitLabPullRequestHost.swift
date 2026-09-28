@@ -66,6 +66,10 @@ nonisolated struct GitLabPullRequestHost: PullRequestHost {
         try await client.send("PUT", try url("/merge_requests/\(number)"), json: ["state_event": "close"])
     }
 
+    func updateBase(number: Int, base: String) async throws {
+        try await client.send("PUT", try url("/merge_requests/\(number)"), json: ["target_branch": base])
+    }
+
     func comment(number: Int, body: String) async throws {
         try await client.send("POST", try url("/merge_requests/\(number)/notes"), json: ["body": body])
     }

@@ -97,6 +97,13 @@ final class RepositoryRefs {
     /// Open pull requests keyed by head branch, which is what stacks are read from.
     private var openPullRequests: [String: BranchPullRequest] { branchPullRequests.filter { !$0.value.isMerged } }
 
+    /// Reads pull requests again right away and waits for them, e.g. after changing one on the host.
+    func refreshPullRequestsNow() async {
+        if let pullRequestTask { await pullRequestTask.value }
+        refreshPullRequests(force: true)
+        await pullRequestTask?.value
+    }
+
     /// Runs beside ref reads without holding them up; a failure (no account, no hosted remote) keeps the last result.
     func refreshPullRequests(force: Bool = false) {
         guard pullRequestTask == nil else { return }

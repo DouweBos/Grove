@@ -17,6 +17,8 @@ final class StackViewModel {
     var onRestackStopped: (() -> Void)?
     var onCreatePullRequest: ((String) -> Void)?
     var activity: String?
+    /// A merged parent whose children were just retargeted, offered for deletion.
+    var retargetedParent: String?
 
     /// The branch last picked in the sidebar or the tab's menu; HEAD's stack when nil or no longer stacked.
     private(set) var focusedBranch: String?

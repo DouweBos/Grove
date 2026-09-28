@@ -81,6 +81,10 @@ nonisolated struct AzureDevOpsPullRequestHost: PullRequestHost {
         _ = try await client.send("PATCH", try url("/pullrequests/\(number)"), json: ["status": "abandoned"])
     }
 
+    func updateBase(number: Int, base: String) async throws {
+        _ = try await client.send("PATCH", try url("/pullrequests/\(number)"), json: ["targetRefName": "refs/heads/\(base)"])
+    }
+
     func comment(number: Int, body: String) async throws {
         _ = try await client.send("POST", try url("/pullRequests/\(number)/threads"),
                                   json: ["comments": [["parentCommentId": 0, "content": body, "commentType": 1]], "status": 1])

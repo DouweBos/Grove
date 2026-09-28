@@ -98,6 +98,11 @@ extension GitRepository {
         return try await host().create(draft)
     }
 
+    func updatePullRequestBase(number: Int, base: String) async throws {
+        Logger.gitRepository.info("Retargeting PR #\(number, privacy: .public) onto \(base, privacy: .public)")
+        try await host().updateBase(number: number, base: base)
+    }
+
     func commentOnPullRequest(number: Int, body: String) async throws {
         Logger.gitRepository.info("Commenting on PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
         try await host().comment(number: number, body: body)

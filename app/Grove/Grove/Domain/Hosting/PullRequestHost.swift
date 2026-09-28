@@ -19,6 +19,8 @@ nonisolated protocol PullRequestHost: Sendable {
     func diff(number: Int) async throws -> String?
     func merge(number: Int) async throws
     func close(number: Int) async throws
+    /// Points the pull request at another base branch, as when the branch below it merged.
+    func updateBase(number: Int, base: String) async throws
     func comment(number: Int, body: String) async throws
     /// Opens a pull request and returns its web URL.
     func create(_ draft: PullRequestDraft) async throws -> String

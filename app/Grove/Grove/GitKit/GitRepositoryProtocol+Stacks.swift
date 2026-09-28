@@ -31,6 +31,8 @@ protocol StackGitOperations: AnyObject {
     func pushStack(_ layers: [StackPush], to remote: String) async throws
     /// Moves `branch` forward to `revision`, in whichever worktree has it checked out; refuses anything but a fast-forward.
     func fastForward(branch: String, to revision: String, worktreePath: String?) async throws
+    /// Points pull request `number` at `base` on the host.
+    func updatePullRequestBase(number: Int, base: String) async throws
 }
 
 /// One layer of a stack push.
@@ -59,4 +61,5 @@ extension StackGitOperations {
     func pendingRestack() async -> RestackPlan? { nil }
     func pushStack(_ layers: [StackPush], to remote: String) async throws {}
     func fastForward(branch: String, to revision: String, worktreePath: String?) async throws {}
+    func updatePullRequestBase(number: Int, base: String) async throws {}
 }

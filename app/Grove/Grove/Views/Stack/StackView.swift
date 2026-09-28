@@ -17,6 +17,16 @@ struct StackView: View {
                 if let activity = viewModel.activity {
                     ProgressStrip(title: activity, detail: "", fraction: nil)
                 }
+                ForEach(viewModel.mergedParents(stack)) { merged in
+                    Banner(symbol: "arrow.merge", message: retargetMessage(merged, trunk: stack.trunk), tone: .positive,
+                           actionTitle: "Retarget", action: { Task { await viewModel.retarget(merged) } })
+                        .disabled(viewModel.isBusy)
+                }
+                if let merged = viewModel.retargetedParent {
+                    Banner(symbol: "trash", message: "Retargeted. Delete the merged branch \(merged)?", tone: .caution,
+                           actionTitle: "Delete \(merged)", action: { Task { await viewModel.deleteMergedParent() } },
+                           onDismiss: { viewModel.keepMergedParent() })
+                }
                 if let message = viewModel.errorMessage {
                     Banner(symbol: "xmark.octagon", message: message, tone: .negative) { viewModel.dismissError() }
                 }
@@ -73,6 +83,13 @@ struct StackView: View {
         }
         .disabled(viewModel.isBusy)
         .card(padding: Theme.Spacing.md)
+    }
+
+    private func retargetMessage(_ merged: MergedParent, trunk: String) -> String {
+        let children = merged.children.map(\.branch).joined(separator: ", ")
+        let pr = merged.pullRequest.map { " (\($0.label))" } ?? ""
+        return "\(merged.branch)\(pr) merged into \(trunk). Retarget \(children) onto \(trunk)? "
+            + "Grove rebases, pushes what's already on the remote, and points the pull requests at \(trunk)."
     }
 
     private func summary(_ stack: BranchStack) -> String {

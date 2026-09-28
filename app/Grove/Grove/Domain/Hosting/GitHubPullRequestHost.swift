@@ -89,6 +89,10 @@ nonisolated struct GitHubPullRequestHost: PullRequestHost {
         try await client.send("PATCH", try url("/pulls/\(number)"), json: ["state": "closed"])
     }
 
+    func updateBase(number: Int, base: String) async throws {
+        try await client.send("PATCH", try url("/pulls/\(number)"), json: ["base": base])
+    }
+
     func comment(number: Int, body: String) async throws {
         try await client.send("POST", try url("/issues/\(number)/comments"), json: ["body": body])
     }
