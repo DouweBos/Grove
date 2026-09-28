@@ -184,6 +184,9 @@ final class RepositorySession {
             toolbarState.present(.branch)
         case .stash:
             toolbarState.present(.stash)
+        case .applyPatch:
+            sidebarVM.select(.workingCopy)
+            workingCopyVM.requestPatchFile()
         case .merge:
             toolbarState.present(.merge)
         case .rebase:
@@ -197,27 +200,20 @@ final class RepositorySession {
              .navigateBack, .navigateForward:
             break
         case .undo:
-            Task {
-                do {
-                    try await gitUndoManager.undo()
-                    await refreshAll()
-                } catch {
-                    // A grouped action may have partly applied before failing.
-                    gitUndoManager.reportError(error)
-                    await refreshAll()
-                }
-            }
+            Task { await runUndo(redo: false) }
         case .redo:
-            Task {
-                do {
-                    try await gitUndoManager.redo()
-                    await refreshAll()
-                } catch {
-                    gitUndoManager.reportError(error, redo: true)
-                    await refreshAll()
-                }
-            }
+            Task { await runUndo(redo: true) }
         }
+    }
+
+    private func runUndo(redo: Bool) async {
+        do {
+            if redo { try await gitUndoManager.redo() } else { try await gitUndoManager.undo() }
+        } catch {
+            // A grouped action may have partly applied before failing.
+            gitUndoManager.reportError(error, redo: redo)
+        }
+        await refreshAll()
     }
 
     /// Opens on `item` instead of Changes, e.g. to keep the tab when switching worktrees.

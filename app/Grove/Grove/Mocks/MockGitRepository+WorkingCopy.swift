@@ -22,4 +22,13 @@ extension MockGitRepository {
     func restoreFile(_ path: String, from revision: String, revisionPath: String) async throws {
         await simulateLatency()
     }
+
+    func patch(paths: [String], staged: Bool) async throws -> String {
+        await simulateLatency()
+        return paths.map { "diff --git a/\($0) b/\($0)\n" }.joined()
+    }
+
+    func applyPatch(at file: URL, toIndex: Bool, checkOnly: Bool) async throws {
+        await simulateLatency()
+    }
 }

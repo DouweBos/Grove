@@ -53,6 +53,8 @@ private struct GroveFileCommands: Commands {
             Divider()
             Button("New Group\u{2026}") { GroveAction.newGroup.post() }
             Divider()
+            Button("Apply Patch\u{2026}") { GroveAction.applyPatch.post() }
+            Divider()
             Button("Local Repositories") { GroveAction.showLocalRepositories.post() }
                 .keyboardShortcut("l", modifiers: [.command, .shift])
             Button("Remote Repositories") { GroveAction.showRemoteRepositories.post() }

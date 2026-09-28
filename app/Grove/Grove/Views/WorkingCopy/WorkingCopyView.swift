@@ -55,6 +55,7 @@ struct WorkingCopyView: View {
         }
         .dialogSuppressionToggle("Don\u{2019}t ask again", isSuppressed: $suppressHunkWarning)
         .modifier(FileActionDialogs(viewModel: viewModel))
+        .modifier(PatchDialogs(viewModel: viewModel))
         .alert("Something Went Wrong", isPresented: errorBinding) {
             Button("OK") { viewModel.clearError() }
         } message: {

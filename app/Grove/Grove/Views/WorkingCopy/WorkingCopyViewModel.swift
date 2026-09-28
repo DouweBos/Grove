@@ -128,6 +128,8 @@ final class WorkingCopyViewModel {
     private(set) var pendingDiscard: StatusEntry?
     private(set) var pendingHunkDiscard: PendingHunkDiscard?
     var pendingFileAction: PendingFileAction?
+    var patchApply: PatchApplyRequest?
+    var isChoosingPatch = false
     var errorMessage: String?
 
     init(repository: any GitRepositoryProtocol) {

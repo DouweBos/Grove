@@ -321,6 +321,13 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func moveFile(from source: String, to destination: String) async throws
     /// Writes `revisionPath` as it was at `revision` into the working copy at `path`, leaving the index alone.
     func restoreFile(_ path: String, from revision: String, revisionPath: String) async throws
+
+    // MARK: Patches (implemented in GitRepository+Patches.swift)
+
+    /// The staged or unstaged changes of `paths` as an applicable patch; unstaged includes untracked files.
+    func patch(paths: [String], staged: Bool) async throws -> String
+    /// `git apply` of a patch file; `toIndex` also stages it, `checkOnly` only reports whether it applies.
+    func applyPatch(at file: URL, toIndex: Bool, checkOnly: Bool) async throws
 }
 
 // MARK: - GitRepositoryProtocol Default Arguments
