@@ -49,6 +49,7 @@ platform :mac do
               "CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY='Developer ID Application' DEVELOPMENT_TEAM=#{TEAM_ID}"
     )
     app = File.join(DIST, "Grove.app")
+    sign_sparkle(app)
     notarize(package: app, api_key: api_key, bundle_id: "com.houwert.Grove", print_log: true)
 
     feed = File.join(DIST, "appcast")
@@ -123,6 +124,19 @@ platform :mac do
       end
     end
     File.join(feed, "appcast.xml")
+  end
+
+  # The export leaves Sparkle's nested helpers with Sparkle's own signature, which notarization rejects.
+  def sign_sparkle(app)
+    sparkle = File.join(app, "Contents/Frameworks/Sparkle.framework")
+    sign = ["codesign", "--force", "--sign", "Developer ID Application", "--options", "runtime", "--timestamp"]
+    sh(*sign, File.join(sparkle, "Versions/B/XPCServices/Installer.xpc"))
+    sh(*sign, "--preserve-metadata=entitlements", File.join(sparkle, "Versions/B/XPCServices/Downloader.xpc"))
+    sh(*sign, File.join(sparkle, "Versions/B/Autoupdate"))
+    sh(*sign, File.join(sparkle, "Versions/B/Updater.app"))
+    sh(*sign, sparkle)
+    sh(*sign, "--preserve-metadata=entitlements,requirements,flags", app)
+    sh("codesign", "--verify", "--deep", "--strict", app)
   end
 
   # First installs come from the DMG; Sparkle updates use the zip.
