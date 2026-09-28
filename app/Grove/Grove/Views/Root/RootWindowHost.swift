@@ -14,8 +14,6 @@ import os
 
 struct RootWindowHost: View {
 
-    let manager: any RepositoryManagerProtocol
-
     // MARK: ViewModels
 
     @State private var windowVM: WindowViewModel
@@ -27,9 +25,8 @@ struct RootWindowHost: View {
 
     // MARK: Init
 
-    init(manager: any RepositoryManagerProtocol) {
-        self.manager = manager
-        self._windowVM = State(initialValue: WindowViewModel(manager: manager))
+    init(windowVM: WindowViewModel) {
+        self._windowVM = State(initialValue: windowVM)
     }
 
     // MARK: Body
@@ -81,8 +78,12 @@ struct RootWindowHost: View {
                   !windowVM.handleBrowserAction(action) else { return }
             windowVM.currentSession?.session.handleAction(action)
         }
+        // Reopening the window resumes the repository it was showing.
+        .onAppear {
+            if let ref = windowVM.openRepo { windowVM.loadSessionIfNeeded(for: ref) }
+        }
         .onDisappear {
-            windowVM.stopAllSessions()
+            windowVM.pauseCurrentSession()
         }
         // `-GroveOpenRepository <path>` opens a repository on launch.
         .task {
@@ -199,5 +200,5 @@ private struct NavigationHistoryButtons: ToolbarContent {
 }
 
 #Preview {
-    RootWindowHost(manager: MockRepositoryManager())
+    RootWindowHost(windowVM: WindowViewModel(manager: MockRepositoryManager()))
 }

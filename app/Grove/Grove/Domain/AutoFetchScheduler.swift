@@ -2,7 +2,7 @@
 // Grove
 //
 // Periodically fetches all remotes for an open repository.
-// Owned by RepositorySession and started/stopped with the window lifecycle.
+// Owned by RepositorySession; runs from the session's first start until it's evicted.
 
 import Foundation
 import Observation
@@ -11,12 +11,6 @@ import os
 // MARK: - AutoFetchScheduler
 
 /// Schedules background fetches for a repository at a configurable interval.
-///
-/// Wire it into a view's lifecycle:
-/// ```swift
-/// .task { autoFetcher.start() }
-/// .onDisappear { autoFetcher.stop() }
-/// ```
 ///
 /// Set `intervalMinutes` to `0` to disable automatic fetching while still
 /// allowing manual triggers via ``fetchNow()``.
@@ -62,10 +56,9 @@ final class AutoFetchScheduler {
 
     // MARK: - Lifecycle
 
-    /// Starts the periodic fetch timer using the current ``intervalMinutes``.
-    ///
-    /// Calling `start()` when the scheduler is already running restarts the timer.
+    /// Starts the periodic fetch timer using the current ``intervalMinutes``; a running timer keeps its schedule.
     func start() {
+        guard !isStarted else { return }
         isStarted = true
         intervalMinutes = GrovePreferences.autoFetchMinutes
         scheduleTimer()

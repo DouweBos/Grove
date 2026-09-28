@@ -115,18 +115,18 @@ final class RepositorySession {
         await refreshAll()
     }
 
-    /// Leaving the repository: stops watching and fetching but keeps every loaded list for a quick return.
+    /// Leaving the repository: stops watching but keeps fetching in the background, and keeps every loaded list.
     func pause() {
         guard isActive else { return }
         isActive = false
         fileWatcher?.stop()
         fileWatcher = nil
-        autoFetcher.stop()
     }
 
     /// Stop the file watcher and auto-fetcher for good, e.g. when the session is evicted.
     func stop() {
         pause()
+        autoFetcher.stop()
     }
 
     /// Reload everything that reflects repository state. Only what's on screen reloads now;

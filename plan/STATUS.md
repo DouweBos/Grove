@@ -24,6 +24,8 @@ Where the overhaul stands. Update this when a wave of work lands.
 
 - Home buttons: cloud and disk in the sidebar (top bar when collapsed) leave the repository; the cloud browses GitHub repositories of the `gh` account and its organizations (clone, or open the local clone), the disk lists local ones. File menu: Local/Remote Repositories (Shift-Cmd-L / Shift-Cmd-K).
 
+- Background fetch: closing the window keeps Grove running; cached repositories keep auto-fetching (every 5 minutes by default) and the reopened window resumes where it was. History logs the branch with its upstream, marking unpulled and unpushed commits.
+
 - Back / forward: window history across the browsers, repositories and their tabs; toolbar arrows, Cmd-[ / Cmd-], and mouse buttons 4/5.
 
 - Performance: per-session shared ref cache and paused session reuse (LRU 4); per-item detail caches; Branches Review via for-each-ref; git runs off the main actor with concurrent pipe draining (ProcessRunner), ~85% faster across the board. Fixture generator + opt-in benchmarks in tools/fixtures (bench.sh, baseline.json).

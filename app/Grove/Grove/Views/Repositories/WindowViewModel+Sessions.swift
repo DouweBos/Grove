@@ -12,7 +12,7 @@ extension WindowViewModel {
     static let cachedSessionLimit = 4
 
     /// Runs this window in another worktree of the same repository, keeping the current tab.
-    /// The old worktree's session pauses so each repository fetches and watches only once.
+    /// The old worktree's session pauses so each repository is watched only once.
     func switchWorktree(to path: String) {
         guard let current = openRepo, current.path != path else { return }
         recordNavigation(to: .repository(path: path, item: nil))
@@ -23,7 +23,7 @@ extension WindowViewModel {
         openReference(RepositoryReference(path: path))
     }
 
-    /// Leaving pauses the watcher and auto-fetch; the session stays cached for a quick return.
+    /// Leaving pauses the watcher but keeps auto-fetch; the session stays cached for a quick return.
     func closeRepository() {
         pauseCurrentSession()
         openRepo = nil
@@ -74,7 +74,7 @@ extension WindowViewModel {
         }
     }
 
-    /// Stops and drops the least recently opened sessions beyond the limit, never the open one.
+    /// Stops (watching and fetching) and drops the least recently opened sessions beyond the limit, never the open one.
     private func evictSessions() {
         var excess = sessionOrder.count - Self.cachedSessionLimit
         for path in sessionOrder where excess > 0 && path != openRepo?.path {
@@ -84,9 +84,4 @@ extension WindowViewModel {
         }
     }
 
-    func stopAllSessions() {
-        for (_, loaded) in sessions {
-            loaded.session.stop()
-        }
-    }
 }

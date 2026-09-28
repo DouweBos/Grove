@@ -29,7 +29,7 @@ enum GrovePreferences {
 
     enum Default {
         static let terminalApp = TerminalApp.terminal.rawValue
-        static let autoFetchMinutes = 0
+        static let autoFetchMinutes = 5
         static let warnOnHunkDiscard = true
         static let staleBranchDays = 90
         static let appearance = AppAppearance.system.rawValue
