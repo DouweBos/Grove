@@ -23,6 +23,10 @@ struct RepositorySidebar: View {
 
             BranchesSidebarSection()
 
+            // MARK: Worktrees
+
+            WorktreesSidebarSection()
+
             // MARK: Archived Branches
 
             ArchivedBranchesSidebarSection()
@@ -38,10 +42,6 @@ struct RepositorySidebar: View {
             // MARK: Submodules
 
             SubmodulesSidebarSection()
-
-            // MARK: Worktrees
-
-            WorktreesSidebarSection()
         }
         .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
