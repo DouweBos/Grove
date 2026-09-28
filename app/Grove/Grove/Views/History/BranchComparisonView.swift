@@ -7,6 +7,7 @@ import SwiftUI
 struct BranchComparisonView: View {
     let repository: any GitRepositoryProtocol
     var initialTarget: BranchInfo?
+    var onRepositoryChanged: (() async -> Void)?
 
     @State private var branches: [BranchInfo] = []
     @State private var source: BranchInfo?
@@ -205,6 +206,7 @@ struct BranchComparisonView: View {
                 }
                 try await repository.rebase(onto: source.name)
             }
+            await onRepositoryChanged?()
             await compare()
         } catch {
             errorMessage = error.localizedDescription

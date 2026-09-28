@@ -96,10 +96,15 @@ private struct RepositorySummaryHeader: View {
         let changes = viewModel.workingCopyBadgeCount
         let ahead = head?.ahead ?? 0
         let behind = head?.behind ?? 0
-        if changes > 0 || ahead > 0 || behind > 0 {
+        // Without an upstream there's nothing to compare against, so "up to date" would be a guess.
+        let unpublished = head != nil && head?.upstream == nil
+        if changes > 0 || ahead > 0 || behind > 0 || unpublished {
             HStack(spacing: Theme.Spacing.xs) {
                 if changes > 0 {
                     StatusBadge(title: "\(changes) changed", symbol: "pencil", tone: .caution)
+                }
+                if unpublished {
+                    StatusBadge(title: "Not published", symbol: "icloud.slash", tone: .neutral)
                 }
                 if ahead > 0 {
                     StatusBadge(title: "\(ahead) to push", symbol: "arrow.up", tone: .neutral)

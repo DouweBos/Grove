@@ -162,17 +162,6 @@ func stashIfDirty(_ repository: any GitRepositoryProtocol, message: String) asyn
     return isDirty
 }
 
-extension BranchInfo {
-    /// "origin/main" rather than "refs/remotes/origin/main".
-    var upstreamShortName: String? {
-        upstream.map { $0.hasPrefix("refs/remotes/") ? String($0.dropFirst("refs/remotes/".count)) : $0 }
-    }
-
-    var upstreamRemoteName: String? {
-        upstreamShortName?.split(separator: "/").first.map(String.init)
-    }
-}
-
 // MARK: - DialogOptionsSection
 
 /// Collapsible "Options" card used in push/pull/fetch dialogs.
