@@ -9,7 +9,9 @@ struct CommitDetailPanel: View {
 
     var body: some View {
         Group {
-            if let commit = viewModel.selectedCommit {
+            if viewModel.selection.count > 1 {
+                CommitSelectionSummary(commits: viewModel.selectedCommits)
+            } else if let commit = viewModel.selectedCommit {
                 VStack(spacing: 0) {
                     PanelHeader(title: commit.shortSHA) {
                         Picker("View", selection: Binding(get: { viewModel.detailTab }, set: { viewModel.selectDetailTab($0) })) {

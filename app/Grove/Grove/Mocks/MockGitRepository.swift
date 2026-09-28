@@ -162,6 +162,18 @@ final class MockGitRepository: GitRepositoryProtocol {
         return MockData.commits.first(where: { $0.id == sha }) ?? MockData.commits[0]
     }
 
+    func isAncestor(_ commit: String, of descendant: String) async -> Bool {
+        MockData.commits.contains { $0.id == commit }
+    }
+
+    func formatPatch(commits: [String]) async throws -> String {
+        commits.map { "From \($0) Mon Sep 17 00:00:00 2001\n" }.joined()
+    }
+
+    func archive(revision: String, to url: URL) async throws {
+        try Data().write(to: url)
+    }
+
     // MARK: Branches
 
     func localBranches() async throws -> [BranchInfo] {
@@ -338,7 +350,7 @@ final class MockGitRepository: GitRepositoryProtocol {
 
     // MARK: Interactive Rebase
 
-    func rebaseInteractive(onto: String, commitCount: Int) async throws {
+    func rebaseInteractive(onto base: String, steps: [RebaseStep]) async throws {
         await simulateLatency(150_000_000)
     }
 

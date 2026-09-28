@@ -89,6 +89,9 @@ final class RepositorySession {
         workingCopyVM.undoManager = gitUndoManager
         historyVM.onRepositoryChanged = refresh
         historyVM.undoManager = gitUndoManager
+        historyVM.onRebaseStopped = { [weak self] in self?.sidebarVM.select(.workingCopy) }
+        sidebarVM.onRevealInHistory = { [weak self] sha, fallback in Task { await self?.revealInHistory(sha, fallback: fallback) } }
+        stashesVM.onRevealInHistory = { [weak self] sha in Task { await self?.revealInHistory(sha) } }
         stashesVM.onRepositoryChanged = refresh
         reflogVM.onRepositoryChanged = refresh
         reflogVM.undoManager = gitUndoManager
@@ -217,6 +220,16 @@ final class RepositorySession {
                     await refreshAll()
                 }
             }
+        }
+    }
+
+    /// Selects `sha` in History when HEAD's history has it; otherwise opens `fallback`, e.g. a ref's own history.
+    func revealInHistory(_ sha: String, fallback: SidebarItem? = nil) async {
+        if await historyVM.contains(sha) || fallback == nil {
+            sidebarVM.select(.history)
+            await historyVM.reveal(sha)
+        } else if let fallback {
+            sidebarVM.select(fallback)
         }
     }
 

@@ -22,10 +22,11 @@ enum GrovePreferences {
         static let mergeToolPath = "externalMergeToolPath"
         static let mergeToolArguments = "externalMergeToolArguments"
         static let receivesBetaUpdates = "receivesBetaUpdates"
+        static let historyLayout = "historyLayout"
 
         static let all = [defaultCloneDirectory, terminalApp, autoFetchMinutes, warnOnHunkDiscard, staleBranchDays,
                           appearance, externalEditor, externalEditorPath, diffToolPath, diffToolArguments,
-                          mergeToolPath, mergeToolArguments, receivesBetaUpdates]
+                          mergeToolPath, mergeToolArguments, receivesBetaUpdates, historyLayout]
     }
 
     enum Default {
@@ -58,6 +59,12 @@ enum GrovePreferences {
     /// Days without commits before Branches Review calls a branch stale.
     static var staleBranchDays: Int {
         max(1, defaults.object(forKey: Key.staleBranchDays) as? Int ?? Default.staleBranchDays)
+    }
+
+    /// How History lists commits: the graph, or a compact table.
+    static var historyLayout: HistoryLayout {
+        get { HistoryLayout(rawValue: defaults.string(forKey: Key.historyLayout) ?? "") ?? .graph }
+        set { defaults.set(newValue.rawValue, forKey: Key.historyLayout) }
     }
 
     static var terminalApp: TerminalApp {

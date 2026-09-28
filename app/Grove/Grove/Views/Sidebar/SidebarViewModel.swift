@@ -61,6 +61,17 @@ final class SidebarViewModel {
         onSwitchWorktree?(worktree.path)
     }
 
+    /// Set by the session: selects a SHA in History, or opens the given ref's own history when HEAD's lacks it.
+    var onRevealInHistory: ((String, SidebarItem) -> Void)?
+
+    func revealInHistory(_ item: SidebarItem) {
+        switch item {
+        case .branch(let branch), .remoteBranch(let branch): onRevealInHistory?(branch.targetSHA, item)
+        case .tag(let tag): onRevealInHistory?(tag.targetSHA, item)
+        default: break
+        }
+    }
+
     /// Double-click on a branch: go to the worktree that has it, otherwise check it out here.
     func activate(branch: BranchInfo) async {
         if let worktree = worktree(checkingOut: branch) {

@@ -1,6 +1,7 @@
 // Views/History/CommitListView.swift
 // Grove
 
+import AppKit
 import SwiftUI
 
 /// Left panel of History: header with filter, date-grouped commit rows, infinite scroll.
@@ -13,6 +14,7 @@ struct CommitListView: View {
             PanelHeader(title: title, detail: countLabel) {
                 HistoryFilterField(text: viewModel.searchText) { viewModel.setSearchText($0) }
                     .frame(maxWidth: 190)
+                layoutPicker
             }
             if let error = viewModel.errorMessage, viewModel.pendingAction == nil {
                 Banner(symbol: "exclamationmark.triangle", message: error, tone: .negative,
@@ -40,18 +42,39 @@ struct CommitListView: View {
         }
     }
 
+    private var layoutPicker: some View {
+        Picker("Layout", selection: Binding(get: { viewModel.layout }, set: { viewModel.setLayout($0) })) {
+            ForEach(HistoryLayout.allCases) { layout in
+                Image(systemName: layout.symbol).help(layout.title).accessibilityLabel(layout.title).tag(layout)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+    }
+
+    @ViewBuilder
     private func list(_ visible: [CommitInfo]) -> some View {
+        if viewModel.layout == .table { CommitTableHeader() }
+        scrollingList(visible)
+    }
+
+    private func scrollingList(_ visible: [CommitInfo]) -> some View {
         let showsGraph = !viewModel.isFiltering
         return ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(Self.groups(visible)) { group in
-                        DateGroupHeader(date: group.date,
-                                        lanes: viewModel.graphNodes[group.commits[0].id]?.lanesAbove ?? [],
-                                        maxGraphColumns: viewModel.maxGraphColumns,
-                                        showsGraph: showsGraph)
-                        ForEach(group.commits) { commit in
-                            row(commit, showsGraph: showsGraph)
+                    if viewModel.layout == .table {
+                        ForEach(visible) { row($0, showsGraph: false) }
+                    } else {
+                        ForEach(Self.groups(visible)) { group in
+                            DateGroupHeader(date: group.date,
+                                            lanes: viewModel.graphNodes[group.commits[0].id]?.lanesAbove ?? [],
+                                            maxGraphColumns: viewModel.maxGraphColumns,
+                                            showsGraph: showsGraph)
+                            ForEach(group.commits) { commit in
+                                row(commit, showsGraph: showsGraph)
+                            }
                         }
                     }
                     if viewModel.isLoading {
@@ -71,29 +94,46 @@ struct CommitListView: View {
                 isListFocused = true
             }
             // onKeyPress rather than onMoveCommand: the scroll view swallows move commands itself.
-            .onKeyPress(.downArrow) { viewModel.selectAdjacent(offset: 1); return .handled }
-            .onKeyPress(.upArrow) { viewModel.selectAdjacent(offset: -1); return .handled }
+            .onKeyPress(keys: [.upArrow, .downArrow]) { press in
+                viewModel.selectAdjacent(offset: press.key == .upArrow ? -1 : 1, extend: press.modifiers.contains(.shift))
+                return .handled
+            }
             .onChange(of: viewModel.selectedCommit?.id) { _, id in
                 if let id { withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(id) } }
+            }
+            // A reveal from another tab selects before this list exists.
+            .onAppear {
+                if let id = viewModel.selectedCommit?.id { proxy.scrollTo(id, anchor: .center) }
             }
         }
     }
 
+    @ViewBuilder
+    private func rowContent(_ commit: CommitInfo, showsGraph: Bool) -> some View {
+        if viewModel.layout == .table {
+            CommitTableRow(commit: commit, branches: viewModel.branches(at: commit), tags: viewModel.tags(at: commit),
+                           syncState: viewModel.syncState(of: commit), isSelected: viewModel.isSelected(commit))
+        } else {
+            CommitRow(
+                commit: commit,
+                branches: viewModel.branches(at: commit),
+                tags: viewModel.tags(at: commit),
+                graphNode: showsGraph ? viewModel.graphNodes[commit.id] : nil,
+                maxGraphColumns: viewModel.maxGraphColumns,
+                isHead: commit.id == viewModel.headSHA,
+                syncState: viewModel.syncState(of: commit),
+                isSelected: viewModel.isSelected(commit)
+            )
+        }
+    }
+
     private func row(_ commit: CommitInfo, showsGraph: Bool) -> some View {
-        CommitRow(
-            commit: commit,
-            branches: viewModel.branches(at: commit),
-            tags: viewModel.tags(at: commit),
-            graphNode: showsGraph ? viewModel.graphNodes[commit.id] : nil,
-            maxGraphColumns: viewModel.maxGraphColumns,
-            isHead: commit.id == viewModel.headSHA,
-            syncState: viewModel.syncState(of: commit),
-            isSelected: commit.id == viewModel.selectedCommit?.id
-        )
+        rowContent(commit, showsGraph: showsGraph)
         .id(commit.id)
         .onTapGesture {
             isListFocused = true
-            viewModel.select(commit)
+            let modifiers = NSEvent.modifierFlags
+            viewModel.click(commit, extend: modifiers.contains(.shift), toggle: modifiers.contains(.command))
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelectedTrait(commit) ? [.isButton, .isSelected] : .isButton)
@@ -105,7 +145,7 @@ struct CommitListView: View {
     }
 
     private func isSelectedTrait(_ commit: CommitInfo) -> Bool {
-        commit.id == viewModel.selectedCommit?.id
+        viewModel.isSelected(commit)
     }
 
     private var title: String {
