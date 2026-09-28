@@ -1,32 +1,43 @@
+require "cgi"
+require "tempfile"
+
 default_platform(:mac)
 
-TEAM_ID = "CKZT75PN5T"
-PROJECT = "app/Grove/Grove.xcodeproj"
-DIST    = File.expand_path("../dist", __dir__)
+TEAM_ID  = "CKZT75PN5T"
+REPO     = "DouweBos/Grove"
+PROJECT  = "app/Grove/Grove.xcodeproj"
+# The houwert.dev proxy serves the appcast and archives from this private repo's releases.
+DOWNLOADS = "https://houwert.dev/grove/updates/"
+ROOT     = File.expand_path("..", __dir__)
+DIST     = File.join(ROOT, "dist")
 
 platform :mac do
   desc "Install the Developer ID cert from the shared match repo."
   lane :certs do
-    api_key = ENV["APP_STORE_CONNECT_API_KEY_ID"] ? load_app_store_connect_api_key : nil
-    match_options = { type: "developer_id", readonly: true, platform: "macos", skip_provisioning_profiles: true }
-    match_options[:api_key] = api_key if api_key
-    match(**match_options)
+    match(type: "developer_id", readonly: true, platform: "macos", skip_provisioning_profiles: true,
+          api_key: ENV["APP_STORE_CONNECT_API_KEY_ID"] ? load_app_store_connect_api_key : nil)
   end
 
-  desc "Signed, notarized build plus the Sparkle appcast in dist/. version:1.2.0 channel:production|beta build:<n>"
+  # Betas are tagged v<version>-beta.N and only reach clients that opted into beta updates.
+  desc "Build, notarize and publish a Sparkle release: version:0.2.0 channel:beta|production"
   lane :release do |options|
-    version = options[:version] || UI.user_error!("Pass version:x.y.z")
-    channel = options.fetch(:channel, "production")
-    UI.user_error!("channel must be production or beta") unless %w[production beta].include?(channel)
-    # Monotonic across both channels; Sparkle compares CFBundleVersion.
-    build = options[:build] || sh("git rev-list --count HEAD", log: false).strip
+    channel = options.fetch(:channel, "beta").to_s
+    UI.user_error!("channel must be beta or production") unless %w[beta production].include?(channel)
+    ensure_git_branch(branch: "main")
+    ensure_git_status_clean
+
+    version = resolve_version(options[:version].to_s, channel)
+    # Sparkle compares CFBundleVersion, so it must grow with every release on either channel.
+    build = number_of_commits.to_s
+    notes = release_notes
+    UI.success("Releasing Grove #{version} (#{build}) on #{channel}")
 
     api_key = load_app_store_connect_api_key
     match(type: "developer_id", readonly: true, api_key: api_key, platform: "macos", skip_provisioning_profiles: true)
 
-    sh("rm -rf #{DIST.shellescape} && mkdir -p #{DIST.shellescape}")
+    sh("rm", "-rf", DIST)
     build_mac_app(
-      project: PROJECT,
+      project: File.join(ROOT, PROJECT),
       scheme: "Grove",
       configuration: "Release",
       export_method: "developer-id",
@@ -37,9 +48,106 @@ platform :mac do
       xcargs: "MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build} " \
               "CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY='Developer ID Application' DEVELOPMENT_TEAM=#{TEAM_ID}"
     )
-    notarize(package: "#{DIST}/Grove.app", api_key: api_key, bundle_id: "com.houwert.Grove")
+    app = File.join(DIST, "Grove.app")
+    notarize(package: app, api_key: api_key, bundle_id: "com.houwert.Grove")
 
-    sh("./package.sh", version, channel)
+    feed = File.join(DIST, "appcast")
+    archive = File.join(feed, "Grove-#{version}.zip")
+    zip(path: app, output_path: archive, symlinks: true)
+    appcast = update_appcast(feed, version, channel, notes)
+    disk_image = make_disk_image(app, version)
+
+    tag = "v#{version}"
+    add_git_tag(tag: tag)
+    push_git_tags(tag: tag)
+    set_github_release(
+      repository_name: REPO,
+      api_token: ENV.fetch("GITHUB_TOKEN"),
+      tag_name: tag,
+      name: "Grove #{version}",
+      description: notes.map { |line| "- #{line}" }.join("\n"),
+      is_prerelease: channel == "beta",
+      upload_assets: [archive, appcast, disk_image]
+    )
+  end
+
+  # Production releases use the version as is; betas count up past existing v<version>-beta.N tags.
+  def resolve_version(base, channel)
+    UI.user_error!("Pass version:x.y.z") unless base.match?(/\A\d+\.\d+\.\d+\z/)
+    version = if channel == "production"
+                base
+              else
+                existing = sh("git", "tag", "-l", "v#{base}-beta.*", log: false).lines.map { |t| t[/-beta\.(\d+)$/, 1].to_i }
+                "#{base}-beta.#{(existing.max || 0) + 1}"
+              end
+    UI.user_error!("v#{version} already exists") if git_tag_exists(tag: "v#{version}")
+    version
+  end
+
+  # GROVE_RELEASE_NOTES (one change per line) or the commit subjects since the last tag.
+  def release_notes
+    given = ENV["GROVE_RELEASE_NOTES"].to_s
+    text = if !given.strip.empty?
+             given
+           elsif (tag = last_git_tag) && !tag.empty?
+             changelog_from_git_commits(between: [tag, "HEAD"], pretty: "%s", merge_commit_filtering: "exclude_merges")
+           else
+             changelog_from_git_commits(commits_count: 30, pretty: "%s", merge_commit_filtering: "exclude_merges")
+           end
+    text.to_s.lines.map { |line| line.strip.sub(/\A[-*] /, "") }.reject(&:empty?)
+  end
+
+  # Carries the previous appcast forward and adds this release, signed with the Sparkle key.
+  def update_appcast(feed, version, channel, notes)
+    previous = sh("gh", "release", "list", "--repo", REPO, "--exclude-drafts", "--limit", "1",
+                  "--json", "tagName", "-q", ".[0].tagName", log: false).strip
+    unless previous.empty?
+      sh("gh", "release", "download", previous, "--repo", REPO, "--pattern", "appcast.xml", "--dir", feed) do |status, _|
+        UI.important("No appcast on #{previous}; starting a new one") unless status.success?
+      end
+    end
+
+    escaped = notes.map { |line| "<li>#{CGI.escapeHTML(line)}</li>" }.join
+    File.write(File.join(feed, "Grove-#{version}.html"), "<ul>#{escaped}</ul>\n")
+
+    args = [sparkle_tool("generate_appcast"), "--download-url-prefix", DOWNLOADS, "--embed-release-notes", "--maximum-deltas", "0"]
+    args += ["--channel", "beta"] if channel == "beta"
+    key = ENV["SPARKLE_PRIVATE_KEY"].to_s
+    if key.empty?
+      sh(*args, "--account", "grove", feed)
+    else
+      Tempfile.create("sparkle-key") do |file|
+        file.write(key)
+        file.flush
+        sh(*args, "--ed-key-file", file.path, feed)
+      end
+    end
+    File.join(feed, "appcast.xml")
+  end
+
+  # First installs come from the DMG; Sparkle updates use the zip.
+  def make_disk_image(app, version)
+    stage = Dir.mktmpdir
+    FileUtils.cp_r(app, stage)
+    File.symlink("/Applications", File.join(stage, "Applications"))
+    output = File.join(DIST, "Grove-#{version}.dmg")
+    sh("hdiutil", "create", "-quiet", "-volname", "Grove", "-srcfolder", stage, "-ov", "-format", "UDZO", output)
+    sh("codesign", "--sign", "Developer ID Application", "--timestamp", output)
+    output
+  ensure
+    FileUtils.rm_rf(stage) if stage
+  end
+
+  # Sparkle's command-line tools at the version the app links.
+  def sparkle_tool(name)
+    resolved = JSON.parse(File.read(File.join(ROOT, PROJECT, "project.xcworkspace/xcshareddata/swiftpm/Package.resolved")))
+    version = resolved["pins"].find { |pin| pin["identity"] == "sparkle" }["state"]["version"]
+    dir = File.expand_path("~/Library/Caches/grove-release/sparkle-#{version}")
+    unless File.executable?(File.join(dir, "bin", name))
+      FileUtils.mkdir_p(dir)
+      sh("curl -fsSL https://github.com/sparkle-project/Sparkle/releases/download/#{version}/Sparkle-#{version}.tar.xz | tar -xJ -C #{dir.shellescape}")
+    end
+    File.join(dir, "bin", name)
   end
 
   def load_app_store_connect_api_key

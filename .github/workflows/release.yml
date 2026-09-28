@@ -10,8 +10,8 @@ on:
         description: "Release channel"
         type: choice
         options:
-          - production
           - beta
+          - production
         default: beta
       notes:
         description: "Release notes, one change per line (defaults to commit subjects since the last tag)"
@@ -28,35 +28,16 @@ jobs:
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
-    env:
-      CHANNEL: ${{ inputs.channel }}
-      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Resolve version and tag
-        id: version
-        run: |
-          BASE="${{ inputs.version }}"
-          [[ "$BASE" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Version must be x.y.z"; exit 1; }
-          if [ "$CHANNEL" = "production" ]; then
-            VERSION="$BASE"
-          else
-            HIGHEST=$(git tag -l "v${BASE}-beta.*" | sed -n "s/^v${BASE}-beta\.\([0-9]*\)$/\1/p" | sort -n | tail -1)
-            VERSION="${BASE}-beta.$(( ${HIGHEST:-0} + 1 ))"
-          fi
-          git rev-parse -q --verify "refs/tags/v${VERSION}" >/dev/null && { echo "v${VERSION} already exists"; exit 1; }
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Releasing $VERSION ($CHANNEL)"
-
-      - name: Select Xcode
+      - name: Select Xcode 27
         run: |
           XCODE=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
           [ -n "$XCODE" ] || { echo "No Xcode 27 on this runner"; ls /Applications | grep Xcode; exit 1; }
           sudo xcode-select -s "$XCODE"
-          xcodebuild -version
 
       - uses: ruby/setup-ruby@v1
         with:
@@ -81,7 +62,7 @@ jobs:
           echo "::add-mask::$AUTH"
           echo "MATCH_GIT_BASIC_AUTHORIZATION=$AUTH" >> "$GITHUB_ENV"
 
-      - name: Build, notarize and package
+      - name: fastlane release
         env:
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
@@ -91,26 +72,9 @@ jobs:
           APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
           GROVE_RELEASE_NOTES: ${{ inputs.notes }}
           FASTLANE_SKIP_UPDATE_CHECK: "1"
           FASTLANE_HIDE_CHANGELOG: "1"
-        run: |
-          bundle exec fastlane mac release \
-            version:${{ steps.version.outputs.version }} \
-            channel:$CHANNEL \
-            build:$(git rev-list --count HEAD)
-
-      - name: Publish GitHub release
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          git tag "v${VERSION}"
-          git push origin "v${VERSION}"
-          FLAGS=()
-          [ "$CHANNEL" = "beta" ] && FLAGS+=(--prerelease)
-          # The html notes are what Sparkle shows; the release page gets the same list.
-          sed 's|<li>|- |; s|</li>||; /<\/*ul>/d' "dist/appcast/Grove-${VERSION}.html" > notes.md
-          gh release create "v${VERSION}" "${FLAGS[@]}" --title "Grove ${VERSION}" --notes-file notes.md \
-            "dist/appcast/Grove-${VERSION}.zip" \
-            "dist/appcast/appcast.xml" \
-            "dist/Grove-${VERSION}.dmg"
+        run: bundle exec fastlane mac release version:${{ inputs.version }} channel:${{ inputs.channel }}
