@@ -31,4 +31,10 @@ extension MockGitRepository {
     func applyPatch(at file: URL, toIndex: Bool, checkOnly: Bool) async throws {
         await simulateLatency()
     }
+
+    @discardableResult
+    func saveSnapshot(message: String, includeUntracked: Bool) async throws -> Bool {
+        await simulateLatency()
+        return true
+    }
 }

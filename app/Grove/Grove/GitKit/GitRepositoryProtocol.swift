@@ -204,6 +204,9 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func stashCreate(message: String?, includeUntracked: Bool, paths: [String]?) async throws
     func stashApply(index: Int, drop: Bool) async throws
     func stashDrop(index: Int) async throws
+    /// Stores the working state as a stash but leaves the working copy as it is; false when there was nothing to save.
+    @discardableResult
+    func saveSnapshot(message: String, includeUntracked: Bool) async throws -> Bool
 
     // MARK: Tags
 

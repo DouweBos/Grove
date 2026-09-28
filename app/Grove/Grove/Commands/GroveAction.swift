@@ -75,6 +75,8 @@ enum GroveAction: String, Sendable {
 
     /// Show the Stash dialog (Cmd+Shift+S).
     case stash
+    /// Show the Save Snapshot dialog: a stash that leaves the working copy alone.
+    case saveSnapshot
 
     // MARK: Patches
 

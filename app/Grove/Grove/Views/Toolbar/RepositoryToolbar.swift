@@ -21,6 +21,7 @@ final class RepositoryToolbarState {
     var isBranchPresented = false
     var isTagPresented = false
     var isStashPresented = false
+    var isSnapshotPresented = false
     var isMergePresented = false
     var isRebasePresented = false
     var isFetching = false
@@ -33,9 +34,10 @@ final class RepositoryToolbarState {
         self.refs = refs
     }
 
-    enum Sheet { case fetch, pull, push, sync, branch, tag, stash, merge, rebase }
+    enum Sheet { case fetch, pull, push, sync, branch, tag, stash, snapshot, merge, rebase }
 
     /// Shows the sheet at once with the last-read refs, reading them first only if they never loaded.
+    // swiftlint:disable:next cyclomatic_complexity
     func present(_ sheet: Sheet) {
         switch sheet {
         case .fetch: isFetchPresented = true
@@ -45,6 +47,7 @@ final class RepositoryToolbarState {
         case .branch: isBranchPresented = true
         case .tag: isTagPresented = true
         case .stash: isStashPresented = true
+        case .snapshot: isSnapshotPresented = true
         case .merge: isMergePresented = true
         case .rebase: isRebasePresented = true
         }
@@ -240,6 +243,9 @@ struct RepositoryToolbarSheets<Content: View>: View {
             }
             .sheet(isPresented: $toolbarState.isStashPresented) {
                 StashDialogView(repository: repository, onComplete: onComplete)
+            }
+            .sheet(isPresented: $toolbarState.isSnapshotPresented) {
+                SnapshotDialogView(repository: repository, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isMergePresented) {
                 MergeDialogView(repository: repository, localBranches: refs.localBranches, onComplete: onComplete)

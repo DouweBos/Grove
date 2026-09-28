@@ -149,6 +149,9 @@ private final class FailingMockRepository: GitRepositoryProtocol {
         try await backing.restoreFile(path, from: revision, revisionPath: revisionPath)
     }
     func patch(paths: [String], staged: Bool) async throws -> String { try await backing.patch(paths: paths, staged: staged) }
+    @discardableResult func saveSnapshot(message: String, includeUntracked: Bool) async throws -> Bool {
+        try await backing.saveSnapshot(message: message, includeUntracked: includeUntracked)
+    }
     func applyPatch(at file: URL, toIndex: Bool, checkOnly: Bool) async throws {
         try await backing.applyPatch(at: file, toIndex: toIndex, checkOnly: checkOnly)
     }

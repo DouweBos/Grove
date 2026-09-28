@@ -184,6 +184,8 @@ final class RepositorySession {
             toolbarState.present(.branch)
         case .stash:
             toolbarState.present(.stash)
+        case .saveSnapshot:
+            toolbarState.present(.snapshot)
         case .applyPatch:
             sidebarVM.select(.workingCopy)
             workingCopyVM.requestPatchFile()

@@ -21,6 +21,8 @@ struct FilesPanelMenu: View {
             Divider()
             Button("Stash Changes\u{2026}") { GroveAction.stash.post() }
                 .disabled(viewModel.statusEntries.isEmpty)
+            Button("Save Snapshot\u{2026}") { GroveAction.saveSnapshot.post() }
+                .disabled(viewModel.statusEntries.isEmpty)
         } label: {
             Image(systemName: "ellipsis.circle")
         }

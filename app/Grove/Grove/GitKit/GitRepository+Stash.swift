@@ -53,6 +53,48 @@ extension GitRepository {
         try await shell.run(["stash", "drop", "stash@{\(index)}"])
     }
 
+    @discardableResult
+    func saveSnapshot(message: String, includeUntracked: Bool) async throws -> Bool {
+        Logger.gitRepository.info("Saving snapshot in \(self.displayName, privacy: .public)")
+        var stash = try await shell.run(["stash", "create", message]).stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        if includeUntracked, let untracked = try await untrackedSnapshotCommit() {
+            stash = try await addUntracked(untracked, to: stash, message: message)
+        }
+        guard !stash.isEmpty else { return false }
+        try await shell.run(["stash", "store", "-m", message, stash])
+        return true
+    }
+
+    /// `stash create` has no `-u`, so the untracked files go in a root commit built from a throwaway index.
+    private func untrackedSnapshotCommit() async throws -> String? {
+        let listed = try await shell.run(["ls-files", "--others", "--exclude-standard", "-z"]).stdout
+        let files = listed.split(separator: "\0").map(String.init)
+        guard !files.isEmpty else { return nil }
+        let index = FileManager.default.temporaryDirectory.appendingPathComponent("grove-snapshot-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: index) }
+        let env = ["GIT_INDEX_FILE": index.path]
+        try await shell.runWithInput(["update-index", "--add", "-z", "--stdin"], input: files.joined(separator: "\0"), environment: env)
+        let tree = try await shell.run(["write-tree"], environment: env).stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        return try await shell.run(["commit-tree", tree, "-m", "untracked files"]).stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Rebuilds the stash commit with the untracked commit as third parent, the layout `stash push -u` makes.
+    private func addUntracked(_ untracked: String, to stash: String, message: String) async throws -> String {
+        let trimmed: (ShellResult) -> String = { $0.stdout.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let head = trimmed(try await shell.run(["rev-parse", "HEAD"]))
+        let tree: String
+        let indexCommit: String
+        if stash.isEmpty {
+            // Only untracked files changed: the working tree and index both equal HEAD.
+            tree = trimmed(try await shell.run(["rev-parse", "HEAD^{tree}"]))
+            indexCommit = trimmed(try await shell.run(["commit-tree", tree, "-p", head, "-m", "index on snapshot"]))
+        } else {
+            tree = trimmed(try await shell.run(["rev-parse", "\(stash)^{tree}"]))
+            indexCommit = trimmed(try await shell.run(["rev-parse", "\(stash)^2"]))
+        }
+        return trimmed(try await shell.run(["commit-tree", tree, "-p", head, "-p", indexCommit, "-p", untracked, "-m", message]))
+    }
+
     // MARK: - Submodules
 
     func updateSubmodule(path: String) async throws {

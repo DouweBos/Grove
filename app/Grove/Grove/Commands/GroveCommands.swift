@@ -217,6 +217,11 @@ private struct GroveGitCommands: Commands {
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
 
+            Button("Save Snapshot\u{2026}") {
+                GroveAction.saveSnapshot.post()
+            }
+            .keyboardShortcut("s", modifiers: [.command, .option])
+
             Divider()
 
             // MARK: Quick Actions
