@@ -126,7 +126,7 @@ struct BranchComparisonSheet: View {
 
 #Preview {
     let vm = HistoryViewModel(repository: MockGitRepository())
-    return CommitActionSheet(commit: MockData.commits[0], symbol: "arrow.uturn.backward", title: "Revert Commit",
+    return CommitActionSheet(commits: [MockData.commits[0]], symbol: "arrow.uturn.backward", title: "Revert Commit",
                              message: "Creates a new commit that undoes the changes made in this commit.",
                              primaryTitle: "Revert") { _ in }
         .environment(vm)

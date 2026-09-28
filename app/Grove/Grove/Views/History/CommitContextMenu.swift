@@ -34,10 +34,20 @@ struct CommitContextMenu: View {
         Divider()
         Button("Edit Commit Message\u{2026}") { viewModel.request(.reword(commit)) }
             .disabled(!viewModel.canRewrite(commit))
-        Button("Squash with Parent\u{2026}") { viewModel.request(.squash(commit)) }
-            .disabled(!viewModel.canSquashWithParent(commit))
+        if selected.count > 1 {
+            Button("Squash \(selected.count) Commits\u{2026}") { viewModel.request(.squashCommits(selected)) }
+                .disabled(!viewModel.canSquash(selected))
+        } else {
+            Button("Squash with Parent\u{2026}") { viewModel.request(.squash(commit)) }
+                .disabled(!viewModel.canSquashWithParent(commit))
+        }
         Button("Delete \u{201C}\(commit.shortSHA)\u{201D}\u{2026}", role: .destructive) { viewModel.request(.drop(commit)) }
             .disabled(!viewModel.canRewrite(commit))
+    }
+
+    /// Right-clicking inside a multi-selection acts on all of it; elsewhere, on just this commit.
+    private var selected: [CommitInfo] {
+        viewModel.isSelected(commit) && viewModel.selection.count > 1 ? viewModel.selectedCommits : [commit]
     }
 
     private func copy(_ string: String) {
