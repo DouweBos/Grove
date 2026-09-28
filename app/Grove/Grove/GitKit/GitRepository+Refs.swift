@@ -89,7 +89,11 @@ extension GitRepository {
         return await configValue("pull.ff")?.lowercased() == "only" ? .fastForwardOnly : .merge
     }
 
-    /// `branch` pulls a named remote branch, for syncing a branch that has no upstream yet.
+    func pull(remote: String, branch: String, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
+        try await pull(remote: Optional(remote), branch: Optional(branch), strategy: strategy, progress: progress)
+    }
+
+    /// `branch` pulls a named remote branch instead of the upstream.
     private func pull(remote: String?, branch: String?, strategy: PullStrategy,
                       progress: (@Sendable (Double) -> Void)?) async throws {
         Logger.gitRepository.info(

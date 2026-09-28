@@ -41,6 +41,23 @@ struct RemoteSyncTests {
         #expect(parents.count == 2)
     }
 
+    @Test func pullingAnotherBranchWithRebaseRebasesOntoIt() async throws {
+        // `feature` tracks origin/feature; main moves on in the other clone.
+        try git(["checkout", "-q", "-b", "feature"], in: "a")
+        try commit("a", file: "feature.txt", message: "feature work")
+        try git(["push", "-q", "-u", "origin", "feature"], in: "a")
+        try commit("b", file: "main.txt", message: "main moved on")
+        try git(["push", "-q", "origin", "main"], in: "b")
+
+        let repo = try await GitRepository(path: root.appendingPathComponent("a"))
+        try await repo.pull(remote: "origin", branch: "main", strategy: .rebase, progress: nil)
+
+        let subjects = try git(["log", "--format=%s", "-3"], in: "a").split(separator: "\n").map(String.init)
+        #expect(subjects == ["feature work", "main moved on", "initial"])
+        #expect(try git(["rev-parse", "--abbrev-ref", "HEAD"], in: "a").trimmingCharacters(in: .whitespacesAndNewlines) == "feature")
+        #expect(try git(["rev-list", "--merges", "--count", "HEAD"], in: "a").trimmingCharacters(in: .whitespacesAndNewlines) == "0")
+    }
+
     @Test func firstPushSetsUpstream() async throws {
         try git(["checkout", "-q", "-b", "feature"], in: "a")
         try commit("a", file: "feature.txt", message: "feature")

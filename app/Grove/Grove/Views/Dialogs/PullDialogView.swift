@@ -3,7 +3,8 @@
 
 import SwiftUI
 
-/// Pulls the checked-out branch's upstream into it.
+/// Pulls a remote branch into the checked-out branch: its upstream by default, or another one,
+/// which with Rebase is the quick way to rebase onto e.g. `origin/main`.
 struct PullDialogView: View {
 
     @Environment(\.dismiss) private var dismiss
@@ -14,6 +15,9 @@ struct PullDialogView: View {
     @State private var strategy: PullStrategy = .merge
     @State private var autoStash = false
     @State private var remotes: [RemoteInfo] = []
+    @State private var remoteBranches: [BranchInfo] = []
+    /// Remote branch to pull, as `remote/branch`.
+    @State private var source: String?
     @State private var progressTitle: String?
     @State private var errorMessage: String?
 
@@ -23,29 +27,31 @@ struct PullDialogView: View {
     var body: some View {
         DialogSheet(
             title: "Pull",
-            message: "Fetches new commits from the upstream branch and integrates them into '\(branch?.name ?? "HEAD")'.",
+            message: "Fetches a remote branch and integrates it into '\(branch?.name ?? "HEAD")'.",
             symbol: "arrow.down.to.line",
             progress: progressTitle,
             errorMessage: errorMessage,
             primaryTitle: "Pull",
-            isPrimaryDisabled: upstream == nil,
+            isPrimaryDisabled: source == nil,
             onCancel: { dismiss() },
             onPrimary: performPull
         ) {
             DialogCard {
                 DialogField("From") {
-                    if let upstream {
-                        HStack(spacing: Theme.Spacing.sm) {
-                            Text(upstream).font(.monoCaption)
-                            if let branch, branch.behind > 0 {
-                                StatusBadge(title: "\(branch.behind) behind", symbol: "arrow.down", tone: .caution)
-                            }
+                    HStack(spacing: Theme.Spacing.sm) {
+                        PullSourcePicker(branches: remoteBranches, upstream: upstream, selection: $source)
+                        if let branch, source == upstream, branch.behind > 0 {
+                            StatusBadge(title: "\(branch.behind) behind", symbol: "arrow.down", tone: .caution)
                         }
-                    } else {
-                        Text("No upstream branch").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
                     }
                 }
                 PullStrategyField(strategy: $strategy)
+                if let outcome {
+                    Text(outcome)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Theme.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 DialogOptionRow(
                     isOn: $autoStash,
                     label: "Stash Local Changes",
@@ -59,6 +65,8 @@ struct PullDialogView: View {
         .task {
             strategy = await repository.defaultPullStrategy()
             remotes = (try? await repository.remotes()) ?? []
+            remoteBranches = (try? await repository.remoteBranches()) ?? []
+            source = PullSourcePicker.defaultSource(for: branch, in: remoteBranches)
         }
     }
 
@@ -67,7 +75,7 @@ struct PullDialogView: View {
         let name = branch?.name ?? "HEAD"
         if let remote = remotes.first?.name, branch != nil {
             Banner(symbol: "exclamationmark.triangle",
-                   message: "'\(name)' doesn't track a remote branch yet. Push it to \(remote) to start tracking.",
+                   message: "'\(name)' doesn't track a remote branch yet. You can still pull any branch; push it to \(remote) to start tracking.",
                    actionTitle: "Push to \(remote)",
                    action: { performPushSettingUpstream(remote: remote) })
         } else {
@@ -76,10 +84,34 @@ struct PullDialogView: View {
         }
     }
 
+    /// Spells out a pull from something other than the upstream, since that changes what the branch becomes.
+    private var outcome: String? {
+        guard let source, source != upstream else { return nil }
+        let name = branch?.name ?? "HEAD"
+        switch strategy {
+        case .rebase: return "Rebases '\(name)' onto \(source)."
+        case .merge: return "Merges \(source) into '\(name)'."
+        case .fastForwardOnly: return "Moves '\(name)' forward to \(source), if it hasn't diverged."
+        }
+    }
+
+    /// `origin/feature/x` → ("origin", "feature/x"), matching against known remote names.
+    private func split(_ source: String) -> (remote: String, branch: String)? {
+        let remote = remotes.map(\.name).sorted { $0.count > $1.count }.first { source.hasPrefix($0 + "/") }
+            ?? source.split(separator: "/", maxSplits: 1).first.map(String.init)
+        guard let remote, source.count > remote.count + 1 else { return nil }
+        return (remote, String(source.dropFirst(remote.count + 1)))
+    }
+
     private func performPull() {
-        run("Pulling from \(upstream ?? "remote")…") {
+        guard let source else { return }
+        run("Pulling from \(source)…") {
             let didStash = autoStash ? try await stashIfDirty(repository, message: "Grove: auto-stash before pull") : false
-            try await repository.pull(remote: nil, strategy: strategy, progress: nil)
+            if source == upstream {
+                try await repository.pull(remote: nil, strategy: strategy, progress: nil)
+            } else if let target = split(source) {
+                try await repository.pull(remote: target.remote, branch: target.branch, strategy: strategy, progress: nil)
+            }
             if didStash {
                 try await repository.stashApply(index: 0, drop: true)
             }
