@@ -74,6 +74,7 @@ final class BranchesReviewViewModel {
     private(set) var isDeleting = false
     var errorMessage: String?
     /// Set when the merged-branches check failed; deleting stays off so unmerged branches aren't force-deleted as merged.
+    // TODO: Check this error state and the grouped-delete undo in the running app; only unit tests cover them.
     private(set) var mergeStatusError: String?
     var pendingDelete: PendingDelete?
     private var aheadBehindCache = AheadBehindCache()

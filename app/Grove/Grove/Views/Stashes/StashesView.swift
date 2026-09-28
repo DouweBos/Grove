@@ -136,6 +136,7 @@ private struct StashDetailPanel: View {
                 VStack(spacing: 0) {
                     header(stash)
                     Rectangle().fill(Theme.border).frame(height: 0.5)
+                    // TODO: Untracked files live in the stash's third parent, so their image diff is missing a side.
                     ChangesetBrowser(files: viewModel.stashDiffs, selectedPath: viewModel.selectedFilePath,
                                      isLoading: viewModel.isLoadingDiff, emptyTitle: "Empty Stash",
                                      imageSource: .commit(stash.sha, in: viewModel.repository)) {

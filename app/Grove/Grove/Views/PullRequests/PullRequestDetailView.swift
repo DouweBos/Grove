@@ -105,6 +105,7 @@ struct PullRequestDetailView: View {
         case .commits:
             commits
         case .files:
+            // TODO: No image previews for pull request changesets.
             ChangesetBrowser(files: viewModel.prChangeset, selectedPath: viewModel.selectedChangesetPath,
                              isLoading: viewModel.isLoadingChangeset, emptyTitle: "No File Changes") {
                 viewModel.selectChangesetFile($0)

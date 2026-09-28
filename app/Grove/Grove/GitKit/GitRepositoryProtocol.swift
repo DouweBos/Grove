@@ -320,6 +320,7 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
 extension GitRepositoryProtocol {
 
     // Defaults so lightweight test doubles only implement what they exercise.
+    // TODO: A method GitRepository forgets to implement silently falls back to one of these.
     func log(maxCount: Int, skip: Int, revisions: [String]) async throws -> [CommitInfo] {
         try await log(maxCount: maxCount, skip: skip, branch: revisions.first)
     }

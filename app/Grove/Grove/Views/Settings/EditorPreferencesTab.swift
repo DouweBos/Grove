@@ -5,6 +5,7 @@
 
 import SwiftUI
 
+// TODO: Test undo in the Preferences text fields; typing there writes real settings.
 struct EditorPreferencesTab: View {
 
     @AppStorage(GrovePreferences.Key.externalEditor) private var editorRaw = GrovePreferences.Default.externalEditor
