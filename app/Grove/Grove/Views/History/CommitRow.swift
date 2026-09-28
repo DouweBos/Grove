@@ -25,8 +25,7 @@ struct CommitRow: View {
                        tint: graphNode.map { Theme.laneColor($0.colorIndex) })
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: Theme.Spacing.xs) {
-                    ForEach(branches.prefix(3)) { BranchLabel(branch: $0) }
-                    ForEach(tags.prefix(2)) { BranchLabel(tag: $0) }
+                    CommitRefLabels(branches: branches, tags: tags)
                     Text(commit.summary)
                         .font(.rowTitle)
                         .foregroundStyle(Theme.textPrimary)
@@ -51,6 +50,8 @@ struct CommitRow: View {
             }
             Spacer(minLength: 0)
         }
+        // Pinned to the panel width so long refs truncate instead of pushing the row sideways.
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.leading, graphNode == nil ? Theme.Spacing.md : Theme.Spacing.sm)
         .padding(.trailing, Theme.Spacing.md)
         .frame(height: Self.height)

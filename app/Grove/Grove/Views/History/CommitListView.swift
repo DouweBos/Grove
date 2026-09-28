@@ -120,7 +120,9 @@ struct CommitListView: View {
     // MARK: - Grouping
 
     struct DayGroup: Identifiable {
-        let id: DateComponents
+        /// First commit's SHA: in topological order a day can recur, so the day itself isn't unique.
+        let id: String
+        let day: DateComponents
         let date: Date
         var commits: [CommitInfo]
     }
@@ -130,10 +132,10 @@ struct CommitListView: View {
         var result: [DayGroup] = []
         for commit in commits {
             let day = Calendar.current.dateComponents([.year, .month, .day], from: commit.authorDate)
-            if result.last?.id == day {
+            if result.last?.day == day {
                 result[result.count - 1].commits.append(commit)
             } else {
-                result.append(DayGroup(id: day, date: commit.authorDate, commits: [commit]))
+                result.append(DayGroup(id: commit.id, day: day, date: commit.authorDate, commits: [commit]))
             }
         }
         return result

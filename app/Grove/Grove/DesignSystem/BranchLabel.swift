@@ -15,18 +15,30 @@ struct BranchLabel: View {
 
     let name: String
     let kind: Kind
+    /// A local branch whose same-named remote branch points at the same commit.
+    var isOnRemote = false
+    /// Lets the name truncate in tight rows instead of forcing its full width.
+    var truncates = false
 
     var body: some View {
-        HStack(spacing: 3) {
+        let label = HStack(spacing: 3) {
             Image(systemName: symbol).font(.system(size: 9, weight: .semibold))
-            Text(name).lineLimit(1)
+            Text(name).lineLimit(1).truncationMode(.middle)
+            if isOnRemote {
+                Image(systemName: "cloud").font(.system(size: 9, weight: .semibold))
+                    .accessibilityLabel("Also on remote")
+            }
         }
         .font(.system(size: 11, weight: .semibold))
         .foregroundStyle(color)
         .padding(.horizontal, 7)
         .padding(.vertical, 2)
         .background(color.opacity(0.14), in: Capsule())
-        .fixedSize()
+        if truncates {
+            label.fixedSize(horizontal: false, vertical: true)
+        } else {
+            label.fixedSize()
+        }
     }
 
     private var symbol: String {
@@ -61,7 +73,7 @@ extension BranchLabel {
 #Preview {
     HStack {
         BranchLabel(name: "main", kind: .localBranch(isHEAD: true))
-        BranchLabel(name: "feature/auth", kind: .localBranch(isHEAD: false))
+        BranchLabel(name: "feature/auth", kind: .localBranch(isHEAD: false), isOnRemote: true)
         BranchLabel(name: "origin/main", kind: .remoteBranch)
         BranchLabel(name: "v1.0.0", kind: .tag)
     }
