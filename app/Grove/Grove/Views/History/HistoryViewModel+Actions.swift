@@ -78,16 +78,30 @@ extension HistoryViewModel {
     }
 
     func reword(_ commit: CommitInfo, message: String) async {
-        await perform { try await $0.rewordCommit(commit.id, newMessage: message) }
+        await performRewrite("Reword \(commit.shortSHA)") { try await $0.rewordCommit(commit.id, newMessage: message) }
     }
 
     func squashWithParent(_ commit: CommitInfo, message: String) async {
         guard let parent = commit.parentIDs.first else { return }
-        await perform { try await $0.squashCommits([parent, commit.id], message: message) }
+        await performRewrite("Squash \(commit.shortSHA)") { try await $0.squashCommits([parent, commit.id], message: message) }
     }
 
     func drop(_ commit: CommitInfo) async {
-        await perform { try await $0.dropCommit(commit.id) }
+        await performRewrite("Delete \(commit.shortSHA)") { try await $0.dropCommit(commit.id) }
+    }
+
+    /// Undo resets --hard to the old HEAD, so it's only recorded when that can't lose uncommitted work.
+    private func performRewrite(_ description: String,
+                                _ operation: @escaping (any GitRepositoryProtocol) async throws -> Void) async {
+        let repo = repository
+        let oldHead = try? await repo.commitDetail("HEAD").id
+        let wasClean = (try? await GitUndoManager.isWorkingTreeClean(repo)) ?? false
+        await perform { repo in
+            try await operation(repo)
+            guard wasClean, let oldHead, let newHead = try? await repo.commitDetail("HEAD").id else { return }
+            self.undoManager?.record(GitUndoManager.rewriteAction(
+                description: description, oldHead: oldHead, newHead: newHead, repository: repo))
+        }
     }
 
     /// Called by the create branch/tag sheets after they wrote the ref themselves.

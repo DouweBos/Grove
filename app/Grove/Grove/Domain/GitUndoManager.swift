@@ -4,7 +4,6 @@
 // Tracks git operations that can be undone/redone via Cmd+Z / Cmd+Shift+Z.
 // Dispatches through GroveAction so the menu bar and window view stay decoupled.
 
-import AppKit
 import Foundation
 import Observation
 import os
@@ -13,15 +12,9 @@ import os
 
 /// Maintains undo/redo stacks for reversible git operations.
 ///
-/// Record an action immediately after executing it:
-/// ```swift
-/// try await repository.commit(message: msg, body: nil, amend: false)
-/// undoManager.record(GitUndoManager.GitAction(
-///     description: "Commit '\(msg)'",
-///     undoCommand: { try await repository.resetToCommit("HEAD~1", mode: .soft) },
-///     redoCommand: { try await repository.commit(message: msg, body: nil, amend: false) }
-/// ))
-/// ```
+/// Record an action immediately after it succeeds, e.g.
+/// `undoManager?.record(GitUndoManager.stageAction(paths: paths, repository: repository))`.
+/// The description becomes the Edit menu title ("Undo Stage README.md").
 ///
 /// Operations that are destructive (e.g. discard changes) are **not** recorded
 /// because they cannot be safely undone. Show a confirmation alert instead.
@@ -74,8 +67,8 @@ final class GitUndoManager {
 
     // MARK: - Error State
 
-    /// Non-nil when an undo or redo operation fails.
-    var errorMessage: String?
+    /// Non-nil when an undo or redo operation fails; RootWindowHost alerts on it.
+    private(set) var errorMessage: String?
 
     // MARK: - Stack Mutation
 
@@ -86,6 +79,7 @@ final class GitUndoManager {
     func record(_ action: GitAction) {
         undoStack.append(action)
         redoStack.removeAll()
+        EditUndoState.shared.gitActionRecorded()
         Logger.ui.debug("GitUndoManager: recorded '\(action.description, privacy: .public)'")
     }
 
@@ -96,7 +90,6 @@ final class GitUndoManager {
     ///
     /// - Throws: Any error thrown by the underlying undo command.
     func undo() async throws {
-        if Self.forwardTextEdit(undo: true) { return }
         guard let action = undoStack.last else { return }
         undoStack.removeLast()
         do {
@@ -118,7 +111,6 @@ final class GitUndoManager {
     ///
     /// - Throws: Any error thrown by the underlying redo command.
     func redo() async throws {
-        if Self.forwardTextEdit(undo: false) { return }
         guard let action = redoStack.last else { return }
         redoStack.removeLast()
         do {
@@ -133,57 +125,75 @@ final class GitUndoManager {
         }
     }
 
-    // MARK: - Text Editing Fallback
+    private(set) var errorTitle = "Couldn't Undo"
 
-    /// Edit-menu titles: text editing wins while a text field has something to undo.
-    var menuUndoTitle: String {
-        Self.textCanUndo ? "Undo" : undoDescription.map { "Undo \($0)" } ?? "Undo"
+    /// Records an undo/redo failure so the window can alert.
+    func reportError(_ error: Error, redo: Bool = false) {
+        errorTitle = redo ? "Couldn't Redo" : "Couldn't Undo"
+        errorMessage = error.localizedDescription
     }
 
-    var menuRedoTitle: String {
-        Self.textCanRedo ? "Redo" : redoDescription.map { "Redo \($0)" } ?? "Redo"
-    }
-
-    /// Whether Edit > Undo should be enabled (git history or the focused text field).
-    var menuCanUndo: Bool { canUndo || Self.textCanUndo }
-    var menuCanRedo: Bool { canRedo || Self.textCanRedo }
-
-    private static var focusedTextUndoManager: UndoManager? {
-        (NSApp.keyWindow?.firstResponder as? NSText)?.undoManager
-    }
-
-    static var textCanUndo: Bool { focusedTextUndoManager?.canUndo ?? false }
-    static var textCanRedo: Bool { focusedTextUndoManager?.canRedo ?? false }
-
-    /// Sends undo:/redo: down the responder chain when a text field can handle it.
-    /// Also usable without a repository window (e.g. the Preferences window).
-    @discardableResult
-    static func forwardTextEdit(undo: Bool) -> Bool {
-        guard undo ? textCanUndo : textCanRedo else { return false }
-        return NSApp.sendAction(Selector((undo ? "undo:" : "redo:")), to: nil, from: nil)
+    func dismissError() {
+        errorMessage = nil
     }
 
     // MARK: - Convenience Factories
 
-    /// Returns a pre-built ``GitAction`` for undoing a commit via `git reset --soft HEAD~1`.
-    ///
-    /// - Parameters:
-    ///   - commitSummary: The first line of the commit message, shown in the menu.
-    ///   - repository: The repository to operate on.
+    /// Undo soft-resets to the pre-commit HEAD (changes stay staged); redo re-commits
+    /// the same message. Resetting to `previousHead` rather than `HEAD~1` also covers amends.
     static func commitAction(
-        commitSummary: String,
-        repository: any GitRepositoryProtocol
+        amend: Bool,
+        previousHead: String,
+        repository: any GitRepositoryProtocol,
+        recommit: @escaping @MainActor () async throws -> Void
     ) -> GitAction {
         GitAction(
-            description: "Commit '\(commitSummary)'",
-            undoCommand: {
-                try await repository.resetToCommit("HEAD~1", mode: .soft)
-            },
-            redoCommand: {
-                // Redo re-commits with the same message; callers may prefer to
-                // handle this themselves and pass a custom closure.
-                _ = try await repository.commit(message: commitSummary, body: nil, amend: false)
-            }
+            description: amend ? "Amend Commit" : "Commit",
+            undoCommand: { try await repository.resetToCommit(previousHead, mode: .soft) },
+            redoCommand: recommit
+        )
+    }
+
+    /// History rewrites (reword, drop, squash) are undone by moving HEAD back with
+    /// `reset --hard`, so both directions refuse to run over uncommitted changes.
+    static func rewriteAction(
+        description: String,
+        oldHead: String,
+        newHead: String,
+        repository: any GitRepositoryProtocol
+    ) -> GitAction {
+        let move: @MainActor (String) async throws -> Void = { target in
+            guard try await isWorkingTreeClean(repository) else { throw UndoError.dirtyWorkingTree }
+            try await repository.resetToCommit(target, mode: .hard)
+        }
+        return GitAction(
+            description: description,
+            undoCommand: { try await move(oldHead) },
+            redoCommand: { try await move(newHead) }
+        )
+    }
+
+    /// Ignores untracked files: `reset --hard` leaves them alone.
+    static func isWorkingTreeClean(_ repository: any GitRepositoryProtocol) async throws -> Bool {
+        try await repository.status().allSatisfy {
+            $0.workdirStatus == .untracked || ($0.indexStatus == .unmodified && $0.workdirStatus == .unmodified)
+        }
+    }
+
+    enum UndoError: LocalizedError {
+        case dirtyWorkingTree
+
+        var errorDescription: String? {
+            "Commit or stash your uncommitted changes first; undoing this would overwrite them."
+        }
+    }
+
+    /// Groups several actions into one menu entry; undo runs them in reverse order.
+    static func groupedAction(description: String, actions: [GitAction]) -> GitAction {
+        GitAction(
+            description: description,
+            undoCommand: { for action in actions.reversed() { try await action.undoCommand() } },
+            redoCommand: { for action in actions { try await action.redoCommand() } }
         )
     }
 

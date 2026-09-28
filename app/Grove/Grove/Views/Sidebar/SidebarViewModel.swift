@@ -97,6 +97,7 @@ final class SidebarViewModel {
 
     /// Set by the session so a sidebar mutation refreshes every view, not just the sidebar.
     var onRepositoryChanged: (() async -> Void)?
+    var undoManager: GitUndoManager?
 
     /// Call after anything that changed refs or the working tree.
     func didChangeRepository() async {
@@ -172,8 +173,10 @@ final class SidebarViewModel {
     }
 
     func checkout(branch: BranchInfo) async {
+        let previous = localBranches.first(where: \.isHEAD)?.name
         do {
             try await repository.checkout(branch: branch.name)
+            recordCheckout(of: branch.name, from: previous)
             await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription
@@ -184,8 +187,10 @@ final class SidebarViewModel {
     /// or the existing local branch of the same name.
     func checkout(remoteBranch branch: BranchInfo) async {
         let localName = Self.shortName(of: branch)
+        let previous = localBranches.first(where: \.isHEAD)?.name
         do {
             try await repository.checkout(branch: localName)
+            recordCheckout(of: localName, from: previous)
             await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription
@@ -195,10 +200,24 @@ final class SidebarViewModel {
     func deleteBranch(_ branch: BranchInfo, force: Bool = false) async {
         do {
             try await repository.deleteBranch(name: branch.name, force: force)
+            recordBranchDeletion(branch)
             await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Detached HEAD has no branch to return to, so it isn't recorded.
+    private func recordCheckout(of target: String, from previous: String?) {
+        guard let previous, previous != target else { return }
+        undoManager?.record(GitUndoManager.checkoutAction(targetBranch: target, previousBranch: previous,
+                                                          repository: repository))
+    }
+
+    /// Also called by the delete dialog, which deletes the branch itself.
+    func recordBranchDeletion(_ branch: BranchInfo) {
+        undoManager?.record(GitUndoManager.deleteBranchAction(branchName: branch.name, sha: branch.targetSHA,
+                                                              repository: repository))
     }
 
     /// Merges `branch` into the current HEAD.

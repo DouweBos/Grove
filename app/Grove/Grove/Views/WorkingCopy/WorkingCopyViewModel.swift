@@ -36,6 +36,7 @@ final class WorkingCopyViewModel {
 
     /// Set by the session so mutations refresh every view (sidebar badge, history), not just this one.
     var onRepositoryChanged: (() async -> Void)?
+    var undoManager: GitUndoManager?
 
     // MARK: Status
 
@@ -210,19 +211,33 @@ final class WorkingCopyViewModel {
     // MARK: - Staging
 
     func stageFile(_ entry: StatusEntry) async {
-        await mutate { try await self.repository.stage(paths: [entry.path]) }
+        await mutate {
+            try await self.repository.stage(paths: [entry.path])
+            self.undoManager?.record(GitUndoManager.stageAction(paths: [entry.path], repository: self.repository))
+        }
     }
 
     func unstageFile(_ entry: StatusEntry) async {
-        await mutate { try await self.repository.unstage(paths: [entry.path]) }
+        await mutate {
+            try await self.repository.unstage(paths: [entry.path])
+            self.undoManager?.record(GitUndoManager.unstageAction(paths: [entry.path], repository: self.repository))
+        }
     }
 
     func stageAll() async {
-        await mutate { try await self.repository.stageAll() }
+        let paths = unstagedFiles.map(\.path)
+        await mutate {
+            try await self.repository.stageAll()
+            self.undoManager?.record(GitUndoManager.stageAction(paths: paths, repository: self.repository))
+        }
     }
 
     func unstageAll() async {
-        await mutate { try await self.repository.unstageAll() }
+        let paths = stagedFiles.map(\.path)
+        await mutate {
+            try await self.repository.unstageAll()
+            self.undoManager?.record(GitUndoManager.unstageAction(paths: paths, repository: self.repository))
+        }
     }
 
     func performHunkAction(_ action: HunkAction, hunk: HunkData, lines: [DiffLine] = []) async {
@@ -294,14 +309,20 @@ final class WorkingCopyViewModel {
         isCommitting = true
         defer { isCommitting = false }
         do {
-            let body = commitBody.trimmingCharacters(in: .whitespacesAndNewlines)
-            try await repository.commit(
-                message: commitSubject.trimmingCharacters(in: .whitespacesAndNewlines),
-                body: body.isEmpty ? nil : body,
-                amend: isAmend,
-                sign: signCommit,
-                signOff: signOff
-            )
+            let message = commitSubject.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedBody = commitBody.trimmingCharacters(in: .whitespacesAndNewlines)
+            let body = trimmedBody.isEmpty ? nil : trimmedBody
+            // No previous HEAD means the first commit, which a soft reset can't undo.
+            let previousHead = try? await repository.commitDetail("HEAD").id
+            let (repo, amend, sign, signOff) = (repository, isAmend, signCommit, signOff)
+            let commit: @MainActor () async throws -> Void = {
+                try await repo.commit(message: message, body: body, amend: amend, sign: sign, signOff: signOff)
+            }
+            try await commit()
+            if let previousHead {
+                undoManager?.record(GitUndoManager.commitAction(amend: amend, previousHead: previousHead,
+                                                                repository: repo, recommit: commit))
+            }
         } catch {
             errorMessage = error.localizedDescription
             return

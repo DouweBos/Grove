@@ -32,8 +32,11 @@ struct QuickActionsPanel: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(.snappy(duration: 0.18), value: viewModel.isPresented)
         .onReceive(NotificationCenter.default.publisher(for: GroveAction.notificationName)) { note in
-            guard GroveAction(notification: note) == .quickActions else { return }
-            viewModel.toggle()
+            switch GroveAction(notification: note) {
+            case .quickActions: viewModel.toggle()
+            case .quickOpen: viewModel.openFiles()
+            default: return
+            }
             isSearchFocused = viewModel.isPresented
         }
         .alert("Couldn't Open", isPresented: Binding(get: { viewModel.errorMessage != nil },
