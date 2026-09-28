@@ -228,6 +228,8 @@ final class GitShell: Sendable {
         environment: [String: String]
     ) throws -> Process {
         var env = baseEnvironment
+        // Read per launch so a preference change applies to the next git command without reopening anything.
+        env.merge(GitEnvironment.variables(forRepositoryAt: workingDirectory.path, base: baseEnvironment)) { $1 }
         for (key, value) in environment {
             env[key] = value
         }
