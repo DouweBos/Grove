@@ -1,244 +1,123 @@
 // Components/CommitGraph/CommitGraphColumn.swift
 // Grove
 //
-// SwiftUI view that renders the graph topology for a single commit row.
-// Uses Canvas for pixel-precise line and circle drawing.
+// Canvas that paints one row of the commit graph: lane lines plus the commit dot.
 
 import SwiftUI
 
-// MARK: - Layout Constants
-
-/// Drawing constants shared between CommitGraphColumn and its callers.
 enum CommitGraphLayout {
-    /// Horizontal width allocated per lane column (points).
-    static let laneWidth: CGFloat = 16
-    /// Radius of the filled commit circle (points).
-    static let circleRadius: CGFloat = 4.5
-    /// Stroke width for lane lines and circle outline (points).
+    static let laneWidth: CGFloat = 14
+    static let dotDiameter: CGFloat = 8
     static let lineWidth: CGFloat = 2
-    /// Total width for a given number of active columns.
+    /// Lanes beyond this are clipped so a wide graph can't push the row text away.
+    static let maxVisibleLanes = 8
+
     static func totalWidth(columns: Int) -> CGFloat {
-        CGFloat(max(columns, 1)) * laneWidth
+        CGFloat(min(max(columns, 1), maxVisibleLanes)) * laneWidth + laneWidth / 2
+    }
+
+    static func laneCenter(_ column: Int) -> CGFloat {
+        CGFloat(column) * laneWidth + laneWidth / 2 + 2
     }
 }
 
-// MARK: - CommitGraphColumn
-
-/// A fixed-width canvas that paints the commit graph for one row.
-///
-/// - Vertical lines represent pass-through lanes.
-/// - A filled circle marks the commit's own position.
-/// - Curved Bezier lines represent merge edges converging from other lanes.
-///
-/// Callers should size this view to `CommitGraphLayout.totalWidth(columns:)` wide
-/// and match the surrounding row height.
+/// Graph cell for a commit row.
 struct CommitGraphColumn: View {
-
-    // MARK: Properties
-
-    /// Graph data for this specific commit row.
     let node: GraphNode
-    /// Total number of active columns across all visible rows (for fixed width).
     let maxColumns: Int
-    /// Height of the containing row — used to position the vertical midpoint.
-    var rowHeight: CGFloat = 32
-
-    // MARK: Body
+    var isHead = false
 
     var body: some View {
         Canvas { context, size in
             let midY = size.height / 2
-            drawEdges(in: context, size: size, midY: midY)
-            drawCommitCircle(in: context, size: size, midY: midY)
-        }
-        .frame(
-            width: CommitGraphLayout.totalWidth(columns: maxColumns),
-            height: rowHeight
-        )
-    }
-
-    // MARK: - Drawing
-
-    /// Draws all lane edges for this row.
-    ///
-    /// Three kinds of segments appear in a row:
-    ///
-    /// 1. **Pass-through** (`fromColumn == toColumn`, column != node.column):
-    ///    a full-height straight vertical line in the lane's color.
-    ///
-    /// 2. **Own-lane** (`fromColumn == toColumn == node.column`):
-    ///    split into an above-circle half and a below-circle half so the filled
-    ///    circle can be drawn on top cleanly.
-    ///
-    /// 3. **Merge edge** (`fromColumn == node.column`, `toColumn != node.column`):
-    ///    a cubic Bezier starting at the circle's midY and curving down to the
-    ///    bottom edge of `toColumn`.
-    private func drawEdges(in context: GraphicsContext, size: CGSize, midY: CGFloat) {
-        let r = CommitGraphLayout.circleRadius
-
-        for edge in node.edges {
-            let fromX = laneCenter(edge.fromColumn)
-            let toX   = laneCenter(edge.toColumn)
-            var path  = Path()
-
-            let isStraight = edge.fromColumn == edge.toColumn
-            let isOwnLane  = isStraight && edge.fromColumn == node.column
-
-            if isStraight {
-                if isOwnLane {
-                    // Own lane: draw in two segments so the circle sits cleanly
-                    // on top of the line without the line bleeding through it.
-                    // Segment 1 — top of row → just above circle.
-                    path.move(to: CGPoint(x: fromX, y: 0))
-                    path.addLine(to: CGPoint(x: fromX, y: midY - r - 1))
-                    // Segment 2 — just below circle → bottom of row.
-                    path.move(to: CGPoint(x: fromX, y: midY + r + 1))
-                    path.addLine(to: CGPoint(x: fromX, y: size.height))
-                } else {
-                    // Pass-through lane — uninterrupted vertical.
-                    path.move(to: CGPoint(x: fromX, y: 0))
-                    path.addLine(to: CGPoint(x: fromX, y: size.height))
-                }
-            } else {
-                // Merge edge: Bezier curve from the commit circle (midY)
-                // down to the bottom of the target column.
-                //
-                // Using a cubic Bezier produces a smooth "banana" shape:
-                //   control1 keeps the curve near the source column at first,
-                //   control2 pulls it toward the target column at the end.
-                let startY    = midY
-                let endY      = size.height
-                let controlY1 = startY + (endY - startY) * 0.5
-                let controlY2 = startY + (endY - startY) * 0.7
-
-                path.move(to: CGPoint(x: fromX, y: startY))
-                path.addCurve(
-                    to: CGPoint(x: toX, y: endY),
-                    control1: CGPoint(x: fromX, y: controlY1),
-                    control2: CGPoint(x: toX, y: controlY2)
-                )
+            for line in node.lines {
+                context.stroke(path(for: line, height: size.height, midY: midY),
+                               with: .color(Theme.laneColor(line.colorIndex)),
+                               style: StrokeStyle(lineWidth: CommitGraphLayout.lineWidth, lineCap: .round))
             }
-
-            context.stroke(
-                path,
-                with: .color(edge.color),
-                style: StrokeStyle(lineWidth: CommitGraphLayout.lineWidth, lineCap: .round)
-            )
+            drawDot(in: context, midY: midY)
         }
+        .frame(width: CommitGraphLayout.totalWidth(columns: maxColumns))
+        .clipped()
     }
 
-    /// Draws the filled circle that marks the commit's position.
-    private func drawCommitCircle(in context: GraphicsContext, size: CGSize, midY: CGFloat) {
-        let cx = laneCenter(node.column)
-        let r  = CommitGraphLayout.circleRadius
-
-        let circleRect = CGRect(
-            x: cx - r,
-            y: midY - r,
-            width: r * 2,
-            height: r * 2
-        )
-        let circlePath = Path(ellipseIn: circleRect)
-
-        // Fill with the node's primary color.
-        context.fill(circlePath, with: .color(node.color))
-
-        // Thin white ring to separate the circle from lines behind it.
-        context.stroke(
-            circlePath,
-            with: .color(.white.opacity(0.6)),
-            style: StrokeStyle(lineWidth: 1.5)
-        )
+    private func path(for line: GraphLine, height: CGFloat, midY: CGFloat) -> Path {
+        let fromX = CommitGraphLayout.laneCenter(line.fromColumn)
+        let toX = CommitGraphLayout.laneCenter(line.toColumn)
+        var path = Path()
+        switch line.kind {
+        case .passThrough:
+            path.move(to: CGPoint(x: fromX, y: 0))
+            path.addLine(to: CGPoint(x: toX, y: height))
+        case .incoming:
+            path.move(to: CGPoint(x: fromX, y: 0))
+            curve(&path, to: CGPoint(x: toX, y: midY), from: CGPoint(x: fromX, y: 0))
+        case .outgoing:
+            path.move(to: CGPoint(x: fromX, y: midY))
+            curve(&path, to: CGPoint(x: toX, y: height), from: CGPoint(x: fromX, y: midY))
+        }
+        return path
     }
 
-    // MARK: - Helpers
+    /// Vertical lines stay straight; lane changes bend with a smooth S-curve.
+    private func curve(_ path: inout Path, to end: CGPoint, from start: CGPoint) {
+        guard start.x != end.x else { return path.addLine(to: end) }
+        let midY = (start.y + end.y) / 2
+        path.addCurve(to: end, control1: CGPoint(x: start.x, y: midY), control2: CGPoint(x: end.x, y: midY))
+    }
 
-    /// Returns the horizontal center point (in points) for a given lane column.
-    private func laneCenter(_ column: Int) -> CGFloat {
-        CGFloat(column) * CommitGraphLayout.laneWidth + CommitGraphLayout.laneWidth / 2
+    private func drawDot(in context: GraphicsContext, midY: CGFloat) {
+        let d = CommitGraphLayout.dotDiameter
+        let rect = CGRect(x: CommitGraphLayout.laneCenter(node.column) - d / 2, y: midY - d / 2, width: d, height: d)
+        let dot = Path(ellipseIn: rect)
+        let laneColor = Theme.laneColor(node.colorIndex)
+        if isHead {
+            context.fill(Path(ellipseIn: rect.insetBy(dx: -1, dy: -1)), with: .color(Theme.accent))
+        } else if node.isMerge {
+            // Hollow dot marks merges; the surface fill hides the lines converging behind it.
+            context.fill(dot, with: .color(Theme.surface))
+            context.stroke(dot, with: .color(laneColor), lineWidth: CommitGraphLayout.lineWidth)
+        } else {
+            context.fill(dot, with: .color(laneColor))
+        }
     }
 }
 
-// MARK: - Preview
+/// Continues the lanes of the next commit through a non-commit row such as a date header.
+struct CommitGraphPassThrough: View {
+    let lanes: [GraphLine]
+    let maxColumns: Int
 
-#Preview("CommitGraphColumn — variety") {
-    // Manually construct a handful of representative nodes to visually verify:
-    //   row 0: single lane, no parents (root of shown range)
-    //   row 1: pass-through + merge edge
-    //   row 2: two lanes active
-    //   row 3: merge commit with two parents
-
-    let palette = CommitGraphLayout.self
-    _ = palette
-
-    let blueColor  = Color(red: 0.20, green: 0.60, blue: 1.00)
-    let greenColor = Color(red: 0.18, green: 0.75, blue: 0.45)
-
-    let nodes: [(GraphNode, String)] = [
-        (
-            GraphNode(
-                id: "a",
-                column: 0,
-                color: blueColor,
-                edges: [
-                    GraphEdge(fromColumn: 0, toColumn: 0, color: blueColor)
-                ],
-                isMerge: false
-            ),
-            "Linear — column 0"
-        ),
-        (
-            GraphNode(
-                id: "b",
-                column: 0,
-                color: blueColor,
-                edges: [
-                    GraphEdge(fromColumn: 0, toColumn: 0, color: blueColor),
-                    GraphEdge(fromColumn: 1, toColumn: 1, color: greenColor)
-                ],
-                isMerge: false
-            ),
-            "Pass-through lane 1"
-        ),
-        (
-            GraphNode(
-                id: "c",
-                column: 0,
-                color: blueColor,
-                edges: [
-                    GraphEdge(fromColumn: 0, toColumn: 0, color: blueColor),
-                    GraphEdge(fromColumn: 0, toColumn: 1, color: greenColor)
-                ],
-                isMerge: true
-            ),
-            "Merge — main into branch"
-        ),
-        (
-            GraphNode(
-                id: "d",
-                column: 1,
-                color: greenColor,
-                edges: [
-                    GraphEdge(fromColumn: 0, toColumn: 0, color: blueColor),
-                    GraphEdge(fromColumn: 1, toColumn: 1, color: greenColor)
-                ],
-                isMerge: false
-            ),
-            "Column 1 commit"
-        )
-    ]
-
-    return List {
-        ForEach(nodes, id: \.0.id) { node, label in
-            HStack(spacing: 4) {
-                CommitGraphColumn(node: node, maxColumns: 2, rowHeight: 32)
-                Text(label)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
+    var body: some View {
+        Canvas { context, size in
+            for line in lanes {
+                var path = Path()
+                let x = CommitGraphLayout.laneCenter(line.fromColumn)
+                path.move(to: CGPoint(x: x, y: 0))
+                path.addLine(to: CGPoint(x: x, y: size.height))
+                context.stroke(path, with: .color(Theme.laneColor(line.colorIndex)), lineWidth: CommitGraphLayout.lineWidth)
             }
         }
+        .frame(width: CommitGraphLayout.totalWidth(columns: maxColumns))
+        .clipped()
     }
-    .listStyle(.plain)
-    .frame(width: 320, height: 180)
+}
+
+#Preview {
+    let commits: [CommitInfo] = MockData.commits
+    let nodes = CommitGraphBuilder().buildGraph(from: commits)
+    let columns = (nodes.map(\.column).max() ?? 0) + 1
+    return VStack(spacing: 0) {
+        ForEach(nodes.prefix(10)) { node in
+            HStack {
+                CommitGraphColumn(node: node, maxColumns: columns, isHead: node.id == nodes.first?.id)
+                Text(node.id.prefix(7)).font(.monoCaption)
+                Spacer()
+            }
+            .frame(height: 44)
+        }
+    }
+    .frame(width: 260)
+    .padding()
+    .background(Theme.surface)
 }

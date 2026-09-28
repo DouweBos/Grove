@@ -57,14 +57,21 @@ struct RootWindowHost: View {
         .onReceive(
             NotificationCenter.default.publisher(for: GroveAction.notificationName)
         ) { notification in
-            guard let action = GroveAction(notification: notification) else { return }
+            guard let action = GroveAction(notification: notification),
+                  !windowVM.handleBrowserAction(action) else { return }
             windowVM.currentSession?.session.handleAction(action)
         }
         .onDisappear {
             windowVM.stopAllSessions()
         }
         // `-GroveOpenRepository <path>` opens a repository on launch.
+        // `-GroveAppearance dark|light` forces one appearance, for checking both without changing the system.
         .task {
+            switch UserDefaults.standard.string(forKey: "GroveAppearance") {
+            case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+            case "light": NSApp.appearance = NSAppearance(named: .aqua)
+            default: break
+            }
             if let path = UserDefaults.standard.string(forKey: "GroveOpenRepository") {
                 windowVM.openReference(RepositoryReference(path: path))
             }
@@ -82,6 +89,10 @@ struct RootWindowHost: View {
             CreateRepositorySheet()
                 .environment(windowVM)
         }
+        .sheet(item: $vm.groupEditor) { editor in
+            GroupNameSheet(editor: editor)
+                .environment(windowVM)
+        }
     }
 
     // MARK: Detail Content
@@ -95,7 +106,8 @@ struct RootWindowHost: View {
                     .repositoryToolbar(
                         repository: loaded.repository,
                         state: loaded.session.toolbarState,
-                        sidebarVM: loaded.session.sidebarVM
+                        sidebarVM: loaded.session.sidebarVM,
+                        onComplete: { Task { await loaded.session.refreshAll() } }
                     )
                     .environment(loaded.session.gitUndoManager)
                     .focusedSceneValue(\.gitUndoManager, loaded.session.gitUndoManager)

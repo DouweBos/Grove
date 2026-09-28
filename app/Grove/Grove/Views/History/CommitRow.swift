@@ -3,156 +3,84 @@
 
 import SwiftUI
 
-/// A single row in the commit list.
-///
-/// Shows a graph column at the leading edge (lanes, edges, and a commit circle),
-/// followed by branch/tag pills, the commit message, author, and relative date.
+/// One commit in the history list: graph lanes, avatar, refs + subject, and a mono meta line.
 struct CommitRow: View {
-
     let commit: CommitInfo
-
-    /// Branches that point to this commit.
     var branches: [BranchInfo] = []
-    /// Tags that point to this commit.
     var tags: [TagInfo] = []
-
-    /// Pre-computed graph node from ``HistoryViewModel``.
-    /// When `nil` a simple colored circle is shown as a fallback.
+    /// `nil` hides the graph, e.g. while the list is filtered and lanes would be misleading.
     var graphNode: GraphNode?
-    /// Total active columns at the widest point — drives the graph column width.
-    var maxGraphColumns: Int = 1
+    var maxGraphColumns = 1
+    var isHead = false
+    var isSelected = false
 
-    // MARK: - Row height
-
-    /// The list row height that callers should match via `.frame(height:)`.
-    static let rowHeight: CGFloat = 32
-
-    // MARK: - Body
+    static let height: CGFloat = 46
 
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
-
-            // MARK: Graph column
-            if let node = graphNode {
-                CommitGraphColumn(
-                    node: node,
-                    maxColumns: maxGraphColumns,
-                    rowHeight: Self.rowHeight
-                )
-            } else {
-                // Fallback: simple colored dot while graph is loading.
-                Circle()
-                    .fill(fallbackColor)
-                    .frame(width: 10, height: 10)
-                    .padding(.leading, 2)
+        HStack(spacing: Theme.Spacing.sm) {
+            if let graphNode {
+                CommitGraphColumn(node: graphNode, maxColumns: maxGraphColumns, isHead: isHead)
             }
-
-            // MARK: Commit metadata
+            AvatarView(name: commit.authorName, email: commit.authorEmail, size: .medium,
+                       tint: graphNode.map { Theme.laneColor($0.colorIndex) })
             VStack(alignment: .leading, spacing: 3) {
-                // Message line with branch/tag pills
-                HStack(spacing: 4) {
-                    // Branch/tag labels
-                    ForEach(branches.prefix(3), id: \.id) { branch in
-                        BranchLabel(branch: branch)
-                    }
-                    ForEach(tags.prefix(2), id: \.id) { tag in
-                        BranchLabel(tag: tag)
-                    }
-
+                HStack(spacing: Theme.Spacing.xs) {
+                    ForEach(branches.prefix(3)) { BranchLabel(branch: $0) }
+                    ForEach(tags.prefix(2)) { BranchLabel(tag: $0) }
                     Text(commit.summary)
-                        .font(.subheadline)
+                        .font(.rowTitle)
+                        .foregroundStyle(Theme.textPrimary)
                         .lineLimit(1)
                         .truncationMode(.tail)
+                        .layoutPriority(-1)
                 }
-
-                // Author + date
-                HStack(spacing: 4) {
-                    Text(commit.authorName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("·")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                    Text(commit.authorDate, style: .relative)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
+                HStack(spacing: Theme.Spacing.xs) {
+                    Text("\(commit.shortSHA) · \(commit.authorName) · \(commit.authorDate.commitRelative())")
+                        .lineLimit(1)
+                    if commit.isMerge {
+                        Image(systemName: "arrow.triangle.merge").accessibilityLabel("Merge commit")
+                    }
                     if commit.isSigned {
                         Image(systemName: "checkmark.seal.fill")
-                            .imageScale(.small)
-                            .foregroundStyle(.green)
-                    }
-
-                    if commit.isMerge {
-                        Image(systemName: "arrow.triangle.merge")
-                            .imageScale(.small)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.success)
+                            .accessibilityLabel("Signed")
                     }
                 }
+                .font(.monoCaption)
+                .foregroundStyle(Theme.textSecondary)
             }
-
-            Spacer()
-
-            // Short SHA
-            Text(commit.shortSHA)
-                .font(.caption)
-                .fontDesign(.monospaced)
-                .foregroundStyle(.tertiary)
+            Spacer(minLength: 0)
         }
-        .padding(.vertical, 2)
-    }
-
-    // MARK: - Helpers
-
-    /// Color used when no ``GraphNode`` is available yet.
-    private var fallbackColor: Color {
-        let colors: [Color] = [.blue, .green, .orange, .purple, .pink, .cyan, .yellow]
-        var hash: UInt64 = 5381
-        for byte in commit.id.utf8 { hash = hash &* 33 &+ UInt64(byte) }
-        let index = Int(hash % UInt64(colors.count))
-        return colors[index]
+        .padding(.leading, graphNode == nil ? Theme.Spacing.md : Theme.Spacing.sm)
+        .padding(.trailing, Theme.Spacing.md)
+        .frame(height: Self.height)
+        .background {
+            if isSelected {
+                RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
+                    .fill(Theme.selectionFill)
+                    .padding(.horizontal, Theme.Spacing.xs)
+                    .padding(.vertical, 1)
+            }
+        }
+        .contentShape(Rectangle())
     }
 }
 
-// MARK: - Preview
-
 #Preview {
-    // Build real graph nodes from mock data so the preview exercises the
-    // full pipeline: CommitGraphBuilder -> GraphNode -> CommitGraphColumn.
-    //
-    // CommitGraphBuilder is @MainActor so we pre-build on the MainActor
-    // inside a PreviewProvider-style wrapper using @MainActor isolation.
-    @MainActor
-    struct PreviewContent: View {
-        private let commits  = MockData.commits
-        private let branches = MockData.branches
-        private let tags     = MockData.tags
-        private let nodeMap: [String: GraphNode]
-        private let maxCols: Int
-
-        init() {
-            let builder = CommitGraphBuilder()
-            let nodes = builder.buildGraph(from: commits)
-            nodeMap = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0) })
-            maxCols = (nodes.map(\.column).max().map { $0 + 1 }) ?? 1
-        }
-
-        var body: some View {
-            List {
-                ForEach(commits.prefix(8)) { commit in
-                    CommitRow(
-                        commit: commit,
-                        branches: branches.filter { $0.targetSHA == commit.id },
-                        tags: tags.filter { $0.targetSHA == commit.id },
-                        graphNode: nodeMap[commit.id],
-                        maxGraphColumns: maxCols
-                    )
-                }
-            }
-            .listStyle(.plain)
-            .frame(width: 520, height: 280)
+    let commits = MockData.commits
+    let nodes = CommitGraphBuilder().buildGraph(from: commits)
+    let columns = (nodes.map(\.column).max() ?? 0) + 1
+    return VStack(spacing: 0) {
+        ForEach(Array(zip(commits.prefix(8), nodes)), id: \.0.id) { commit, node in
+            CommitRow(commit: commit,
+                      branches: MockData.branches.filter { $0.targetSHA == commit.id },
+                      tags: MockData.tags.filter { $0.targetSHA == commit.id },
+                      graphNode: node, maxGraphColumns: columns,
+                      isHead: commit.id == commits.first?.id, isSelected: commit.id == commits[1].id)
         }
     }
-
-    return PreviewContent()
+    .frame(width: 520)
+    .panel()
+    .padding()
+    .background(Theme.background)
 }

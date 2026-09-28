@@ -19,6 +19,13 @@ import Foundation
 /// receive them via ``GroveAction/notificationName``.
 enum GroveAction: String, Sendable {
 
+    // MARK: Repository Browser
+
+    case addRepository
+    case cloneRepository
+    case createRepository
+    case newGroup
+
     // MARK: Navigation
 
     /// Navigate to the Working Copy view (Cmd+1).

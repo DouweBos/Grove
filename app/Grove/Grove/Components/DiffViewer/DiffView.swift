@@ -29,8 +29,9 @@ struct DiffView: View {
     let diff: DiffResult
     /// Whether the panel is in Staged mode (affects hunk action button labels).
     var showingStaged: Bool = false
-    /// Called when the user taps a hunk or line action button.
-    var onHunkAction: ((HunkData, HunkAction) -> Void)?
+    /// Hunk or line action; lines are the selected ones for line actions, empty for whole hunks.
+    /// `nil` hides the action buttons.
+    var onHunkAction: ((HunkAction, HunkData, [DiffLine]) -> Void)?
 
     // MARK: State
 
@@ -56,7 +57,10 @@ struct DiffView: View {
                     hunkSection(hunk)
                 }
             }
-            .task { computeWordHighlights() }
+            .task(id: diff.hunks) {
+                selectedLineIDs.removeAll()
+                computeWordHighlights()
+            }
         }
     }
 
@@ -69,10 +73,11 @@ struct DiffView: View {
         DiffHunkHeaderView(
             hunk: hunk,
             showingStaged: showingStaged,
-            hasSelectedLines: !selectedInHunk.isEmpty
-        ) { action in
-            handleAction(action, hunk: hunk, selectedLines: selectedInHunk)
-        }
+            hasSelectedLines: !selectedInHunk.isEmpty,
+            onAction: onHunkAction == nil ? nil : { action in
+                handleAction(action, hunk: hunk, selectedLines: selectedInHunk)
+            }
+        )
 
         ForEach(hunk.lines) { line in
             DiffLineView(
@@ -81,6 +86,7 @@ struct DiffView: View {
                 isSelected: selectedLineIDs.contains(line.id)
             )
             .onTapGesture {
+                guard onHunkAction != nil else { return }
                 toggleLineSelection(line)
             }
         }
@@ -126,13 +132,11 @@ struct DiffView: View {
     private func handleAction(_ action: HunkAction, hunk: HunkData, selectedLines: [DiffLine]) {
         switch action {
         case .stageHunk, .unstageHunk, .discardHunk:
-            onHunkAction?(hunk, action)
+            onHunkAction?(action, hunk, [])
         case .stageLines, .unstageLines, .discardLines:
-            // Line-level actions are handled via the ViewModel directly from DiffPanelView.
-            // We just forward the hunk action upwards — the caller resolves which lines.
-            onHunkAction?(hunk, action)
-            selectedLineIDs.removeAll()
+            onHunkAction?(action, hunk, selectedLines)
         }
+        selectedLineIDs.removeAll()
     }
 
     // MARK: Word Highlights Computation
@@ -166,10 +170,8 @@ struct DiffView: View {
 #Preview("Diff View") {
     let diff = MockData.diffResult(for: "WorkingCopyViewModel.swift")
     ScrollView {
-        DiffView(diff: diff, showingStaged: false) { hunk, action in
-            print("Hunk action: \(action) on \(hunk.header)")
-        }
+        DiffView(diff: diff, showingStaged: false) { _, _, _ in }
     }
     .frame(width: 700, height: 500)
-    .background(Color(white: 0.11))
+    .background(Theme.surface)
 }

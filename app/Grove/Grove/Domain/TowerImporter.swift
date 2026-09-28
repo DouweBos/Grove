@@ -149,11 +149,11 @@ enum TowerImporter {
             }
         }
 
-        // Convert Tower's CFAbsoluteTime to Date.
+        // Tower stores Unix timestamps, not CFAbsoluteTime.
         // CFAbsoluteTime is seconds since 2001-01-01 00:00:00 UTC.
         var lastOpened: Date?
         if let towerTimestamp = dict["lastOpenedDate"] as? Double, towerTimestamp > 0 {
-            lastOpened = Date(timeIntervalSinceReferenceDate: towerTimestamp)
+            lastOpened = Date(timeIntervalSince1970: towerTimestamp)
         }
 
         let bookmark = RepositoryBookmarkData(

@@ -64,6 +64,9 @@ final class RepositorySession {
     /// Lets feature VMs refresh the whole session and record undoable actions.
     private func wireFeatureViewModels() {
         let refresh: () async -> Void = { [weak self] in await self?.refreshAll() }
+        sidebarVM.onRepositoryChanged = refresh
+        workingCopyVM.onRepositoryChanged = refresh
+        historyVM.onRepositoryChanged = refresh
         stashesVM.onRepositoryChanged = refresh
         reflogVM.onRepositoryChanged = refresh
         reflogVM.undoManager = gitUndoManager
@@ -173,13 +176,10 @@ final class RepositorySession {
             }
         case .commit:
             guard selectedItem == .workingCopy else { return }
-            Task {
-                await workingCopyVM.commit()
-                await refreshAll()
-            }
+            Task { await workingCopyVM.commit() }
         case .quickActions:
             break
-        case .quickOpen:
+        case .quickOpen, .addRepository, .cloneRepository, .createRepository, .newGroup:
             break
         case .undo:
             Task {
@@ -212,6 +212,7 @@ final class RepositorySession {
         }
         let vm = HistoryViewModel(repository: repository)
         vm.filterBranch = branch
+        vm.onRepositoryChanged = { [weak self] in await self?.refreshAll() }
         filteredHistoryVMs[branch] = vm
         return vm
     }

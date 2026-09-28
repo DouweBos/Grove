@@ -181,17 +181,21 @@ struct RepositoryToolbarSheets<Content: View>: View {
     @Bindable var toolbarState: RepositoryToolbarState
     let repository: any GitRepositoryProtocol
     let sidebarVM: SidebarViewModel
+    /// Called after a dialog changed the repository so every view reloads.
+    let onComplete: () -> Void
     let content: Content
 
     init(
         toolbarState: RepositoryToolbarState,
         repository: any GitRepositoryProtocol,
         sidebarVM: SidebarViewModel,
+        onComplete: @escaping () -> Void,
         @ViewBuilder content: () -> Content
     ) {
         self.toolbarState = toolbarState
         self.repository = repository
         self.sidebarVM = sidebarVM
+        self.onComplete = onComplete
         self.content = content()
     }
 
@@ -206,54 +210,31 @@ struct RepositoryToolbarSheets<Content: View>: View {
                 ) { sidebarVM.select($0) }
             }
             .sheet(isPresented: $toolbarState.isPushPresented) {
-                PushDialogView(
-                    repository: repository,
-                    branches: toolbarState.localBranches,
-                    remotes: toolbarState.remotes
-                )
+                PushDialogView(repository: repository, remotes: toolbarState.remotes, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isPullPresented) {
-                PullDialogView(
-                    repository: repository,
-                    remoteBranches: toolbarState.remoteBranches,
-                    remotes: toolbarState.remotes
-                )
+                PullDialogView(repository: repository, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isFetchPresented) {
-                FetchDialogView(
-                    repository: repository,
-                    remotes: toolbarState.remotes
-                )
+                FetchDialogView(repository: repository, remotes: toolbarState.remotes, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isSyncPresented) {
-                SyncDialogView(
-                    repository: repository,
-                    remotes: toolbarState.remotes
-                )
+                SyncDialogView(repository: repository, remotes: toolbarState.remotes, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isBranchPresented) {
-                CreateBranchDialogView(
-                    repository: repository,
-                    localBranches: toolbarState.localBranches
-                )
+                CreateBranchDialogView(repository: repository, localBranches: toolbarState.localBranches) { _ in onComplete() }
             }
             .sheet(isPresented: $toolbarState.isTagPresented) {
-                CreateTagDialogView(repository: repository)
+                CreateTagDialogView(repository: repository) { _ in onComplete() }
             }
             .sheet(isPresented: $toolbarState.isStashPresented) {
-                StashDialogView(repository: repository)
+                StashDialogView(repository: repository, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isMergePresented) {
-                MergeDialogView(
-                    repository: repository,
-                    localBranches: toolbarState.localBranches
-                )
+                MergeDialogView(repository: repository, localBranches: toolbarState.localBranches, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isRebasePresented) {
-                RebaseDialogView(
-                    repository: repository,
-                    localBranches: toolbarState.localBranches
-                )
+                RebaseDialogView(repository: repository, localBranches: toolbarState.localBranches, onComplete: onComplete)
             }
     }
 }
@@ -266,9 +247,10 @@ extension View {
     func repositoryToolbar(
         repository: any GitRepositoryProtocol,
         state: RepositoryToolbarState,
-        sidebarVM: SidebarViewModel
+        sidebarVM: SidebarViewModel,
+        onComplete: @escaping () -> Void = {}
     ) -> some View {
-        RepositoryToolbarSheets(toolbarState: state, repository: repository, sidebarVM: sidebarVM) {
+        RepositoryToolbarSheets(toolbarState: state, repository: repository, sidebarVM: sidebarVM, onComplete: onComplete) {
             self
         }
     }

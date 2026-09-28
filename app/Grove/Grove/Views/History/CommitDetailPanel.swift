@@ -3,68 +3,51 @@
 
 import SwiftUI
 
-/// Right panel of the History view showing commit details.
-///
-/// Contains a header (author, SHA, message) and tabbed content: Changeset | Tree.
+/// Right panel of History: commit header, then its changeset or tree.
 struct CommitDetailPanel: View {
-
     @Environment(HistoryViewModel.self) private var viewModel
-    @State private var selectedTab: DetailTab = .changeset
-
-    enum DetailTab: String, CaseIterable {
-        case changeset = "Changeset"
-        case tree = "Tree"
-    }
 
     var body: some View {
-        if let commit = viewModel.selectedCommit {
-            VStack(alignment: .leading, spacing: 0) {
-                // Header
-                CommitDetailHeader(commit: commit)
-                    .padding(12)
-
-                Divider()
-
-                // Tab selector
-                Picker("Tab", selection: $selectedTab) {
-                    ForEach(DetailTab.allCases, id: \.self) { tab in
-                        Text(tab.rawValue).tag(tab)
+        Group {
+            if let commit = viewModel.selectedCommit {
+                VStack(spacing: 0) {
+                    PanelHeader(title: commit.shortSHA) {
+                        Picker("View", selection: Binding(get: { viewModel.detailTab }, set: { viewModel.selectDetailTab($0) })) {
+                            ForEach(HistoryViewModel.DetailTab.allCases) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .fixedSize()
                     }
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            CommitDetailHeader(commit: commit)
+                                .padding(Theme.Spacing.lg)
+                            Rectangle().fill(Theme.border).frame(height: 0.5)
+                            switch viewModel.detailTab {
+                            case .changeset: CommitChangesetView()
+                            case .tree: CommitTreeTab()
+                            }
+                        }
+                    }
+                    .id(commit.id)
                 }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-
-                Divider()
-
-                // Tab content
-                switch selectedTab {
-                case .changeset:
-                    CommitChangesetView()
-                case .tree:
-                    CommitTreeTab()
-                }
+            } else {
+                EmptyStateView(systemImage: "clock.arrow.circlepath", title: "No Commit Selected",
+                               subtitle: "Pick a commit on the left to see its changes.")
             }
-        } else {
-            // Empty state
-            VStack(spacing: 8) {
-                Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
-                    .font(.system(size: 40))
-                    .foregroundStyle(.tertiary)
-                Text("Select a commit to view details")
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .panel()
     }
 }
 
 #Preview {
     let vm = HistoryViewModel(repository: MockGitRepository())
-    vm.selectedCommit = MockData.commits[0]
-    vm.commitDiffs = MockData.commitFileDiffs
-
     return CommitDetailPanel()
         .environment(vm)
-        .frame(width: 420, height: 600)
+        .frame(width: 560, height: 640)
+        .padding()
+        .background(Theme.background)
+        .task { await vm.loadInitial() }
 }

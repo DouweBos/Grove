@@ -167,6 +167,9 @@ enum DiffParser {
             // Some diffs include a `\ No newline at end of file` marker.
             if line.hasPrefix("\\ ") { i += 1; continue }
 
+            // The output's trailing newline leaves an empty last element; it is not a context line.
+            if line.isEmpty && i == lines.count - 1 { i += 1; continue }
+
             let lineType: DiffLineType
             let content: String
 

@@ -1,19 +1,16 @@
 // Views/Dialogs/MergeDialogView.swift
 // Grove
-//
-// Merge dialog: branch picker, Cancel + "Merge" button.
 
 import SwiftUI
 
-// MARK: - MergeDialogView
-
-/// Dialog for merging a branch into the current HEAD.
+/// Merges a chosen branch into the checked-out branch.
 struct MergeDialogView: View {
 
     @Environment(\.dismiss) private var dismiss
 
     let repository: any GitRepositoryProtocol
     let localBranches: [BranchInfo]
+    var onComplete: () -> Void = {}
 
     @State private var selectedBranch: String
     @State private var isMerging = false
@@ -21,59 +18,40 @@ struct MergeDialogView: View {
 
     init(
         repository: any GitRepositoryProtocol,
-        localBranches: [BranchInfo] = []
+        localBranches: [BranchInfo] = [],
+        onComplete: @escaping () -> Void = {}
     ) {
         self.repository = repository
         self.localBranches = localBranches
-        // Default to the first non-HEAD branch.
-        let nonHead = localBranches.first(where: { !$0.isHEAD })
-        _selectedBranch = State(initialValue: nonHead?.name ?? "")
+        self.onComplete = onComplete
+        _selectedBranch = State(initialValue: localBranches.first(where: { !$0.isHEAD })?.name ?? "")
     }
+
+    private var candidates: [String] { localBranches.filter { !$0.isHEAD }.map(\.name) }
+    private var headName: String { repository.currentBranch?.name ?? "HEAD" }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Merge",
-                description: "Merges the selected branch into your current HEAD branch '\(repository.currentBranch?.name ?? "HEAD")'."
-            )
-
-            Divider()
-
-            Form {
-                LabeledContent("Branch") {
-                    Picker("", selection: $selectedBranch) {
-                        ForEach(mergeCandidates, id: \.self) { name in
-                            Text(name).tag(name)
-                        }
+        DialogSheet(
+            title: "Merge into \(headName)",
+            message: "Brings the commits of the chosen branch into '\(headName)'. Conflicts are left for you to resolve.",
+            symbol: "arrow.triangle.merge",
+            progress: isMerging ? "Merging \(selectedBranch)…" : nil,
+            errorMessage: errorMessage,
+            primaryTitle: "Merge",
+            isPrimaryDisabled: selectedBranch.isEmpty,
+            onCancel: { dismiss() },
+            onPrimary: performMerge
+        ) {
+            DialogCard {
+                DialogField("Branch") {
+                    Picker("Branch", selection: $selectedBranch) {
+                        ForEach(candidates, id: \.self) { Text($0).tag($0) }
                     }
                     .labelsHidden()
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .disabled(candidates.isEmpty)
                 }
             }
-            .formStyle(.grouped)
-
-            if let error = errorMessage {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .font(.caption)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 4)
-            }
-
-            Divider()
-
-            SheetFooter(
-                cancelAction: { dismiss() },
-                primaryLabel: isMerging ? "Merging\u{2026}" : "Merge",
-                primaryAction: performMerge,
-                isPrimaryDisabled: isMerging || selectedBranch.isEmpty
-            )
         }
-        .frame(width: 440)
-    }
-
-    private var mergeCandidates: [String] {
-        localBranches.filter { !$0.isHEAD }.map(\.name)
     }
 
     private func performMerge() {
@@ -82,18 +60,18 @@ struct MergeDialogView: View {
         Task {
             do {
                 try await repository.merge(branch: selectedBranch)
+                onComplete()
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription
                 isMerging = false
+                // A conflicted merge still changed the working copy.
+                onComplete()
             }
         }
     }
 }
 
 #Preview {
-    MergeDialogView(
-        repository: MockGitRepository(),
-        localBranches: MockData.branches.filter(\.isLocal)
-    )
+    MergeDialogView(repository: MockGitRepository(), localBranches: MockData.branches.filter(\.isLocal))
 }

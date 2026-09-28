@@ -39,14 +39,14 @@ enum DiffWordHighlighter {
         let highlightedDeletion = buildAttributed(
             tokens: delTokens,
             lcsIndices: lcs.deletionIndices,
-            baseColor: DiffColors.deletionBackground,
-            highlightColor: DiffColors.deletionHighlight
+            baseColor: .clear,
+            highlightColor: Theme.deletedWordFill
         )
         let highlightedAddition = buildAttributed(
             tokens: addTokens,
             lcsIndices: lcs.additionIndices,
-            baseColor: DiffColors.additionBackground,
-            highlightColor: DiffColors.additionHighlight
+            baseColor: .clear,
+            highlightColor: Theme.addedWordFill
         )
         return (highlightedDeletion, highlightedAddition)
     }
@@ -141,22 +141,4 @@ enum DiffWordHighlighter {
         }
         return result
     }
-}
-
-// MARK: - DiffColors
-
-/// Centralised diff colour palette referenced by multiple components.
-enum DiffColors {
-    // Addition line background (#2EA043 at ~25% opacity over dark background)
-    static let additionBackground = Color(red: 0x2E / 255.0, green: 0xA0 / 255.0, blue: 0x43 / 255.0, opacity: 0.25)
-    // Darker addition highlight for changed tokens within addition lines
-    static let additionHighlight  = Color(red: 0x2E / 255.0, green: 0xA0 / 255.0, blue: 0x43 / 255.0, opacity: 0.55)
-    // Deletion line background (#F85149 at ~25% opacity)
-    static let deletionBackground = Color(red: 0xF8 / 255.0, green: 0x51 / 255.0, blue: 0x49 / 255.0, opacity: 0.25)
-    // Darker deletion highlight for changed tokens within deletion lines
-    static let deletionHighlight  = Color(red: 0xF8 / 255.0, green: 0x51 / 255.0, blue: 0x49 / 255.0, opacity: 0.55)
-    // Hunk header background
-    static let hunkHeaderBackground = Color(white: 0.18, opacity: 1)
-    // Line number gutter foreground
-    static let lineNumberForeground = Color(white: 0.55, opacity: 1)
 }

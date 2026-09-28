@@ -3,92 +3,78 @@
 
 import SwiftUI
 
-/// The REMOTES section of the sidebar.
-///
-/// Groups remote-tracking branches by their remote name (e.g. "origin", "upstream").
+/// Remote-tracking branches grouped by remote. Hidden when the repository has no remotes.
 struct RemotesSidebarSection: View {
 
     @Environment(SidebarViewModel.self) private var viewModel
 
-    // MARK: - Sheet / Alert State
-
-    @State private var isShowingCreateBranch = false
-    @State private var createBranchFromRef: String?
-
-    @State private var isShowingDeleteAlert = false
+    @State private var isExpanded = true
+    @State private var createFromRef: CreateBranchRequest?
     @State private var branchToDelete: BranchInfo?
 
     var body: some View {
-        Section(header: SidebarSectionHeader(title: "Remotes")) {
-            ForEach(viewModel.remotes) { remote in
-                DisclosureGroup {
-                    let branches = viewModel.remoteBranches.filter {
-                        $0.remoteName == remote.name
+        if !viewModel.remotes.isEmpty {
+            Section(isExpanded: $isExpanded) {
+                ForEach(viewModel.remotes) { remote in
+                    let branches = viewModel.remoteBranches.filter { $0.remoteName == remote.name && !$0.name.hasSuffix("/HEAD") }
+                    DisclosureGroup {
+                        ForEach(branches) { remoteBranchRow($0) }
+                    } label: {
+                        SidebarRow(title: remote.name, symbol: "cloud", tint: Theme.info) {
+                            Text("\(branches.count)").font(.system(size: 11, design: .monospaced))
+                        }
+                        .help(remote.url)
                     }
-                    ForEach(branches) { branch in
-                        remoteBranchRow(branch)
-                    }
-                } label: {
-                    Label(remote.name, systemImage: "network")
-                        .font(.subheadline)
+                }
+            } header: {
+                SidebarSectionHeader(title: "Remotes", count: viewModel.remotes.count)
+            }
+            .sheet(item: $createFromRef) { request in
+                CreateBranchDialogView(
+                    repository: viewModel.repository,
+                    localBranches: viewModel.localBranches,
+                    fromRef: request.ref
+                ) { _ in
+                    Task { await viewModel.didChangeRepository() }
                 }
             }
-        }
-        .sheet(isPresented: $isShowingCreateBranch) {
-            CreateBranchDialogView(
-                repository: viewModel.repository,
-                localBranches: viewModel.localBranches,
-                fromRef: createBranchFromRef
-            ) { _ in
-                Task { await viewModel.refresh() }
+            .confirmationDialog(
+                "Delete \u{201C}\(branchToDelete?.name ?? "")\u{201D} on the remote?",
+                isPresented: Binding(get: { branchToDelete != nil }, set: { if !$0 { branchToDelete = nil } }),
+                presenting: branchToDelete
+            ) { branch in
+                Button("Delete on Remote", role: .destructive) {
+                    Task { await viewModel.deleteRemoteBranch(branch) }
+                }
+            } message: { _ in
+                Text("The branch is removed from the server for everyone. This can't be undone from Grove.")
             }
-        }
-        .alert(
-            "Delete Remote Branch",
-            isPresented: $isShowingDeleteAlert,
-            presenting: branchToDelete
-        ) { branch in
-            Button("Delete", role: .destructive) {
-                Task { await viewModel.deleteRemoteBranch(branch) }
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: { branch in
-            let displayName = Self.displayName(for: branch)
-            Text("Delete \"\(displayName)\" on the remote? This cannot be undone.")
         }
     }
 
-    @ViewBuilder
     private func remoteBranchRow(_ branch: BranchInfo) -> some View {
-        let displayName = Self.displayName(for: branch)
-
-        Label(displayName, systemImage: "arrow.triangle.branch")
-            .font(.subheadline)
-            .lineLimit(1)
+        let shortName = SidebarViewModel.shortName(of: branch)
+        let hasLocal = viewModel.localBranches.contains { $0.name == shortName }
+        return SidebarRow(title: shortName, symbol: "arrow.triangle.branch", tint: Theme.info)
             .tag(SidebarItem.remoteBranch(branch))
+            .draggable(branch.name)
             .contextMenu {
-                Button("Checkout \"\(displayName)\"...") {
-                    Task { await viewModel.checkout(branch: branch) }
+                Button(hasLocal ? "Check Out \u{201C}\(shortName)\u{201D}" : "Check Out as Tracking Branch",
+                       systemImage: "arrow.uturn.backward") {
+                    Task { await viewModel.checkout(remoteBranch: branch) }
                 }
-                Button("Create Local Branch from \"\(displayName)\"...") {
-                    createBranchFromRef = branch.name
-                    isShowingCreateBranch = true
+                Button("New Branch from \u{201C}\(branch.name)\u{201D}…", systemImage: "arrow.triangle.branch") {
+                    createFromRef = CreateBranchRequest(ref: branch.name)
+                }
+                Button("Copy Name", systemImage: "doc.on.doc") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(branch.name, forType: .string)
                 }
                 Divider()
-                Button("Delete \"\(displayName)\" on Remote...", role: .destructive) {
+                Button("Delete on Remote…", systemImage: "trash", role: .destructive) {
                     branchToDelete = branch
-                    isShowingDeleteAlert = true
                 }
             }
-    }
-
-    /// Strip "remoteName/" prefix for display.
-    private static func displayName(for branch: BranchInfo) -> String {
-        if let remote = branch.remoteName,
-           branch.name.hasPrefix(remote + "/") {
-            return String(branch.name.dropFirst(remote.count + 1))
-        }
-        return branch.name
     }
 }
 
@@ -96,11 +82,10 @@ struct RemotesSidebarSection: View {
     let vm = SidebarViewModel(repository: MockGitRepository())
     vm.remotes = MockData.remotes
     vm.remoteBranches = MockData.branches.filter(\.isRemote)
-
     return List(selection: Binding<SidebarItem?>.constant(.history)) {
         RemotesSidebarSection()
     }
     .listStyle(.sidebar)
     .environment(vm)
-    .frame(width: 220, height: 200)
+    .frame(width: 240, height: 200)
 }

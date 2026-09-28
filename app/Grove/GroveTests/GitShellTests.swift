@@ -101,7 +101,7 @@ struct GitShellTests {
 
         let result = try await shell.run([
             "for-each-ref",
-            "--format=%(refname)%00%(refname:short)%00%(objectname)%00%(upstream)%00%(upstream:trackshort)%00%(HEAD)",
+            "--format=%(refname)%00%(refname:short)%00%(objectname)%00%(upstream)%00%(upstream:track)%00%(HEAD)",
             "refs/heads/"
         ])
 

@@ -92,13 +92,13 @@ struct LoadingProgressView: View {
                 .frame(width: 16, height: 16)
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textSecondary)
                 .lineLimit(1)
         } else {
             ProgressView()
             Text(title)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
         }
     }
@@ -113,23 +113,23 @@ struct LoadingProgressView: View {
                 .frame(width: 80)
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textSecondary)
                 .lineLimit(1)
             Text(percentage)
                 .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textSecondary)
                 .frame(width: 32, alignment: .trailing)
         } else {
             Text(title)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
             HStack(spacing: 10) {
                 ProgressView(value: clamped)
                     .frame(maxWidth: .infinity)
                 Text(percentage)
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .frame(width: 36, alignment: .trailing)
             }
         }

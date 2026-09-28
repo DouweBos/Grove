@@ -3,44 +3,34 @@
 
 import SwiftUI
 
-/// A date-group header row displayed between commit groups in the history list.
-///
-/// Renders "Today", "Yesterday", or a formatted date.
+/// Day label between commit groups; keeps the graph lanes running through it.
 struct DateGroupHeader: View {
-
     let date: Date
+    var lanes: [GraphLine] = []
+    var maxGraphColumns = 1
+    var showsGraph = true
 
     var body: some View {
-        HStack {
-            Text(formattedTitle)
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-                .textCase(nil)
-
-            Spacer()
+        HStack(spacing: Theme.Spacing.sm) {
+            if showsGraph {
+                CommitGraphPassThrough(lanes: lanes, maxColumns: maxGraphColumns)
+            }
+            SectionLabel(title: date.commitDayTitle)
         }
-        .padding(.vertical, 2)
-    }
-
-    private var formattedTitle: String {
-        if Calendar.current.isDateInToday(date) {
-            return "Today"
-        } else if Calendar.current.isDateInYesterday(date) {
-            return "Yesterday"
-        } else {
-            return date.formatted(.dateTime.weekday(.wide).month(.wide).day())
-        }
+        .padding(.leading, Theme.Spacing.sm)
+        .padding(.trailing, Theme.Spacing.md)
+        .frame(height: 28)
     }
 }
 
 #Preview {
-    List {
-        DateGroupHeader(date: Date())
-        Text("Commit 1")
-        DateGroupHeader(date: Calendar.current.date(byAdding: .day, value: -1, to: Date())!)
-        Text("Commit 2")
+    VStack(spacing: 0) {
+        DateGroupHeader(date: .now, showsGraph: false)
+        DateGroupHeader(date: .now.addingTimeInterval(-86_400),
+                        lanes: [GraphLine(kind: .passThrough, fromColumn: 0, toColumn: 0, colorIndex: 0)])
     }
-    .listStyle(.sidebar)
-    .frame(width: 300, height: 200)
+    .frame(width: 300)
+    .panel()
+    .padding()
+    .background(Theme.background)
 }

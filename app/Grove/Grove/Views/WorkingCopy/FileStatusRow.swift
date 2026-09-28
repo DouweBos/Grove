@@ -1,133 +1,73 @@
 // Views/WorkingCopy/FileStatusRow.swift
 // Grove
 //
-// A single row in the file status list. Shows dual status icons (staged +
-// unstaged), a checkbox for staging, and the file path.
-// Orange/green icon pairs, file names truncated.
+// One file in the Staged / Changes sections: stage checkbox, status letter, path.
 
 import SwiftUI
-import Foundation
 
-// MARK: - FileStatusRow
-
-/// One row in the ``FileStatusListView``.
-///
-/// The leading pair of ``StatusIcon`` badges shows the staged (index) status
-/// on the left and the unstaged (working directory) status on the right,
-/// as a pair of status icons.
 struct FileStatusRow: View {
-
-    // MARK: Properties
-
     let entry: StatusEntry
+    /// The status for the section this row sits in (index status when staged, workdir otherwise).
+    let status: FileStatus
+    let isStaged: Bool
     let isSelected: Bool
+    /// Tree mode already shows the directory in a group header.
+    var showsDirectory = true
     var onToggleStage: (() -> Void)?
 
-    // MARK: Computed
-
-    private var isStaged: Bool { entry.indexStatus != .unmodified }
-    private var hasUnstagedChanges: Bool { entry.workdirStatus != .unmodified }
-
-    private var filename: String {
-        URL(fileURLWithPath: entry.path).lastPathComponent
-    }
-
-    private var directory: String {
-        let url = URL(fileURLWithPath: entry.path)
-        let dir = url.deletingLastPathComponent().path
-        return dir == "." ? "" : dir
-    }
-
-    // MARK: Body
+    @State private var isHovered = false
 
     var body: some View {
-        HStack(spacing: 6) {
-            // Staging checkbox
-            checkboxButton
-
-            // Dual status icons
-            HStack(spacing: 2) {
-                StatusIcon(status: entry.indexStatus)
-                StatusIcon(status: entry.workdirStatus)
+        HStack(spacing: Theme.Spacing.sm) {
+            if let onToggleStage {
+                Button(action: onToggleStage) {
+                    Image(systemName: isStaged ? "checkmark.square.fill" : "square")
+                        .font(.system(size: 14))
+                        .foregroundStyle(isStaged ? Theme.accent : Theme.textSecondary)
+                }
+                .buttonStyle(.plain)
+                .help(isStaged ? "Unstage" : "Stage")
+                .accessibilityLabel(isStaged ? "Unstage \(entry.fileName)" : "Stage \(entry.fileName)")
             }
-
-            // File name + directory path
-            filePathLabel
-
+            StatusIcon(status: status)
+            pathLabel
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background(rowBackground)
+        .padding(.horizontal, Theme.Spacing.sm)
+        .padding(.vertical, 5)
+        .background(background, in: RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous))
         .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
     }
 
-    // MARK: Sub-views
-
-    private var checkboxButton: some View {
-        Button {
-            onToggleStage?()
-        } label: {
-            Image(systemName: checkboxImageName)
-                .font(.system(size: 13))
-                .foregroundStyle(checkboxColor)
-        }
-        .buttonStyle(.plain)
-        .frame(width: 20, height: 20)
+    private var pathLabel: some View {
+        let name = Text(entry.fileName).fontWeight(.semibold).foregroundColor(Theme.textPrimary)
+        let label = showsDirectory && !entry.directory.isEmpty
+            ? Text(entry.directory).foregroundColor(Theme.textSecondary) + name
+            : name
+        return label
+            .font(.monoBody)
+            .lineLimit(1)
+            .truncationMode(.head)
+            .help(entry.path)
     }
 
-    private var filePathLabel: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(filename)
-                .font(.system(size: 12))
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-
-            if !directory.isEmpty {
-                Text(directory)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.head)
-            }
-        }
-    }
-
-    // MARK: Helpers
-
-    private var checkboxImageName: String {
-        if isStaged && !hasUnstagedChanges {
-            return "checkmark.square.fill"
-        } else if isStaged {
-            return "minus.square.fill"  // partially staged
-        } else {
-            return "square"
-        }
-    }
-
-    private var checkboxColor: Color {
-        if isStaged {
-            return Color(red: 0x2E / 255.0, green: 0xA0 / 255.0, blue: 0x43 / 255.0)
-        } else {
-            return .secondary
-        }
-    }
-
-    private var rowBackground: Color {
-        isSelected ? Color.accentColor.opacity(0.2) : .clear
+    private var background: Color {
+        if isSelected { return Theme.selectionFill }
+        return isHovered ? Theme.surfaceRaised : .clear
     }
 }
 
-// MARK: - Preview
-
-#Preview("File Status Row") {
-    let entries = MockData.statusEntries.prefix(4)
-    VStack(spacing: 0) {
-        ForEach(Array(entries.enumerated()), id: \.offset) { idx, entry in
-            FileStatusRow(entry: entry, isSelected: idx == 1)
-            Divider()
+#Preview {
+    VStack(spacing: 2) {
+        ForEach(Array(MockData.statusEntries.prefix(5).enumerated()), id: \.offset) { idx, entry in
+            FileStatusRow(entry: entry, status: entry.workdirStatus, isStaged: idx.isMultiple(of: 2),
+                          isSelected: idx == 1, onToggleStage: {})
         }
     }
-    .frame(width: 300)
-    .background(Color(white: 0.11))
+    .padding(Theme.Spacing.sm)
+    .frame(width: 320)
+    .panel()
+    .padding()
+    .background(Theme.background)
 }

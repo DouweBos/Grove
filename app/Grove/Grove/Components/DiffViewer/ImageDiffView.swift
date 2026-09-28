@@ -78,12 +78,12 @@ struct ImageDiffView: View {
                 HStack(spacing: 6) {
                     Text("Before")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                     Slider(value: $onionOpacity)
                         .frame(width: 120)
                     Text("After")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
         }
@@ -114,7 +114,7 @@ struct ImageDiffView: View {
                 image: oldImage,
                 label: "Before",
                 size: oldSize,
-                labelColor: .red,
+                labelColor: Theme.deleted,
                 missingLabel: "File Added"
             )
             Divider()
@@ -122,12 +122,12 @@ struct ImageDiffView: View {
                 image: newImage,
                 label: "After",
                 size: newSize,
-                labelColor: .green,
+                labelColor: Theme.added,
                 missingLabel: "File Deleted"
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(white: 0.1))
+        .background(Theme.background)
     }
 
     // MARK: Slider Mode
@@ -157,7 +157,7 @@ struct ImageDiffView: View {
 
                 // Divider line
                 Rectangle()
-                    .fill(.white.opacity(0.8))
+                    .fill(Theme.surface.opacity(0.8))
                     .frame(width: 2)
                     .offset(x: dividerX - 1)
                     .shadow(radius: 4)
@@ -177,33 +177,33 @@ struct ImageDiffView: View {
                     Text("Before")
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.pillSelectedText)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(.red.opacity(0.7), in: RoundedRectangle(cornerRadius: 4))
+                        .background(Theme.deleted, in: RoundedRectangle(cornerRadius: Theme.Radius.tile))
                         .padding(8)
                     Spacer()
                     Text("After")
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.pillSelectedText)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(.green.opacity(0.7), in: RoundedRectangle(cornerRadius: 4))
+                        .background(Theme.added, in: RoundedRectangle(cornerRadius: Theme.Radius.tile))
                         .padding(8)
                 }
                 .frame(maxHeight: .infinity, alignment: .bottom)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Color(white: 0.1))
+        .background(Theme.background)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var dragHandle: some View {
         ZStack {
             Circle()
-                .fill(.white)
+                .fill(Theme.surface)
                 .frame(width: 24, height: 24)
                 .shadow(radius: 3)
             Image(systemName: "arrow.left.and.right")
@@ -234,7 +234,7 @@ struct ImageDiffView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(white: 0.1))
+        .background(Theme.background)
     }
 
     // MARK: Shared Helpers
@@ -256,7 +256,7 @@ struct ImageDiffView: View {
                 if let size {
                     Text("\(Int(size.width)) × \(Int(size.height))")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                 }
                 Spacer()
             }
@@ -286,10 +286,10 @@ struct ImageDiffView: View {
         VStack(spacing: 8) {
             Image(systemName: "photo.slash")
                 .font(.system(size: 28, weight: .light))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textSecondary)
             Text(label)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -313,14 +313,4 @@ struct ImageDiffView: View {
         newImage: Image(systemName: "photo.fill")
     )
     .frame(width: 700, height: 400)
-}
-
-#Preview("Added File") {
-    ImageDiffView(oldImage: nil, newImage: Image(systemName: "photo.fill"))
-        .frame(width: 700, height: 400)
-}
-
-#Preview("Deleted File") {
-    ImageDiffView(oldImage: Image(systemName: "photo"), newImage: nil)
-        .frame(width: 700, height: 400)
 }

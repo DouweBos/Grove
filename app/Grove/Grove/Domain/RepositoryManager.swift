@@ -82,6 +82,10 @@ final class RepositoryManager: RepositoryManagerProtocol {
         }
     }
 
+    func inspectRepository(at url: URL) async throws -> any GitRepositoryProtocol {
+        try await GitRepository(path: url)
+    }
+
     @discardableResult
     func cloneRepository(
         url: String,
@@ -186,6 +190,12 @@ final class RepositoryManager: RepositoryManagerProtocol {
         }
 
         bookmarkGroups.remove(at: groupIndex)
+        saveToDisk()
+    }
+
+    func renameGroup(id: UUID, to name: String) throws {
+        guard let index = bookmarkGroups.firstIndex(where: { $0.id == id }) else { return }
+        bookmarkGroups[index].name = name
         saveToDisk()
     }
 
