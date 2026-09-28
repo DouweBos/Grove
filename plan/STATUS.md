@@ -26,6 +26,8 @@ Where the overhaul stands. Update this when a wave of work lands.
 
 - Back / forward: window history across the browsers, repositories and their tabs; toolbar arrows, Cmd-[ / Cmd-], and mouse buttons 4/5.
 
+- Performance: per-session shared ref cache and paused session reuse (LRU 4); per-item detail caches; Branches Review via for-each-ref; git runs off the main actor with concurrent pipe draining (ProcessRunner), ~85% faster across the board. Fixture generator + opt-in benchmarks in tools/fixtures (bench.sh, baseline.json).
+
 ## Open
 
 - Branches Review's merged-check error state and grouped-delete undo are unit-tested but not seen in the UI.

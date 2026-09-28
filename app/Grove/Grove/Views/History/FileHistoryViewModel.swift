@@ -147,36 +147,19 @@ final class FileHistoryViewModel {
         arguments: [String],
         workingDirectory: URL
     ) async throws -> Data {
-        try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            process.executableURL = executable
-            process.arguments = arguments
-            process.currentDirectoryURL = workingDirectory
-
-            let outPipe = Pipe()
-            let errPipe = Pipe()
-            process.standardOutput = outPipe
-            process.standardError = errPipe
-
-            process.terminationHandler = { proc in
-                let data = outPipe.fileHandleForReading.readDataToEndOfFile()
-                if proc.terminationStatus == 0 {
-                    continuation.resume(returning: data)
-                } else {
-                    let stderr = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                    continuation.resume(throwing: NSError(
-                        domain: "FileHistoryViewModel",
-                        code: Int(proc.terminationStatus),
-                        userInfo: [NSLocalizedDescriptionKey: stderr.trimmingCharacters(in: .whitespacesAndNewlines)]
-                    ))
-                }
-            }
-
-            do {
-                try process.run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
+        let process = Process()
+        process.executableURL = executable
+        process.arguments = arguments
+        process.currentDirectoryURL = workingDirectory
+        let output = try await ProcessRunner.run(process)
+        guard output.status == 0 else {
+            let stderr = String(data: output.stderr, encoding: .utf8) ?? ""
+            throw NSError(
+                domain: "FileHistoryViewModel",
+                code: Int(output.status),
+                userInfo: [NSLocalizedDescriptionKey: stderr.trimmingCharacters(in: .whitespacesAndNewlines)]
+            )
         }
+        return output.stdout
     }
 }

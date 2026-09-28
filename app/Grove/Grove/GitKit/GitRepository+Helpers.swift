@@ -16,35 +16,20 @@ extension GitRepository {
     /// Throws ``GitShellError/nonZeroExit`` when the process exits non-zero.
     @discardableResult
     func ghRun(_ arguments: [String]) async throws -> ShellResult {
-        let ghPath = GitRepository.resolveGhPath()
-        let result = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<ShellResult, Error>) in
-            do {
-                let process = Process()
-                process.executableURL       = URL(fileURLWithPath: ghPath)
-                process.arguments           = arguments
-                process.currentDirectoryURL = path
-                var env = ProcessInfo.processInfo.environment
-                env["LANG"]    = "en_US.UTF-8"
-                env["LC_ALL"]  = "en_US.UTF-8"
-                process.environment = env
-
-                let stdoutPipe = Pipe()
-                let stderrPipe = Pipe()
-                process.standardOutput = stdoutPipe
-                process.standardError  = stderrPipe
-
-                process.terminationHandler = { proc in
-                    let outData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-                    let errData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-                    let stdout  = String(data: outData, encoding: .utf8) ?? ""
-                    let stderr  = String(data: errData, encoding: .utf8) ?? ""
-                    continuation.resume(returning: ShellResult(stdout: stdout, stderr: stderr, exitCode: proc.terminationStatus))
-                }
-                try process.run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
+        let process = Process()
+        process.executableURL       = URL(fileURLWithPath: GitRepository.resolveGhPath())
+        process.arguments           = arguments
+        process.currentDirectoryURL = path
+        var env = ProcessInfo.processInfo.environment
+        env["LANG"]    = "en_US.UTF-8"
+        env["LC_ALL"]  = "en_US.UTF-8"
+        process.environment = env
+        let output = try await ProcessRunner.run(process)
+        let result = ShellResult(
+            stdout: String(data: output.stdout, encoding: .utf8) ?? "",
+            stderr: String(data: output.stderr, encoding: .utf8) ?? "",
+            exitCode: output.status
+        )
         guard result.isSuccess else {
             let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
             Logger.gitRepository.warning(

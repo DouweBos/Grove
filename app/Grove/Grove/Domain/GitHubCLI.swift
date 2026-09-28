@@ -37,32 +37,26 @@ enum GitHubCLI {
     /// Runs `gh` in `directory` and returns stdout; throws a readable failure otherwise.
     nonisolated static func run(_ arguments: [String], in directory: URL? = nil) async throws -> String {
         guard let executable = executablePath else { throw Failure.notInstalled }
-        return try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: executable)
-            process.arguments = arguments
-            if let directory { process.currentDirectoryURL = directory }
-            var env = ProcessInfo.processInfo.environment
-            env["GH_PROMPT_DISABLED"] = "1"
-            env["NO_COLOR"] = "1"
-            process.environment = env
-            let out = Pipe(), err = Pipe()
-            process.standardOutput = out
-            process.standardError = err
-            process.terminationHandler = { proc in
-                let stdout = String(data: out.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                let stderr = String(data: err.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                if proc.terminationStatus == 0 {
-                    continuation.resume(returning: stdout)
-                } else if stderr.contains("gh auth login") || stderr.contains("not logged") {
-                    continuation.resume(throwing: Failure.notAuthenticated)
-                } else {
-                    let message = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-                    continuation.resume(throwing: Failure.failed(message.isEmpty ? "gh exited with \(proc.terminationStatus)" : message))
-                }
-            }
-            do { try process.run() } catch { continuation.resume(throwing: Failure.failed(error.localizedDescription)) }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+        if let directory { process.currentDirectoryURL = directory }
+        var env = ProcessInfo.processInfo.environment
+        env["GH_PROMPT_DISABLED"] = "1"
+        env["NO_COLOR"] = "1"
+        process.environment = env
+        let output: ProcessRunner.Output
+        do {
+            output = try await ProcessRunner.run(process)
+        } catch {
+            throw Failure.failed(error.localizedDescription)
         }
+        let stdout = String(data: output.stdout, encoding: .utf8) ?? ""
+        let stderr = String(data: output.stderr, encoding: .utf8) ?? ""
+        if output.status == 0 { return stdout }
+        if stderr.contains("gh auth login") || stderr.contains("not logged") { throw Failure.notAuthenticated }
+        let message = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+        throw Failure.failed(message.isEmpty ? "gh exited with \(output.status)" : message)
     }
 
     /// Accounts `gh` is signed in to; empty when signed out.

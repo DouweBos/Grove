@@ -183,45 +183,28 @@ final class GitShell: Sendable {
 
     nonisolated private func execute(
         arguments: [String],
-        environment: [String: String]
+        environment: [String: String],
+        input: Data? = nil
     ) async throws -> ShellResult {
         let commandLine = arguments.joined(separator: " ")
         Logger.gitShell.debug("Running: git \(commandLine, privacy: .public)")
         let start = Date()
 
         let process = try buildProcess(arguments: arguments, environment: environment)
-        let stdoutPipe = Pipe()
-        let stderrPipe = Pipe()
-        process.standardOutput = stdoutPipe
-        process.standardError  = stderrPipe
+        let output = try await ProcessRunner.run(process, input: input)
 
-        try process.run()
-
-        // Read pipe data BEFORE waiting for exit to avoid deadlock.
-        // If the output exceeds the pipe buffer (~64 KB) and nobody drains
-        // the pipe, the child process blocks on write and never exits.
-        let outData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-        let errData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-
-        process.waitUntilExit()
-
-        let stdout  = String(data: outData, encoding: .utf8) ?? ""
-        let stderr  = String(data: errData, encoding: .utf8) ?? ""
+        let stdout = String(data: output.stdout, encoding: .utf8) ?? ""
+        let stderr = String(data: output.stderr, encoding: .utf8) ?? ""
         let elapsed = Date().timeIntervalSince(start)
         Logger.gitShell.debug(
-            "Finished: git \(commandLine, privacy: .public) [\(String(format: "%.3f", elapsed), privacy: .public)s, exit \(process.terminationStatus, privacy: .public)]"
+            "Finished: git \(commandLine, privacy: .public) [\(String(format: "%.3f", elapsed), privacy: .public)s, exit \(output.status, privacy: .public)]"
         )
-        if !stderr.isEmpty && process.terminationStatus != 0 {
+        if !stderr.isEmpty && output.status != 0 {
             Logger.gitShell.error(
                 "stderr: \(stderr.trimmingCharacters(in: .whitespacesAndNewlines), privacy: .public)"
             )
         }
-        return ShellResult(
-            stdout: stdout,
-            stderr: stderr,
-            exitCode: process.terminationStatus,
-            stdoutData: outData
-        )
+        return ShellResult(stdout: stdout, stderr: stderr, exitCode: output.status, stdoutData: output.stdout)
     }
 
     nonisolated private func executeWithInput(
@@ -229,47 +212,7 @@ final class GitShell: Sendable {
         input: String,
         environment: [String: String]
     ) async throws -> ShellResult {
-        let commandLine = arguments.joined(separator: " ")
-        Logger.gitShell.debug("Running (with input): git \(commandLine, privacy: .public)")
-        let start = Date()
-
-        let process = try buildProcess(arguments: arguments, environment: environment)
-        let stdinPipe  = Pipe()
-        let stdoutPipe = Pipe()
-        let stderrPipe = Pipe()
-        process.standardInput  = stdinPipe
-        process.standardOutput = stdoutPipe
-        process.standardError  = stderrPipe
-
-        try process.run()
-
-        if let data = input.data(using: .utf8) {
-            stdinPipe.fileHandleForWriting.write(data)
-        }
-        stdinPipe.fileHandleForWriting.closeFile()
-
-        // Read pipe data BEFORE waiting for exit to avoid deadlock.
-        let outData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-        let errData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-
-        process.waitUntilExit()
-
-        let stdout  = String(data: outData, encoding: .utf8) ?? ""
-        let stderr  = String(data: errData, encoding: .utf8) ?? ""
-        let elapsed = Date().timeIntervalSince(start)
-        Logger.gitShell.debug(
-            "Finished: git \(commandLine, privacy: .public) [\(String(format: "%.3f", elapsed), privacy: .public)s, exit \(process.terminationStatus, privacy: .public)]"
-        )
-        if !stderr.isEmpty && process.terminationStatus != 0 {
-            Logger.gitShell.error(
-                "stderr: \(stderr.trimmingCharacters(in: .whitespacesAndNewlines), privacy: .public)"
-            )
-        }
-        return ShellResult(
-            stdout: stdout,
-            stderr: stderr,
-            exitCode: process.terminationStatus
-        )
+        try await execute(arguments: arguments, environment: environment, input: Data(input.utf8))
     }
 
     nonisolated private func buildProcess(
