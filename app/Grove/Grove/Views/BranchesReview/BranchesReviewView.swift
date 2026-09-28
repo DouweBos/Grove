@@ -19,6 +19,11 @@ struct BranchesReviewView: View {
                     }
                 }
             }
+            if let mergeStatusError = viewModel.mergeStatusError {
+                Banner(symbol: "exclamationmark.triangle",
+                       message: "Couldn't check which branches are merged into \(viewModel.primaryBranch), so deleting is disabled. \(mergeStatusError)",
+                       tone: .negative, actionTitle: "Retry", action: { Task { await viewModel.refresh() } })
+            }
             listPanel
         }
         .padding(.bottom, Theme.Spacing.md)
@@ -73,7 +78,7 @@ struct BranchesReviewView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(Theme.danger)
-                    .disabled(viewModel.isDeleting)
+                    .disabled(!viewModel.canDelete)
                 }
                 Button { Task { await viewModel.refresh() } } label: { Image(systemName: "arrow.clockwise") }
                     .help("Refresh")
@@ -99,7 +104,7 @@ struct BranchesReviewView: View {
                                 Button("Delete \u{201C}\(branch.name)\u{201D}\u{2026}", systemImage: "trash", role: .destructive) {
                                     viewModel.requestDelete([branch])
                                 }
-                                .disabled(!branch.isDeletable)
+                                .disabled(!branch.isDeletable || !viewModel.canDelete)
                                 Button("Copy Name", systemImage: "doc.on.doc") { GroveClipboard.copy(branch.name) }
                             }
                         }
