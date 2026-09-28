@@ -1,6 +1,6 @@
----
-"grove": minor
----
+# Changelog
+
+## 0.2.0
 
 - Select several commits in History to squash them, or rebase interactively to reorder, reword, squash, fix up or drop commits.
 - Switch History between the graph and a compact table, reveal a branch, tag or stash in History, and export commits as a patch or a ZIP.
