@@ -89,8 +89,8 @@ private struct BlameFilePanel: View {
     }
 
     private var revisionLabel: String {
-        let where_ = viewModel.revision.map { "at \($0)" } ?? "working tree"
-        return "\(where_) \u{00B7} \(viewModel.lines.count) lines \u{00B7} \(viewModel.commitCount) commits"
+        let location = viewModel.revision.map { "at \($0)" } ?? "working tree"
+        return "\(location) \u{00B7} \(viewModel.lines.count) lines \u{00B7} \(viewModel.commitCount) commits"
     }
 
     private var navigation: some View {

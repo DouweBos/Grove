@@ -83,7 +83,9 @@ private final class FailingMockRepository: GitRepositoryProtocol {
     func discardLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws { try await backing.discardLines(lines, in: hunk, file: file) }
     func diff(for entry: StatusEntry, staged: Bool, ignoreWhitespace: Bool) async throws -> DiffResult { try await backing.diff(for: entry, staged: staged, ignoreWhitespace: ignoreWhitespace) }
     func diffForCommit(_ sha: String) async throws -> [FileDiff] { try await backing.diffForCommit(sha) }
-    @discardableResult func commit(message: String, body: String?, amend: Bool, sign: Bool) async throws -> CommitInfo { try await backing.commit(message: message, body: body, amend: amend, sign: sign) }
+    @discardableResult func commit(message: String, body: String?, amend: Bool, sign: Bool) async throws -> CommitInfo {
+        try await backing.commit(message: message, body: body, amend: amend, sign: sign)
+    }
     func isSigningConfigured() async throws -> Bool { try await backing.isSigningConfigured() }
     func log(maxCount: Int, skip: Int, branch: String?) async throws -> [CommitInfo] { try await backing.log(maxCount: maxCount, skip: skip, branch: branch) }
     func commitDetail(_ sha: String) async throws -> CommitInfo { try await backing.commitDetail(sha) }
@@ -95,7 +97,9 @@ private final class FailingMockRepository: GitRepositoryProtocol {
     func renameBranch(oldName: String, newName: String) async throws { try await backing.renameBranch(oldName: oldName, newName: newName) }
     func fetch(remote: String?, progress: (@Sendable (Double) -> Void)?) async throws { try await backing.fetch(remote: remote, progress: progress) }
     func pull(remote: String?, rebase: Bool, progress: (@Sendable (Double) -> Void)?) async throws { try await backing.pull(remote: remote, rebase: rebase, progress: progress) }
-    func push(remote: String?, force: Bool, forceWithLease: Bool, progress: (@Sendable (Double) -> Void)?) async throws { try await backing.push(remote: remote, force: force, forceWithLease: forceWithLease, progress: progress) }
+    func push(remote: String?, force: Bool, forceWithLease: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
+        try await backing.push(remote: remote, force: force, forceWithLease: forceWithLease, progress: progress)
+    }
     func sync(remote: String?, rebase: Bool, progress: (@Sendable (Double) -> Void)?) async throws { try await backing.sync(remote: remote, rebase: rebase, progress: progress) }
     func merge(branch: String) async throws { try await backing.merge(branch: branch) }
     func abortMerge() async throws { try await backing.abortMerge() }
@@ -122,7 +126,9 @@ private final class FailingMockRepository: GitRepositoryProtocol {
     func stashCreate(message: String?, includeUntracked: Bool, paths: [String]?) async throws { try await backing.stashCreate(message: message, includeUntracked: includeUntracked, paths: paths) }
     func stashApply(index: Int, drop: Bool) async throws { try await backing.stashApply(index: index, drop: drop) }
     func stashDrop(index: Int) async throws { try await backing.stashDrop(index: index) }
-    @discardableResult func createTag(name: String, at sha: String?, message: String?, sign: Bool) async throws -> TagInfo { try await backing.createTag(name: name, at: sha, message: message, sign: sign) }
+    @discardableResult func createTag(name: String, at sha: String?, message: String?, sign: Bool) async throws -> TagInfo {
+        try await backing.createTag(name: name, at: sha, message: message, sign: sign)
+    }
     func deleteTag(name: String) async throws { try await backing.deleteTag(name: name) }
     func pushTag(name: String, remote: String?) async throws { try await backing.pushTag(name: name, remote: remote) }
     func pushAllTags(remote: String?) async throws { try await backing.pushAllTags(remote: remote) }

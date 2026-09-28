@@ -232,6 +232,7 @@ enum DiffParser {
     /// Parse `@@ -oldStart,oldCount +newStart,newCount @@ ...` into component integers.
     nonisolated private static func parseHunkHeader(
         _ header: String
+    // swiftlint:disable:next large_tuple
     ) -> (oldStart: Int, oldCount: Int, newStart: Int, newCount: Int)? {
         // Match the `@@ -a,b +c,d @@` portion.
         guard let atRange = header.range(of: "@@"),

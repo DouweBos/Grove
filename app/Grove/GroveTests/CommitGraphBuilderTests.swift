@@ -118,7 +118,11 @@ struct HistoryViewModelFilterTests {
         #expect(vm.filteredCommits.contains { $0.id == sample.id })
 
         vm.setSearchText(sample.authorName.uppercased())
-        #expect(vm.filteredCommits.allSatisfy { $0.authorName.lowercased() == sample.authorName.lowercased() || $0.message.lowercased().contains(sample.authorName.lowercased()) || $0.authorEmail.lowercased().contains(sample.authorName.lowercased()) })
+        let needle = sample.authorName.lowercased()
+        #expect(vm.filteredCommits.allSatisfy {
+            $0.authorName.lowercased() == needle || $0.message.lowercased().contains(needle)
+                || $0.authorEmail.lowercased().contains(needle)
+        })
 
         vm.setSearchText("no-commit-matches-this-\(UUID().uuidString)")
         #expect(vm.filteredCommits.isEmpty)

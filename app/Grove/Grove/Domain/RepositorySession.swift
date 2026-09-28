@@ -122,6 +122,7 @@ final class RepositorySession {
 
     // MARK: - Action Handling
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     func handleAction(_ action: GroveAction) {
         switch action {
         case .navigateWorkingCopy:

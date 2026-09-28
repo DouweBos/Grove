@@ -7,7 +7,7 @@ import Foundation
 
 extension GitRepository {
 
-    private var inspectionShell: GitShell { GitShell(workingDirectory: path) }
+    private var inspectionShell: GitShell { shell }
 
     // MARK: Stash
 
