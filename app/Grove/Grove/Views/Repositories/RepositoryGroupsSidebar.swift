@@ -58,9 +58,7 @@ struct RepositoryGroupsSidebar: View {
             placement: .sidebar,
             prompt: "Filter Repositories"
         )
-        .dragContainer(for: RepositoryBookmarkData.self) { draggedIDs in
-            draggedIDs.compactMap { id in viewModel.manager.bookmarks.first { $0.id == id } }
-        }
+        .modifier(MultiSelectionDrag())
         .contextMenu(forSelectionType: UUID.self) { selectedIDs in
             if let id = selectedIDs.first, let group = viewModel.group(withID: id) {
                 GroupActions(group: group) { groupPendingDelete = group }
@@ -241,6 +239,23 @@ private struct SortBookmarksMenu: View {
             ForEach(BookmarkSortKey.allCases, id: \.self) { key in
                 Button(key.title) { viewModel.sortBookmarks(inGroup: groupID, by: key) }
             }
+        }
+    }
+}
+
+// MARK: - MultiSelectionDrag
+
+/// Drags every selected bookmark at once; before macOS 26 each row's `.draggable` drags just itself.
+private struct MultiSelectionDrag: ViewModifier {
+    @Environment(WindowViewModel.self) private var viewModel
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content.dragContainer(for: RepositoryBookmarkData.self) { draggedIDs in
+                draggedIDs.compactMap { id in viewModel.manager.bookmarks.first { $0.id == id } }
+            }
+        } else {
+            content
         }
     }
 }
