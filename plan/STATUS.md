@@ -22,6 +22,8 @@ Where the overhaul stands. Update this when a wave of work lands.
 
 - Worktrees: browser nests linked worktrees under their main repository (Tower import folds them); in-repo sidebar lists worktrees and submodules with state. A window runs git in one worktree at a time: the header switcher, a double-clicked worktree, or a double-clicked branch checked out elsewhere switches it (tab kept); other branches check out on double-click.
 
+- Home buttons: cloud and disk in the sidebar (top bar when collapsed) leave the repository; the cloud browses GitHub repositories of the `gh` account and its organizations (clone, or open the local clone), the disk lists local ones. File menu: Local/Remote Repositories (Shift-Cmd-L / Shift-Cmd-K).
+
 ## Open
 
 - Branches Review's merged-check error state and grouped-delete undo are unit-tested but not seen in the UI.

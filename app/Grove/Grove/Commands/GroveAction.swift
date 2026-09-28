@@ -25,6 +25,10 @@ enum GroveAction: String, Sendable {
     case cloneRepository
     case createRepository
     case newGroup
+    /// Leave the open repository and list local repositories (the disk button).
+    case showLocalRepositories
+    /// Leave the open repository and list the GitHub account's repositories (the cloud button).
+    case showRemoteRepositories
 
     // MARK: Navigation
 

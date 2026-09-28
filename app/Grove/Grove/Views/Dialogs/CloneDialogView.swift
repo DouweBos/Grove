@@ -11,13 +11,17 @@ struct CloneDialogView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("defaultCloneDirectory") private var defaultCloneDirectory = "~/Projects"
 
-    @State private var cloneURL = ""
+    @State private var cloneURL: String
     @State private var folderName = ""
     @State private var parentOverride: URL?
     @State private var isPickerPresented = false
     @State private var isCloning = false
     @State private var cloneProgress: CloneProgress?
     @State private var errorMessage: String?
+
+    init(initialURL: String? = nil) {
+        _cloneURL = State(initialValue: initialURL ?? "")
+    }
 
     private var parent: URL {
         parentOverride ?? URL(fileURLWithPath: (defaultCloneDirectory as NSString).expandingTildeInPath)

@@ -37,7 +37,7 @@ struct RootWindowHost: View {
         @Bindable var vm = windowVM
 
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            UnifiedSidebar(session: windowVM.currentSession?.session)
+            UnifiedSidebar(session: windowVM.currentSession?.session, isCollapsed: columnVisibility == .detailOnly)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 300)
         } detail: {
             detailContent
@@ -45,8 +45,12 @@ struct RootWindowHost: View {
         .navigationTitle(windowVM.openRepo?.displayName ?? "Grove")
         .toolbar(removing: .title)
         .frame(minWidth: 900, minHeight: 600)
+        .toolbar {
+            if columnVisibility == .detailOnly {
+                RepositoryHomeButtons(placement: .navigation)
+            }
+        }
         .environment(windowVM)
-        .toolbar { toolbarContent }
         // Load session when openRepo changes
         .onChange(of: windowVM.openRepo) { _, ref in
             if let ref {
@@ -66,13 +70,22 @@ struct RootWindowHost: View {
         }
         // `-GroveOpenRepository <path>` opens a repository on launch.
         .task {
+            // `-GroveSidebar hidden` collapses the sidebar, for checking the collapsed toolbar.
+            if UserDefaults.standard.string(forKey: "GroveSidebar") == "hidden" {
+                try? await Task.sleep(for: .milliseconds(300))
+                columnVisibility = .detailOnly
+            }
+            if UserDefaults.standard.string(forKey: "GroveOpenRepository") == nil,
+               let raw = UserDefaults.standard.string(forKey: "GroveAction"), let action = GroveAction(rawValue: raw) {
+                _ = windowVM.handleBrowserAction(action)
+            }
             if let path = UserDefaults.standard.string(forKey: "GroveOpenRepository") {
                 windowVM.openReference(RepositoryReference(path: path))
             }
         }
         // Browser sheets
         .sheet(isPresented: $vm.isShowingCloneDialog) {
-            CloneDialogView()
+            CloneDialogView(initialURL: windowVM.cloneURLPrefill)
                 .environment(windowVM)
         }
         .sheet(isPresented: $vm.isShowingAddDialog) {
@@ -130,25 +143,12 @@ struct RootWindowHost: View {
                 ProgressView("Opening repository\u{2026}")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+        } else if windowVM.browserMode == .remote {
+            RemoteRepositoriesContent()
+                .onAppear { EditUndoState.shared.attach(nil) }
         } else {
             RepositoryBrowserContent()
                 .onAppear { EditUndoState.shared.attach(nil) }
-        }
-    }
-
-    // MARK: Toolbar
-
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        if !windowVM.isBrowsing {
-            ToolbarItem(placement: .navigation) {
-                Button {
-                    windowVM.closeRepository()
-                } label: {
-                    Image(systemName: "chevron.left")
-                }
-                .help("Back to Repositories")
-            }
         }
     }
 }

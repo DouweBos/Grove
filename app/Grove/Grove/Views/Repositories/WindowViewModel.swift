@@ -48,6 +48,13 @@ final class WindowViewModel {
     var selectedGroupID: UUID?
     var selectedBookmarkID: UUID?
 
+    /// Which list the browser shows when no repository is open.
+    enum BrowserMode { case local, remote }
+    private(set) var browserMode: BrowserMode = .local
+    let remoteRepositories = RemoteRepositoriesViewModel()
+    /// URL the clone sheet opens with, e.g. from the remote browser.
+    private(set) var cloneURLPrefill: String?
+
     /// Tab to reopen on after switching worktrees.
     private var pendingSelection: SidebarItem?
 
@@ -133,7 +140,30 @@ final class WindowViewModel {
     // MARK: Navigation Actions
 
     func showAddDialog() { isShowingAddDialog = true }
-    func showCloneDialog() { isShowingCloneDialog = true }
+    func showCloneDialog(url: String? = nil) {
+        cloneURLPrefill = url
+        isShowingCloneDialog = true
+    }
+
+    /// The disk button: leave any open repository and show local repositories.
+    func showLocalRepositories() {
+        if !isBrowsing { closeRepository() }
+        browserMode = .local
+    }
+
+    /// The cloud button: leave any open repository and show the signed-in account's hosted repositories.
+    func showRemoteRepositories() {
+        if !isBrowsing { closeRepository() }
+        browserMode = .remote
+        remoteRepositories.indexLocalClones(bookmarks: manager.bookmarks)
+        Task { await remoteRepositories.loadIfNeeded() }
+    }
+
+    /// Opens a hosted repository's local clone, bookmarking nothing new.
+    func openLocalClone(atPath path: String) {
+        browserMode = .local
+        openReference(RepositoryReference(path: path))
+    }
     func showCreateDialog() { isShowingCreateDialog = true }
     func showNewGroupDialog() { groupEditor = .new }
     func showRenameGroupDialog(_ group: BookmarkGroupData) { groupEditor = .rename(group) }
@@ -151,6 +181,8 @@ final class WindowViewModel {
         case .cloneRepository: showCloneDialog()
         case .createRepository: showCreateDialog()
         case .newGroup: showNewGroupDialog()
+        case .showLocalRepositories: showLocalRepositories()
+        case .showRemoteRepositories: showRemoteRepositories()
         default: return false
         }
         return true

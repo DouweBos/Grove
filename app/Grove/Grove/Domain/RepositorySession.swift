@@ -183,7 +183,7 @@ final class RepositorySession {
             Task { await workingCopyVM.commit() }
         case .quickActions, .quickOpen:
             break
-        case .addRepository, .cloneRepository, .createRepository, .newGroup:
+        case .addRepository, .cloneRepository, .createRepository, .newGroup, .showLocalRepositories, .showRemoteRepositories:
             break
         case .undo:
             Task {

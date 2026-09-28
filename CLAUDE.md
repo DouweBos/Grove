@@ -25,7 +25,7 @@ xcodebuild -project Grove.xcodeproj -scheme Grove -derivedDataPath build -destin
 xcodebuild -project Grove.xcodeproj -scheme Grove -derivedDataPath build -destination 'platform=macOS,arch=arm64' test -only-testing:GroveTests
 ```
 
-Dev launch flags: `-GroveOpenRepository <path>` opens a repository on launch, `-GroveAction <GroveAction rawValue>` (e.g. `navigateHistory`) runs an action once it's open, `-GroveAppearance dark|light` forces an appearance.
+Dev launch flags: `-GroveOpenRepository <path>` opens a repository on launch, `-GroveAction <GroveAction rawValue>` (e.g. `navigateHistory`) runs an action once it's open, `-GroveAppearance dark|light` forces an appearance, `-GroveSidebar hidden` collapses the sidebar. Without `-GroveOpenRepository`, `-GroveAction showRemoteRepositories` opens the cloud browser.
 
 Never perform git writes against real repositories while testing; use a scratch repo under `/tmp`.
 

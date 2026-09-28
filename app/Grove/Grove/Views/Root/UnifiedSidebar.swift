@@ -15,6 +15,8 @@ struct UnifiedSidebar: View {
 
     /// Active repository session, or `nil` when showing the browser.
     let session: RepositorySession?
+    /// While collapsed the window's top bar shows the home buttons; SwiftUI would squeeze the sidebar's copy.
+    var isCollapsed = false
     
     @Environment(WindowViewModel.self) private var viewModel
 
@@ -24,6 +26,9 @@ struct UnifiedSidebar: View {
                 RepositorySidebar()
                     .environment(session.sidebarVM)
                     .transition(.opacity)
+            } else if viewModel.browserMode == .remote {
+                RemoteRepositoriesSidebar()
+                    .transition(.opacity)
             } else {
                 RepositoryGroupsSidebar()
                     .transition(.opacity)
@@ -31,6 +36,9 @@ struct UnifiedSidebar: View {
         }
         .animation(.easeInOut(duration: 0.15), value: session != nil)
         .toolbar {
+            if !isCollapsed {
+                RepositoryHomeButtons(placement: .primaryAction)
+            }
             if session == nil {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
@@ -46,5 +54,30 @@ struct UnifiedSidebar: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - RepositoryHomeButtons
+
+/// Home buttons: both leave an open repository; the cloud lists hosted repositories, the disk local ones.
+struct RepositoryHomeButtons: ToolbarContent {
+    @Environment(WindowViewModel.self) private var viewModel
+    let placement: ToolbarItemPlacement
+
+    var body: some ToolbarContent {
+        ToolbarItemGroup(placement: placement) {
+            Button { viewModel.showRemoteRepositories() } label: {
+                Image(systemName: isShowing(.remote) ? "cloud.fill" : "cloud")
+            }
+            .help("Remote Repositories (\u{21E7}\u{2318}K)")
+            Button { viewModel.showLocalRepositories() } label: {
+                Image(systemName: isShowing(.local) ? "externaldrive.fill" : "externaldrive")
+            }
+            .help("Local Repositories (\u{21E7}\u{2318}L)")
+        }
+    }
+
+    private func isShowing(_ mode: WindowViewModel.BrowserMode) -> Bool {
+        viewModel.isBrowsing && viewModel.browserMode == mode
     }
 }
