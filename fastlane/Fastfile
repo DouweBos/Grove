@@ -1,0 +1,56 @@
+default_platform(:mac)
+
+TEAM_ID = "CKZT75PN5T"
+PROJECT = "app/Grove/Grove.xcodeproj"
+DIST    = File.expand_path("../dist", __dir__)
+
+platform :mac do
+  desc "Install the Developer ID cert from the shared match repo."
+  lane :certs do
+    api_key = ENV["APP_STORE_CONNECT_API_KEY_ID"] ? load_app_store_connect_api_key : nil
+    match_options = { type: "developer_id", readonly: true, platform: "macos", skip_provisioning_profiles: true }
+    match_options[:api_key] = api_key if api_key
+    match(**match_options)
+  end
+
+  desc "Signed, notarized build plus the Sparkle appcast in dist/. version:1.2.0 channel:production|beta build:<n>"
+  lane :release do |options|
+    version = options[:version] || UI.user_error!("Pass version:x.y.z")
+    channel = options.fetch(:channel, "production")
+    UI.user_error!("channel must be production or beta") unless %w[production beta].include?(channel)
+    # Monotonic across both channels; Sparkle compares CFBundleVersion.
+    build = options[:build] || sh("git rev-list --count HEAD", log: false).strip
+
+    api_key = load_app_store_connect_api_key
+    match(type: "developer_id", readonly: true, api_key: api_key, platform: "macos", skip_provisioning_profiles: true)
+
+    sh("rm -rf #{DIST.shellescape} && mkdir -p #{DIST.shellescape}")
+    build_mac_app(
+      project: PROJECT,
+      scheme: "Grove",
+      configuration: "Release",
+      export_method: "developer-id",
+      export_team_id: TEAM_ID,
+      output_directory: DIST,
+      output_name: "Grove",
+      skip_package_pkg: true,
+      xcargs: "MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build} " \
+              "CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY='Developer ID Application' DEVELOPMENT_TEAM=#{TEAM_ID}"
+    )
+    notarize(package: "#{DIST}/Grove.app", api_key: api_key, bundle_id: "com.houwert.Grove")
+
+    sh("../tools/release/package.sh", version, channel)
+  end
+
+  def load_app_store_connect_api_key
+    %w[APP_STORE_CONNECT_API_KEY_ID APP_STORE_CONNECT_API_KEY_ISSUER_ID APP_STORE_CONNECT_API_KEY_CONTENT].each do |key|
+      UI.user_error!("Missing #{key}") if ENV[key].to_s.empty?
+    end
+    app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"],
+      in_house: false
+    )
+  end
+end

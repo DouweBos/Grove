@@ -32,3 +32,6 @@ playground.xcworkspace
 
 # Test coverage output
 *.profraw
+
+# Release output
+dist/

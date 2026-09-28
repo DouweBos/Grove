@@ -21,10 +21,11 @@ enum GrovePreferences {
         static let diffToolArguments = "externalDiffToolArguments"
         static let mergeToolPath = "externalMergeToolPath"
         static let mergeToolArguments = "externalMergeToolArguments"
+        static let receivesBetaUpdates = "receivesBetaUpdates"
 
         static let all = [defaultCloneDirectory, terminalApp, autoFetchMinutes, warnOnHunkDiscard, staleBranchDays,
                           appearance, externalEditor, externalEditorPath, diffToolPath, diffToolArguments,
-                          mergeToolPath, mergeToolArguments]
+                          mergeToolPath, mergeToolArguments, receivesBetaUpdates]
     }
 
     enum Default {
@@ -41,6 +42,11 @@ enum GrovePreferences {
     /// Minutes between background fetches; 0 means off.
     static var autoFetchMinutes: Int {
         defaults.object(forKey: Key.autoFetchMinutes) as? Int ?? Default.autoFetchMinutes
+    }
+
+    /// Whether Sparkle offers beta builds on top of stable ones.
+    nonisolated static var receivesBetaUpdates: Bool {
+        UserDefaults.standard.bool(forKey: Key.receivesBetaUpdates)
     }
 
     /// Whether discarding a hunk or lines asks for confirmation first.

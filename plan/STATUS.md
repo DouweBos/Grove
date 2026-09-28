@@ -26,6 +26,8 @@ Where the overhaul stands. Update this when a wave of work lands.
 
 - Background fetch: closing the window keeps Grove running; cached repositories keep auto-fetching (every 5 minutes by default) and the reopened window resumes where it was. History logs the branch with its upstream, marking unpulled and unpushed commits.
 
+- Distribution: Sparkle updates (stable and beta channels, Check for Updates menu, beta toggle in Preferences); release workflow reuses Argus's match cert and notarization key; see tools/release/README.md.
+
 - Back / forward: window history across the browsers, repositories and their tabs; toolbar arrows, Cmd-[ / Cmd-], and mouse buttons 4/5.
 
 - Performance: per-session shared ref cache and paused session reuse (LRU 4); per-item detail caches; Branches Review via for-each-ref; git runs off the main actor with concurrent pipe draining (ProcessRunner), ~85% faster across the board. Fixture generator + opt-in benchmarks in tools/fixtures (bench.sh, baseline.json).

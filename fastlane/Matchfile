@@ -1,0 +1,8 @@
+# The shared cert repo also used by Argus; Grove only reads `developer_id`.
+git_url ENV["MATCH_GIT_URL"] || "git@github.com:DouweBos/apple-certificates.git"
+storage_mode "git"
+type "developer_id"
+platform "macos"
+skip_provisioning_profiles true
+app_identifier "com.houwert.Grove"
+team_id "CKZT75PN5T"

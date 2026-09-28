@@ -17,6 +17,7 @@ struct GroveApp: App {
     @State private var manager: RepositoryManager
     // Outlives the window, so its sessions keep fetching after a close and reopen where they were.
     @State private var windowVM: WindowViewModel
+    @State private var updater = AppUpdater()
 
     init() {
         let manager = RepositoryManager()
@@ -32,11 +33,13 @@ struct GroveApp: App {
         .defaultSize(width: 1100, height: 700)
         .commands {
             GroveCommands()
+            UpdateCommands(updater: updater)
         }
 
         // Standard macOS Preferences window (Cmd+,).
         Settings {
             PreferencesView(manager: manager)
+                .environment(updater)
         }
     }
 }

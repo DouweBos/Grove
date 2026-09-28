@@ -36,6 +36,8 @@ struct GeneralPreferencesTab: View {
     @AppStorage(GrovePreferences.Key.autoFetchMinutes) private var autoFetchMinutes = GrovePreferences.Default.autoFetchMinutes
     @AppStorage(GrovePreferences.Key.warnOnHunkDiscard) private var warnOnHunkDiscard = GrovePreferences.Default.warnOnHunkDiscard
     @AppStorage(GrovePreferences.Key.staleBranchDays) private var staleBranchDays = GrovePreferences.Default.staleBranchDays
+    @AppStorage(GrovePreferences.Key.receivesBetaUpdates) private var receivesBetaUpdates = false
+    @Environment(AppUpdater.self) private var updater
 
     var body: some View {
         Form {
@@ -85,6 +87,17 @@ struct GeneralPreferencesTab: View {
             Section("Branches Review") {
                 Stepper("Stale after \(staleBranchDays) days without commits", value: $staleBranchDays, in: 7...365, step: 7)
             }
+
+            Section {
+                Toggle("Receive beta updates", isOn: $receivesBetaUpdates)
+                Button("Check for Updates\u{2026}") { updater.checkForUpdates() }
+                    .disabled(!updater.canCheckForUpdates)
+            } header: {
+                Text("Updates")
+            } footer: {
+                Text(AppUpdater.isEnabled ? "Grove checks for updates daily." : "Development builds don't update.")
+                    .font(.caption).foregroundStyle(Theme.textSecondary)
+            }
         }
         .formStyle(.grouped)
     }
@@ -103,4 +116,5 @@ struct GeneralPreferencesTab: View {
 
 #Preview {
     PreferencesView(manager: MockRepositoryManager())
+        .environment(AppUpdater())
 }
