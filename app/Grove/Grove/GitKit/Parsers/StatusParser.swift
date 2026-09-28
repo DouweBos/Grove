@@ -9,7 +9,7 @@
 // Line types:
 //   `1 XY sub mH mI mW hH hI path`          — ordinary changed entry
 //   `2 XY sub mH mI mW hH hI X score path\torigPath` — renamed/copied
-//   `u XY sub m1 m2 m3 mW hH h1 h2 h3 path` — unmerged (conflict)
+//   `u XY sub m1 m2 m3 mW h1 h2 h3 path`    — unmerged (conflict)
 //   `? path`                                  — untracked
 //   `! path`                                  — ignored
 
@@ -85,12 +85,12 @@ enum StatusParser {
 
     // MARK: Unmerged  (`u XY ...`)
 
-    // Format: `u XY sub m1 m2 m3 mW hH h1 h2 h3 path`
+    // Format: `u XY sub m1 m2 m3 mW h1 h2 h3 path`
     nonisolated private static func parseUnmerged(_ line: String) -> StatusEntry? {
         let parts = line.components(separatedBy: " ")
-        guard parts.count >= 12, parts[0] == "u" else { return nil }
+        guard parts.count >= 11, parts[0] == "u" else { return nil }
 
-        let path = parts[11...].joined(separator: " ")
+        let path = parts[10...].joined(separator: " ")
 
         // Both index and workdir are treated as conflicted for unmerged entries.
         return StatusEntry(id: path, path: path, indexStatus: .conflicted, workdirStatus: .conflicted)

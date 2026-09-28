@@ -93,12 +93,13 @@ struct CommitAutoCompleteView: View {
             suggestionList
         }
         .frame(width: 320)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
+                .strokeBorder(Theme.border, lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(0.18), radius: 8, x: 0, y: 4)
+        .shadow(color: Theme.textPrimary.opacity(0.12), radius: 10, x: 0, y: 4)
         .onAppear { highlightedID = suggestions.first?.id }
         .onChange(of: suggestions) { _, new in
             highlightedID = new.first?.id
@@ -116,10 +117,10 @@ struct CommitAutoCompleteView: View {
         HStack(spacing: 6) {
             Image(systemName: triggerIcon)
                 .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textSecondary)
             Text(triggerLabel)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textSecondary)
             Spacer()
         }
         .padding(.horizontal, 10)
@@ -193,18 +194,18 @@ private struct SuggestionRow: View {
         HStack(spacing: 8) {
             Image(systemName: suggestion.icon)
                 .font(.system(size: 12))
-                .foregroundStyle(isHighlighted ? .white : .secondary)
+                .foregroundStyle(isHighlighted ? Theme.textPrimary : Theme.textSecondary)
                 .frame(width: 18)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(suggestion.title)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(isHighlighted ? .white : .primary)
+                    .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
                 if let subtitle = suggestion.subtitle {
                     Text(subtitle)
                         .font(.system(size: 10))
-                        .foregroundStyle(isHighlighted ? .white.opacity(0.75) : .secondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
                 }
             }
@@ -214,10 +215,8 @@ private struct SuggestionRow: View {
         .padding(.horizontal, 10)
         .frame(height: 36)
         .background(
-            isHighlighted
-                ? Color.accentColor
-                : Color.clear,
-            in: Rectangle()
+            isHighlighted ? Theme.selectionFill : Color.clear,
+            in: RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous)
         )
         .contentShape(Rectangle())
     }

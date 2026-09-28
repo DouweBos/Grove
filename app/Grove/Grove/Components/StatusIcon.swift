@@ -26,9 +26,11 @@ struct StatusIcon: View {
     var body: some View {
         Text(label)
             .font(.system(size: 10, weight: .bold, design: .monospaced))
-            .foregroundStyle(.white)
+            .foregroundStyle(color)
             .frame(width: 16, height: 16)
-            .background(color, in: RoundedRectangle(cornerRadius: 3))
+            .background(status == .unmodified ? Color.clear : color.opacity(0.16),
+                        in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+            .accessibilityLabel(Text(verbatim: "\(status)"))
     }
 
     // MARK: Private
@@ -50,29 +52,15 @@ struct StatusIcon: View {
 
     private var color: Color {
         switch status {
-        case .unmodified:            return .clear
-        case .modified:              return Color(hex: 0xE07B35)  // orange — unstaged
-        case .added:                 return Color(hex: 0x2EA043)  // green — new
-        case .deleted:               return Color(hex: 0xF85149)  // red — removed
-        case .renamed:               return Color(hex: 0x58A6FF)  // blue
-        case .copied:                return Color(hex: 0x58A6FF)  // blue
-        case .untracked:             return Color(hex: 0x8B949E)  // gray
-        case .ignored:               return Color(hex: 0x6E7681)  // dim gray
-        case .conflicted:            return Color(hex: 0xD29922)  // amber
-        case .typeChange:            return Color(hex: 0xBC8CFF)  // purple
+        case .unmodified:          return Theme.textSecondary
+        case .modified:            return Theme.modified
+        case .added:               return Theme.added
+        case .deleted:             return Theme.deleted
+        case .renamed, .copied:    return Theme.renamed
+        case .untracked, .ignored: return Theme.untracked
+        case .conflicted:          return Theme.conflicted
+        case .typeChange:          return Theme.renamed
         }
-    }
-}
-
-// MARK: - Color Hex Initialiser (private helper)
-
-extension Color {
-    /// Initialise from a 24-bit hex literal, e.g. `Color(hex: 0x2EA043)`.
-    fileprivate init(hex: UInt32) {
-        let r = Double((hex >> 16) & 0xFF) / 255
-        let g = Double((hex >> 8)  & 0xFF) / 255
-        let b = Double( hex        & 0xFF) / 255
-        self.init(red: r, green: g, blue: b)
     }
 }
 
@@ -89,4 +77,5 @@ extension Color {
         }
     }
     .padding()
+    .background(Theme.surface)
 }

@@ -1,61 +1,99 @@
 // Views/WorkingCopy/WorkingCopyView.swift
 // Grove
 //
-// Root view for the Working Copy feature area.
-// Implements the three-zone HSplitView layout:
-//   Left (~35%): WorkingCopyLeftColumn (CommitComposer + FileStatusList)
-//   Right (~65%): DiffPanelView
-//
-// The ViewModel is owned by RepositorySession so it survives tab switches
-// and refreshes when the repository changes on disk.
+// The Changes tab: composer and file list on the left, diff on the right,
+// as two cards with a draggable gap between them.
 
+import AppKit
 import SwiftUI
 
-// MARK: - WorkingCopyView
-
-/// Three-zone Working Copy layout. Entry point for the WS3 view cluster.
-///
-/// Inject via:
-/// ```swift
-/// WorkingCopyView(repository: someRepo)
-/// ```
 struct WorkingCopyView: View {
-
     let viewModel: WorkingCopyViewModel
 
-    // MARK: Body
+    @AppStorage("WorkingCopyLeftWidth") private var leftWidth: Double = 360
+    @State private var dragStartWidth: Double?
+
+    private let minLeft: Double = 280
+    private let minRight: Double = 320
 
     var body: some View {
-        HSplitView {
-            WorkingCopyLeftColumn()
-                .frame(minWidth: 220, idealWidth: 300, maxWidth: 420)
-
-            DiffPanelView()
-                .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
+        GeometryReader { geo in
+            HStack(spacing: 0) {
+                WorkingCopyLeftColumn()
+                    .frame(width: clampedLeftWidth(total: geo.size.width))
+                resizeHandle(total: geo.size.width)
+                DiffPanelView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
+        .padding(.bottom, Theme.Spacing.lg)
         .environment(viewModel)
-        .alert("Error", isPresented: errorBinding) {
+        .confirmationDialog(discardTitle, isPresented: discardBinding, presenting: viewModel.pendingDiscard) { entry in
+            Button("Discard", role: .destructive) { Task { await viewModel.discard(entry) } }
+            Button("Cancel", role: .cancel) { viewModel.cancelDiscard() }
+        } message: { _ in
+            Text("This can't be undone.")
+        }
+        .alert("Something Went Wrong", isPresented: errorBinding) {
             Button("OK") { viewModel.clearError() }
         } message: {
-            if let msg = viewModel.errorMessage {
-                Text(msg)
-            }
+            Text(viewModel.errorMessage ?? "")
         }
     }
 
-    // MARK: Helpers
+    // MARK: Resizing
+
+    private func clampedLeftWidth(total: CGFloat) -> CGFloat {
+        let maxLeft = max(minLeft, Double(total) - minRight - Double(Theme.Spacing.md))
+        return CGFloat(min(max(leftWidth, minLeft), maxLeft))
+    }
+
+    private func resizeHandle(total: CGFloat) -> some View {
+        Color.clear
+            .frame(width: Theme.Spacing.md)
+            .contentShape(Rectangle())
+            .onHover { inside in
+                if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        let start = dragStartWidth ?? Double(clampedLeftWidth(total: total))
+                        dragStartWidth = start
+                        leftWidth = start + value.translation.width
+                    }
+                    .onEnded { _ in
+                        leftWidth = Double(clampedLeftWidth(total: total))
+                        dragStartWidth = nil
+                    }
+            )
+    }
+
+    // MARK: Dialog bindings
+
+    private var discardTitle: String {
+        guard let entry = viewModel.pendingDiscard else { return "Discard changes?" }
+        return entry.workdirStatus == .untracked
+            ? "Delete untracked file \(entry.fileName)?"
+            : "Discard all changes to \(entry.fileName)?"
+    }
+
+    private var discardBinding: Binding<Bool> {
+        Binding(get: { viewModel.pendingDiscard != nil },
+                set: { if !$0 { viewModel.cancelDiscard() } })
+    }
 
     private var errorBinding: Binding<Bool> {
-        Binding(
-            get: { viewModel.errorMessage != nil },
-            set: { if !$0 { viewModel.clearError() } }
-        )
+        Binding(get: { viewModel.errorMessage != nil },
+                set: { if !$0 { viewModel.clearError() } })
     }
 }
 
-// MARK: - Preview
-
 #Preview("Working Copy") {
-    WorkingCopyView(viewModel: WorkingCopyViewModel(repository: MockGitRepository()))
-        .frame(width: 900, height: 600)
+    let vm = WorkingCopyViewModel(repository: MockGitRepository())
+    WorkingCopyView(viewModel: vm)
+        .frame(width: 1000, height: 700)
+        .padding(.horizontal, Theme.Spacing.lg)
+        .background(Theme.background)
+        .task { await vm.refresh() }
 }

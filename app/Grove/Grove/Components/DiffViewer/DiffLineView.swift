@@ -29,74 +29,52 @@ struct DiffLineView: View {
     // MARK: Layout constants
 
     private enum Layout {
-        static let lineNumberWidth: CGFloat = 42
-        static let gutterWidth: CGFloat = 18
-        static let fontSize: CGFloat = 13
+        static let lineNumberWidth: CGFloat = 40
+        static let gutterWidth: CGFloat = 16
     }
 
     // MARK: Body
 
     var body: some View {
         HStack(spacing: 0) {
-            // Old line number
             lineNumber(line.oldLineNumber)
-
-            // New line number
             lineNumber(line.newLineNumber)
-
-            // +/- gutter indicator
-            gutterIndicator
-
-            // Content
+            Text(gutterChar)
+                .foregroundStyle(gutterColor)
+                .frame(width: Layout.gutterWidth, alignment: .center)
             contentText
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.trailing, Theme.Spacing.lg)
         }
-        .background(selectionBackground)
+        .font(.monoBody)
+        .padding(.vertical, 1)
+        .background(lineBackground)
+        .overlay(alignment: .leading) {
+            if isSelected { Rectangle().fill(Theme.accent).frame(width: 3) }
+        }
+        .background(isSelected ? Theme.selectionFill : .clear)
         .contentShape(Rectangle())
     }
 
     // MARK: Sub-views
 
     private func lineNumber(_ number: Int?) -> some View {
-        Group {
-            if let number {
-                Text(verbatim: "\(number)")
-            } else {
-                Text(verbatim: "")
-            }
-        }
-        .font(.system(size: Layout.fontSize, design: .monospaced))
-        .foregroundStyle(DiffColors.lineNumberForeground)
-        .frame(width: Layout.lineNumberWidth, alignment: .trailing)
-        .padding(.trailing, 4)
-        .background(lineBackground.opacity(0.6))
-    }
-
-    private var gutterIndicator: some View {
-        Text(gutterChar)
-            .font(.system(size: Layout.fontSize, weight: .medium, design: .monospaced))
-            .foregroundStyle(gutterColor)
-            .frame(width: Layout.gutterWidth, alignment: .center)
-            .background(lineBackground.opacity(0.6))
+        Text(verbatim: number.map(String.init) ?? "")
+            .foregroundStyle(Theme.textSecondary)
+            .frame(width: Layout.lineNumberWidth, alignment: .trailing)
+            .padding(.trailing, Theme.Spacing.xs)
     }
 
     @ViewBuilder
     private var contentText: some View {
         if let attributed = attributedContent {
             Text(attributed)
-                .font(.system(size: Layout.fontSize, design: .monospaced))
+                .foregroundStyle(Theme.textPrimary)
                 .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 4)
-                .background(lineBackground)
         } else {
             Text(verbatim: line.content)
-                .font(.system(size: Layout.fontSize, design: .monospaced))
-                .foregroundStyle(.primary)
+                .foregroundStyle(Theme.textPrimary)
                 .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 4)
-                .background(lineBackground)
         }
     }
 
@@ -105,29 +83,25 @@ struct DiffLineView: View {
     private var gutterChar: String {
         switch line.type {
         case .addition: return "+"
-        case .deletion: return "-"
+        case .deletion: return "−"
         case .context:  return " "
         }
     }
 
     private var gutterColor: Color {
         switch line.type {
-        case .addition: return Color(red: 0x2E / 255.0, green: 0xA0 / 255.0, blue: 0x43 / 255.0)
-        case .deletion: return Color(red: 0xF8 / 255.0, green: 0x51 / 255.0, blue: 0x49 / 255.0)
-        case .context:  return .secondary
+        case .addition: return Theme.added
+        case .deletion: return Theme.deleted
+        case .context:  return Theme.textSecondary
         }
     }
 
     private var lineBackground: Color {
         switch line.type {
-        case .addition: return DiffColors.additionBackground
-        case .deletion: return DiffColors.deletionBackground
+        case .addition: return Theme.addedFill
+        case .deletion: return Theme.deletedFill
         case .context:  return .clear
         }
-    }
-
-    private var selectionBackground: Color {
-        isSelected ? Color.accentColor.opacity(0.15) : .clear
     }
 }
 
@@ -166,5 +140,5 @@ struct DiffLineView: View {
         DiffLineView(line: additionLine, attributedContent: addAttr)
     }
     .frame(width: 600)
-    .background(Color(white: 0.11))
+    .background(Theme.surface)
 }
