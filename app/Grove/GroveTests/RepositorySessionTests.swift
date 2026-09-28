@@ -27,15 +27,15 @@ struct RepositorySessionTests {
         try await waitUntil { first.isActive }
     }
 
-    @Test func pausedSessionsDoNotWatchOrFetch() async throws {
+    @Test func pausedSessionsStopWatchingButKeepFetching() async throws {
         let window = WindowViewModel(manager: MockRepositoryManager())
         let first = try await open("/tmp/grove-tests/alpha", in: window)
         try await waitUntil { first.isActive }
         #expect(first.autoFetcher.isStarted)
 
-        // Opening another repository pauses the one that was open.
+        // Opening another repository pauses the one that was open; it keeps fetching in the background.
         let second = try await open("/tmp/grove-tests/beta", in: window)
-        #expect(!first.isActive && !first.autoFetcher.isStarted)
+        #expect(!first.isActive && first.autoFetcher.isStarted)
         try await waitUntil { second.isActive }
     }
 

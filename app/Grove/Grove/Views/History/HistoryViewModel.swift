@@ -112,10 +112,11 @@ final class HistoryViewModel {
         graphNodes = [:]
         if refs.hasLoaded { syncRefs() } else { updateRevisions() }
         // Refs only decorate rows, so the log doesn't wait for them.
-        async let refs: Void = loadRefs()
+        async let refs = loadRefs()
         await loadMore()
         if selectedCommit == nil, let first = commits.first { select(first) }
-        await refs
+        // The refs can reveal an upstream to log alongside the branch.
+        if await refs { await reloadLog() }
     }
 
     /// Re-reads the loaded range in place, keeping the selection, after the repository changes.
@@ -126,7 +127,7 @@ final class HistoryViewModel {
         async let refsRead: Void = refs.refresh()
         await reloadLog()
         await refsRead
-        syncRefs()
+        if syncRefs() { await reloadLog() }
     }
 
     private func reloadLog() async {
@@ -171,20 +172,22 @@ final class HistoryViewModel {
         Task { await loadMore() }
     }
 
-    private func loadRefs() async {
+    private func loadRefs() async -> Bool {
         await refs.loadIfNeeded()
-        syncRefs()
+        return syncRefs()
     }
 
     /// Re-indexes only when the shared refs actually changed; thousands of tags make that costly.
-    func syncRefs() {
-        guard appliedRefsGeneration != refs.generation else { return }
+    /// Returns whether the log's revisions changed, so the caller reloads it.
+    @discardableResult
+    func syncRefs() -> Bool {
+        guard appliedRefsGeneration != refs.generation else { return false }
         appliedRefsGeneration = refs.generation
         branches = refs.localBranches + refs.remoteBranches
         tags = refs.tags
-        // Mid-load, reloadLog queues itself behind the running read.
-        if updateRevisions(), !commits.isEmpty || isLoading { Task { await reloadLog() } }
+        let revisionsChanged = updateRevisions()
         loadSyncState()
+        return revisionsChanged
     }
 
     /// Whether the revisions to log changed, e.g. once refs reveal the branch's upstream.
