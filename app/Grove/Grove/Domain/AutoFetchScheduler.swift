@@ -50,7 +50,7 @@ final class AutoFetchScheduler {
     // MARK: - Private
 
     private var timer: Timer?
-    private var isStarted: Bool = false
+    private(set) var isStarted: Bool = false
     private var preferenceObserver: Task<Void, Never>?
     private let repository: any GitRepositoryProtocol
 

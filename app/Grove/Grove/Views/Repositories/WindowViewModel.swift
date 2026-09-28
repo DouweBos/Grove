@@ -31,11 +31,26 @@ final class WindowViewModel {
 
     // MARK: Sessions
 
-    /// Loaded repositories and their sessions, keyed by filesystem path.
+    /// Loaded repositories and their sessions, keyed by filesystem path; only the open one runs, see +Sessions.
     private(set) var sessions: [String: LoadedSession] = [:]
+    /// Paths in `sessions`, least recently opened first.
+    private(set) var sessionOrder: [String] = []
 
     /// Repo paths that failed to open.
     private(set) var sessionErrors: [String: String] = [:]
+
+    func setSession(_ loaded: LoadedSession?, for path: String) {
+        sessions[path] = loaded
+        sessionOrder.removeAll { $0 == path }
+        if loaded != nil { sessionOrder.append(path) }
+    }
+
+    func setSessionError(_ message: String?, for path: String) { sessionErrors[path] = message }
+
+    /// Tab to reopen on after switching worktrees or going back.
+    private(set) var pendingSelection: SidebarItem?
+
+    func setPendingSelection(_ item: SidebarItem?) { pendingSelection = item }
 
     /// The session for the currently open repository.
     var currentSession: LoadedSession? {
@@ -54,9 +69,6 @@ final class WindowViewModel {
     let remoteRepositories = RemoteRepositoriesViewModel()
     /// URL the clone sheet opens with, e.g. from the remote browser.
     private(set) var cloneURLPrefill: String?
-
-    /// Tab to reopen on after switching worktrees.
-    private var pendingSelection: SidebarItem?
 
     // MARK: Info Panel Snapshots
 
@@ -96,11 +108,9 @@ final class WindowViewModel {
         body()
     }
 
-    /// Opens `path` on `item`, stopping the current repository's session first.
+    /// Opens `path` on `item`, pausing the current repository's session first.
     func reopen(path: String, on item: SidebarItem?) {
-        if let current = openRepo, let loaded = sessions.removeValue(forKey: current.path) {
-            loaded.session.stop()
-        }
+        pauseCurrentSession()
         pendingSelection = item
         openReference(RepositoryReference(path: path))
     }
@@ -253,60 +263,8 @@ final class WindowViewModel {
     func openReference(_ reference: RepositoryReference) {
         recordNavigation(to: .repository(path: reference.path, item: nil))
         sessionErrors[reference.path] = nil
+        if openRepo?.path != reference.path { pauseCurrentSession() }
         openRepo = reference
-    }
-
-    /// Runs this window in another worktree of the same repository, keeping the current tab.
-    /// The old worktree's session stops so each repository fetches and watches only once.
-    func switchWorktree(to path: String) {
-        guard let current = openRepo, current.path != path else { return }
-        recordNavigation(to: .repository(path: path, item: nil))
-        if let loaded = sessions.removeValue(forKey: current.path) {
-            pendingSelection = RepositoryTab(item: loaded.session.selectedItem).item
-            loaded.session.stop()
-        }
-        openReference(RepositoryReference(path: path))
-    }
-
-    /// Closing stops the watcher and auto-fetch; reopening starts a fresh session.
-    func closeRepository() {
-        if let path = openRepo?.path, let loaded = sessions.removeValue(forKey: path) {
-            loaded.session.stop()
-        }
-        openRepo = nil
-    }
-
-    // MARK: Session Loading
-
-    func loadSessionIfNeeded(for ref: RepositoryReference) {
-        let path = ref.path
-        guard sessions[path] == nil, sessionErrors[path] == nil else { return }
-        Logger.ui.info("Opening repository for \(path, privacy: .public)")
-        Task {
-            let url = URL(fileURLWithPath: path)
-            do {
-                // Through the manager so the bookmark's "Last Opened" date updates.
-                let repo = try await manager.openRepository(at: url)
-                let session = RepositorySession(repository: repo)
-                session.sidebarVM.onSwitchWorktree = { [weak self] path in self?.switchWorktree(to: path) }
-                if let pendingSelection {
-                    session.restoreSelection(pendingSelection)
-                    self.pendingSelection = nil
-                }
-                sessions[path] = LoadedSession(repository: repo, session: session)
-                await session.start()
-                Logger.ui.info("Repository ready: \(ref.displayName, privacy: .public)")
-            } catch {
-                Logger.ui.error("Failed to open repository \(path, privacy: .public): \(error.localizedDescription, privacy: .public)")
-                sessionErrors[path] = error.localizedDescription
-            }
-        }
-    }
-
-    func stopAllSessions() {
-        for (_, loaded) in sessions {
-            loaded.session.stop()
-        }
     }
 
     // MARK: Bookmark Actions

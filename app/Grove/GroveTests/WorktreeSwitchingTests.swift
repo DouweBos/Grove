@@ -35,7 +35,7 @@ struct WorktreeSwitchingTests {
         #expect(!switched)
     }
 
-    @Test func switchingReplacesTheSessionAndKeepsTheTab() async throws {
+    @Test func switchingPausesTheOldSessionAndKeepsTheTab() async throws {
         let window = WindowViewModel(manager: MockRepositoryManager())
         window.openReference(RepositoryReference(path: mainPath))
         window.loadSessionIfNeeded(for: RepositoryReference(path: mainPath))
@@ -44,7 +44,7 @@ struct WorktreeSwitchingTests {
 
         first.sidebarVM.onSwitchWorktree?(linkedPath)
         #expect(window.openRepo?.path == linkedPath)
-        #expect(window.sessions[mainPath] == nil)
+        #expect(window.sessions[mainPath]?.session.isActive == false)
 
         window.loadSessionIfNeeded(for: RepositoryReference(path: linkedPath))
         let second = try await session(in: window, at: linkedPath)
