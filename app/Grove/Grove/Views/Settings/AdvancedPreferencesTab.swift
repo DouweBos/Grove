@@ -52,7 +52,8 @@ struct AdvancedPreferencesTab: View {
         Section {
             if towerInstalled {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Import your repository bookmarks and groups from Tower into Grove.")
+                    Text("Import your repository bookmarks, groups and service accounts from Tower into Grove. "
+                         + "macOS may ask before Grove reads Tower\u{2019}s account tokens from the Keychain.")
                         .foregroundStyle(Theme.textSecondary)
 
                     Toggle("Clear existing Grove data before import", isOn: $clearBeforeImport)
@@ -65,13 +66,16 @@ struct AdvancedPreferencesTab: View {
                         ProgressView()
                             .controlSize(.small)
 
-                    case .success(let groupCount, let bookmarkCount, let skippedCount):
+                    case .success(let groupCount, let bookmarkCount, let skippedCount, let accounts):
                         Label(
-                            "Imported \(groupCount) groups and \(bookmarkCount) repositories"
+                            "Imported \(groupCount) groups, \(bookmarkCount) repositories and \(accounts.imported) accounts"
                                 + (skippedCount > 0 ? " (\(skippedCount) skipped — path not found)" : ""),
                             systemImage: "checkmark.circle.fill"
                         )
                         .foregroundStyle(Theme.success)
+                        ForEach(accounts.failures, id: \.self) { failure in
+                            Label(failure, systemImage: "exclamationmark.triangle").foregroundStyle(Theme.warning)
+                        }
 
                     case .error(let message):
                         Label(message, systemImage: "exclamationmark.triangle.fill")
@@ -164,20 +168,18 @@ struct AdvancedPreferencesTab: View {
 
     private func performImport() {
         importState = .importing
+        let result: TowerImporter.ImportResult
         do {
-            let result = try TowerImporter.importBookmarks()
-            manager.importData(
-                groups: result.groups,
-                bookmarks: result.bookmarks,
-                clearFirst: clearBeforeImport
-            )
-            importState = .success(
-                groups: result.groups.count,
-                bookmarks: result.bookmarks.count,
-                skipped: result.skippedPaths.count
-            )
+            result = try TowerImporter.importBookmarks()
         } catch {
             importState = .error(error.localizedDescription)
+            return
+        }
+        manager.importData(groups: result.groups, bookmarks: result.bookmarks, clearFirst: clearBeforeImport)
+        Task {
+            let accounts = await TowerAccountImport.migrate(TowerAccountImport.accounts(), into: .shared)
+            importState = .success(groups: result.groups.count, bookmarks: result.bookmarks.count,
+                                   skipped: result.skippedPaths.count, accounts: accounts)
         }
     }
 
@@ -186,7 +188,7 @@ struct AdvancedPreferencesTab: View {
     private enum ImportState: Equatable {
         case idle
         case importing
-        case success(groups: Int, bookmarks: Int, skipped: Int)
+        case success(groups: Int, bookmarks: Int, skipped: Int, accounts: TowerAccountImport.Outcome)
         case error(String)
     }
 }
