@@ -7,27 +7,27 @@ import SwiftUI
 
 // MARK: - GroveApp
 
-/// The application entry point.
-///
-/// One window type — each window has a tab bar where the Repositories
-/// browser is a tab alongside open repo tabs.
+/// The application entry point: any number of windows, each browsing or showing one repository.
 @main
 struct GroveApp: App {
+    static let mainWindowID = "main"
+
     @NSApplicationDelegateAdaptor private var appDelegate: GroveAppDelegate
     @State private var manager: RepositoryManager
-    // Outlives the window, so its sessions keep fetching after a close and reopen where they were.
-    @State private var windowVM: WindowViewModel
+    // Outlives windows, so closed ones keep fetching and the next window reopens where the last left off.
+    @State private var windows: WindowStore
     @State private var updater = AppUpdater()
 
     init() {
         let manager = RepositoryManager()
         _manager = State(initialValue: manager)
-        _windowVM = State(initialValue: WindowViewModel(manager: manager))
+        _windows = State(initialValue: WindowStore(manager: manager))
     }
 
     var body: some Scene {
-        Window("Grove", id: "main") {
-            RootWindowHost(windowVM: windowVM)
+        // The value is the window's repository, so opening one already on screen brings that window forward.
+        WindowGroup("Grove", id: Self.mainWindowID, for: RepositoryReference.self) { $reference in
+            WindowRoot(store: windows, reference: $reference)
                 .onAppear { AppAppearance.applyStored() }
         }
         .defaultSize(width: 1100, height: 700)

@@ -35,9 +35,13 @@ struct GroveCommands: Commands {
 
 /// Replaces File > New with the ways to get a repository into Grove.
 private struct GroveFileCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
+            Button("New Window") { openWindow(id: GroveApp.mainWindowID) }
+                .keyboardShortcut("n", modifiers: [.command, .option])
+            Divider()
             Button("New Repository\u{2026}") { GroveAction.createRepository.post() }
                 .keyboardShortcut("n", modifiers: .command)
             Button("Add Existing Repository\u{2026}") { GroveAction.addRepository.post() }

@@ -44,6 +44,9 @@ final class AutoFetchScheduler {
     // MARK: - Private
 
     private var timer: Timer?
+    /// Repositories being fetched by any scheduler; two windows on one repository share its fetches.
+    private static var fetchingPaths: Set<String> = []
+    private static var lastFetched: [String: Date] = [:]
     private(set) var isStarted: Bool = false
     private var preferenceObserver: Task<Void, Never>?
     private let repository: any GitRepositoryProtocol
@@ -98,7 +101,7 @@ final class AutoFetchScheduler {
         let newTimer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor [weak self] in
-                await self?.performFetch()
+                await self?.scheduledFetch(interval: interval)
             }
         }
         // Add to .common so the timer fires even when the run loop is busy
@@ -129,15 +132,29 @@ final class AutoFetchScheduler {
         scheduleTimer()
     }
 
+    /// Skips a tick when another window's scheduler fetched this repository within the interval.
+    private func scheduledFetch(interval: TimeInterval) async {
+        let path = repository.path.path
+        if let last = Self.lastFetched[path], Date().timeIntervalSince(last) < interval * 0.9 {
+            lastFetchDate = last
+            return
+        }
+        await performFetch()
+    }
+
     private func performFetch() async {
-        guard !isFetching else { return }
+        let path = repository.path.path
+        guard !isFetching, !Self.fetchingPaths.contains(path) else { return }
         isFetching = true
+        Self.fetchingPaths.insert(path)
+        defer { Self.fetchingPaths.remove(path) }
         lastFetchError = nil
         Logger.ui.info("AutoFetchScheduler: fetching remotes for \(self.repository.displayName, privacy: .public)")
 
         do {
             try await repository.fetch(remote: nil, progress: nil)
             lastFetchDate = Date()
+            Self.lastFetched[path] = lastFetchDate
             Logger.ui.info("AutoFetchScheduler: fetch succeeded for \(self.repository.displayName, privacy: .public)")
         } catch {
             lastFetchError = error.localizedDescription

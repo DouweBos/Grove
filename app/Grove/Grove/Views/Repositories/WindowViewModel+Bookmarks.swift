@@ -7,6 +7,28 @@ import Foundation
 
 extension WindowViewModel {
 
+    func requestDelete(_ bookmark: RepositoryBookmarkData) { bookmarkPendingDelete = bookmark }
+
+    func cancelDelete() { bookmarkPendingDelete = nil }
+
+    /// Removes the repository from the list, and with `movingToTrash` its folder from disk too.
+    func confirmDelete(movingToTrash: Bool) {
+        guard let bookmark = bookmarkPendingDelete else { return }
+        bookmarkPendingDelete = nil
+        if movingToTrash {
+            if openRepo?.path == bookmark.path { closeRepository() }
+            sessions[bookmark.path]?.session.stop()
+            setSession(nil, for: bookmark.path)
+            do {
+                try FileManager.default.trashItem(at: URL(fileURLWithPath: bookmark.path), resultingItemURL: nil)
+            } catch {
+                errorMessage = "Couldn't move \(bookmark.displayName) to the Trash: \(error.localizedDescription)"
+                return
+            }
+        }
+        removeBookmark(bookmark)
+    }
+
     func showRenameBookmarkDialog(_ bookmark: RepositoryBookmarkData) { groupEditor = .renameRepository(bookmark) }
 
     func renameBookmark(_ bookmark: RepositoryBookmarkData, to name: String) {

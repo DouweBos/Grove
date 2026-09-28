@@ -62,8 +62,8 @@ final class EditUndoState {
         update(\.redoTitle, manager?.redoMenuItemTitle ?? "Redo")
     }
 
-    /// SwiftUI names the `Window("Grove", id: "main")` NSWindow after its scene id.
-    static let mainWindowID = "main"
+    /// SwiftUI names each window of the `main` WindowGroup after its scene id.
+    static let mainWindowID = GroveApp.mainWindowID
 
     func attach(_ manager: GitUndoManager?) {
         repositoryUndo = manager

@@ -1,0 +1,36 @@
+// Views/Root/WindowRoot.swift
+// Grove
+
+import SwiftUI
+
+/// Claims a window's model from the store when it opens and hands it back when it closes.
+struct WindowRoot: View {
+    let store: WindowStore
+    /// The window's repository; kept current so restoration and "open in new window" find it.
+    @Binding var reference: RepositoryReference?
+
+    @State private var windowVM: WindowViewModel?
+    @State private var handlesLaunchArguments = false
+
+    var body: some View {
+        Group {
+            if let windowVM {
+                RootWindowHost(windowVM: windowVM, handlesLaunchArguments: handlesLaunchArguments)
+                    .onChange(of: windowVM.openRepo) { _, repo in reference = repo }
+            } else {
+                Theme.background
+            }
+        }
+        .onAppear {
+            // A tabbed window's content can disappear and come back without the window closing.
+            if let windowVM { return store.windowReappeared(windowVM) }
+            handlesLaunchArguments = store.consumeLaunchArguments()
+            let claimed = store.claimWindow(opening: reference)
+            windowVM = claimed
+            reference = claimed.openRepo
+        }
+        .onDisappear {
+            if let windowVM { store.windowClosed(windowVM) }
+        }
+    }
+}

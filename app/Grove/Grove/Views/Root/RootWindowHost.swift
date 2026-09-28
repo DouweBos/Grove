@@ -1,7 +1,7 @@
 // Views/Root/RootWindowHost.swift
 // Grove
 //
-// Single window host with a permanent NavigationSplitView.
+// One window's host with a permanent NavigationSplitView.
 // The sidebar transitions between the repository browser and
 // in-repository navigation. The detail pane shows either the
 // browser content or the active repository's content.
@@ -17,6 +17,9 @@ struct RootWindowHost: View {
     // MARK: ViewModels
 
     @State private var windowVM: WindowViewModel
+    /// Dev launch flags apply to the first window only.
+    private let handlesLaunchArguments: Bool
+    @Environment(\.appearsActive) private var appearsActive
 
     // MARK: Split View
 
@@ -25,8 +28,9 @@ struct RootWindowHost: View {
 
     // MARK: Init
 
-    init(windowVM: WindowViewModel) {
+    init(windowVM: WindowViewModel, handlesLaunchArguments: Bool = false) {
         self._windowVM = State(initialValue: windowVM)
+        self.handlesLaunchArguments = handlesLaunchArguments
     }
 
     // MARK: Body
@@ -52,6 +56,7 @@ struct RootWindowHost: View {
         // Mouse buttons 4 and 5 (back / forward) arrive as other-mouse clicks; SwiftUI has no handler for them.
         .onAppear {
             mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .otherMouseDown) { [windowVM] event in
+                guard windowVM.isKeyWindow else { return event }
                 switch event.buttonNumber {
                 case 3: windowVM.goBack()
                 case 4: windowVM.goForward()
@@ -74,7 +79,7 @@ struct RootWindowHost: View {
         .onReceive(
             NotificationCenter.default.publisher(for: GroveAction.notificationName)
         ) { notification in
-            guard let action = GroveAction(notification: notification),
+            guard appearsActive, let action = GroveAction(notification: notification),
                   !windowVM.handleBrowserAction(action) else { return }
             windowVM.currentSession?.session.handleAction(action)
         }
@@ -82,11 +87,13 @@ struct RootWindowHost: View {
         .onAppear {
             if let ref = windowVM.openRepo { windowVM.loadSessionIfNeeded(for: ref) }
         }
-        .onDisappear {
-            windowVM.pauseCurrentSession()
+        .onChange(of: appearsActive, initial: true) { _, isActive in
+            windowVM.setKeyWindow(isActive)
+            if isActive { EditUndoState.shared.attach(windowVM.currentSession?.session.gitUndoManager) }
         }
         // `-GroveOpenRepository <path>` opens a repository on launch.
         .task {
+            guard handlesLaunchArguments else { return }
             // `-GroveSidebar hidden` collapses the sidebar, for checking the collapsed toolbar.
             if UserDefaults.standard.string(forKey: "GroveSidebar") == "hidden" {
                 try? await Task.sleep(for: .milliseconds(300))
@@ -148,7 +155,7 @@ struct RootWindowHost: View {
                         onComplete: { Task { await loaded.session.refreshAll() } }
                     )
                     .environment(loaded.session.gitUndoManager)
-                    .onAppear { EditUndoState.shared.attach(loaded.session.gitUndoManager) }
+                    .onAppear { if appearsActive { EditUndoState.shared.attach(loaded.session.gitUndoManager) } }
                     .id(ref.path)
             } else if let error = windowVM.sessionErrors[ref.path] {
                 ContentUnavailableView(
@@ -162,10 +169,10 @@ struct RootWindowHost: View {
             }
         } else if windowVM.browserMode == .remote {
             RemoteRepositoriesContent()
-                .onAppear { EditUndoState.shared.attach(nil) }
+                .onAppear { if appearsActive { EditUndoState.shared.attach(nil) } }
         } else {
             RepositoryBrowserContent()
-                .onAppear { EditUndoState.shared.attach(nil) }
+                .onAppear { if appearsActive { EditUndoState.shared.attach(nil) } }
         }
     }
 }

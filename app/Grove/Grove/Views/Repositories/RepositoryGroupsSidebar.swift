@@ -82,6 +82,19 @@ struct RepositoryGroupsSidebar: View {
         } message: { _ in
             Text("Its repositories move to the ungrouped list. Nothing is deleted from disk.")
         }
+        .alert(
+            "Delete Repository",
+            isPresented: Binding(get: { viewModel.bookmarkPendingDelete != nil }, set: { if !$0 { viewModel.cancelDelete() } }),
+            presenting: viewModel.bookmarkPendingDelete
+        ) { _ in
+            Button("Keep Files") { viewModel.confirmDelete(movingToTrash: false) }
+                .keyboardShortcut(.defaultAction)
+            Button("Move to Trash", role: .destructive) { viewModel.confirmDelete(movingToTrash: true) }
+            Button("Cancel", role: .cancel) { viewModel.cancelDelete() }
+        } message: { bookmark in
+            Text("\u{201C}\(bookmark.displayName)\u{201D} is removed from Grove. Keep its folder on disk, "
+                 + "or move it to the Trash along with any uncommitted work in it?")
+        }
     }
 }
 
@@ -93,6 +106,7 @@ private struct BookmarkActions: View {
 
     var body: some View {
         Button("Open", systemImage: "arrow.up.forward.app") { viewModel.openBookmark(bookmark) }
+        OpenInNewWindowButton(path: bookmark.path)
         FolderActions(path: bookmark.path)
         Divider()
         Button("Rename\u{2026}", systemImage: "pencil") { viewModel.showRenameBookmarkDialog(bookmark) }
@@ -112,13 +126,22 @@ private struct BookmarkActions: View {
             viewModel.sortBookmarksByName(inGroup: bookmark.groupID)
         }
         Divider()
-        Button("Remove from List", systemImage: "minus.circle", role: .destructive) {
-            viewModel.removeBookmark(bookmark)
-        }
+        Button("Delete\u{2026}", systemImage: "trash", role: .destructive) { viewModel.requestDelete(bookmark) }
     }
 
     private var groupName: String {
         viewModel.sortedGroups.first { $0.id == bookmark.groupID }?.name ?? "Repositories"
+    }
+}
+
+private struct OpenInNewWindowButton: View {
+    let path: String
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button("Open in New Window", systemImage: "macwindow.badge.plus") {
+            openWindow(id: GroveApp.mainWindowID, value: RepositoryReference(path: path))
+        }
     }
 }
 
@@ -149,6 +172,7 @@ private struct WorktreeActions: View {
 
     var body: some View {
         Button("Open", systemImage: "arrow.up.forward.app") { viewModel.openBookmark(row) }
+        OpenInNewWindowButton(path: row.path)
         FolderActions(path: row.path)
     }
 }

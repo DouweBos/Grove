@@ -84,4 +84,9 @@ extension WindowViewModel {
         }
     }
 
+    /// Stops watching and fetching for good, when a closed window is let go.
+    func stopSessions() {
+        for (_, loaded) in sessions { loaded.session.stop() }
+    }
+
 }

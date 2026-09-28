@@ -9,6 +9,8 @@ struct QuickActionsPanel: View {
 
     @State private var viewModel: QuickActionsViewModel
     @FocusState private var isSearchFocused: Bool
+    // Menu commands reach every window; only the key one answers.
+    @Environment(\.appearsActive) private var appearsActive
 
     private static let width: CGFloat = 600
     private static let listHeight: CGFloat = 380
@@ -32,6 +34,7 @@ struct QuickActionsPanel: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(.snappy(duration: 0.18), value: viewModel.isPresented)
         .onReceive(NotificationCenter.default.publisher(for: GroveAction.notificationName)) { note in
+            guard appearsActive else { return }
             switch GroveAction(notification: note) {
             case .quickActions: viewModel.toggle()
             case .quickOpen: viewModel.openFiles()

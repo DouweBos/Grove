@@ -125,6 +125,10 @@ final class WindowViewModel {
     var isShowingCreateDialog = false
     /// Non-nil while the new/rename group sheet is up.
     var groupEditor: GroupEditor?
+    /// The repository whose Delete confirmation is showing.
+    var bookmarkPendingDelete: RepositoryBookmarkData?
+    /// Routes menu commands and mouse navigation to the key window only.
+    private(set) var isKeyWindow = false
 
     // MARK: Search
 
@@ -319,6 +323,8 @@ final class WindowViewModel {
     }
 
     func dismissError() { errorMessage = nil }
+
+    func setKeyWindow(_ isKey: Bool) { isKeyWindow = isKey }
 
     func deleteGroup(_ group: BookmarkGroupData) {
         do {
