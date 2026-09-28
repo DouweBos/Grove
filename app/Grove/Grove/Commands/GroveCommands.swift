@@ -40,9 +40,29 @@ struct GroveCommands: Commands {
     // MARK: Body
 
     var body: some Commands {
+        GroveFileCommands()
         GroveUndoRedoCommands()
         GroveNavigateCommands()
         GroveGitCommands()
+    }
+}
+
+// MARK: - GroveFileCommands
+
+/// Replaces File > New with the ways to get a repository into Grove.
+private struct GroveFileCommands: Commands {
+
+    var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Button("New Repository\u{2026}") { GroveAction.createRepository.post() }
+                .keyboardShortcut("n", modifiers: .command)
+            Button("Add Existing Repository\u{2026}") { GroveAction.addRepository.post() }
+                .keyboardShortcut("o", modifiers: .command)
+            Button("Clone Repository\u{2026}") { GroveAction.cloneRepository.post() }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+            Divider()
+            Button("New Group\u{2026}") { GroveAction.newGroup.post() }
+        }
     }
 }
 

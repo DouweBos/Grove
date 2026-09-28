@@ -53,6 +53,12 @@ final class WindowViewModel {
     var isShowingCloneDialog = false
     var isShowingAddDialog = false
     var isShowingCreateDialog = false
+    /// Non-nil while the new/rename group sheet is up.
+    var groupEditor: GroupEditor?
+
+    // MARK: Search
+
+    private(set) var searchText = ""
 
     // MARK: Error State
 
@@ -70,23 +76,37 @@ final class WindowViewModel {
         return manager.bookmarks.first(where: { $0.id == id })
     }
 
+    var sortedGroups: [BookmarkGroupData] {
+        manager.bookmarkGroups.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    /// Groups to list: all of them, or while searching only those with matches.
+    var visibleGroups: [BookmarkGroupData] {
+        isSearching ? sortedGroups.filter { !bookmarks(for: $0.id).isEmpty } : sortedGroups
+    }
+
+    var isSearching: Bool { !searchText.trimmingCharacters(in: .whitespaces).isEmpty }
+
     func bookmarks(for groupID: UUID) -> [RepositoryBookmarkData] {
-        manager.bookmarks
-            .filter { $0.groupID == groupID }
-            .sorted { $0.sortOrder < $1.sortOrder }
+        filtered(manager.bookmarks.filter { $0.groupID == groupID })
     }
 
     var ungroupedBookmarks: [RepositoryBookmarkData] {
-        manager.bookmarks
-            .filter { $0.groupID == nil }
-            .sorted { $0.sortOrder < $1.sortOrder }
+        filtered(manager.bookmarks.filter { $0.groupID == nil })
+    }
+
+    private func filtered(_ list: [RepositoryBookmarkData]) -> [RepositoryBookmarkData] {
+        let query = searchText.trimmingCharacters(in: .whitespaces)
+        let matches = query.isEmpty ? list : list.filter {
+            $0.displayName.localizedCaseInsensitiveContains(query) || $0.path.localizedCaseInsensitiveContains(query)
+        }
+        return matches.sorted { $0.sortOrder < $1.sortOrder }
     }
 
     // MARK: Init
 
     init(manager: any RepositoryManagerProtocol) {
         self.manager = manager
-        self.selectedGroupID = manager.bookmarkGroups.first?.id
     }
 
     // MARK: Navigation Actions
@@ -94,6 +114,26 @@ final class WindowViewModel {
     func showAddDialog() { isShowingAddDialog = true }
     func showCloneDialog() { isShowingCloneDialog = true }
     func showCreateDialog() { isShowingCreateDialog = true }
+    func showNewGroupDialog() { groupEditor = .new }
+    func showRenameGroupDialog(_ group: BookmarkGroupData) { groupEditor = .rename(group) }
+    func dismissGroupEditor() { groupEditor = nil }
+
+    func setSearchText(_ text: String) { searchText = text }
+
+    func selectBookmark(_ id: UUID?) { selectedBookmarkID = id }
+
+    /// Menu-bar actions that make sense without an open repository.
+    /// Returns false when the action belongs to the repository session.
+    func handleBrowserAction(_ action: GroveAction) -> Bool {
+        switch action {
+        case .addRepository: showAddDialog()
+        case .cloneRepository: showCloneDialog()
+        case .createRepository: showCreateDialog()
+        case .newGroup: showNewGroupDialog()
+        default: return false
+        }
+        return true
+    }
 
     func openSelectedBookmark() {
         guard let bookmark = selectedBookmark else { return }
@@ -127,7 +167,8 @@ final class WindowViewModel {
         Task {
             let url = URL(fileURLWithPath: path)
             do {
-                let repo = try await GitRepository(path: url)
+                // Through the manager so the bookmark's "Last Opened" date updates.
+                let repo = try await manager.openRepository(at: url)
                 let session = RepositorySession(repository: repo)
                 sessions[path] = LoadedSession(repository: repo, session: session)
                 await session.start()
@@ -147,9 +188,10 @@ final class WindowViewModel {
 
     // MARK: Bookmark Actions
 
-    func addBookmark(path: String, displayName: String) {
+    func addBookmark(path: String, displayName: String, groupID: UUID? = nil) {
         do {
-            try manager.addBookmark(path: path, displayName: displayName, groupID: selectedGroupID)
+            try manager.addBookmark(path: path, displayName: displayName, groupID: groupID)
+            selectedBookmarkID = manager.bookmarks.first(where: { $0.path == path })?.id
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -174,6 +216,27 @@ final class WindowViewModel {
             errorMessage = error.localizedDescription
         }
     }
+
+    func renameGroup(_ group: BookmarkGroupData, to name: String) {
+        do {
+            try manager.renameGroup(id: group.id, to: name)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Applies the group sheet: creates or renames depending on how it was opened.
+    func commitGroupEditor(name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, let editor = groupEditor else { return }
+        switch editor {
+        case .new: createGroup(name: trimmed)
+        case .rename(let group): renameGroup(group, to: trimmed)
+        }
+        groupEditor = nil
+    }
+
+    func dismissError() { errorMessage = nil }
 
     func deleteGroup(_ group: BookmarkGroupData) {
         do {
@@ -200,6 +263,20 @@ final class WindowViewModel {
             guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
                   isDirectory.boolValue else { continue }
             addBookmark(path: url.path, displayName: url.lastPathComponent)
+        }
+    }
+}
+
+// MARK: - GroupEditor
+
+enum GroupEditor: Identifiable {
+    case new
+    case rename(BookmarkGroupData)
+
+    var id: String {
+        switch self {
+        case .new: "new"
+        case .rename(let group): group.id.uuidString
         }
     }
 }

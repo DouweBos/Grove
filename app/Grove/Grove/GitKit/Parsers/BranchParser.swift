@@ -4,14 +4,14 @@
 // Parses the output of `git for-each-ref` into [BranchInfo] values.
 //
 // Format string used by GitRepository:
-//   %(refname)%00%(refname:short)%00%(objectname)%00%(upstream)%00%(upstream:trackshort)%00%(HEAD)
+//   %(refname)%00%(refname:short)%00%(objectname)%00%(upstream)%00%(upstream:track)%00%(HEAD)
 //
 // Fields (NUL-separated, one ref per line):
 //   0  %(refname)            — full ref, e.g. refs/heads/main
 //   1  %(refname:short)      — short name, e.g. main
 //   2  %(objectname)         — full SHA the ref points at
 //   3  %(upstream)           — full upstream ref, if set
-//   4  %(upstream:trackshort)— e.g. `[ahead 2]`, `[behind 1]`, `[ahead 1, behind 2]`
+//   4  %(upstream:track)— e.g. `[ahead 2]`, `[behind 1]`, `[ahead 1, behind 2]`
 //   5  %(HEAD)               — `*` when this ref is HEAD, `` otherwise
 
 import Foundation
@@ -25,7 +25,7 @@ enum BranchParser {
 
     /// Format string for `git for-each-ref`.
     nonisolated static var formatString: String {
-        "%(refname)%00%(refname:short)%00%(objectname)%00%(upstream)%00%(upstream:trackshort)%00%(HEAD)"
+        "%(refname)%00%(refname:short)%00%(objectname)%00%(upstream)%00%(upstream:track)%00%(HEAD)"
     }
 
     // MARK: Public API
@@ -86,7 +86,7 @@ enum BranchParser {
 
     // MARK: Ahead/Behind Parsing
 
-    /// Parse `%(upstream:trackshort)` into (ahead, behind) counts.
+    /// Parse `%(upstream:track)` into (ahead, behind) counts.
     ///
     /// The format is one of:
     /// - `` (empty) — no upstream configured

@@ -1,25 +1,17 @@
 // Views/Dialogs/CreateTagDialogView.swift
 // Grove
-//
-// Dialog for creating a lightweight or annotated tag.
 
 import SwiftUI
 
-// MARK: - CreateTagDialogView
-
-/// Dialog for creating a Git tag at a specific commit.
+/// Creates a lightweight or annotated tag at HEAD or a given commit.
 struct CreateTagDialogView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    // MARK: Dependencies
-
     let repository: any GitRepositoryProtocol
-    /// SHA to tag. `nil` means tag HEAD.
+    /// SHA to tag; nil tags HEAD.
     var targetSHA: String?
     let onCreated: ((TagInfo) -> Void)?
-
-    // MARK: State
 
     @State private var tagName = ""
     @State private var tagMessage = ""
@@ -27,91 +19,63 @@ struct CreateTagDialogView: View {
     @State private var isCreating = false
     @State private var errorMessage: String?
 
-    // MARK: Init
-
-    init(
-        repository: any GitRepositoryProtocol,
-        targetSHA: String? = nil,
-        onCreated: ((TagInfo) -> Void)? = nil
-    ) {
+    init(repository: any GitRepositoryProtocol, targetSHA: String? = nil, onCreated: ((TagInfo) -> Void)? = nil) {
         self.repository = repository
         self.targetSHA = targetSHA
         self.onCreated = onCreated
     }
 
-    // MARK: Computed
-
-    private var isValidName: Bool {
-        let name = tagName.trimmingCharacters(in: .whitespaces)
-        return !name.isEmpty && !name.contains(" ")
-    }
-
-    // MARK: Body
+    private var trimmedName: String { tagName.trimmingCharacters(in: .whitespaces) }
+    private var isValidName: Bool { !trimmedName.isEmpty && !trimmedName.contains(" ") }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Create Tag",
-                description: targetSHA.map { "Tag commit \(String($0.prefix(7)))." }
-                    ?? "Tag the current HEAD commit."
-            )
-
-            Divider()
-
-            Form {
-                LabeledContent("Tag Name") {
+        DialogSheet(
+            title: "New Tag",
+            message: targetSHA.map { "Marks commit \(String($0.prefix(7))) with a name, e.g. a release." }
+                ?? "Marks the current HEAD commit with a name, e.g. a release.",
+            symbol: "tag",
+            width: 440,
+            progress: isCreating ? "Creating \(trimmedName)…" : nil,
+            errorMessage: errorMessage,
+            primaryTitle: "Create Tag",
+            isPrimaryDisabled: !isValidName,
+            onCancel: { dismiss() },
+            onPrimary: performCreate
+        ) {
+            DialogCard {
+                DialogField("Name") {
                     TextField("v1.0.0", text: $tagName)
-                        .textFieldStyle(.plain)
+                        .textFieldStyle(.roundedBorder)
                 }
-
-                Toggle("Annotated Tag", isOn: $isAnnotated)
-
+                DialogOptionRow(
+                    isOn: $isAnnotated,
+                    label: "Annotated",
+                    description: "Stores a message, author and date with the tag."
+                )
                 if isAnnotated {
-                    LabeledContent("Message") {
+                    DialogField("Message") {
                         TextEditor(text: $tagMessage)
-                            .frame(minHeight: 60, maxHeight: 120)
-                            .font(.body)
+                            .font(.system(size: 13))
+                            .scrollContentBackground(.hidden)
+                            .padding(Theme.Spacing.xs)
+                            .frame(height: 72)
+                            .background(Theme.background, in: RoundedRectangle(cornerRadius: Theme.Radius.tile))
+                            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tile).strokeBorder(Theme.border, lineWidth: 0.5))
                     }
                 }
             }
-            .formStyle(.grouped)
             .animation(.easeInOut(duration: 0.15), value: isAnnotated)
-
-            if let error = errorMessage {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .font(.caption)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 4)
-            }
-
-            Divider()
-
-            SheetFooter(
-                cancelAction: { dismiss() },
-                primaryLabel: isCreating ? "Creating…" : "Create Tag",
-                primaryAction: performCreate,
-                isPrimaryDisabled: !isValidName || isCreating
-            )
         }
-        .frame(width: 400)
     }
 
-    // MARK: Actions
-
     private func performCreate() {
-        let name = tagName.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty else { return }
+        guard isValidName else { return }
         isCreating = true
         errorMessage = nil
         let message: String? = isAnnotated && !tagMessage.isEmpty ? tagMessage : nil
         Task {
             do {
-                let tag = try await repository.createTag(
-                    name: name,
-                    at: targetSHA,
-                    message: message
-                )
+                let tag = try await repository.createTag(name: trimmedName, at: targetSHA, message: message)
                 onCreated?(tag)
                 dismiss()
             } catch {
@@ -121,8 +85,6 @@ struct CreateTagDialogView: View {
         }
     }
 }
-
-// MARK: - Preview
 
 #Preview {
     CreateTagDialogView(repository: MockGitRepository())

@@ -1,97 +1,69 @@
 // Views/Dialogs/FetchDialogView.swift
 // Grove
-//
-// Fetch dialog: remote picker, prune option, Cancel + "Fetch" button.
 
 import SwiftUI
 
-// MARK: - FetchDialogView
-
-/// Dialog for fetching from a remote.
+/// Downloads new refs from one or all remotes without touching the working tree.
 struct FetchDialogView: View {
 
     @Environment(\.dismiss) private var dismiss
 
     let repository: any GitRepositoryProtocol
     let remotes: [RemoteInfo]
+    var onComplete: () -> Void = {}
 
     @State private var selectedRemote: String
-    @State private var pruneDeletedBranches = true
     @State private var fetchAllRemotes = false
     @State private var isFetching = false
     @State private var errorMessage: String?
 
-    init(repository: any GitRepositoryProtocol, remotes: [RemoteInfo] = []) {
+    init(repository: any GitRepositoryProtocol, remotes: [RemoteInfo] = [], onComplete: @escaping () -> Void = {}) {
         self.repository = repository
         self.remotes = remotes
+        self.onComplete = onComplete
         _selectedRemote = State(initialValue: remotes.first?.name ?? "origin")
+        _fetchAllRemotes = State(initialValue: remotes.count > 1)
     }
+
+    private var targets: [String] { fetchAllRemotes ? remotes.map(\.name) : [selectedRemote] }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Fetch",
-                description: "Downloads new data from the remote repository without integrating it into your working files."
-            )
-
-            Divider()
-
-            Form {
-                LabeledContent("Remote") {
-                    Picker("", selection: $selectedRemote) {
-                        ForEach(remoteNames, id: \.self) { name in
-                            Text(name).tag(name)
-                        }
+        DialogSheet(
+            title: "Fetch",
+            message: "Downloads new commits, branches and tags without changing your working copy. Deleted remote branches are pruned.",
+            symbol: "arrow.clockwise",
+            progress: isFetching ? "Fetching \(targets.joined(separator: ", "))…" : nil,
+            errorMessage: errorMessage,
+            primaryTitle: "Fetch",
+            isPrimaryDisabled: remotes.isEmpty,
+            onCancel: { dismiss() },
+            onPrimary: performFetch
+        ) {
+            DialogCard {
+                DialogField("Remote") {
+                    Picker("Remote", selection: $selectedRemote) {
+                        ForEach(remotes) { Text($0.name).tag($0.name) }
                     }
                     .labelsHidden()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .disabled(fetchAllRemotes)
+                    .disabled(fetchAllRemotes || remotes.isEmpty)
                 }
-
-                Toggle("Fetch All Remotes", isOn: $fetchAllRemotes)
+                if remotes.count > 1 {
+                    DialogOptionRow(isOn: $fetchAllRemotes, label: "Fetch All Remotes")
+                }
             }
-            .formStyle(.grouped)
-
-            DialogOptionsSection {
-                DialogOptionRow(
-                    isOn: $pruneDeletedBranches,
-                    label: "Prune Deleted Branches",
-                    description: "Remove remote-tracking references that no longer exist on the remote."
-                )
-            }
-
-            if let error = errorMessage {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .font(.caption)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 4)
-            }
-
-            Divider()
-
-            SheetFooter(
-                cancelAction: { dismiss() },
-                primaryLabel: isFetching ? "Fetching\u{2026}" : "Fetch",
-                primaryAction: performFetch,
-                isPrimaryDisabled: isFetching
-            )
         }
-        .frame(width: 460)
-    }
-
-    private var remoteNames: [String] {
-        guard !remotes.isEmpty else { return [selectedRemote] }
-        return remotes.map(\.name)
     }
 
     private func performFetch() {
         isFetching = true
         errorMessage = nil
+        let targets = targets
         Task {
             do {
-                let remote = fetchAllRemotes ? nil : selectedRemote
-                try await repository.fetch(remote: remote, progress: nil)
+                for remote in targets {
+                    try await repository.fetch(remote: remote, progress: nil)
+                }
+                onComplete()
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription
@@ -102,8 +74,5 @@ struct FetchDialogView: View {
 }
 
 #Preview {
-    FetchDialogView(
-        repository: MockGitRepository(),
-        remotes: MockData.remotes
-    )
+    FetchDialogView(repository: MockGitRepository(), remotes: MockData.remotes)
 }

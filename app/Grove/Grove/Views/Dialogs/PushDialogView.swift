@@ -1,126 +1,75 @@
 // Views/Dialogs/PushDialogView.swift
 // Grove
-//
-// Push dialog: destination dropdown, collapsible
-// Options section with Tags / Force Push / Submodules / Skip Hooks.
 
 import SwiftUI
 
-// MARK: - PushDialogView
-
-/// Dialog for pushing commits to a remote branch.
-///
-/// Destination picker,
-/// collapsible options, Cancel + "Push HEAD" primary button.
+/// Pushes the checked-out branch to a remote.
 struct PushDialogView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    // MARK: State
-
     let repository: any GitRepositoryProtocol
-    let branches: [BranchInfo]
     let remotes: [RemoteInfo]
+    var onComplete: () -> Void = {}
 
-    @State private var selectedRemote = "origin"
-    @State private var selectedDestination = "origin/main"
+    @State private var selectedRemote: String
     @State private var pushAllTags = false
-    @State private var forcePush = false
-    @State private var recurseSubmodules = false
-    @State private var skipHooks = false
+    @State private var forceWithLease = false
     @State private var isPushing = false
     @State private var errorMessage: String?
 
     init(
         repository: any GitRepositoryProtocol,
-        branches: [BranchInfo] = [],
-        remotes: [RemoteInfo] = []
+        remotes: [RemoteInfo] = [],
+        onComplete: @escaping () -> Void = {}
     ) {
         self.repository = repository
-        self.branches = branches
         self.remotes = remotes
-        let head = branches.first(where: { $0.isHEAD })
-        _selectedDestination = State(initialValue: head.flatMap { $0.upstream } ?? "origin/main")
+        self.onComplete = onComplete
+        let upstreamRemote = repository.currentBranch?.upstreamRemoteName
+        _selectedRemote = State(initialValue: upstreamRemote ?? remotes.first?.name ?? "origin")
     }
 
-    // MARK: Body
+    private var branchName: String { repository.currentBranch?.name ?? "HEAD" }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Push HEAD",
-                description: "Pushes new commits from your local HEAD branch '\(repository.currentBranch?.name ?? "main")' to the chosen remote branch."
-            )
-
-            Divider()
-
-            Form {
-                LabeledContent("Destination") {
-                    Picker("", selection: $selectedDestination) {
-                        ForEach(remoteBranchOptions, id: \.self) { option in
-                            Text(option).tag(option)
-                        }
+        DialogSheet(
+            title: "Push \(branchName)",
+            message: "Sends the commits on your local branch '\(branchName)' to the remote.",
+            symbol: "arrow.up.to.line",
+            progress: isPushing ? "Pushing to \(selectedRemote)…" : nil,
+            errorMessage: errorMessage,
+            primaryTitle: "Push",
+            isPrimaryDisabled: remotes.isEmpty,
+            onCancel: { dismiss() },
+            onPrimary: performPush
+        ) {
+            DialogCard {
+                DialogField("Remote") {
+                    Picker("Remote", selection: $selectedRemote) {
+                        ForEach(remotes) { Text($0.name).tag($0.name) }
                     }
                     .labelsHidden()
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .disabled(remotes.isEmpty)
+                }
+                DialogField("Destination") {
+                    Text("\(selectedRemote)/\(branchName)")
+                        .font(.monoCaption)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
-            .formStyle(.grouped)
-
             DialogOptionsSection {
                 DialogOptionRow(
                     isOn: $pushAllTags,
                     label: "Push All Tags",
-                    description: "All refs under refs/tags are pushed."
+                    description: "Also sends every tag under refs/tags."
                 )
-                Divider().padding(.vertical, 4)
                 DialogOptionRow(
-                    isOn: $forcePush,
-                    label: "Force Push",
-                    description: "Enforces a new history on the remote branch. Use with care."
-                )
-                Divider().padding(.vertical, 4)
-                DialogOptionRow(
-                    isOn: $recurseSubmodules,
-                    label: "Recurse Submodules",
-                    description: "Ensures that all submodule commits referenced by the project have been pushed."
-                )
-                Divider().padding(.vertical, 4)
-                DialogOptionRow(
-                    isOn: $skipHooks,
-                    label: "Skip Hooks",
-                    description: "Bypasses any associated hook scripts."
+                    isOn: $forceWithLease,
+                    label: "Force Push (with Lease)",
+                    description: "Overwrites the remote branch, unless someone else pushed to it since your last fetch."
                 )
             }
-
-            if let error = errorMessage {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .font(.caption)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 4)
-            }
-
-            Divider()
-
-            SheetFooter(
-                cancelAction: { dismiss() },
-                primaryLabel: isPushing ? "Pushing…" : "Push HEAD",
-                primaryAction: performPush,
-                isPrimaryDisabled: isPushing
-            )
-        }
-        .frame(width: 460)
-    }
-
-    // MARK: Helpers
-
-    private var remoteBranchOptions: [String] {
-        guard !remotes.isEmpty else { return [selectedDestination] }
-        return remotes.flatMap { remote in
-            branches
-                .filter { $0.isLocal }
-                .map { "\(remote.name)/\($0.name)" }
         }
     }
 
@@ -129,17 +78,11 @@ struct PushDialogView: View {
         errorMessage = nil
         Task {
             do {
-                let remote: String? = selectedRemote.isEmpty ? nil : selectedRemote
-                try await repository.push(
-                    remote: remote,
-                    force: forcePush,
-                    forceWithLease: false,
-                    progress: nil
-                )
-                // Push all tags after the branch push when the option is enabled.
+                try await repository.push(remote: selectedRemote, force: false, forceWithLease: forceWithLease, progress: nil)
                 if pushAllTags {
-                    try await repository.pushAllTags(remote: remote)
+                    try await repository.pushAllTags(remote: selectedRemote)
                 }
+                onComplete()
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription
@@ -149,12 +92,6 @@ struct PushDialogView: View {
     }
 }
 
-// MARK: - Preview
-
 #Preview {
-    PushDialogView(
-        repository: MockGitRepository(),
-        branches: MockData.branches,
-        remotes: MockData.remotes
-    )
+    PushDialogView(repository: MockGitRepository(), remotes: MockData.remotes)
 }

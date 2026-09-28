@@ -1,48 +1,54 @@
 // Views/Repositories/RepositoryRow.swift
 // Grove
-//
-// A single row in the repository browser sidebar representing
-// one bookmarked repository. Compact single-line design.
 
 import SwiftUI
 
-// MARK: - RepositoryRow
-
-/// Compact sidebar row for a bookmarked repository.
-///
-/// Shows only the folder icon and display name on one line, for a compact
-/// sidebar aesthetic. The full path is surfaced via a tooltip on hover.
+/// Browser sidebar row: repository name over its dimmed parent folder.
 struct RepositoryRow: View {
 
     let bookmark: RepositoryBookmarkData
+    @Environment(\.backgroundProminence) private var prominence
+
+    /// On the accent selection highlight fixed tokens become unreadable; hierarchical styles adapt.
+    private var isOnSelection: Bool { prominence == .increased }
+
+    private var parentPath: String {
+        abbreviatingHome((bookmark.path as NSString).deletingLastPathComponent)
+    }
+
+    private var exists: Bool { FileManager.default.fileExists(atPath: bookmark.path) }
 
     var body: some View {
-        Label {
-            Text(bookmark.displayName)
-                .lineLimit(1)
-        } icon: {
-            Image(systemName: "folder")
-                .foregroundStyle(.secondary)
+        HStack(spacing: Theme.Spacing.sm) {
+            Image(systemName: exists ? "arrow.triangle.branch" : "questionmark.folder")
+                .font(.system(size: 12))
+                .foregroundStyle(isOnSelection ? AnyShapeStyle(.primary) : AnyShapeStyle(exists ? Theme.textSecondary : Theme.warning))
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(bookmark.displayName)
+                    .font(.system(size: 13))
+                    .foregroundStyle(isOnSelection ? AnyShapeStyle(.primary) : AnyShapeStyle(Theme.textPrimary))
+                    .lineLimit(1)
+                Text(parentPath)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(isOnSelection ? AnyShapeStyle(.secondary) : AnyShapeStyle(Theme.textSecondary))
+                    .lineLimit(1)
+                    .truncationMode(.head)
+            }
         }
-        .padding(.vertical, 2)
-        .help(bookmark.path)
+        .padding(.vertical, 1)
+        .help(exists ? bookmark.path : "\(bookmark.path) no longer exists")
     }
 }
 
-// MARK: - Preview
-
 #Preview {
     let bookmark = RepositoryBookmarkData(
-        id: UUID(),
-        path: "/Users/dev/Projects/my-app",
-        displayName: "my-app",
-        addedDate: Date(),
-        lastOpenedDate: Date(),
-        sortOrder: 0,
-        groupID: nil
+        id: UUID(), path: "/Users/dev/Projects/my-app", displayName: "my-app",
+        addedDate: Date(), lastOpenedDate: Date(), sortOrder: 0, groupID: nil
     )
     return List {
         RepositoryRow(bookmark: bookmark)
     }
-    .frame(width: 220, height: 80)
+    .listStyle(.sidebar)
+    .frame(width: 240, height: 80)
 }

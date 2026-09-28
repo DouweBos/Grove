@@ -3,59 +3,48 @@
 
 import SwiftUI
 
-/// Dialog for renaming a branch.
+/// Renames a local branch.
 struct RenameBranchDialogView: View {
 
     @Environment(\.dismiss) private var dismiss
 
     let repository: any GitRepositoryProtocol
     let branch: BranchInfo
+    var onComplete: () -> Void = {}
 
     @State private var newName: String
     @State private var isRenaming = false
     @State private var errorMessage: String?
 
-    init(repository: any GitRepositoryProtocol, branch: BranchInfo) {
+    init(repository: any GitRepositoryProtocol, branch: BranchInfo, onComplete: @escaping () -> Void = {}) {
         self.repository = repository
         self.branch = branch
+        self.onComplete = onComplete
         _newName = State(initialValue: branch.name)
     }
 
+    private var trimmedName: String { newName.trimmingCharacters(in: .whitespaces) }
+
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Rename Branch",
-                description: "Rename '\(branch.name)' to a new name."
-            )
-
-            Divider()
-
-            Form {
-                LabeledContent("New Name") {
+        DialogSheet(
+            title: "Rename \(branch.name)",
+            message: "Only the local branch is renamed; its remote counterpart keeps its name.",
+            symbol: "pencil",
+            width: 420,
+            progress: isRenaming ? "Renaming…" : nil,
+            errorMessage: errorMessage,
+            primaryTitle: "Rename",
+            isPrimaryDisabled: trimmedName.isEmpty || trimmedName.contains(" ") || trimmedName == branch.name,
+            onCancel: { dismiss() },
+            onPrimary: performRename
+        ) {
+            DialogCard {
+                DialogField("New Name") {
                     TextField("Branch name", text: $newName)
                         .textFieldStyle(.roundedBorder)
                 }
             }
-            .formStyle(.grouped)
-
-            if let error = errorMessage {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .font(.caption)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 4)
-            }
-
-            Divider()
-
-            SheetFooter(
-                cancelAction: { dismiss() },
-                primaryLabel: isRenaming ? "Renaming\u{2026}" : "Rename",
-                primaryAction: performRename,
-                isPrimaryDisabled: isRenaming || newName.isEmpty || newName == branch.name
-            )
         }
-        .frame(width: 400)
     }
 
     private func performRename() {
@@ -63,7 +52,8 @@ struct RenameBranchDialogView: View {
         errorMessage = nil
         Task {
             do {
-                try await repository.renameBranch(oldName: branch.name, newName: newName)
+                try await repository.renameBranch(oldName: branch.name, newName: trimmedName)
+                onComplete()
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription
@@ -71,4 +61,8 @@ struct RenameBranchDialogView: View {
             }
         }
     }
+}
+
+#Preview {
+    RenameBranchDialogView(repository: MockGitRepository(), branch: MockData.branches[1])
 }

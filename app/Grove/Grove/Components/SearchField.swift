@@ -54,7 +54,7 @@ struct SearchField<TokenLabel: View>: View {
     private var inputRow: some View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textSecondary)
                 .imageScale(.small)
 
             TextField(placeholder, text: $text)
@@ -66,7 +66,7 @@ struct SearchField<TokenLabel: View>: View {
                     text = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .imageScale(.small)
                 }
                 .buttonStyle(.plain)
@@ -82,8 +82,8 @@ struct SearchField<TokenLabel: View>: View {
                     RoundedRectangle(cornerRadius: 6)
                         .strokeBorder(
                             isFocused
-                                ? Color.accentColor.opacity(0.6)
-                                : Color.primary.opacity(0.12),
+                                ? Theme.accent.opacity(0.6)
+                                : Theme.border,
                             lineWidth: isFocused ? 1.5 : 1
                         )
                 )
@@ -110,24 +110,24 @@ struct SearchField<TokenLabel: View>: View {
             if let tokenLabel {
                 tokenLabel(token)
                     .font(.caption)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Theme.textPrimary)
             } else {
                 Text(token)
                     .font(.caption)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Theme.textPrimary)
             }
             Button {
                 tokens.wrappedValue.removeAll { $0 == token }
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 7)
         .padding(.vertical, 3)
-        .background(Color.accentColor.opacity(0.15), in: Capsule())
+        .background(Theme.accent.opacity(0.15), in: Capsule())
     }
 }
 

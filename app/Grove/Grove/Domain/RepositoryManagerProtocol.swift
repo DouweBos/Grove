@@ -27,6 +27,9 @@ protocol RepositoryManagerProtocol: AnyObject, Observable {
     @discardableResult
     func openRepository(at url: URL) async throws -> any GitRepositoryProtocol
 
+    /// Open a repository to read its state without counting it as opened by the user.
+    func inspectRepository(at url: URL) async throws -> any GitRepositoryProtocol
+
     /// Clone a remote repository to a local destination, reporting progress.
     @discardableResult
     func cloneRepository(
@@ -49,6 +52,7 @@ protocol RepositoryManagerProtocol: AnyObject, Observable {
     @discardableResult
     func createGroup(name: String) throws -> BookmarkGroupData
     func deleteGroup(id: UUID) throws
+    func renameGroup(id: UUID, to name: String) throws
     func moveBookmark(id: UUID, toGroup: UUID?) throws
     func reorderBookmark(id: UUID, newSortOrder: Int) throws
 

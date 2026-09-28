@@ -44,9 +44,7 @@ struct WorktreesSidebarSection: View {
     @Environment(SidebarViewModel.self) private var viewModel
     @Environment(WindowViewModel.self) private var windowVM
     @State private var worktrees: [WorktreeInfo] = []
-    @State private var isLoading = false
-
-    @State private var isShowingRemoveAlert = false
+    @State private var isExpanded = true
     @State private var worktreeToRemove: WorktreeInfo?
 
     /// Linked worktrees only (excludes the main worktree).
@@ -55,108 +53,65 @@ struct WorktreesSidebarSection: View {
     }
 
     var body: some View {
-        Section(header: SidebarSectionHeader(title: "Worktrees")) {
-            if isLoading {
-                Label {
-                    Text("Loading…")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                } icon: {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-            } else if linkedWorktrees.isEmpty {
-                Label {
-                    Text("No additional worktrees")
-                        .font(.subheadline)
-                        .foregroundStyle(.tertiary)
-                } icon: {
-                    Image(systemName: "square.on.square.squareshape.controlhandles")
-                        .foregroundStyle(.tertiary)
-                }
-            } else {
-                ForEach(linkedWorktrees) { worktree in
-                    worktreeRow(worktree)
+        Group {
+            if !linkedWorktrees.isEmpty {
+                Section(isExpanded: $isExpanded) {
+                    ForEach(linkedWorktrees) { worktreeRow($0) }
+                } header: {
+                    SidebarSectionHeader(title: "Worktrees", count: linkedWorktrees.count)
                 }
             }
         }
         .task(id: viewModel.repository.path) {
             await loadWorktrees()
         }
-        .alert(
-            "Remove Worktree",
-            isPresented: $isShowingRemoveAlert,
+        .confirmationDialog(
+            "Remove this worktree?",
+            isPresented: Binding(get: { worktreeToRemove != nil }, set: { if !$0 { worktreeToRemove = nil } }),
             presenting: worktreeToRemove
         ) { worktree in
-            Button("Remove", role: .destructive) {
+            Button("Remove Worktree", role: .destructive) {
                 Task {
                     await viewModel.removeWorktree(path: worktree.path)
                     await loadWorktrees()
                 }
             }
-            Button("Cancel", role: .cancel) { }
         } message: { worktree in
-            Text("Remove the worktree at \"\(worktree.displayPath)\"? The working directory will be deleted.")
+            Text("The folder \(worktree.displayPath) is deleted. Its branch is kept.")
         }
     }
 
     // MARK: - Private
 
-    @ViewBuilder
     private func worktreeRow(_ worktree: WorktreeInfo) -> some View {
-        Label {
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                VStack(alignment: .leading, spacing: 1) {
-                    if let branch = worktree.branch {
-                        Text(branch)
-                            .font(.subheadline)
-                            .lineLimit(1)
-                    } else {
-                        Text("Detached HEAD")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    Text(worktree.displayPath)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.head)
-                }
-                Spacer(minLength: 4)
-                Text(worktree.shortSHA)
-                    .font(.caption2)
-                    .fontDesign(.monospaced)
-                    .foregroundStyle(.tertiary)
-            }
-        } icon: {
-            Image(systemName: "square.on.square")
-                .foregroundStyle(.teal)
+        SidebarRow(title: worktree.branch ?? "Detached HEAD", symbol: "square.on.square", tint: Theme.info) {
+            Text(worktree.shortSHA).font(.system(size: 11, design: .monospaced))
         }
+        .help(worktree.displayPath)
         .contextMenu {
-            Button("Open") {
+            Button("Open", systemImage: "arrow.up.forward.app") {
                 windowVM.openReference(RepositoryReference(path: worktree.path))
             }
-            Button("Reveal in Finder") {
-                NSWorkspace.shared.open(URL(fileURLWithPath: worktree.path))
+            Button("Reveal in Finder", systemImage: "folder") {
+                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: worktree.path)])
             }
             Divider()
-            Button("Remove Worktree…", role: .destructive) {
+            Button("Remove Worktree…", systemImage: "trash", role: .destructive) {
                 worktreeToRemove = worktree
-                isShowingRemoveAlert = true
             }
         }
     }
 
     /// Reads the worktree list by parsing `git worktree list --porcelain` output.
     private func loadWorktrees() async {
-        isLoading = true
-        defer { isLoading = false }
-        worktrees = await parseWorktreeList(at: viewModel.repository.path)
+        let path = viewModel.repository.path
+        // Off the main actor: the git call blocks until it exits.
+        let output = await Task.detached { Self.worktreeListOutput(at: path) }.value
+        worktrees = output.map(parseWorktreePorcelain) ?? []
     }
 
-    /// Runs `git worktree list --porcelain` and parses the output.
-    private func parseWorktreeList(at repoURL: URL) async -> [WorktreeInfo] {
+    /// Runs `git worktree list --porcelain`.
+    nonisolated private static func worktreeListOutput(at repoURL: URL) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = ["worktree", "list", "--porcelain"]
@@ -169,18 +124,15 @@ struct WorktreesSidebarSection: View {
         do {
             try process.run()
         } catch {
-            return []
+            return nil
         }
 
         // Read output without blocking the cooperative thread pool.
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
 
-        guard process.terminationStatus == 0,
-              let output = String(data: data, encoding: .utf8)
-        else { return [] }
-
-        return parseWorktreePorcelain(output)
+        guard process.terminationStatus == 0 else { return nil }
+        return String(data: data, encoding: .utf8)
     }
 
     /// Parses `git worktree list --porcelain` text into ``WorktreeInfo`` values.
@@ -238,64 +190,12 @@ struct WorktreesSidebarSection: View {
 
 // MARK: - Preview
 
-#Preview("No additional worktrees") {
-    let vm = SidebarViewModel(repository: MockGitRepository())
-
-    return List(selection: Binding<SidebarItem?>.constant(nil)) {
+#Preview {
+    List(selection: Binding<SidebarItem?>.constant(nil)) {
         WorktreesSidebarSection()
     }
     .listStyle(.sidebar)
-    .environment(vm)
-    .frame(width: 220, height: 80)
-}
-
-#Preview("With worktrees (static)") {
-    let vm = SidebarViewModel(repository: MockGitRepository())
-
-    return List(selection: Binding<SidebarItem?>.constant(nil)) {
-        Section(header: SidebarSectionHeader(title: "Worktrees")) {
-            Label {
-                HStack {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("feature/auth")
-                            .font(.subheadline)
-                        Text("~/Projects/my-app-auth")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Text("a1b2c3d")
-                        .font(.caption2)
-                        .fontDesign(.monospaced)
-                        .foregroundStyle(.tertiary)
-                }
-            } icon: {
-                Image(systemName: "square.on.square")
-                    .foregroundStyle(.teal)
-            }
-            Label {
-                HStack {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Detached HEAD")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text("~/Projects/my-app-hotfix")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Text("b2c3d4e")
-                        .font(.caption2)
-                        .fontDesign(.monospaced)
-                        .foregroundStyle(.tertiary)
-                }
-            } icon: {
-                Image(systemName: "square.on.square")
-                    .foregroundStyle(.teal)
-            }
-        }
-    }
-    .listStyle(.sidebar)
-    .environment(vm)
-    .frame(width: 220, height: 140)
+    .environment(SidebarViewModel(repository: MockGitRepository()))
+    .environment(WindowViewModel(manager: MockRepositoryManager()))
+    .frame(width: 240, height: 120)
 }

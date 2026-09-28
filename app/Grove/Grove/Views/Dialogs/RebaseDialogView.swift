@@ -1,19 +1,16 @@
 // Views/Dialogs/RebaseDialogView.swift
 // Grove
-//
-// Rebase dialog: target branch picker, Cancel + "Rebase" button.
 
 import SwiftUI
 
-// MARK: - RebaseDialogView
-
-/// Dialog for rebasing the current branch onto another branch.
+/// Rebases the checked-out branch onto another branch.
 struct RebaseDialogView: View {
 
     @Environment(\.dismiss) private var dismiss
 
     let repository: any GitRepositoryProtocol
     let localBranches: [BranchInfo]
+    var onComplete: () -> Void = {}
 
     @State private var selectedBranch: String
     @State private var autoStash = false
@@ -22,68 +19,45 @@ struct RebaseDialogView: View {
 
     init(
         repository: any GitRepositoryProtocol,
-        localBranches: [BranchInfo] = []
+        localBranches: [BranchInfo] = [],
+        onComplete: @escaping () -> Void = {}
     ) {
         self.repository = repository
         self.localBranches = localBranches
-        let nonHead = localBranches.first(where: { !$0.isHEAD })
-        _selectedBranch = State(initialValue: nonHead?.name ?? "")
+        self.onComplete = onComplete
+        _selectedBranch = State(initialValue: localBranches.first(where: { !$0.isHEAD })?.name ?? "")
     }
+
+    private var candidates: [String] { localBranches.filter { !$0.isHEAD }.map(\.name) }
+    private var headName: String { repository.currentBranch?.name ?? "HEAD" }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Rebase",
-                description: "Rebases your current HEAD branch '\(repository.currentBranch?.name ?? "HEAD")' onto the selected branch."
-            )
-
-            Divider()
-
-            Form {
-                LabeledContent("Onto") {
-                    Picker("", selection: $selectedBranch) {
-                        ForEach(rebaseCandidates, id: \.self) { name in
-                            Text(name).tag(name)
-                        }
+        DialogSheet(
+            title: "Rebase \(headName)",
+            message: "Replays the commits of '\(headName)' on top of the chosen branch, rewriting their history.",
+            symbol: "arrow.triangle.pull",
+            progress: isRebasing ? "Rebasing onto \(selectedBranch)…" : nil,
+            errorMessage: errorMessage,
+            primaryTitle: "Rebase",
+            isPrimaryDisabled: selectedBranch.isEmpty,
+            onCancel: { dismiss() },
+            onPrimary: performRebase
+        ) {
+            DialogCard {
+                DialogField("Onto") {
+                    Picker("Onto", selection: $selectedBranch) {
+                        ForEach(candidates, id: \.self) { Text($0).tag($0) }
                     }
                     .labelsHidden()
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .disabled(candidates.isEmpty)
                 }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Toggle("Auto Stash", isOn: $autoStash)
-                        .fontWeight(.medium)
-                    Text("Stashes local changes before rebasing and restores them afterwards.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.leading, 20)
-                }
-                .padding(.vertical, 4)
+                DialogOptionRow(
+                    isOn: $autoStash,
+                    label: "Stash Local Changes",
+                    description: "Stashes uncommitted changes first and restores them afterwards."
+                )
             }
-            .formStyle(.grouped)
-
-            if let error = errorMessage {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .font(.caption)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 4)
-            }
-
-            Divider()
-
-            SheetFooter(
-                cancelAction: { dismiss() },
-                primaryLabel: isRebasing ? "Rebasing\u{2026}" : "Rebase",
-                primaryAction: performRebase,
-                isPrimaryDisabled: isRebasing || selectedBranch.isEmpty
-            )
         }
-        .frame(width: 440)
-    }
-
-    private var rebaseCandidates: [String] {
-        localBranches.filter { !$0.isHEAD }.map(\.name)
     }
 
     private func performRebase() {
@@ -91,31 +65,22 @@ struct RebaseDialogView: View {
         errorMessage = nil
         Task {
             do {
-                // Auto stash: save local changes before rebasing.
-                if autoStash {
-                    try await repository.stashCreate(
-                        message: "auto-stash before rebase",
-                        includeUntracked: true,
-                        paths: nil
-                    )
-                }
+                let didStash = autoStash ? try await stashIfDirty(repository, message: "Grove: auto-stash before rebase") : false
                 try await repository.rebase(onto: selectedBranch)
-                // Auto stash: restore local changes after rebasing.
-                if autoStash {
+                if didStash {
                     try await repository.stashApply(index: 0, drop: true)
                 }
+                onComplete()
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription
                 isRebasing = false
+                onComplete()
             }
         }
     }
 }
 
 #Preview {
-    RebaseDialogView(
-        repository: MockGitRepository(),
-        localBranches: MockData.branches.filter(\.isLocal)
-    )
+    RebaseDialogView(repository: MockGitRepository(), localBranches: MockData.branches.filter(\.isLocal))
 }

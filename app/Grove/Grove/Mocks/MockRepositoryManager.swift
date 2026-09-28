@@ -98,6 +98,10 @@ final class MockRepositoryManager: RepositoryManagerProtocol {
         )
     }
 
+    func inspectRepository(at url: URL) async throws -> any GitRepositoryProtocol {
+        MockGitRepository(path: url, displayName: url.lastPathComponent)
+    }
+
     @discardableResult
     func cloneRepository(
         url: String,
@@ -170,6 +174,11 @@ final class MockRepositoryManager: RepositoryManagerProtocol {
         for index in bookmarks.indices where bookmarks[index].groupID == id {
             bookmarks[index].groupID = nil
         }
+    }
+
+    func renameGroup(id: UUID, to name: String) throws {
+        guard let index = bookmarkGroups.firstIndex(where: { $0.id == id }) else { return }
+        bookmarkGroups[index].name = name
     }
 
     func moveBookmark(id: UUID, toGroup: UUID?) throws {

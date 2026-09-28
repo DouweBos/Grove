@@ -1,115 +1,94 @@
 // Views/Dialogs/CloneDialogView.swift
 // Grove
-//
-// Clone dialog: URL field, destination picker,
-// optional LFS clone, Cancel + Clone buttons.
 
 import SwiftUI
 import UniformTypeIdentifiers
 
-// MARK: - CloneDialogView
-
-/// Sheet for cloning a remote Git repository.
+/// Clones a remote repository into a new folder and opens it.
 struct CloneDialogView: View {
 
     @Environment(WindowViewModel.self) private var viewModel
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("defaultCloneDirectory") private var defaultCloneDirectory = "~/Projects"
 
     @State private var cloneURL = ""
-    @State private var destination: URL = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Projects")
+    @State private var folderName = ""
+    @State private var parentOverride: URL?
     @State private var isPickerPresented = false
     @State private var isCloning = false
     @State private var cloneProgress: CloneProgress?
     @State private var errorMessage: String?
 
-    private var canClone: Bool {
-        !cloneURL.trimmingCharacters(in: .whitespaces).isEmpty && !isCloning
+    private var parent: URL {
+        parentOverride ?? URL(fileURLWithPath: (defaultCloneDirectory as NSString).expandingTildeInPath)
     }
 
+    private var trimmedURL: String { cloneURL.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    /// "grove" from "git@github.com:org/grove.git" or "https://host/org/grove".
+    private var suggestedName: String {
+        let last = trimmedURL.split(whereSeparator: { $0 == "/" || $0 == ":" }).last.map(String.init) ?? ""
+        return last.hasSuffix(".git") ? String(last.dropLast(4)) : last
+    }
+
+    private var destination: URL {
+        parent.appendingPathComponent(folderName.isEmpty ? suggestedName : folderName)
+    }
+
+    private var canClone: Bool { !trimmedURL.isEmpty && !destination.lastPathComponent.isEmpty }
+
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Clone Repository",
-                description: "Enter the URL of the remote repository to clone, and choose a local destination folder."
-            )
-
-            Divider()
-
-            Form {
-                LabeledContent("Clone URL") {
+        DialogSheet(
+            title: "Clone Repository",
+            message: "Downloads a copy of a remote repository, adds it to your list and opens it.",
+            symbol: "square.and.arrow.down",
+            progress: isCloning ? progressTitle : nil,
+            progressDetail: destination.lastPathComponent,
+            errorMessage: errorMessage,
+            primaryTitle: "Clone",
+            isPrimaryDisabled: !canClone,
+            onCancel: { dismiss() },
+            onPrimary: performClone
+        ) {
+            DialogCard {
+                DialogField("URL") {
                     TextField("https://github.com/org/repo.git", text: $cloneURL)
-                        .textFieldStyle(.plain)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.monoCaption)
                 }
-
-                LabeledContent("Clone To") {
-                    HStack {
-                        Text(destination.path)
-                            .lineLimit(1)
-                            .truncationMode(.head)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Button("Choose...") {
-                            isPickerPresented = true
-                        }
-                    }
+                DialogField("Name") {
+                    TextField(suggestedName.isEmpty ? "Folder name" : suggestedName, text: $folderName)
+                        .textFieldStyle(.roundedBorder)
+                }
+                DialogField("Location") {
+                    DialogPathField(path: parent.path) { isPickerPresented = true }
                 }
             }
-            .formStyle(.grouped)
-            .fileImporter(
-                isPresented: $isPickerPresented,
-                allowedContentTypes: [.folder]
-            ) { result in
-                if case .success(let url) = result {
-                    destination = url
-                }
-            }
-
-            if let progress = cloneProgress {
-                CloneProgressView(progress: progress)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 8)
-            }
-
-            if let error = errorMessage {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .font(.caption)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 4)
-            }
-
-            Divider()
-
-            SheetFooter(
-                cancelAction: {
-                    dismiss()
-                },
-                primaryLabel: isCloning ? "Cloning…" : "Clone",
-                primaryAction: performClone,
-                isPrimaryDisabled: !canClone
-            )
         }
-        .frame(width: 460)
+        .fileImporter(isPresented: $isPickerPresented, allowedContentTypes: [.folder]) { result in
+            if case .success(let url) = result { parentOverride = url }
+        }
+    }
+
+    private var progressTitle: String {
+        switch cloneProgress?.phase {
+        case .indexing: "Indexing…"
+        case .checkingOut: "Checking out files…"
+        default: "Downloading objects…"
+        }
     }
 
     private func performClone() {
+        guard canClone else { return }
         isCloning = true
         errorMessage = nil
-        let url = cloneURL.trimmingCharacters(in: .whitespaces)
-        let dest = destination
-
+        let url = trimmedURL
+        let target = destination
         Task {
             do {
-                let repo = try await viewModel.manager.cloneRepository(
-                    url: url,
-                    to: dest,
-                    progress: { progress in
-                        Task { @MainActor in
-                            self.cloneProgress = progress
-                        }
-                    }
-                )
+                let repo = try await viewModel.manager.cloneRepository(url: url, to: target) { progress in
+                    Task { @MainActor in cloneProgress = progress }
+                }
                 dismiss()
                 viewModel.openReference(RepositoryReference(path: repo.path.path))
             } catch {
@@ -120,33 +99,6 @@ struct CloneDialogView: View {
         }
     }
 }
-
-// MARK: - CloneProgressView
-
-private struct CloneProgressView: View {
-
-    let progress: CloneProgress
-
-    private var label: String {
-        switch progress.phase {
-        case .fetching: return "Fetching objects…"
-        case .indexing: return "Indexing…"
-        case .checkingOut: return "Checking out…"
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            ProgressView(value: progress.fractionCompleted)
-                .progressViewStyle(.linear)
-        }
-    }
-}
-
-// MARK: - Preview
 
 #Preview {
     CloneDialogView()

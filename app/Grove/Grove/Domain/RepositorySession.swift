@@ -56,6 +56,7 @@ final class RepositorySession {
         self.branchesReviewVM = BranchesReviewViewModel(repository: repository)
         self.pullRequestsVM   = PullRequestsViewModel(repository: repository)
         self.autoFetcher      = AutoFetchScheduler(repository: repository)
+        sidebarVM.onRepositoryChanged = { [weak self] in await self?.refreshAll() }
     }
 
     // MARK: - Lifecycle
@@ -160,7 +161,7 @@ final class RepositorySession {
             }
         case .quickActions:
             break
-        case .quickOpen:
+        case .quickOpen, .addRepository, .cloneRepository, .createRepository, .newGroup:
             break
         case .undo:
             Task {

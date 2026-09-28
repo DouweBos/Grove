@@ -261,7 +261,7 @@ struct BranchParserTests {
         #expect(fmt.contains("%(refname:short)"))
         #expect(fmt.contains("%(objectname)"))
         #expect(fmt.contains("%(upstream)"))
-        #expect(fmt.contains("%(upstream:trackshort)"))
+        #expect(fmt.contains("%(upstream:track)"))
         #expect(fmt.contains("%(HEAD)"))
     }
 }
