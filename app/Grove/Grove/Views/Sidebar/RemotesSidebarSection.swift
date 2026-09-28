@@ -76,6 +76,7 @@ struct RemotesSidebarSection: View {
                 Button("Reveal in History", systemImage: "clock.arrow.circlepath") {
                     viewModel.revealInHistory(.remoteBranch(branch))
                 }
+                ExportFilesButton(ref: branch.name)
                 Divider()
                 Button("Delete on Remote…", systemImage: "trash", role: .destructive) {
                     branchToDelete = branch

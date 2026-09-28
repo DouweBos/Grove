@@ -166,6 +166,14 @@ final class MockGitRepository: GitRepositoryProtocol {
         MockData.commits.contains { $0.id == commit }
     }
 
+    func formatPatch(commits: [String]) async throws -> String {
+        commits.map { "From \($0) Mon Sep 17 00:00:00 2001\n" }.joined()
+    }
+
+    func archive(revision: String, to url: URL) async throws {
+        try Data().write(to: url)
+    }
+
     // MARK: Branches
 
     func localBranches() async throws -> [BranchInfo] {

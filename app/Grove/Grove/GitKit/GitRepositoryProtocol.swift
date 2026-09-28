@@ -86,6 +86,10 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func log(maxCount: Int, skip: Int, revisions: [String]) async throws -> [CommitInfo]
     /// SHAs reachable from `revision` but not from `base`.
     func commits(in revision: String, notIn base: String) async throws -> Set<String>
+    /// `git format-patch` of each of `commits` (oldest first), as one mbox.
+    func formatPatch(commits: [String]) async throws -> String
+    /// `git archive` of `revision`'s tree to `url`, zip or tar by its extension.
+    func archive(revision: String, to url: URL) async throws
     /// Whether `commit` is `descendant` or one of its ancestors.
     func isAncestor(_ commit: String, of descendant: String) async -> Bool
     /// Return full detail for a single commit SHA.
@@ -327,6 +331,8 @@ extension GitRepositoryProtocol {
 
     func commits(in revision: String, notIn base: String) async throws -> Set<String> { [] }
     func isAncestor(_ commit: String, of descendant: String) async -> Bool { false }
+    func formatPatch(commits: [String]) async throws -> String { "" }
+    func archive(revision: String, to url: URL) async throws {}
 
     @discardableResult
     func commit(message: String, body: String?, amend: Bool, sign: Bool, signOff: Bool) async throws -> CommitInfo {
