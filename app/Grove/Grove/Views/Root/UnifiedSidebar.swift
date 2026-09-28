@@ -65,16 +65,33 @@ struct RepositoryHomeButtons: ToolbarContent {
     let placement: ToolbarItemPlacement
 
     var body: some ToolbarContent {
-        ToolbarItemGroup(placement: placement) {
-            Button { viewModel.showRemoteRepositories() } label: {
-                Image(systemName: isShowing(.remote) ? "cloud.fill" : "cloud")
+        // One item, so the toolbar draws a single tight group rather than two separate buttons.
+        ToolbarItem(placement: placement) {
+            HStack(spacing: 0) {
+                homeButton(.remote, symbol: "cloud", help: "Remote Repositories (\u{21E7}\u{2318}K)") {
+                    viewModel.showRemoteRepositories()
+                }
+                Rectangle()
+                    .fill(Theme.textSecondary.opacity(0.35))
+                    .frame(width: 1, height: 18)
+                homeButton(.local, symbol: "externaldrive", help: "Local Repositories (\u{21E7}\u{2318}L)") {
+                    viewModel.showLocalRepositories()
+                }
             }
-            .help("Remote Repositories (\u{21E7}\u{2318}K)")
-            Button { viewModel.showLocalRepositories() } label: {
-                Image(systemName: isShowing(.local) ? "externaldrive.fill" : "externaldrive")
-            }
-            .help("Local Repositories (\u{21E7}\u{2318}L)")
         }
+    }
+
+    private func homeButton(_ mode: WindowViewModel.BrowserMode, symbol: String, help: String,
+                            action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: isShowing(mode) ? symbol + ".fill" : symbol)
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(Theme.textPrimary)
+                .frame(width: 34, height: 26)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
     }
 
     private func isShowing(_ mode: WindowViewModel.BrowserMode) -> Bool {
