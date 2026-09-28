@@ -29,7 +29,7 @@ Dev launch flags: `-GroveOpenRepository <path>` opens a repository on launch, `-
 
 Never perform git writes against real repositories while testing; use a scratch repo under `/tmp`.
 
-Releases: run the Release workflow on `main` (version + `beta` or `production` channel). It runs `fastlane mac release`, which signs, notarizes and appends to the Sparkle appcast served through houwert.dev/grove/updates.
+Releases: run the Release workflow on `main` with a `beta` or `production` channel. It runs `fastlane mac release`, which takes the version from the pending changesets, signs, notarizes and appends to the Sparkle appcast served through houwert.dev/grove/updates.
 
 ## Conventions
 
@@ -37,3 +37,4 @@ Releases: run the Release workflow on `main` (version + `beta` or `production` c
 - Commit when a thing is done. Every feature, fix or refactor gets its own commit the moment it works — don't leave finished work sitting in the tree waiting for the end of the session. One commit per feature/fix, with its tests and docs in it, so each one stands alone and is revertable. Several unrelated changes already piled up in the tree → split them by hunk rather than committing one lump. Committing is not pushing: push only when asked.
 - Commit messages: Conventional Commits, `type(scope): subject`, one short lowercase subject.
 - Comments explain why, in 1–2 lines, describing the code as it stands.
+- User-facing changes add a changeset: `.changeset/<name>.md` with front matter `"grove": major|minor|patch` and a short note for users (a `- ` list for several). These become the release notes and set the version bump.

@@ -10,6 +10,8 @@ PROJECT  = "app/Grove/Grove.xcodeproj"
 DOWNLOADS = "https://houwert.dev/grove/updates/"
 ROOT     = File.expand_path("..", __dir__)
 DIST     = File.join(ROOT, "dist")
+CHANGESETS = File.join(ROOT, ".changeset")
+BUMPS = %w[patch minor major].freeze
 
 platform :mac do
   desc "Install the Developer ID cert from the shared match repo."
@@ -18,18 +20,21 @@ platform :mac do
           api_key: ENV["APP_STORE_CONNECT_API_KEY_ID"] ? load_app_store_connect_api_key : nil)
   end
 
-  # Betas are tagged v<version>-beta.N and only reach clients that opted into beta updates.
-  desc "Build, notarize and publish a Sparkle release: version:0.2.0 channel:beta|production"
+  # The version comes from the pending changesets' largest bump. Betas are v<next>-beta.N and leave the changesets
+  # in place; a production release rolls them into CHANGELOG.md and deletes them.
+  desc "Build, notarize and publish a Sparkle release: channel:beta|production"
   lane :release do |options|
     channel = options.fetch(:channel, "beta").to_s
     UI.user_error!("channel must be beta or production") unless %w[beta production].include?(channel)
     ensure_git_branch(branch: "main")
     ensure_git_status_clean
 
-    version = resolve_version(options[:version].to_s, channel)
+    pending = changesets
+    UI.user_error!("No changesets in .changeset/, so there's nothing to release") if pending.empty?
+    version = resolve_version(pending, channel)
     # Sparkle compares CFBundleVersion, so it must grow with every release on either channel.
     build = number_of_commits.to_s
-    notes = release_notes
+    notes = pending.flat_map { |changeset| changeset[:notes] }
     UI.success("Releasing Grove #{version} (#{build}) on #{channel}")
 
     api_key = load_app_store_connect_api_key
@@ -59,6 +64,7 @@ platform :mac do
     disk_image = make_disk_image(app, version)
     notarize(package: disk_image, api_key: api_key, bundle_id: "com.houwert.Grove", print_log: true)
 
+    record_release(version, notes, pending) if channel == "production"
     tag = "v#{version}"
     add_git_tag(tag: tag)
     push_git_tags(tag: tag)
@@ -73,9 +79,21 @@ platform :mac do
     )
   end
 
-  # Production releases use the version as is; betas count up past existing v<version>-beta.N tags.
-  def resolve_version(base, channel)
-    UI.user_error!("Pass version:x.y.z") unless base.match?(/\A\d+\.\d+\.\d+\z/)
+  # `.changeset/*.md`: front matter `"grove": major|minor|patch`, then a user-facing note (a "- " list gives several).
+  def changesets
+    Dir[File.join(CHANGESETS, "*.md")].sort.map do |path|
+      front, body = File.read(path).match(/\A---\s*\n(.*?)\n---\s*\n(.*)\z/m)&.captures
+      bump = front.to_s[/"?grove"?\s*:\s*(major|minor|patch)/, 1]
+      UI.user_error!("#{File.basename(path)} needs front matter like `\"grove\": minor`") unless bump
+      lines = body.to_s.strip.lines.map(&:strip).reject(&:empty?)
+      notes = lines.all? { |line| line.start_with?("- ") } ? lines.map { |line| line.delete_prefix("- ") } : [lines.join(" ")]
+      { path: path, bump: bump, notes: notes.reject(&:empty?) }
+    end
+  end
+
+  def resolve_version(pending, channel)
+    bump = pending.map { |changeset| changeset[:bump] }.max_by { |level| BUMPS.index(level) }
+    base = next_version(last_stable_version, bump)
     version = if channel == "production"
                 base
               else
@@ -86,17 +104,32 @@ platform :mac do
     version
   end
 
-  # GROVE_RELEASE_NOTES (one change per line) or the commit subjects since the last tag.
-  def release_notes
-    given = ENV["GROVE_RELEASE_NOTES"].to_s
-    text = if !given.strip.empty?
-             given
-           elsif (tag = last_git_tag) && !tag.empty?
-             changelog_from_git_commits(between: [tag, "HEAD"], pretty: "%s", merge_commit_filtering: "exclude_merges")
-           else
-             changelog_from_git_commits(commits_count: 30, pretty: "%s", merge_commit_filtering: "exclude_merges")
-           end
-    text.to_s.lines.map { |line| line.strip.sub(/\A[-*] /, "") }.reject(&:empty?)
+  # Production tags are plain v<x.y.z>; before the first one the betas already count from 0.1.0.
+  def last_stable_version
+    stable = sh("git", "tag", "-l", "v*", log: false).lines.map(&:strip).grep(/\Av\d+\.\d+\.\d+\z/)
+    stable.map { |tag| tag.delete_prefix("v") }.max_by { |version| Gem::Version.new(version) } || "0.1.0"
+  end
+
+  # While Grove is 0.x a breaking change bumps the minor, as semver allows.
+  def next_version(stable, bump)
+    major, minor, patch = stable.split(".").map(&:to_i)
+    case bump
+    when "major" then major.zero? ? "0.#{minor + 1}.0" : "#{major + 1}.0.0"
+    when "minor" then "#{major}.#{minor + 1}.0"
+    else "#{major}.#{minor}.#{patch + 1}"
+    end
+  end
+
+  # Prepends the release to CHANGELOG.md, deletes the changesets it used, and pushes that as the tagged commit.
+  def record_release(version, notes, pending)
+    changelog = File.join(ROOT, "CHANGELOG.md")
+    previous = File.exist?(changelog) ? File.read(changelog).sub(/\A# Changelog\s*/, "") : ""
+    entry = "## #{version}\n\n#{notes.map { |line| "- #{line}" }.join("\n")}\n"
+    File.write(changelog, "# Changelog\n\n#{entry}\n#{previous}".rstrip + "\n")
+    pending.each { |changeset| File.delete(changeset[:path]) }
+    git_add(path: ["CHANGELOG.md", ".changeset"])
+    git_commit(path: ["CHANGELOG.md", ".changeset"], message: "chore(release): v#{version}", allow_nothing_to_commit: false)
+    push_to_git_remote(remote: "origin", local_branch: "main", remote_branch: "main", tags: false)
   end
 
   # Carries the previous appcast forward and adds this release, signed with the Sparkle key.

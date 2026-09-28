@@ -3,9 +3,6 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version, e.g. 0.2.0 (betas get -beta.N appended)"
-        required: true
       channel:
         description: "Release channel"
         type: choice
@@ -13,9 +10,6 @@ on:
           - beta
           - production
         default: beta
-      notes:
-        description: "Release notes, one change per line (defaults to commit subjects since the last tag)"
-        required: false
 
 concurrency:
   group: release
@@ -34,6 +28,12 @@ jobs:
           fetch-depth: 0
 
       # The macos-26 image tops out at Xcode 26.x, which builds the 26.2 deployment target fine.
+      # A production release commits CHANGELOG.md and the consumed changesets back to main.
+      - name: Set git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Select newest Xcode
         run: |
           XCODE=$(ls -d /Applications/Xcode_2[6-9]*.app 2>/dev/null | sort -V | tail -1)
@@ -76,7 +76,6 @@ jobs:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
           GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
-          GROVE_RELEASE_NOTES: ${{ inputs.notes }}
           FASTLANE_SKIP_UPDATE_CHECK: "1"
           FASTLANE_HIDE_CHANGELOG: "1"
-        run: bundle exec fastlane mac release version:${{ inputs.version }} channel:${{ inputs.channel }}
+        run: bundle exec fastlane mac release channel:${{ inputs.channel }}
