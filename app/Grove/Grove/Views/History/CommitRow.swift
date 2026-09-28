@@ -12,6 +12,7 @@ struct CommitRow: View {
     var graphNode: GraphNode?
     var maxGraphColumns = 1
     var isHead = false
+    var syncState: CommitSyncState?
     var isSelected = false
 
     static let height: CGFloat = 46
@@ -44,6 +45,13 @@ struct CommitRow: View {
                 .foregroundStyle(Theme.textSecondary)
             }
             Spacer(minLength: 0)
+            if let syncState {
+                Image(systemName: syncState.symbol)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.textSecondary)
+                    .help(syncState.label)
+                    .accessibilityLabel(syncState.label)
+            }
         }
         // Pinned to the panel width so long refs truncate instead of pushing the row sideways.
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -60,6 +68,14 @@ struct CommitRow: View {
         }
         .contentShape(Rectangle())
     }
+}
+
+/// Where a commit stands against the branch's upstream.
+enum CommitSyncState {
+    case incoming, outgoing
+
+    var symbol: String { self == .incoming ? "arrow.down.left" : "arrow.up.right" }
+    var label: String { self == .incoming ? "Not pulled yet" : "Not pushed yet" }
 }
 
 #Preview {

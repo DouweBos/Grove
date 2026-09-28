@@ -82,6 +82,10 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func isSigningConfigured() async throws -> Bool
     /// Return commits in reverse-chronological order.
     func log(maxCount: Int, skip: Int, branch: String?) async throws -> [CommitInfo]
+    /// Commits reachable from any of `revisions` (HEAD when empty), newest first.
+    func log(maxCount: Int, skip: Int, revisions: [String]) async throws -> [CommitInfo]
+    /// SHAs reachable from `revision` but not from `base`.
+    func commits(in revision: String, notIn base: String) async throws -> Set<String>
     /// Return full detail for a single commit SHA.
     func commitDetail(_ sha: String) async throws -> CommitInfo
 
@@ -316,6 +320,12 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
 extension GitRepositoryProtocol {
 
     // Defaults so lightweight test doubles only implement what they exercise.
+    func log(maxCount: Int, skip: Int, revisions: [String]) async throws -> [CommitInfo] {
+        try await log(maxCount: maxCount, skip: skip, branch: revisions.first)
+    }
+
+    func commits(in revision: String, notIn base: String) async throws -> Set<String> { [] }
+
     @discardableResult
     func commit(message: String, body: String?, amend: Bool, sign: Bool, signOff: Bool) async throws -> CommitInfo {
         try await commit(message: message, body: body, amend: amend, sign: sign)

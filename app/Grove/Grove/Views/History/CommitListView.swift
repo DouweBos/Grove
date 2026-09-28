@@ -87,6 +87,7 @@ struct CommitListView: View {
             graphNode: showsGraph ? viewModel.graphNodes[commit.id] : nil,
             maxGraphColumns: viewModel.maxGraphColumns,
             isHead: commit.id == viewModel.headSHA,
+            syncState: viewModel.syncState(of: commit),
             isSelected: commit.id == viewModel.selectedCommit?.id
         )
         .id(commit.id)
@@ -108,7 +109,8 @@ struct CommitListView: View {
     }
 
     private var title: String {
-        viewModel.filterBranch ?? viewModel.headBranchName ?? "HEAD"
+        let branch = viewModel.filterBranch ?? viewModel.headBranchName ?? "HEAD"
+        return viewModel.upstreamName.map { "\(branch) \u{203A} \($0)" } ?? branch
     }
 
     private var countLabel: String {

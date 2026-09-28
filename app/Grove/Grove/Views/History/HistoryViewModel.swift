@@ -38,6 +38,14 @@ final class HistoryViewModel {
     private(set) var searchText = ""
     var filterBranch: String?
     var errorMessage: String?
+    /// The shown branch's upstream, logged alongside it so commits waiting to be pulled appear too.
+    private(set) var upstreamName: String?
+    /// Commits on the upstream the branch doesn't have yet.
+    private(set) var incomingSHAs: Set<String> = []
+    /// Commits on the branch the upstream doesn't have yet.
+    private(set) var outgoingSHAs: Set<String> = []
+    private var revisions: [String] = []
+    private var syncStateTask: Task<Void, Never>?
 
     // MARK: - Detail
 
@@ -102,6 +110,7 @@ final class HistoryViewModel {
         commits = []
         hasMore = true
         graphNodes = [:]
+        if refs.hasLoaded { syncRefs() } else { updateRevisions() }
         // Refs only decorate rows, so the log doesn't wait for them.
         async let refs: Void = loadRefs()
         await loadMore()
@@ -127,7 +136,7 @@ final class HistoryViewModel {
         defer { isLoading = false }
         do {
             let count = max(commits.count, pageSize)
-            let page = try await repository.log(maxCount: count, skip: 0, branch: filterBranch)
+            let page = try await repository.log(maxCount: count, skip: 0, revisions: revisions)
             guard page.map(\.id) != commits.map(\.id) else { return }
             commits = page
             hasMore = page.count == count
@@ -147,7 +156,7 @@ final class HistoryViewModel {
         errorMessage = nil
         defer { isLoading = false }
         do {
-            let page = try await repository.log(maxCount: pageSize, skip: commits.count, branch: filterBranch)
+            let page = try await repository.log(maxCount: pageSize, skip: commits.count, revisions: revisions)
             commits.append(contentsOf: page)
             hasMore = page.count == pageSize
             buildGraph()
@@ -173,6 +182,50 @@ final class HistoryViewModel {
         appliedRefsGeneration = refs.generation
         branches = refs.localBranches + refs.remoteBranches
         tags = refs.tags
+        // Mid-load, reloadLog queues itself behind the running read.
+        if updateRevisions(), !commits.isEmpty || isLoading { Task { await reloadLog() } }
+        loadSyncState()
+    }
+
+    /// Whether the revisions to log changed, e.g. once refs reveal the branch's upstream.
+    @discardableResult
+    private func updateRevisions() -> Bool {
+        let branch = trackedBranch
+        let upstream = branch?.upstream.flatMap { ref in refs.remoteBranches.first { $0.id == ref } }
+        upstreamName = upstream?.name
+        let base = filterBranch.map { [$0] } ?? (upstream == nil ? [] : ["HEAD"])
+        let next = base + (upstream.map { [$0.id] } ?? [])
+        guard next != revisions else { return false }
+        revisions = next
+        return true
+    }
+
+    /// The local branch whose history this is: the filter, or the checked-out branch.
+    private var trackedBranch: BranchInfo? {
+        guard let name = filterBranch ?? headBranchName else { return nil }
+        return refs.localBranches.first { $0.name == name }
+    }
+
+    private func loadSyncState() {
+        syncStateTask?.cancel()
+        guard let branch = trackedBranch, let upstream = branch.upstream, upstreamName != nil else {
+            incomingSHAs = []
+            outgoingSHAs = []
+            return
+        }
+        syncStateTask = Task {
+            async let incoming = branch.behind > 0 ? try? repository.commits(in: upstream, notIn: branch.id) : nil
+            async let outgoing = branch.ahead > 0 ? try? repository.commits(in: branch.id, notIn: upstream) : nil
+            let (behind, ahead) = await (incoming ?? [], outgoing ?? [])
+            guard !Task.isCancelled else { return }
+            if behind != incomingSHAs { incomingSHAs = behind }
+            if ahead != outgoingSHAs { outgoingSHAs = ahead }
+        }
+    }
+
+    func syncState(of commit: CommitInfo) -> CommitSyncState? {
+        if incomingSHAs.contains(commit.id) { return .incoming }
+        return outgoingSHAs.contains(commit.id) ? .outgoing : nil
     }
 
     // MARK: - Filter
@@ -196,9 +249,9 @@ final class HistoryViewModel {
 
     // MARK: - Refs
 
-    /// HEAD is the tip of the unfiltered log; branch views look it up from the refs.
+    /// Looked up from the refs, since an upstream ahead of HEAD tops the log; a detached HEAD tops it.
     var headSHA: String? {
-        filterBranch == nil ? commits.first?.id : branches.first(where: \.isHEAD)?.targetSHA
+        branches.first(where: \.isHEAD)?.targetSHA ?? (filterBranch == nil ? commits.first?.id : nil)
     }
 
     var headBranchName: String? { branches.first(where: \.isHEAD)?.name }

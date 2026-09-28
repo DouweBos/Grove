@@ -72,18 +72,19 @@ extension GitRepository {
     }
 
     func log(maxCount: Int, skip: Int, branch: String?) async throws -> [CommitInfo] {
-        var args = [
-            "log",
-            "--format=\(LogParser.formatString)",
-            "--date-order",
-            "-\(maxCount)",
-            "--skip=\(skip)"
-        ]
-        if let branch {
-            args.append(branch)
-        }
+        try await log(maxCount: maxCount, skip: skip, revisions: branch.map { [$0] } ?? [])
+    }
+
+    func log(maxCount: Int, skip: Int, revisions: [String]) async throws -> [CommitInfo] {
+        let args = ["log", "--format=\(LogParser.formatString)", "--author-date-order", "-\(maxCount)", "--skip=\(skip)"]
+            + revisions + ["--"]
         let result = try await shell.run(args)
         return LogParser.parse(result.stdout)
+    }
+
+    func commits(in revision: String, notIn base: String) async throws -> Set<String> {
+        let result = try await shell.run(["rev-list", "\(base)..\(revision)", "--"])
+        return Set(result.stdout.split(separator: "\n").map(String.init))
     }
 
     func fileLog(path: String, maxCount: Int) async throws -> [CommitInfo] {
