@@ -135,6 +135,36 @@ enum PullStrategy: String, CaseIterable, Sendable {
     }
 }
 
+/// Extra `git pull` flags; git only forwards them to merge, so a rebase ignores both.
+struct PullOptions: Sendable, Equatable {
+    /// `--verify-signatures`: refuse unless the fetched tip carries a valid signature.
+    var verifySignatures = false
+    /// `--no-verify`: skip the pre-merge-commit and commit-msg hooks.
+    var skipHooks = false
+}
+
+/// Extra `git push` flags.
+struct PushOptions: Sendable, Equatable {
+    /// `--recurse-submodules=<mode>`; nil leaves `push.recurseSubmodules` in charge.
+    var recurseSubmodules: SubmodulePushMode?
+    /// `--no-verify`: skip the pre-push hook.
+    var skipHooks = false
+}
+
+enum SubmodulePushMode: String, CaseIterable, Sendable {
+    /// Refuse the push when a referenced submodule commit isn't on its remote.
+    case check
+    /// Push submodules that need it before the superproject.
+    case onDemand = "on-demand"
+
+    var title: String {
+        switch self {
+        case .check: "Verify submodules before push"
+        case .onDemand: "Push submodules first"
+        }
+    }
+}
+
 // MARK: - BranchComparison
 
 /// Both sides of `git log --left-right --cherry-mark base...compare`, plus the files `compare` changed since the merge base.

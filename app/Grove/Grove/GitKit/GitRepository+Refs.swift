@@ -81,7 +81,7 @@ extension GitRepository {
     }
 
     func pull(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
-        try await pull(remote: remote, branch: nil, strategy: strategy, progress: progress)
+        try await pull(remote: remote, branch: nil, strategy: strategy, options: PullOptions(), progress: progress)
     }
 
     func defaultPullStrategy() async -> PullStrategy {
@@ -89,13 +89,8 @@ extension GitRepository {
         return await configValue("pull.ff")?.lowercased() == "only" ? .fastForwardOnly : .merge
     }
 
-    func pull(remote: String, branch: String, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
-        try await pull(remote: Optional(remote), branch: Optional(branch), strategy: strategy, progress: progress)
-    }
-
-    /// `branch` pulls a named remote branch instead of the upstream.
-    private func pull(remote: String?, branch: String?, strategy: PullStrategy,
-                      progress: (@Sendable (Double) -> Void)?) async throws {
+    func pull(remote: String?, branch: String?, strategy: PullStrategy, options: PullOptions,
+              progress: (@Sendable (Double) -> Void)?) async throws {
         Logger.gitRepository.info(
             "Pulling (\(strategy.rawValue, privacy: .public)) from \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
         )
@@ -106,6 +101,8 @@ extension GitRepository {
         case .rebase: args.append("--rebase")
         case .fastForwardOnly: args.append("--ff-only")
         }
+        if options.verifySignatures { args.append("--verify-signatures") }
+        if options.skipHooks { args.append("--no-verify") }
         if let remote { args.append(remote) }
         if let branch { args.append(branch) }
         try await shell.run(args)
@@ -143,6 +140,23 @@ extension GitRepository {
         Logger.gitRepository.info("Push complete in \(self.displayName, privacy: .public)")
     }
 
+    func push(remote: String, branch: String, forceWithLease: Bool, setUpstream: Bool, options: PushOptions,
+              progress: (@Sendable (Double) -> Void)?) async throws {
+        Logger.gitRepository.info(
+            "Pushing to \(remote, privacy: .public)/\(branch, privacy: .public) in \(self.displayName, privacy: .public)"
+        )
+        var args = ["push"]
+        if forceWithLease { args.append("--force-with-lease") }
+        if setUpstream { args.append("-u") }
+        if let mode = options.recurseSubmodules { args.append("--recurse-submodules=\(mode.rawValue)") }
+        if options.skipHooks { args.append("--no-verify") }
+        args += [remote, "HEAD:refs/heads/\(branch)"]
+        try await shell.run(args)
+        progress?(1.0)
+        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+        Logger.gitRepository.info("Push complete in \(self.displayName, privacy: .public)")
+    }
+
     func sync(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
         Logger.gitRepository.info(
             "Syncing with \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
@@ -153,10 +167,10 @@ extension GitRepository {
         let target = remote ?? branch?.upstreamRemoteName ?? "origin"
         let tracksTarget = branch?.upstream != nil && branch?.upstreamRemoteName == target
         if tracksTarget {
-            try await pull(remote: nil, branch: nil, strategy: strategy, progress: nil)
+            try await pull(remote: nil, branch: nil, strategy: strategy, options: PullOptions(), progress: nil)
         } else if let name = branch?.name,
                   try await shell.runAllowingFailure(["rev-parse", "--verify", "--quiet", "refs/remotes/\(target)/\(name)"]).isSuccess {
-            try await pull(remote: target, branch: name, strategy: strategy, progress: nil)
+            try await pull(remote: target, branch: name, strategy: strategy, options: PullOptions(), progress: nil)
         }
         progress?(0.66)
         try await push(remote: target, forceWithLease: false, setUpstream: !tracksTarget, progress: nil)

@@ -50,12 +50,30 @@ struct RemoteSyncTests {
         try git(["push", "-q", "origin", "main"], in: "b")
 
         let repo = try await GitRepository(path: root.appendingPathComponent("a"))
-        try await repo.pull(remote: "origin", branch: "main", strategy: .rebase, progress: nil)
+        try await repo.pull(remote: "origin", branch: "main", strategy: .rebase, options: PullOptions(), progress: nil)
 
         let subjects = try git(["log", "--format=%s", "-3"], in: "a").split(separator: "\n").map(String.init)
         #expect(subjects == ["feature work", "main moved on", "initial"])
         #expect(try git(["rev-parse", "--abbrev-ref", "HEAD"], in: "a").trimmingCharacters(in: .whitespacesAndNewlines) == "feature")
         #expect(try git(["rev-list", "--merges", "--count", "HEAD"], in: "a").trimmingCharacters(in: .whitespacesAndNewlines) == "0")
+    }
+
+    @Test func skipHooksBypassesCommitMsgHookOnMergePull() async throws {
+        try commit("a", file: "a.txt", message: "local")
+        try commit("b", file: "b.txt", message: "remote")
+        try git(["push", "-q", "origin", "main"], in: "b")
+        let hook = root.appendingPathComponent("a/.git/hooks/commit-msg")
+        try Data("#!/bin/sh\nexit 1\n".utf8).write(to: hook)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hook.path)
+
+        let repo = try await GitRepository(path: root.appendingPathComponent("a"))
+        await #expect(throws: (any Error).self) {
+            try await repo.pull(remote: nil, branch: nil, strategy: .merge, options: PullOptions(), progress: nil)
+        }
+        try git(["merge", "--abort"], in: "a")
+        try await repo.pull(remote: nil, branch: nil, strategy: .merge, options: PullOptions(skipHooks: true), progress: nil)
+
+        #expect(try git(["rev-list", "--merges", "--count", "HEAD"], in: "a").trimmingCharacters(in: .whitespacesAndNewlines) == "1")
     }
 
     @Test func firstPushSetsUpstream() async throws {
@@ -66,6 +84,35 @@ struct RemoteSyncTests {
         try await repo.push(remote: "origin", forceWithLease: false, setUpstream: true, progress: nil)
 
         #expect(repo.currentBranch?.upstreamShortName == "origin/feature")
+    }
+
+    @Test func pushesToDifferentlyNamedRemoteBranch() async throws {
+        try git(["checkout", "-q", "-b", "feature"], in: "a")
+        try commit("a", file: "feature.txt", message: "feature")
+
+        let repo = try await GitRepository(path: root.appendingPathComponent("a"))
+        try await repo.push(remote: "origin", branch: "review/feature", forceWithLease: false, setUpstream: true,
+                            options: PushOptions(), progress: nil)
+
+        #expect(repo.currentBranch?.upstreamShortName == "origin/review/feature")
+        #expect(try git(["branch", "--list", "review/feature"], in: "origin.git").contains("review/feature"))
+    }
+
+    @Test func skipHooksBypassesPrePushHook() async throws {
+        try commit("a", file: "a.txt", message: "local")
+        let hook = root.appendingPathComponent("a/.git/hooks/pre-push")
+        try Data("#!/bin/sh\nexit 1\n".utf8).write(to: hook)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hook.path)
+
+        let repo = try await GitRepository(path: root.appendingPathComponent("a"))
+        await #expect(throws: (any Error).self) {
+            try await repo.push(remote: "origin", branch: "main", forceWithLease: false, setUpstream: false,
+                                options: PushOptions(), progress: nil)
+        }
+        try await repo.push(remote: "origin", branch: "main", forceWithLease: false, setUpstream: false,
+                            options: PushOptions(skipHooks: true), progress: nil)
+
+        #expect(try git(["log", "-1", "--format=%s", "main"], in: "origin.git").contains("local"))
     }
 
     @Test func syncPublishesBranchWithoutUpstream() async throws {
