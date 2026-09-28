@@ -1,135 +1,65 @@
 // Views/Dialogs/PullDialogView.swift
 // Grove
-//
-// Pull dialog: remote branch picker, Rebase toggle,
-// collapsible Options (Verify Signatures, Skip Hooks).
 
 import SwiftUI
 
-// MARK: - PullDialogView
-
-/// Dialog for pulling from a remote branch.
-///
-/// Remote branch dropdown, prominent
-/// "Use Rebase Instead of Merge" toggle, collapsible options section.
+/// Pulls the checked-out branch's upstream into it.
 struct PullDialogView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    // MARK: Dependencies
-
     let repository: any GitRepositoryProtocol
-    let remoteBranches: [BranchInfo]
-    let remotes: [RemoteInfo]
+    var onComplete: () -> Void = {}
 
-    // MARK: State
-
-    @State private var selectedRemoteBranch: String
     @State private var useRebase = false
     @State private var autoStash = false
-    @State private var verifySignatures = false
-    @State private var skipHooks = false
     @State private var isPulling = false
     @State private var errorMessage: String?
 
-    // MARK: Init
-
-    init(
-        repository: any GitRepositoryProtocol,
-        remoteBranches: [BranchInfo] = [],
-        remotes: [RemoteInfo] = []
-    ) {
-        self.repository = repository
-        self.remoteBranches = remoteBranches
-        self.remotes = remotes
-        let upstream = repository.currentBranch?.upstream ?? "origin/main"
-        let shortName = upstream.replacingOccurrences(of: "refs/remotes/", with: "")
-        _selectedRemoteBranch = State(initialValue: shortName)
-    }
-
-    // MARK: Body
+    private var branch: BranchInfo? { repository.currentBranch }
+    private var upstream: String? { branch?.upstreamShortName }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Pull",
-                description: "Fetches changes from the chosen remote branch and integrates them into your local HEAD branch."
-            )
-
-            Divider()
-
-            Form {
-                LabeledContent("Remote Branch") {
-                    Picker("", selection: $selectedRemoteBranch) {
-                        ForEach(remoteBranchNames, id: \.self) { name in
-                            Text(name).tag(name)
+        DialogSheet(
+            title: "Pull",
+            message: "Fetches new commits from the upstream branch and integrates them into '\(branch?.name ?? "HEAD")'.",
+            symbol: "arrow.down.to.line",
+            progress: isPulling ? "Pulling from \(upstream ?? "remote")…" : nil,
+            errorMessage: errorMessage,
+            primaryTitle: "Pull",
+            isPrimaryDisabled: upstream == nil,
+            onCancel: { dismiss() },
+            onPrimary: performPull
+        ) {
+            DialogCard {
+                DialogField("From") {
+                    if let upstream {
+                        HStack(spacing: Theme.Spacing.sm) {
+                            Text(upstream).font(.monoCaption)
+                            if let branch, branch.behind > 0 {
+                                StatusBadge(title: "\(branch.behind) behind", symbol: "arrow.down", tone: .caution)
+                            }
                         }
+                    } else {
+                        Text("No upstream branch").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
                     }
-                    .labelsHidden()
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Toggle("Use Rebase Instead of Merge", isOn: $useRebase)
-                        .fontWeight(.medium)
-                    Text("Rebases the local HEAD branch onto the fetched revisions.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.leading, 20)
-                }
-                .padding(.vertical, 4)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Toggle("Auto Stash", isOn: $autoStash)
-                        .fontWeight(.medium)
-                    Text("Stashes local changes before pulling and restores them afterwards.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.leading, 20)
-                }
-                .padding(.vertical, 4)
-            }
-            .formStyle(.grouped)
-
-            DialogOptionsSection {
                 DialogOptionRow(
-                    isOn: $verifySignatures,
-                    label: "Verify Signatures",
-                    description: "Merge is aborted if the tip commit of the side branch is not signed with a valid key."
+                    isOn: $useRebase,
+                    label: "Rebase Instead of Merge",
+                    description: "Replays your local commits on top of the fetched ones."
                 )
-                Divider().padding(.vertical, 4)
                 DialogOptionRow(
-                    isOn: $skipHooks,
-                    label: "Skip Hooks",
-                    description: "Bypasses any associated hook scripts."
+                    isOn: $autoStash,
+                    label: "Stash Local Changes",
+                    description: "Stashes uncommitted changes first and restores them afterwards."
                 )
             }
-
-            if let error = errorMessage {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .font(.caption)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 4)
+            if upstream == nil {
+                Banner(symbol: "exclamationmark.triangle",
+                       message: "'\(branch?.name ?? "HEAD")' doesn't track a remote branch. Push it first to set one.")
             }
-
-            Divider()
-
-            SheetFooter(
-                cancelAction: { dismiss() },
-                primaryLabel: isPulling ? "Pulling…" : "Pull",
-                primaryAction: performPull,
-                isPrimaryDisabled: isPulling
-            )
         }
-        .frame(width: 460)
-    }
-
-    // MARK: Helpers
-
-    private var remoteBranchNames: [String] {
-        guard !remoteBranches.isEmpty else { return [selectedRemoteBranch] }
-        return remoteBranches.map { $0.name }
     }
 
     private func performPull() {
@@ -137,38 +67,22 @@ struct PullDialogView: View {
         errorMessage = nil
         Task {
             do {
-                // Auto stash: save local changes before pulling.
-                if autoStash {
-                    try await repository.stashCreate(
-                        message: "auto-stash before pull",
-                        includeUntracked: true,
-                        paths: nil
-                    )
-                }
-                try await repository.pull(
-                    remote: nil,
-                    rebase: useRebase,
-                    progress: nil
-                )
-                // Auto stash: restore local changes after pulling.
-                if autoStash {
+                let didStash = autoStash ? try await stashIfDirty(repository, message: "Grove: auto-stash before pull") : false
+                try await repository.pull(remote: nil, rebase: useRebase, progress: nil)
+                if didStash {
                     try await repository.stashApply(index: 0, drop: true)
                 }
+                onComplete()
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription
                 isPulling = false
+                onComplete()
             }
         }
     }
 }
 
-// MARK: - Preview
-
 #Preview {
-    PullDialogView(
-        repository: MockGitRepository(),
-        remoteBranches: MockData.branches.filter(\.isRemote),
-        remotes: MockData.remotes
-    )
+    PullDialogView(repository: MockGitRepository())
 }

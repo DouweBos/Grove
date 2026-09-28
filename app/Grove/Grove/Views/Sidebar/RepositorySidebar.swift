@@ -44,6 +44,12 @@ struct RepositorySidebar: View {
             WorktreesSidebarSection()
         }
         .listStyle(.sidebar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let message = viewModel.errorMessage {
+                Banner(symbol: "xmark.octagon", message: message, tone: .negative) { viewModel.dismissError() }
+                    .padding(Theme.Spacing.sm)
+            }
+        }
         .task {
             await viewModel.refresh()
         }
@@ -52,36 +58,59 @@ struct RepositorySidebar: View {
 
 // MARK: - RepositorySummaryHeader
 
-/// Repository name and checked-out branch, like Charon's disk summary.
+/// Repository name, checked-out branch and its sync state, like Charon's disk summary.
 private struct RepositorySummaryHeader: View {
     @Environment(SidebarViewModel.self) private var viewModel
 
+    private var head: BranchInfo? { viewModel.localBranches.first(where: \.isHEAD) }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             Text(viewModel.repository.path.lastPathComponent)
                 .font(.pageTitle)
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
                 .truncationMode(.middle)
             HStack(spacing: Theme.Spacing.xs) {
-                Image(systemName: "arrow.triangle.branch")
+                Image(systemName: head == nil ? "exclamationmark.triangle" : "arrow.triangle.branch")
                     .font(.system(size: 11, weight: .semibold))
-                Text(branchSummary)
+                Text(head?.name ?? "Detached HEAD")
                     .font(.monoCaption)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                if let upstream = head?.upstreamShortName {
+                    Text("\u{2192} \(upstream)")
+                        .font(.monoCaption)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
             .foregroundStyle(Theme.textSecondary)
+            badges
         }
         .padding(.vertical, Theme.Spacing.sm)
     }
 
-    private var branchSummary: String {
-        guard let head = viewModel.localBranches.first(where: \.isHEAD) else { return "Detached HEAD" }
-        var parts = [head.name]
-        if head.ahead > 0 { parts.append("↑\(head.ahead)") }
-        if head.behind > 0 { parts.append("↓\(head.behind)") }
-        return parts.joined(separator: " ")
+    @ViewBuilder
+    private var badges: some View {
+        let changes = viewModel.workingCopyBadgeCount
+        let ahead = head?.ahead ?? 0
+        let behind = head?.behind ?? 0
+        if changes > 0 || ahead > 0 || behind > 0 {
+            HStack(spacing: Theme.Spacing.xs) {
+                if changes > 0 {
+                    StatusBadge(title: "\(changes) changed", symbol: "pencil", tone: .caution)
+                }
+                if ahead > 0 {
+                    StatusBadge(title: "\(ahead) to push", symbol: "arrow.up", tone: .neutral)
+                }
+                if behind > 0 {
+                    StatusBadge(title: "\(behind) to pull", symbol: "arrow.down", tone: .caution)
+                }
+            }
+        } else {
+            StatusBadge(title: "Up to date", symbol: "checkmark.circle.fill", tone: .positive)
+        }
     }
 }
 

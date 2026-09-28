@@ -37,7 +37,9 @@ struct UnifiedSidebar: View {
                     Menu {
                         Button("Add Existing Repository…", systemImage: "folder.badge.plus") { viewModel.showAddDialog() }
                         Button("Clone Repository…", systemImage: "square.and.arrow.down") { viewModel.showCloneDialog() }
-                        Button("Create New Repository…", systemImage: "plus.square") { viewModel.showCreateDialog() }
+                        Button("New Repository…", systemImage: "plus.square.on.square") { viewModel.showCreateDialog() }
+                        Divider()
+                        Button("New Group…", systemImage: "folder.badge.plus") { viewModel.showNewGroupDialog() }
                     } label: {
                         Image(systemName: "plus")
                     }

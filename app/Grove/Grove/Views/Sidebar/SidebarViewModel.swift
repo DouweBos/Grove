@@ -56,7 +56,7 @@ final class SidebarViewModel {
     /// Local branches whose names appear in ``pinnedBranchNames``, sorted alphabetically.
     var pinnedBranches: [BranchInfo] {
         localBranches
-            .filter { pinnedBranchNames.contains($0.name) }
+            .filter { pinnedBranchNames.contains($0.name) && !archivedBranchNames.contains($0.name) }
             .sorted { $0.name < $1.name }
     }
 
@@ -70,14 +70,49 @@ final class SidebarViewModel {
         savePinnedBranches()
     }
 
+    // MARK: - Archived Branches
+
+    /// Branches the user archived: hidden from Branches, listed under Archived.
+    var archivedBranchNames: Set<String> = []
+
+    var archivedBranches: [BranchInfo] {
+        localBranches.filter { archivedBranchNames.contains($0.name) }.sorted { $0.name < $1.name }
+    }
+
+    func archive(branch: BranchInfo) {
+        archivedBranchNames.insert(branch.name)
+        pinnedBranchNames.remove(branch.name)
+        UserDefaults.standard.set(Array(archivedBranchNames), forKey: archivedBranchesDefaultsKey)
+        savePinnedBranches()
+    }
+
+    func unarchive(branch: BranchInfo) {
+        archivedBranchNames.remove(branch.name)
+        UserDefaults.standard.set(Array(archivedBranchNames), forKey: archivedBranchesDefaultsKey)
+    }
+
     // MARK: - Dependencies
 
     let repository: any GitRepositoryProtocol
+
+    /// Set by the session so a sidebar mutation refreshes every view, not just the sidebar.
+    var onRepositoryChanged: (() async -> Void)?
+
+    /// Call after anything that changed refs or the working tree.
+    func didChangeRepository() async {
+        if let onRepositoryChanged { await onRepositoryChanged() } else { await refresh() }
+    }
+
+    func dismissError() { errorMessage = nil }
 
     // MARK: - Private
 
     private var pinnedBranchesDefaultsKey: String {
         "grove.pinnedBranches.\(repository.path.path)"
+    }
+
+    private var archivedBranchesDefaultsKey: String {
+        "grove.archivedBranches.\(repository.path.path)"
     }
 
     // MARK: - Init
@@ -92,6 +127,7 @@ final class SidebarViewModel {
     private func loadPinnedBranches() {
         let saved = UserDefaults.standard.stringArray(forKey: pinnedBranchesDefaultsKey) ?? []
         pinnedBranchNames = Set(saved)
+        archivedBranchNames = Set(UserDefaults.standard.stringArray(forKey: archivedBranchesDefaultsKey) ?? [])
     }
 
     private func savePinnedBranches() {
@@ -138,16 +174,28 @@ final class SidebarViewModel {
     func checkout(branch: BranchInfo) async {
         do {
             try await repository.checkout(branch: branch.name)
-            await refresh()
+            await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    func deleteBranch(_ branch: BranchInfo) async {
+    /// Checks out a remote branch as a local tracking branch (git's DWIM),
+    /// or the existing local branch of the same name.
+    func checkout(remoteBranch branch: BranchInfo) async {
+        let localName = Self.shortName(of: branch)
         do {
-            try await repository.deleteBranch(name: branch.name, force: false)
-            await refresh()
+            try await repository.checkout(branch: localName)
+            await didChangeRepository()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteBranch(_ branch: BranchInfo, force: Bool = false) async {
+        do {
+            try await repository.deleteBranch(name: branch.name, force: force)
+            await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -157,7 +205,7 @@ final class SidebarViewModel {
     func merge(branch: BranchInfo) async {
         do {
             try await repository.merge(branch: branch.name)
-            await refresh()
+            await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -167,7 +215,7 @@ final class SidebarViewModel {
     func rebase(onto branch: BranchInfo) async {
         do {
             try await repository.rebase(onto: branch.name)
-            await refresh()
+            await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -179,7 +227,7 @@ final class SidebarViewModel {
     func cherryPick(sha: String) async {
         do {
             try await repository.cherryPick(commit: sha)
-            await refresh()
+            await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -191,7 +239,7 @@ final class SidebarViewModel {
     func stashApply(index: Int) async {
         do {
             try await repository.stashApply(index: index, drop: false)
-            await refresh()
+            await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -201,7 +249,7 @@ final class SidebarViewModel {
     func deleteTag(_ tag: TagInfo) async {
         do {
             try await repository.deleteTag(name: tag.name)
-            await refresh()
+            await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -210,15 +258,9 @@ final class SidebarViewModel {
     /// Deletes a remote-tracking branch on the remote.
     func deleteRemoteBranch(_ branch: BranchInfo) async {
         guard let remote = branch.remoteName else { return }
-        let branchName: String = {
-            if branch.name.hasPrefix(remote + "/") {
-                return String(branch.name.dropFirst(remote.count + 1))
-            }
-            return branch.name
-        }()
         do {
-            try await repository.deleteRemoteBranch(name: branchName, remote: remote)
-            await refresh()
+            try await repository.deleteRemoteBranch(name: Self.shortName(of: branch), remote: remote)
+            await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -228,6 +270,7 @@ final class SidebarViewModel {
     func updateSubmodule(path: String) async {
         do {
             try await repository.updateSubmodule(path: path)
+            await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -237,6 +280,7 @@ final class SidebarViewModel {
     func removeWorktree(path: String) async {
         do {
             try await repository.removeWorktree(path: path, force: false)
+            await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -244,19 +288,12 @@ final class SidebarViewModel {
 
     // MARK: - Derived
 
-    /// Branches considered "archived" — not HEAD, not ahead of upstream, and
-    /// therefore fully merged (or simply stale with no unpushed commits).
-    var archivedBranches: [BranchInfo] {
-        localBranches.filter { branch in
-            !branch.isHEAD && branch.ahead == 0
+    /// Remote branch name without its "remote/" prefix.
+    static func shortName(of branch: BranchInfo) -> String {
+        if let remote = branch.remoteName, branch.name.hasPrefix(remote + "/") {
+            return String(branch.name.dropFirst(remote.count + 1))
         }
-    }
-
-    /// Active local branches — HEAD or branches that have commits not yet pushed.
-    var activeBranches: [BranchInfo] {
-        localBranches.filter { branch in
-            branch.isHEAD || branch.ahead > 0
-        }
+        return branch.name
     }
 
     /// Branch groups derived from "/" in branch names.
@@ -264,7 +301,7 @@ final class SidebarViewModel {
         var ungrouped: [BranchInfo] = []
         var groups: [String: [BranchInfo]] = [:]
 
-        for branch in localBranches {
+        for branch in localBranches where !archivedBranchNames.contains(branch.name) {
             if let slashIndex = branch.name.firstIndex(of: "/") {
                 let prefix = String(branch.name[branch.name.startIndex..<slashIndex])
                 groups[prefix, default: []].append(branch)

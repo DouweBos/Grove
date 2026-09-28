@@ -36,31 +36,15 @@ struct SubmodulesSidebarSection: View {
     @Environment(SidebarViewModel.self) private var viewModel
     @Environment(WindowViewModel.self) private var windowVM
     @State private var submodules: [SubmoduleInfo] = []
-    @State private var isLoading = false
+    @State private var isExpanded = true
 
     var body: some View {
-        Section(header: SidebarSectionHeader(title: "Submodules")) {
-            if isLoading {
-                Label {
-                    Text("Loading…")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                } icon: {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-            } else if submodules.isEmpty {
-                Label {
-                    Text("No submodules")
-                        .font(.subheadline)
-                        .foregroundStyle(.tertiary)
-                } icon: {
-                    Image(systemName: "square.stack.3d.up.slash")
-                        .foregroundStyle(.tertiary)
-                }
-            } else {
-                ForEach(submodules) { submodule in
-                    submoduleRow(submodule)
+        Group {
+            if !submodules.isEmpty {
+                Section(isExpanded: $isExpanded) {
+                    ForEach(submodules) { submoduleRow($0) }
+                } header: {
+                    SidebarSectionHeader(title: "Submodules", count: submodules.count)
                 }
             }
         }
@@ -71,43 +55,23 @@ struct SubmodulesSidebarSection: View {
 
     // MARK: - Private
 
-    @ViewBuilder
     private func submoduleRow(_ submodule: SubmoduleInfo) -> some View {
-        Label {
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(submodule.name)
-                        .font(.subheadline)
-                        .lineLimit(1)
-                    Text(submodule.path)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                Spacer(minLength: 4)
-                if let sha = submodule.shortSHA {
-                    Text(sha)
-                        .font(.caption2)
-                        .fontDesign(.monospaced)
-                        .foregroundStyle(.tertiary)
-                }
+        SidebarRow(title: submodule.name, symbol: "shippingbox", tint: Theme.info) {
+            if let sha = submodule.shortSHA {
+                Text(sha).font(.system(size: 11, design: .monospaced))
             }
-        } icon: {
-            Image(systemName: "square.stack.3d.up")
-                .foregroundStyle(.purple)
         }
+        .help("\(submodule.path)\n\(submodule.url)")
         .contextMenu {
-            Button("Open Submodule") {
-                let fullPath = viewModel.repository.path
-                    .appendingPathComponent(submodule.path).path
+            Button("Open Submodule", systemImage: "arrow.up.forward.app") {
+                let fullPath = viewModel.repository.path.appendingPathComponent(submodule.path).path
                 windowVM.openReference(RepositoryReference(path: fullPath))
             }
-            Button("Update Submodule") {
+            Button("Update Submodule", systemImage: "arrow.down.circle") {
                 Task { await viewModel.updateSubmodule(path: submodule.path) }
             }
             Divider()
-            Button("Copy Path") {
+            Button("Copy Path", systemImage: "doc.on.doc") {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(submodule.path, forType: .string)
             }
@@ -119,9 +83,6 @@ struct SubmodulesSidebarSection: View {
     /// The `.gitmodules` format is an INI-like file.  Each submodule block begins
     /// with `[submodule "name"]` and contains `path` and `url` keys.
     private func loadSubmodules() async {
-        isLoading = true
-        defer { isLoading = false }
-
         let gitmodulesURL = viewModel.repository.path
             .appendingPathComponent(".gitmodules")
 
@@ -206,64 +167,12 @@ struct SubmodulesSidebarSection: View {
 
 // MARK: - Preview
 
-#Preview("No submodules") {
-    let vm = SidebarViewModel(repository: MockGitRepository())
-
-    return List(selection: Binding<SidebarItem?>.constant(nil)) {
+#Preview {
+    List(selection: Binding<SidebarItem?>.constant(nil)) {
         SubmodulesSidebarSection()
     }
     .listStyle(.sidebar)
-    .environment(vm)
-    .frame(width: 220, height: 80)
-}
-
-#Preview("With submodules (static)") {
-    // Build a fake section by injecting pre-built SubmoduleInfo via a helper wrapper.
-    let vm = SidebarViewModel(repository: MockGitRepository())
-
-    return List(selection: Binding<SidebarItem?>.constant(nil)) {
-        Section(header: SidebarSectionHeader(title: "Submodules")) {
-            Label {
-                HStack {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("vendor/libgit2")
-                            .font(.subheadline)
-                        Text("vendor/libgit2")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Text("a1b2c3d")
-                        .font(.caption2)
-                        .fontDesign(.monospaced)
-                        .foregroundStyle(.tertiary)
-                }
-            } icon: {
-                Image(systemName: "square.stack.3d.up")
-                    .foregroundStyle(.purple)
-            }
-            Label {
-                HStack {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("docs")
-                            .font(.subheadline)
-                        Text("docs/external")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Text("f6e5d4c")
-                        .font(.caption2)
-                        .fontDesign(.monospaced)
-                        .foregroundStyle(.tertiary)
-                }
-            } icon: {
-                Image(systemName: "square.stack.3d.up")
-                    .foregroundStyle(.purple)
-            }
-        }
-    }
-    .listStyle(.sidebar)
-    .environment(vm)
-    .frame(width: 220, height: 140)
+    .environment(SidebarViewModel(repository: MockGitRepository()))
+    .environment(WindowViewModel(manager: MockRepositoryManager()))
+    .frame(width: 240, height: 120)
 }

@@ -1,27 +1,16 @@
 // Views/Dialogs/SyncDialogView.swift
 // Grove
-//
-// Sync dialog: performs fetch + pull + push in sequence.
-// Shows per-phase progress and a rebase toggle matching the pull dialog style.
 
 import SwiftUI
 
-// MARK: - SyncDialogView
-
-/// Dialog that runs fetch, pull, then push in a single "sync" round-trip.
-///
-/// Modelled after ``PullDialogView``: remote picker, rebase toggle, progress
-/// bar that advances through the three phases.
+/// Fetch, pull, then push in one round-trip.
 struct SyncDialogView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    // MARK: Dependencies
-
     let repository: any GitRepositoryProtocol
     let remotes: [RemoteInfo]
-
-    // MARK: State
+    var onComplete: () -> Void = {}
 
     @State private var selectedRemote: String
     @State private var useRebase = false
@@ -29,82 +18,51 @@ struct SyncDialogView: View {
     @State private var progress: Double = 0
     @State private var errorMessage: String?
 
-    // MARK: Init
-
-    init(
-        repository: any GitRepositoryProtocol,
-        remotes: [RemoteInfo] = []
-    ) {
+    init(repository: any GitRepositoryProtocol, remotes: [RemoteInfo] = [], onComplete: @escaping () -> Void = {}) {
         self.repository = repository
         self.remotes = remotes
-        _selectedRemote = State(initialValue: remotes.first?.name ?? "origin")
+        self.onComplete = onComplete
+        let upstreamRemote = repository.currentBranch?.upstreamRemoteName
+        _selectedRemote = State(initialValue: upstreamRemote ?? remotes.first?.name ?? "origin")
     }
 
-    // MARK: Body
+    private var phase: String {
+        switch progress {
+        case ..<0.33: "Fetching…"
+        case ..<0.66: "Pulling…"
+        default: "Pushing…"
+        }
+    }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Sync",
-                description: "Fetches from the remote, integrates changes into the local HEAD branch, then pushes local commits back."
-            )
-
-            Divider()
-
-            Form {
-                LabeledContent("Remote") {
-                    Picker("", selection: $selectedRemote) {
-                        ForEach(remoteNames, id: \.self) { name in
-                            Text(name).tag(name)
-                        }
+        DialogSheet(
+            title: "Sync",
+            message: "Fetches from the remote, integrates new commits into '\(repository.currentBranch?.name ?? "HEAD")', then pushes your local commits.",
+            symbol: "arrow.triangle.2.circlepath",
+            progress: isSyncing ? phase : nil,
+            progressDetail: isSyncing ? selectedRemote : "",
+            fraction: isSyncing ? progress : nil,
+            errorMessage: errorMessage,
+            primaryTitle: "Sync",
+            isPrimaryDisabled: remotes.isEmpty,
+            onCancel: { dismiss() },
+            onPrimary: performSync
+        ) {
+            DialogCard {
+                DialogField("Remote") {
+                    Picker("Remote", selection: $selectedRemote) {
+                        ForEach(remotes) { Text($0.name).tag($0.name) }
                     }
                     .labelsHidden()
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .disabled(remotes.isEmpty)
                 }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Toggle("Use Rebase Instead of Merge", isOn: $useRebase)
-                        .fontWeight(.medium)
-                    Text("Rebases the local HEAD branch onto the fetched revisions during pull.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.leading, 20)
-                }
-                .padding(.vertical, 4)
+                DialogOptionRow(
+                    isOn: $useRebase,
+                    label: "Rebase Instead of Merge",
+                    description: "Replays your local commits on top of the fetched ones."
+                )
             }
-            .formStyle(.grouped)
-
-            if isSyncing {
-                ProgressView(value: progress)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 8)
-            }
-
-            if let error = errorMessage {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .font(.caption)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 4)
-            }
-
-            Divider()
-
-            SheetFooter(
-                cancelAction: { dismiss() },
-                primaryLabel: isSyncing ? "Syncing\u{2026}" : "Sync",
-                primaryAction: performSync,
-                isPrimaryDisabled: isSyncing
-            )
         }
-        .frame(width: 460)
-    }
-
-    // MARK: Helpers
-
-    private var remoteNames: [String] {
-        guard !remotes.isEmpty else { return [selectedRemote] }
-        return remotes.map(\.name)
     }
 
     private func performSync() {
@@ -113,28 +71,20 @@ struct SyncDialogView: View {
         progress = 0
         Task {
             do {
-                let remote: String? = selectedRemote.isEmpty ? nil : selectedRemote
-                try await repository.sync(
-                    remote: remote,
-                    rebase: useRebase,
-                    progress: { value in
-                        Task { @MainActor in progress = value }
-                    }
-                )
+                try await repository.sync(remote: selectedRemote, rebase: useRebase) { value in
+                    Task { @MainActor in progress = value }
+                }
+                onComplete()
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription
                 isSyncing = false
+                onComplete()
             }
         }
     }
 }
 
-// MARK: - Preview
-
 #Preview {
-    SyncDialogView(
-        repository: MockGitRepository(),
-        remotes: MockData.remotes
-    )
+    SyncDialogView(repository: MockGitRepository(), remotes: MockData.remotes)
 }

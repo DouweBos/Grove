@@ -44,13 +44,13 @@ struct SectionHeader<MenuContent: View>: View {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                         .animation(.easeInOut(duration: 0.18), value: isExpanded)
 
                     Text(title)
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .textCase(.uppercase)
                         .kerning(0.3)
                         .lineLimit(1)
@@ -64,12 +64,12 @@ struct SectionHeader<MenuContent: View>: View {
             if let count, count > 0 {
                 Text("\(count)")
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 1)
                     .background(
                         Capsule()
-                            .fill(Color.primary.opacity(0.08))
+                            .fill(Theme.subtleFill)
                     )
             }
 
@@ -80,7 +80,7 @@ struct SectionHeader<MenuContent: View>: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .frame(width: 16, height: 16)
                 }
                 .menuStyle(.borderlessButton)

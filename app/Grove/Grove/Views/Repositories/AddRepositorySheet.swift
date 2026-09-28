@@ -1,16 +1,10 @@
 // Views/Repositories/AddRepositorySheet.swift
 // Grove
-//
-// Sheet for adding an existing local repository to the browser.
 
 import SwiftUI
 import UniformTypeIdentifiers
 
-// MARK: - AddRepositorySheet
-
-/// Sheet presented when the user clicks "Add" in the repository browser.
-///
-/// Opens a folder picker and bookmarks the chosen directory.
+/// Adds an existing local repository to the browser.
 struct AddRepositorySheet: View {
 
     @Environment(WindowViewModel.self) private var viewModel
@@ -18,61 +12,43 @@ struct AddRepositorySheet: View {
 
     @State private var selectedURL: URL?
     @State private var isPickerPresented = false
+    @State private var groupID: UUID?
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            SheetHeader(
-                title: "Add Repository",
-                description: "Choose a local folder that contains an existing Git repository."
-            )
-
-            Divider()
-
-            // Fields
-            Form {
-                LabeledContent("Repository") {
-                    HStack {
-                        Text(selectedURL?.path ?? "No folder selected")
-                            .foregroundStyle(selectedURL == nil ? .secondary : .primary)
-                            .lineLimit(1)
-                            .truncationMode(.head)
-                        Spacer()
-                        Button("Choose...") {
-                            isPickerPresented = true
+        DialogSheet(
+            title: "Add Repository",
+            message: "Choose a folder that already contains a Git repository.",
+            symbol: "folder.badge.plus",
+            primaryTitle: "Add",
+            isPrimaryDisabled: selectedURL == nil,
+            onCancel: { dismiss() },
+            onPrimary: {
+                guard let url = selectedURL else { return }
+                viewModel.addBookmark(path: url.path, displayName: url.lastPathComponent, groupID: groupID)
+                dismiss()
+            }
+        ) {
+            DialogCard {
+                DialogField("Folder") {
+                    DialogPathField(path: selectedURL?.path) { isPickerPresented = true }
+                }
+                if !viewModel.sortedGroups.isEmpty {
+                    DialogField("Group") {
+                        Picker("Group", selection: $groupID) {
+                            Text("None").tag(UUID?.none)
+                            ForEach(viewModel.sortedGroups) { Text($0.name).tag(UUID?.some($0.id)) }
                         }
+                        .labelsHidden()
                     }
                 }
             }
-            .formStyle(.grouped)
-            .fileImporter(
-                isPresented: $isPickerPresented,
-                allowedContentTypes: [.folder]
-            ) { result in
-                if case .success(let url) = result {
-                    selectedURL = url
-                }
-            }
-
-            Divider()
-
-            // Footer
-            SheetFooter(
-                cancelAction: { dismiss() },
-                primaryLabel: "Add",
-                primaryAction: {
-                    guard let url = selectedURL else { return }
-                    viewModel.addBookmark(path: url.path, displayName: url.lastPathComponent)
-                    dismiss()
-                },
-                isPrimaryDisabled: selectedURL == nil
-            )
         }
-        .frame(width: 460)
+        .fileImporter(isPresented: $isPickerPresented, allowedContentTypes: [.folder]) { result in
+            if case .success(let url) = result { selectedURL = url }
+        }
+        .onAppear { groupID = viewModel.selectedBookmark?.groupID }
     }
 }
-
-// MARK: - Preview
 
 #Preview {
     AddRepositorySheet()

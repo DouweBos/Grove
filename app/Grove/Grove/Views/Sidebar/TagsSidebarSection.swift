@@ -3,89 +3,72 @@
 
 import SwiftUI
 
-/// The TAGS section of the sidebar.
+/// Tags, collapsed by default since repositories often have many. Hidden when there are none.
 struct TagsSidebarSection: View {
 
     @Environment(SidebarViewModel.self) private var viewModel
 
-    // MARK: - Sheet / Alert State
-
-    @State private var isShowingCreateBranch = false
-    @State private var createBranchFromTag: String?
-
-    @State private var isShowingDeleteAlert = false
+    @State private var isExpanded = false
+    @State private var createFromRef: CreateBranchRequest?
     @State private var tagToDelete: TagInfo?
 
     var body: some View {
-        Section(header: SidebarSectionHeader(title: "Tags")) {
-            ForEach(viewModel.tags) { tag in
-                tagRow(tag)
+        if !viewModel.tags.isEmpty {
+            Section(isExpanded: $isExpanded) {
+                ForEach(viewModel.tags) { tagRow($0) }
+            } header: {
+                SidebarSectionHeader(title: "Tags", count: viewModel.tags.count)
             }
-        }
-        .sheet(isPresented: $isShowingCreateBranch) {
-            CreateBranchDialogView(
-                repository: viewModel.repository,
-                localBranches: viewModel.localBranches,
-                fromRef: createBranchFromTag
-            ) { _ in
-                Task { await viewModel.refresh() }
+            .sheet(item: $createFromRef) { request in
+                CreateBranchDialogView(
+                    repository: viewModel.repository,
+                    localBranches: viewModel.localBranches,
+                    fromRef: request.ref
+                ) { _ in
+                    Task { await viewModel.didChangeRepository() }
+                }
             }
-        }
-        .alert(
-            "Delete Tag",
-            isPresented: $isShowingDeleteAlert,
-            presenting: tagToDelete
-        ) { tag in
-            Button("Delete", role: .destructive) {
-                Task { await viewModel.deleteTag(tag) }
+            .confirmationDialog(
+                "Delete the tag \u{201C}\(tagToDelete?.name ?? "")\u{201D}?",
+                isPresented: Binding(get: { tagToDelete != nil }, set: { if !$0 { tagToDelete = nil } }),
+                presenting: tagToDelete
+            ) { tag in
+                Button("Delete Tag", role: .destructive) {
+                    Task { await viewModel.deleteTag(tag) }
+                }
+            } message: { _ in
+                Text("Only the local tag is deleted; a pushed copy stays on the remote.")
             }
-            Button("Cancel", role: .cancel) { }
-        } message: { tag in
-            Text("Delete tag \"\(tag.name)\"? This cannot be undone.")
         }
     }
 
-    @ViewBuilder
     private func tagRow(_ tag: TagInfo) -> some View {
-        Label {
-            HStack {
-                Text(tag.name)
-                    .font(.subheadline)
-                    .lineLimit(1)
-                if tag.isAnnotated {
-                    Spacer()
-                    Image(systemName: "tag.fill")
-                        .imageScale(.small)
-                        .foregroundStyle(.secondary)
+        SidebarRow(title: tag.name, symbol: tag.isAnnotated ? "tag.fill" : "tag", tint: Theme.warning)
+            .tag(SidebarItem.tag(tag))
+            .draggable(tag.name)
+            .contextMenu {
+                Button("New Branch from \u{201C}\(tag.name)\u{201D}…", systemImage: "arrow.triangle.branch") {
+                    createFromRef = CreateBranchRequest(ref: tag.name)
+                }
+                Button("Copy Name", systemImage: "doc.on.doc") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(tag.name, forType: .string)
+                }
+                Divider()
+                Button("Delete Tag…", systemImage: "trash", role: .destructive) {
+                    tagToDelete = tag
                 }
             }
-        } icon: {
-            Image(systemName: "tag")
-                .foregroundStyle(.orange)
-        }
-        .tag(SidebarItem.tag(tag))
-        .contextMenu {
-            Button("Create Branch at \"\(tag.name)\"...") {
-                createBranchFromTag = tag.name
-                isShowingCreateBranch = true
-            }
-            Divider()
-            Button("Delete Tag \"\(tag.name)\"...", role: .destructive) {
-                tagToDelete = tag
-                isShowingDeleteAlert = true
-            }
-        }
     }
 }
 
 #Preview {
     let vm = SidebarViewModel(repository: MockGitRepository())
     vm.tags = MockData.tags
-
     return List(selection: Binding<SidebarItem?>.constant(.history)) {
         TagsSidebarSection()
     }
     .listStyle(.sidebar)
     .environment(vm)
-    .frame(width: 220, height: 160)
+    .frame(width: 240, height: 160)
 }
