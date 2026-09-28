@@ -1,7 +1,7 @@
 // Domain/Hosting/HostingAccounts.swift
 // Grove
 //
-// Accounts Grove signs in to itself, like Tower: service, host and username here, the token in the Keychain.
+// Accounts Grove signs in to itself: service, host and username here, the token in the Keychain.
 
 import Foundation
 import Observation

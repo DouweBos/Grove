@@ -21,7 +21,7 @@ nonisolated struct RepositoryBookmarkData: Identifiable, Hashable, Codable, Send
     /// Identifier of the group this bookmark belongs to, if any.
     var groupID: UUID?
 
-    /// Hides future dates written by an earlier Tower import that used the wrong reference year.
+    /// Hides future dates an earlier bookmark import wrote with the wrong reference year.
     var displayLastOpenedDate: Date? {
         lastOpenedDate.flatMap { $0 > .now ? nil : $0 }
     }
