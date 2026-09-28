@@ -49,7 +49,7 @@ platform :mac do
               "CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY='Developer ID Application' DEVELOPMENT_TEAM=#{TEAM_ID}"
     )
     app = File.join(DIST, "Grove.app")
-    notarize(package: app, api_key: api_key, bundle_id: "com.houwert.Grove")
+    notarize(package: app, api_key: api_key, bundle_id: "com.houwert.Grove", print_log: true)
 
     feed = File.join(DIST, "appcast")
     archive = File.join(feed, "Grove-#{version}.zip")
