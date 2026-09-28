@@ -210,6 +210,8 @@ struct BranchComparisonView: View {
             await compare()
         } catch {
             errorMessage = error.localizedDescription
+            // A conflicted merge or rebase still changes the repository.
+            await onRepositoryChanged?()
         }
     }
 }
