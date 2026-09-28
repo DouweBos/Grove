@@ -52,6 +52,9 @@ struct PullRequestDetailView: View {
                     }
                 }
                 Spacer(minLength: Theme.Spacing.md)
+                if viewModel.isRevalidating {
+                    ProgressView().controlSize(.small).help("Checking GitHub for changes")
+                }
                 actions(pr)
             }
             Picker("Section", selection: Binding(get: { viewModel.activeDetailTab },

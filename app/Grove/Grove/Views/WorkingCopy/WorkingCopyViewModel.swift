@@ -41,7 +41,9 @@ final class WorkingCopyViewModel {
     // MARK: Status
 
     var statusEntries: [StatusEntry] = []
-    var allTrackedFiles: [String] = []
+    /// Only read while the All Files mode is shown; `ls-files` is slow on large repositories.
+    private(set) var allTrackedFiles: [String] = []
+    private var trackedFilesAreStale = true
 
     var conflictedFiles: [StatusEntry] { statusEntries.filter(\.isConflicted) }
     var stagedFiles: [StatusEntry] { statusEntries.filter { !$0.isConflicted && $0.indexStatus != .unmodified } }
@@ -66,6 +68,7 @@ final class WorkingCopyViewModel {
     /// Bumped on every diff load so views reading files directly (images) reload too.
     private(set) var diffLoadCount = 0
     private(set) var conflictVersions: ConflictVersions?
+    @ObservationIgnored private var diffCache = WorkingDiffCache()
 
     private(set) var fileViewMode: FileViewMode = .flatModified
     private(set) var ignoreWhitespace = false
@@ -132,18 +135,31 @@ final class WorkingCopyViewModel {
         do {
             try await repository.refreshStatus()
             statusEntries = try await repository.status()
+            diffCache.statusRefreshed(statusEntries)
             hasLoadedStatus = true
         } catch {
             errorMessage = error.localizedDescription
             return
         }
-        allTrackedFiles = (try? await repository.listTrackedFiles()) ?? []
-        cachedRecentCommits = (try? await repository.log(maxCount: 10, skip: 0, branch: nil)) ?? []
-        isSigningAvailable = (try? await repository.isSigningConfigured()) ?? false
-        identity = await repository.commitIdentity()
-        operationContext = isInOperation ? await repository.operationContext() : nil
+        trackedFilesAreStale = true
+        async let trackedFiles: Void = loadTrackedFilesIfShown()
+        async let recent = try? repository.log(maxCount: 10, skip: 0, branch: nil)
+        async let signing = try? repository.isSigningConfigured()
+        async let commitIdentity = repository.commitIdentity()
+        async let context = isInOperation ? repository.operationContext() : nil
+        cachedRecentCommits = await recent ?? []
+        isSigningAvailable = await signing ?? false
+        identity = await commitIdentity
+        operationContext = await context
+        await trackedFiles
         if conflictedFiles.isEmpty { showOnlyConflicts = false }
         await reconcileSelection()
+    }
+
+    private func loadTrackedFilesIfShown() async {
+        guard fileViewMode == .allFiles, trackedFilesAreStale else { return }
+        trackedFilesAreStale = false
+        allTrackedFiles = (try? await repository.listTrackedFiles()) ?? []
     }
 
     /// Keep the selection pointed at something that still has changes after the status moved.
@@ -181,8 +197,9 @@ final class WorkingCopyViewModel {
         await loadDiff()
     }
 
-    func setFileViewMode(_ mode: FileViewMode) {
+    func setFileViewMode(_ mode: FileViewMode) async {
         fileViewMode = mode
+        await loadTrackedFilesIfShown()
     }
 
     func setShowOnlyConflicts(_ show: Bool) {
@@ -196,20 +213,38 @@ final class WorkingCopyViewModel {
     private func loadDiff() async {
         guard let entry = selectedEntry else { return }
         diffLoadCount += 1
-        isDiffLoading = true
-        defer { isDiffLoading = false }
         if entry.isConflicted {
             currentDiff = nil
+            isDiffLoading = true
+            defer { isDiffLoading = false }
             conflictVersions = try? await repository.conflictVersions(path: entry.path)
             return
         }
         conflictVersions = nil
+        let key = WorkingDiffCache.Key(path: entry.path, side: selectedSide, ignoreWhitespace: ignoreWhitespace)
+        // Another file's diff must never sit under this file's name, so a miss starts empty.
+        let hit = diffCache.lookup(key)
+        currentDiff = hit?.diff
+        guard hit?.isCurrent != true else {
+            isDiffLoading = false
+            return
+        }
+        let generation = diffCache.generation
+        isDiffLoading = true
+        defer { if isShowing(key) { isDiffLoading = false } }
         do {
-            currentDiff = try await repository.diff(for: entry, staged: showingStaged, ignoreWhitespace: ignoreWhitespace)
+            let diff = try await repository.diff(for: entry, staged: key.side == .staged, ignoreWhitespace: key.ignoreWhitespace)
+            diffCache.store(diff, for: key, status: entry, loadedAt: generation)
+            if isShowing(key) { currentDiff = diff }
         } catch {
+            guard isShowing(key) else { return }
             currentDiff = nil
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func isShowing(_ key: WorkingDiffCache.Key) -> Bool {
+        selectedPath == key.path && selectedSide == key.side && ignoreWhitespace == key.ignoreWhitespace
     }
 
     // MARK: - Staging

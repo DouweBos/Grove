@@ -42,6 +42,8 @@ final class StashesViewModel {
     var onRepositoryChanged: (() async -> Void)?
 
     let repository: any GitRepositoryProtocol
+    // A stash commit is immutable, so its diff is cached by SHA; indices shift but SHAs don't.
+    @ObservationIgnored private var diffCache = LRUCache<String, [FileDiff]>(capacity: 30)
 
     init(repository: any GitRepositoryProtocol) {
         self.repository = repository
@@ -70,12 +72,19 @@ final class StashesViewModel {
     func select(_ stash: StashEntry) async {
         guard stash.sha != selectedStash?.sha else { return }
         selectedStash = stash
+        if let cached = diffCache.value(for: stash.sha) {
+            stashDiffs = cached
+            selectedFilePath = cached.first?.path
+            isLoadingDiff = false
+            return
+        }
         stashDiffs = []
         selectedFilePath = nil
         isLoadingDiff = true
-        defer { isLoadingDiff = false }
+        defer { if selectedStash?.sha == stash.sha { isLoadingDiff = false } }
         do {
             let diffs = try await repository.stashDiff(index: stash.id)
+            diffCache.insert(diffs, for: stash.sha)
             guard selectedStash?.sha == stash.sha else { return }
             stashDiffs = diffs
             selectedFilePath = diffs.first?.path

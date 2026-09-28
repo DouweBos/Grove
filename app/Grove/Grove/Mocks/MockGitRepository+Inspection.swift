@@ -6,7 +6,8 @@ import Foundation
 extension MockGitRepository {
 
     func stashDiff(index: Int) async throws -> [FileDiff] {
-        MockData.commitFileDiffs
+        recordCall()
+        return MockData.commitFileDiffs
     }
 
     func fileContents(path: String, revision: String?) async throws -> String {
@@ -43,11 +44,18 @@ extension MockGitRepository {
     func setRemoteURL(_ url: String, forRemote name: String) async throws {}
 
     func pullRequestDiff(number: Int) async throws -> [FileDiff] {
-        MockData.commitFileDiffs
+        recordCall()
+        return MockData.commitFileDiffs
+    }
+
+    func diffForCommit(_ sha: String, path: String) async throws -> [FileDiff] {
+        recordCall()
+        return MockData.commitFileDiffs.filter { $0.path == path }
     }
 
     func pullRequestCommits(number: Int) async throws -> [CommitInfo] {
-        Array(MockData.commits.prefix(4))
+        recordCall()
+        return Array(MockData.commits.prefix(4))
     }
 }
 
