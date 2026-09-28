@@ -37,6 +37,9 @@ struct DiffHunkHeaderView: View {
 
     var onAction: ((HunkAction) -> Void)?
 
+    @Environment(\.diffViewportWidth) private var viewportWidth
+    @Environment(\.diffScrollOffset) private var scrollOffset
+
     // MARK: Body
 
     var body: some View {
@@ -53,8 +56,10 @@ struct DiffHunkHeaderView: View {
             }
         }
         .padding(.horizontal, Theme.Spacing.md)
-        .frame(height: 32)
+        // Spans the visible width and follows horizontal scrolling so the actions stay reachable.
+        .frame(width: viewportWidth, height: 32)
         .background(Theme.hunkHeaderFill)
+        .offset(x: scrollOffset)
     }
 
     // MARK: Buttons

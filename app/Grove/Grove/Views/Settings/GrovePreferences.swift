@@ -45,7 +45,8 @@ enum GrovePreferences {
 
     /// Whether discarding a hunk or lines asks for confirmation first.
     static var warnOnHunkDiscard: Bool {
-        defaults.object(forKey: Key.warnOnHunkDiscard) as? Bool ?? Default.warnOnHunkDiscard
+        get { defaults.object(forKey: Key.warnOnHunkDiscard) as? Bool ?? Default.warnOnHunkDiscard }
+        set { defaults.set(newValue, forKey: Key.warnOnHunkDiscard) }
     }
 
     /// Days without commits before Branches Review calls a branch stale.

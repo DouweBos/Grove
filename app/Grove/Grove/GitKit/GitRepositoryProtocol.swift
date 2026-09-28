@@ -229,6 +229,8 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func stashDiff(index: Int) async throws -> [FileDiff]
     /// File text at `revision`, or the working-tree copy when `revision` is nil.
     func fileContents(path: String, revision: String?) async throws -> String
+    /// Raw file bytes at `revision`, for binary content such as images.
+    func fileData(path: String, at revision: FileRevision) async throws -> Data
     /// Local branch names fully merged into `base`.
     func mergedBranches(into base: String) async throws -> Set<String>
     /// Commits `branch` has that `base` lacks (ahead) and vice versa (behind).
@@ -310,6 +312,7 @@ extension GitRepositoryProtocol {
 
     func stashDiff(index: Int) async throws -> [FileDiff] { [] }
     func fileContents(path: String, revision: String?) async throws -> String { "" }
+    func fileData(path: String, at revision: FileRevision) async throws -> Data { Data() }
     func mergedBranches(into base: String) async throws -> Set<String> { [] }
     func aheadBehind(branch: String, base: String) async throws -> (ahead: Int, behind: Int) { (0, 0) }
     func compareBranches(base: String, compare: String) async throws -> BranchComparison { BranchComparison() }

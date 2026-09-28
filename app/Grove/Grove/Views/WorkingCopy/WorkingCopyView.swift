@@ -12,18 +12,28 @@ struct WorkingCopyView: View {
 
     @AppStorage("WorkingCopyLeftWidth") private var leftWidth: Double = 360
     @State private var dragStartWidth: Double?
+    @State private var suppressHunkWarning = false
 
-    private let minLeft: Double = 280
-    private let minRight: Double = 320
+    private let minLeft: Double = 260
+    private let minRight: Double = 380
 
     var body: some View {
         GeometryReader { geo in
-            HStack(spacing: 0) {
-                WorkingCopyLeftColumn()
-                    .frame(width: clampedLeftWidth(total: geo.size.width))
-                resizeHandle(total: geo.size.width)
-                DiffPanelView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Too narrow for two usable columns (sidebar open in a small window): stack the diff below.
+            if geo.size.width >= minLeft + minRight + Theme.Spacing.md {
+                HStack(spacing: 0) {
+                    WorkingCopyLeftColumn()
+                        .frame(width: clampedLeftWidth(total: geo.size.width))
+                    resizeHandle(total: geo.size.width)
+                    DiffPanelView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            } else {
+                VStack(spacing: Theme.Spacing.md) {
+                    WorkingCopyLeftColumn(axis: .horizontal)
+                        .frame(height: max(240, geo.size.height * 0.4))
+                    DiffPanelView()
+                }
             }
         }
         .padding(.bottom, Theme.Spacing.lg)
@@ -34,6 +44,16 @@ struct WorkingCopyView: View {
         } message: { _ in
             Text("This can't be undone.")
         }
+        .confirmationDialog(viewModel.pendingHunkDiscard?.title ?? "Discard changes?", isPresented: hunkDiscardBinding,
+                            presenting: viewModel.pendingHunkDiscard) { pending in
+            Button("Discard", role: .destructive) {
+                Task { await viewModel.confirmHunkDiscard(pending, dontAskAgain: suppressHunkWarning) }
+            }
+            Button("Cancel", role: .cancel) { viewModel.cancelHunkDiscard() }
+        } message: { _ in
+            Text("The changes are removed from the working tree.")
+        }
+        .dialogSuppressionToggle("Don\u{2019}t ask again", isSuppressed: $suppressHunkWarning)
         .alert("Something Went Wrong", isPresented: errorBinding) {
             Button("OK") { viewModel.clearError() }
         } message: {
@@ -44,8 +64,7 @@ struct WorkingCopyView: View {
     // MARK: Resizing
 
     private func clampedLeftWidth(total: CGFloat) -> CGFloat {
-        // In narrow windows both minimums can't fit; give the left column at most 45%.
-        let lower = min(minLeft, Double(total) * 0.45)
+        let lower = minLeft
         let upper = max(lower, Double(total) - minRight - Double(Theme.Spacing.md))
         return CGFloat(min(max(leftWidth, lower), upper))
     }
@@ -83,6 +102,11 @@ struct WorkingCopyView: View {
     private var discardBinding: Binding<Bool> {
         Binding(get: { viewModel.pendingDiscard != nil },
                 set: { if !$0 { viewModel.cancelDiscard() } })
+    }
+
+    private var hunkDiscardBinding: Binding<Bool> {
+        Binding(get: { viewModel.pendingHunkDiscard != nil },
+                set: { if !$0 { viewModel.cancelHunkDiscard() } })
     }
 
     private var errorBinding: Binding<Bool> {

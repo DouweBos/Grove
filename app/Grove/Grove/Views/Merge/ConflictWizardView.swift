@@ -14,6 +14,8 @@ struct ConflictWizardView: View {
     let theirsLabel: String
     let fileURL: URL
     var onResolve: (ConflictSide) -> Void
+    /// `nil` hides the button, e.g. when no merge tool is configured.
+    var onOpenMergeTool: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
@@ -26,6 +28,10 @@ struct ConflictWizardView: View {
                 Spacer(minLength: Theme.Spacing.sm)
                 Button("Open File") { NSWorkspace.shared.open(fileURL) }
                     .help("Edit the conflict markers in your default editor")
+                if let onOpenMergeTool {
+                    Button("Open in Merge Tool", action: onOpenMergeTool)
+                        .help("Resolve in the merge tool set in Editor settings, then stage the result")
+                }
             }
             HStack(spacing: Theme.Spacing.md) {
                 ConflictVersionPanel(side: .ours, branchName: oursLabel, content: versions.map(\.ours)) {

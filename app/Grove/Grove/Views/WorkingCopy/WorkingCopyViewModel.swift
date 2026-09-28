@@ -63,6 +63,8 @@ final class WorkingCopyViewModel {
 
     private(set) var currentDiff: DiffResult?
     private(set) var isDiffLoading = false
+    /// Bumped on every diff load so views reading files directly (images) reload too.
+    private(set) var diffLoadCount = 0
     private(set) var conflictVersions: ConflictVersions?
 
     private(set) var fileViewMode: FileViewMode = .flatModified
@@ -117,6 +119,7 @@ final class WorkingCopyViewModel {
 
     private(set) var hasLoadedStatus = false
     private(set) var pendingDiscard: StatusEntry?
+    private(set) var pendingHunkDiscard: PendingHunkDiscard?
     var errorMessage: String?
 
     init(repository: any GitRepositoryProtocol) {
@@ -192,6 +195,7 @@ final class WorkingCopyViewModel {
 
     private func loadDiff() async {
         guard let entry = selectedEntry else { return }
+        diffLoadCount += 1
         isDiffLoading = true
         defer { isDiffLoading = false }
         if entry.isConflicted {
@@ -242,6 +246,25 @@ final class WorkingCopyViewModel {
 
     func performHunkAction(_ action: HunkAction, hunk: HunkData, lines: [DiffLine] = []) async {
         guard let path = selectedEntry?.path else { return }
+        if action.isDiscard && GrovePreferences.warnOnHunkDiscard {
+            pendingHunkDiscard = PendingHunkDiscard(action: action, hunk: hunk, lines: lines, path: path)
+            return
+        }
+        await applyHunkAction(action, hunk: hunk, lines: lines, path: path)
+    }
+
+    /// Takes the discard explicitly: the dialog clears `pendingHunkDiscard` before this task runs.
+    func confirmHunkDiscard(_ pending: PendingHunkDiscard, dontAskAgain: Bool) async {
+        pendingHunkDiscard = nil
+        if dontAskAgain { GrovePreferences.warnOnHunkDiscard = false }
+        await applyHunkAction(pending.action, hunk: pending.hunk, lines: pending.lines, path: pending.path)
+    }
+
+    func cancelHunkDiscard() {
+        pendingHunkDiscard = nil
+    }
+
+    private func applyHunkAction(_ action: HunkAction, hunk: HunkData, lines: [DiffLine], path: String) async {
         let changed = lines.isEmpty ? hunk.lines.filter { $0.type != .context } : lines
         await mutate {
             let repo = self.repository
@@ -393,6 +416,20 @@ final class WorkingCopyViewModel {
             await refresh()
         }
     }
+}
+
+/// A hunk or line discard waiting for the user to confirm it.
+struct PendingHunkDiscard {
+    let action: HunkAction
+    let hunk: HunkData
+    let lines: [DiffLine]
+    let path: String
+
+    var title: String { action == .discardLines ? "Discard the selected lines?" : "Discard this hunk?" }
+}
+
+extension HunkAction {
+    var isDiscard: Bool { self == .discardHunk || self == .discardLines }
 }
 
 extension StatusEntry {

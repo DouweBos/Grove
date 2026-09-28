@@ -86,6 +86,7 @@ struct FileHistoryView: View {
             VStack(spacing: 0) {
                 PanelHeader(title: commit.summary, detail: commit.shortSHA) {
                     if let diff = viewModel.fileDiff { DiffStatsLabel(stats: diff.stats) }
+                    if !isImage { WrapLinesToggle() }
                     Button { openBlame(commit) } label: { Image(systemName: "person.text.rectangle") }
                         .buttonStyle(.borderless)
                         .help("Open Blame at This Revision")
@@ -93,10 +94,14 @@ struct FileHistoryView: View {
                         .buttonStyle(.borderless)
                         .help("Export File at This Revision\u{2026}")
                 }
-                if viewModel.isLoadingDiff {
+                if isImage {
+                    RepositoryImageDiffView(source: .commit(commit.id, in: viewModel.repository),
+                                            path: viewModel.filePath, oldPath: viewModel.fileDiff?.oldPath)
+                } else if viewModel.isLoadingDiff {
                     ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let diff = viewModel.fileDiff {
-                    ScrollView { DiffView(diff: diff) }
+                    DiffScrollView { DiffView(diff: diff) }
+                        .id(commit.id)
                 } else {
                     EmptyStateView(systemImage: "doc.text", title: "No Diff",
                                    subtitle: "This commit has no textual changes for the file.")
@@ -107,6 +112,8 @@ struct FileHistoryView: View {
                            subtitle: "Pick a commit to see how the file changed.")
         }
     }
+
+    private var isImage: Bool { ImageDiffView.supports(path: viewModel.filePath) }
 
     // MARK: - Actions
 

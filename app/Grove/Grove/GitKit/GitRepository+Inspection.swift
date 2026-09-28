@@ -28,6 +28,19 @@ extension GitRepository {
         return try await inspectionShell.run(["show", "\(revision):\(file)"]).stdout
     }
 
+    func fileData(path file: String, at revision: FileRevision) async throws -> Data {
+        switch revision {
+        case .workingTree:
+            return try Data(contentsOf: path.appendingPathComponent(file))
+        case .index:
+            return try await inspectionShell.run(["show", ":\(file)"]).stdoutData
+        case .conflictStage(let stage):
+            return try await inspectionShell.run(["show", ":\(stage):\(file)"]).stdoutData
+        case .commit(let rev):
+            return try await inspectionShell.run(["show", "\(rev):\(file)"]).stdoutData
+        }
+    }
+
     // MARK: Branch Review
 
     func mergedBranches(into base: String) async throws -> Set<String> {

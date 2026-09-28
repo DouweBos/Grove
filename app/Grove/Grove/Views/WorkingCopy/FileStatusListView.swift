@@ -102,6 +102,8 @@ struct FileStatusListView: View {
 /// A labelled group of rows; flat or grouped by directory depending on the view mode.
 private struct FileSection<Accessory: View>: View {
     @Environment(WorkingCopyViewModel.self) private var viewModel
+    @AppStorage(GrovePreferences.Key.diffToolPath) private var diffToolPath = ""
+    @AppStorage(GrovePreferences.Key.mergeToolPath) private var mergeToolPath = ""
 
     let title: String
     let entries: [StatusEntry]
@@ -144,6 +146,10 @@ private struct FileSection<Accessory: View>: View {
             }
         )
         .onTapGesture { Task { await viewModel.select(entry, side: side) } }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(entry.path)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { Task { await viewModel.select(entry, side: side) } }
         .contextMenu { contextMenu(for: entry) }
     }
 
@@ -164,8 +170,14 @@ private struct FileSection<Accessory: View>: View {
             Button(staged ? "Unstage" : "Stage") {
                 Task { staged ? await viewModel.unstageFile(entry) : await viewModel.stageFile(entry) }
             }
+            if !diffToolPath.isEmpty {
+                Button("Open in Diff Tool") { Task { await viewModel.openInDiffTool(entry, side: side) } }
+            }
         } else {
             Button("Resolve…") { Task { await viewModel.select(entry) } }
+            if !mergeToolPath.isEmpty {
+                Button("Open in Merge Tool") { Task { await viewModel.openInMergeTool(entry) } }
+            }
         }
         Divider()
         Button("Copy Path") {

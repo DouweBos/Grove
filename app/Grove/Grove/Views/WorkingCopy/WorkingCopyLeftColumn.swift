@@ -8,15 +8,29 @@ import SwiftUI
 
 struct WorkingCopyLeftColumn: View {
     @Environment(WorkingCopyViewModel.self) private var viewModel
+    /// Horizontal when the Changes tab stacks the diff underneath in narrow windows.
+    var axis: Axis = .vertical
 
     var body: some View {
-        VStack(spacing: Theme.Spacing.md) {
-            if viewModel.isInOperation {
-                ConflictBannerView()
-            } else {
-                CommitComposerView()
+        if axis == .vertical {
+            VStack(spacing: Theme.Spacing.md) {
+                composer
+                FileStatusListView()
             }
-            FileStatusListView()
+        } else {
+            HStack(alignment: .top, spacing: Theme.Spacing.md) {
+                composer.frame(maxWidth: .infinity)
+                FileStatusListView().frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var composer: some View {
+        if viewModel.isInOperation {
+            ConflictBannerView()
+        } else {
+            CommitComposerView()
         }
     }
 }
