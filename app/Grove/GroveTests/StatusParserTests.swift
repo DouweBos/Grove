@@ -123,7 +123,7 @@ struct StatusParserTests {
     @Test func statusParser_parsesConflictedFile() {
         // Format: `u XY sub m1 m2 m3 mW hH h1 h2 h3 path`
         // Needs at least 12 space-separated fields
-        let line = "u UU N... 100644 100644 100644 100644 abc1234 def1234 ghi1234 jkl1234 Sources/App/Conflict.swift"
+        let line = "u UU N... 100644 100644 100644 100644 abc1234 def1234 ghi1234 Sources/App/Conflict.swift"
         let entries = StatusParser.parse(line)
 
         #expect(entries.count == 1)

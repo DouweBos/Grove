@@ -40,68 +40,48 @@ struct DiffHunkHeaderView: View {
     // MARK: Body
 
     var body: some View {
-        HStack(spacing: 0) {
-            // @@ header text
+        HStack(spacing: Theme.Spacing.sm) {
             Text(verbatim: hunk.header)
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(Color(white: 0.6))
+                .font(.monoCaption)
+                .foregroundStyle(Theme.textSecondary)
                 .lineLimit(1)
                 .truncationMode(.tail)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-
-            Spacer()
-
-            // Action buttons — right-aligned
-            HStack(spacing: 6) {
-                if hasSelectedLines {
-                    lineButtons
-                }
+            Spacer(minLength: Theme.Spacing.sm)
+            if onAction != nil {
+                if hasSelectedLines { lineButtons }
                 hunkButtons
             }
-            .padding(.trailing, 8)
         }
-        .background(DiffColors.hunkHeaderBackground)
+        .padding(.horizontal, Theme.Spacing.md)
+        .frame(height: 32)
+        .background(Theme.hunkHeaderFill)
     }
 
-    // MARK: Hunk-level buttons
+    // MARK: Buttons
 
     @ViewBuilder
     private var hunkButtons: some View {
         if showingStaged {
-            actionButton("Unstage Chunk") { onAction?(.unstageHunk) }
-            actionButton("Discard Chunk", role: .destructive) { onAction?(.discardHunk) }
+            actionButton("Unstage Hunk") { onAction?(.unstageHunk) }
         } else {
-            actionButton("Discard Chunk", role: .destructive) { onAction?(.discardHunk) }
-            actionButton("Stage Chunk") { onAction?(.stageHunk) }
+            actionButton("Discard Hunk", role: .destructive) { onAction?(.discardHunk) }
+            actionButton("Stage Hunk") { onAction?(.stageHunk) }
         }
     }
-
-    // MARK: Line-level buttons
 
     @ViewBuilder
     private var lineButtons: some View {
         if showingStaged {
             actionButton("Unstage Lines") { onAction?(.unstageLines) }
-            actionButton("Discard Lines", role: .destructive) { onAction?(.discardLines) }
         } else {
             actionButton("Discard Lines", role: .destructive) { onAction?(.discardLines) }
             actionButton("Stage Lines") { onAction?(.stageLines) }
         }
     }
 
-    // MARK: Button Builder
-
-    private func actionButton(
-        _ title: String,
-        role: ButtonRole? = nil,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(role: role, action: action) {
-            Text(title)
-                .font(.system(size: 11))
-        }
-        .buttonStyle(HunkActionButtonStyle(isDestructive: role == .destructive))
+    private func actionButton(_ title: String, role: ButtonRole? = nil, action: @escaping () -> Void) -> some View {
+        Button(title, role: role, action: action)
+            .buttonStyle(HunkActionButtonStyle(isDestructive: role == .destructive))
     }
 }
 
@@ -110,26 +90,17 @@ struct DiffHunkHeaderView: View {
 private struct HunkActionButtonStyle: ButtonStyle {
     let isDestructive: Bool
 
-    private let destructiveRed = Color(red: 0xF8 / 255.0, green: 0x51 / 255.0, blue: 0x49 / 255.0)
-
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .padding(.horizontal, 8)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(isDestructive ? Theme.danger : Theme.textPrimary)
+            .padding(.horizontal, Theme.Spacing.sm)
             .padding(.vertical, 3)
-            .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(buttonBackground(pressed: configuration.isPressed))
-            )
-            .foregroundStyle(isDestructive ? destructiveRed : .primary)
-            .opacity(configuration.isPressed ? 0.7 : 1)
-    }
-
-    private func buttonBackground(pressed: Bool) -> Color {
-        if isDestructive {
-            return Color(red: 0xF8 / 255.0, green: 0x51 / 255.0, blue: 0x49 / 255.0)
-                .opacity(pressed ? 0.25 : 0.15)
-        }
-        return Color(white: pressed ? 0.35 : 0.28, opacity: 1)
+            .background(isDestructive ? Theme.dangerFill : Theme.surface,
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous)
+                .strokeBorder(isDestructive ? Color.clear : Theme.border, lineWidth: 0.5))
+            .opacity(configuration.isPressed ? 0.6 : 1)
     }
 }
 
@@ -138,13 +109,10 @@ private struct HunkActionButtonStyle: ButtonStyle {
 #Preview("Hunk Header") {
     let hunk = MockData.diffResult(for: "Example.swift").hunks[0]
     VStack(spacing: 1) {
-        DiffHunkHeaderView(hunk: hunk, showingStaged: false, hasSelectedLines: false) { action in
-            print("Action: \(action)")
-        }
-        DiffHunkHeaderView(hunk: hunk, showingStaged: true, hasSelectedLines: true) { action in
-            print("Action: \(action)")
-        }
+        DiffHunkHeaderView(hunk: hunk, showingStaged: false, hasSelectedLines: false) { _ in }
+        DiffHunkHeaderView(hunk: hunk, showingStaged: true, hasSelectedLines: true) { _ in }
+        DiffHunkHeaderView(hunk: hunk, showingStaged: false)
     }
     .frame(width: 700)
-    .background(Color(white: 0.11))
+    .background(Theme.surface)
 }

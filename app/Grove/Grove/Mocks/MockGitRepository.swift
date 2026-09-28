@@ -463,6 +463,25 @@ final class MockGitRepository: GitRepositoryProtocol {
         await simulateLatency(200_000_000)
         currentBranch = MockData.branches.first(where: { $0.isHEAD })
     }
+
+    // MARK: Working Copy
+
+    func commitIdentity() async -> CommitIdentity? {
+        CommitIdentity(name: "Jane Developer", email: "jane@example.com")
+    }
+
+    func operationContext() async -> OperationContext? {
+        repositoryState == .normal ? nil : OperationContext(oursLabel: currentBranch?.name ?? "main", theirsLabel: "feature/auth")
+    }
+
+    func continueOperation() async throws {
+        await simulateLatency()
+        repositoryState = .normal
+    }
+
+    func conflictVersions(path: String) async throws -> ConflictVersions {
+        ConflictVersions(ours: "let value = 1\n", theirs: "let value = 2\n")
+    }
 }
 
 // MARK: - MockData

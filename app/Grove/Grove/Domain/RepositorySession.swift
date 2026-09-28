@@ -57,6 +57,7 @@ final class RepositorySession {
         self.pullRequestsVM   = PullRequestsViewModel(repository: repository)
         self.autoFetcher      = AutoFetchScheduler(repository: repository)
         sidebarVM.onRepositoryChanged = { [weak self] in await self?.refreshAll() }
+        workingCopyVM.onRepositoryChanged = { [weak self] in await self?.refreshAll() }
     }
 
     // MARK: - Lifecycle
@@ -155,10 +156,7 @@ final class RepositorySession {
             }
         case .commit:
             guard selectedItem == .workingCopy else { return }
-            Task {
-                await workingCopyVM.commit()
-                await refreshAll()
-            }
+            Task { await workingCopyVM.commit() }
         case .quickActions:
             break
         case .quickOpen, .addRepository, .cloneRepository, .createRepository, .newGroup:

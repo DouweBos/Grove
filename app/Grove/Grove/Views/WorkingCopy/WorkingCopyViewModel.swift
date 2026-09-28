@@ -1,605 +1,387 @@
 // Views/WorkingCopy/WorkingCopyViewModel.swift
 // Grove
 //
-// Observable ViewModel for the Working Copy feature area.
-// Drives CommitComposerView, FileStatusListView, and DiffPanelView.
-// Depends only on GitRepositoryProtocol — no concrete Git types imported.
+// State for the Working Copy ("Changes") tab: file status, selection, diff,
+// commit composer and in-progress merge/rebase conflicts.
 
 import Foundation
 import Observation
 
-// MARK: - FileViewMode
-
-/// Controls how the file list is presented in the Working Copy left column.
+/// How changed files are presented in the file list.
 enum FileViewMode: String, CaseIterable {
-    /// Flat list of all files with changes (default).
-    case flatModified = "Modified"
-    /// Changed files grouped into a collapsible directory tree.
+    case flatModified = "List"
     case treeModified = "Tree"
-    /// Complete repository file tree (placeholder — coming soon).
-    case allFiles = "All"
+    case allFiles = "All Files"
+
+    var symbol: String {
+        switch self {
+        case .flatModified: "list.bullet"
+        case .treeModified: "list.bullet.indent"
+        case .allFiles: "folder"
+        }
+    }
 }
 
-// MARK: - UserProfileData
-
-/// A lightweight value type that bridges ``UserProfile`` (SwiftData) to the view layer.
-///
-/// Views and ViewModels always work with this struct, never with the raw
-/// SwiftData model.
-struct UserProfileData: Identifiable, Hashable, Sendable {
-    /// Mirrors ``UserProfile/profileID``.
-    let id: UUID
-    /// Committer name as it will appear in git commits.
-    let name: String
-    /// Committer email as it will appear in git commits.
-    let email: String
-    /// GPG or SSH signing key fingerprint, if commit signing is enabled.
-    let signingKeyID: String?
-    /// Whether this is the default/pre-selected profile.
-    let isDefault: Bool
-
-    /// The first character of `name`, used for avatar initials.
-    var initial: String { String(name.prefix(1).uppercased()) }
+/// Which half of a file's changes the diff panel shows.
+enum DiffSide: Hashable {
+    case staged
+    case unstaged
 }
 
-// MARK: - WorkingCopyViewModel
-
-/// Central state manager for the Working Copy three-zone layout.
-///
-/// Inject into the view hierarchy via `.environment`:
-/// ```swift
-/// WorkingCopyView()
-///     .environment(WorkingCopyViewModel(repository: MockGitRepository()))
-/// ```
+@MainActor
 @Observable
 final class WorkingCopyViewModel {
 
-    // MARK: Injected
-
     let repository: any GitRepositoryProtocol
 
-    // MARK: Status State
+    /// Set by the session so mutations refresh every view (sidebar badge, history), not just this one.
+    var onRepositoryChanged: (() async -> Void)?
 
-    /// All status entries for the current working tree.
+    // MARK: Status
+
     var statusEntries: [StatusEntry] = []
-
-    /// All tracked file paths, populated by `git ls-files`. Used by the
-    /// ``FileViewMode/allFiles`` tree view to show every file in the repository.
     var allTrackedFiles: [String] = []
 
-    /// Files with staged changes (index status ≠ unmodified).
-    var stagedFiles: [StatusEntry] {
-        statusEntries.filter { $0.indexStatus != .unmodified }
+    var conflictedFiles: [StatusEntry] { statusEntries.filter(\.isConflicted) }
+    var stagedFiles: [StatusEntry] { statusEntries.filter { !$0.isConflicted && $0.indexStatus != .unmodified } }
+    var unstagedFiles: [StatusEntry] { statusEntries.filter { !$0.isConflicted && $0.workdirStatus != .unmodified } }
+
+    // MARK: Selection & Diff
+
+    private(set) var selectedPath: String?
+    private(set) var selectedSide: DiffSide = .unstaged
+
+    var selectedEntry: StatusEntry? { statusEntries.first { $0.path == selectedPath } }
+    var showingStaged: Bool { selectedSide == .staged }
+
+    /// Only offer the Staged/Unstaged switch when the file has changes on both sides.
+    var canSwitchDiffSide: Bool {
+        guard let entry = selectedEntry, !entry.isConflicted else { return false }
+        return entry.indexStatus != .unmodified && entry.workdirStatus != .unmodified
     }
 
-    /// Files with unstaged changes (workdir status ≠ unmodified).
-    var unstagedFiles: [StatusEntry] {
-        statusEntries.filter { $0.workdirStatus != .unmodified }
-    }
+    private(set) var currentDiff: DiffResult?
+    private(set) var isDiffLoading = false
+    private(set) var conflictVersions: ConflictVersions?
 
-    // MARK: Selection State
+    private(set) var fileViewMode: FileViewMode = .flatModified
+    private(set) var ignoreWhitespace = false
+    private(set) var showOnlyConflicts = false
 
-    /// Currently selected status entry — drives the diff panel.
-    var selectedEntry: StatusEntry?
+    // MARK: Commit Composer
 
-    // MARK: Diff State
-
-    /// Whether the diff panel shows staged (true) or unstaged (false) diff.
-    var showingStaged: Bool = true
-
-    /// The diff currently displayed in the right panel.
-    var currentDiff: DiffResult?
-    var isDiffLoading: Bool = false
-
-    // MARK: File View Mode
-
-    /// Controls how changed files are presented in the file list.
-    var fileViewMode: FileViewMode = .flatModified
-
-    // MARK: Diff Options
-
-    /// When `true`, whitespace-only changes are hidden in the diff panel.
-    var ignoreWhitespace: Bool = false
-
-    // MARK: Conflict Filter
-
-    /// When `true`, the file list is filtered to show only conflicted files.
-    /// Set by ``ConflictBannerView`` during a merge/rebase conflict state.
-    var showOnlyConflicts: Bool = false
-
-    // MARK: Commit Composer State
-
-    var commitSubject: String = "" {
+    var commitSubject = "" {
         didSet { updateAutoComplete(text: commitSubject) }
     }
-    var commitBody: String = ""
-    var isAmend: Bool = false
-    var signOff: Bool = false
+    var commitBody = ""
+    private(set) var isAmend = false
+    private(set) var signOff = false
+    private(set) var signCommit = false
+    private(set) var isSigningAvailable = false
+    private(set) var identity: CommitIdentity?
+    private(set) var isCommitting = false
+    /// HEAD's message as loaded for amend, so turning amend off can drop an untouched prefill.
+    private var amendPrefill: (subject: String, body: String)?
 
-    // MARK: Signing State
+    var hasSubject: Bool { !commitSubject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    var canCommit: Bool { hasSubject && (isAmend || !stagedFiles.isEmpty) && conflictedFiles.isEmpty && !isCommitting }
 
-    /// Whether the next commit should be signed with the configured GPG/SSH key.
-    var signCommit: Bool = false
+    var commitButtonTitle: String {
+        if isAmend { return "Amend Commit" }
+        let count = stagedFiles.count
+        return count == 0 ? "Commit" : "Commit \(count) \(count == 1 ? "File" : "Files")"
+    }
 
-    /// Whether GPG/SSH signing is configured in the repository's effective git config.
-    ///
-    /// Populated during ``refresh()``. The "Sign" toggle in ``CommitComposerView``
-    /// is only visible when this is `true`.
-    var isSigningAvailable: Bool = false
+    // MARK: Operations (merge / rebase / cherry-pick / revert)
 
-    // MARK: Autocomplete State
+    var repositoryState: RepositoryState { repository.repositoryState }
+    var isInOperation: Bool {
+        switch repositoryState {
+        case .merge, .rebase, .rebaseInteractive, .cherrypick, .revert: true
+        case .normal, .bisect: false
+        }
+    }
+    private(set) var operationContext: OperationContext?
+    private(set) var isRunningOperation = false
 
-    /// The active trigger, or `nil` when the dropdown is hidden.
+    // MARK: Autocomplete
+
     var autoCompleteTrigger: AutoCompleteTrigger?
-
-    /// Suggestions to display in the autocomplete dropdown.
     var autoCompleteSuggestions: [AutoCompleteSuggestion] = []
-
-    /// Whether the autocomplete dropdown is currently visible.
     var isAutoCompleteVisible: Bool { autoCompleteTrigger != nil && !autoCompleteSuggestions.isEmpty }
+    /// Recent commits for the `c:` trigger, warmed on refresh.
+    private(set) var cachedRecentCommits: [CommitInfo] = []
 
-    // MARK: User Profile State
+    // MARK: Misc
 
-    /// All profiles available for selection in the commit composer.
-    ///
-    /// Populated via ``loadProfiles(from:)``. During development/preview
-    /// this is populated by ``loadDefaultPreviewProfiles()``.
-    var availableProfiles: [UserProfileData] = []
-
-    /// The profile whose identity will be used for the next commit.
-    var selectedProfile: UserProfileData?
-
-    // MARK: Loading / Error State
-
-    var isLoading: Bool = false
+    private(set) var hasLoadedStatus = false
+    private(set) var pendingDiscard: StatusEntry?
     var errorMessage: String?
-
-    // MARK: Private cache
-
-    /// Recently fetched commits cached for the `c:` autocomplete trigger.
-    private var cachedRecentCommits: [CommitInfo] = []
-
-    // MARK: Init
 
     init(repository: any GitRepositoryProtocol) {
         self.repository = repository
-        loadDefaultPreviewProfiles()
     }
 
-    // MARK: Public API — Mutators
+    // MARK: - Refresh
 
-    func clearError() {
-        errorMessage = nil
+    func refresh() async {
+        do {
+            try await repository.refreshStatus()
+            statusEntries = try await repository.status()
+            hasLoadedStatus = true
+        } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+        allTrackedFiles = (try? await repository.listTrackedFiles()) ?? []
+        cachedRecentCommits = (try? await repository.log(maxCount: 10, skip: 0, branch: nil)) ?? []
+        isSigningAvailable = (try? await repository.isSigningConfigured()) ?? false
+        identity = await repository.commitIdentity()
+        operationContext = isInOperation ? await repository.operationContext() : nil
+        if conflictedFiles.isEmpty { showOnlyConflicts = false }
+        await reconcileSelection()
+    }
+
+    /// Keep the selection pointed at something that still has changes after the status moved.
+    private func reconcileSelection() async {
+        guard let entry = selectedEntry else {
+            selectedPath = nil
+            currentDiff = nil
+            conflictVersions = nil
+            return
+        }
+        if !entry.isConflicted {
+            let hasSide = selectedSide == .staged ? entry.indexStatus != .unmodified : entry.workdirStatus != .unmodified
+            if !hasSide { selectedSide = selectedSide == .staged ? .unstaged : .staged }
+        }
+        await loadDiff()
+    }
+
+    // MARK: - Selection
+
+    /// Select a file; without an explicit side, show the working-tree changes when there are any.
+    func select(_ entry: StatusEntry, side: DiffSide? = nil) async {
+        selectedPath = entry.path
+        selectedSide = side ?? (entry.workdirStatus != .unmodified ? .unstaged : .staged)
+        await loadDiff()
+    }
+
+    func setDiffSide(_ side: DiffSide) async {
+        guard side != selectedSide else { return }
+        selectedSide = side
+        await loadDiff()
+    }
+
+    func setIgnoreWhitespace(_ ignore: Bool) async {
+        ignoreWhitespace = ignore
+        await loadDiff()
     }
 
     func setFileViewMode(_ mode: FileViewMode) {
         fileViewMode = mode
     }
 
-    func selectProfile(_ profile: UserProfileData?) {
-        selectedProfile = profile
+    func setShowOnlyConflicts(_ show: Bool) {
+        showOnlyConflicts = show
     }
 
-    // MARK: Public API — Status
-
-    /// Refresh status from the repository.
-    func refresh() async {
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            try await repository.refreshStatus()
-            statusEntries = try await repository.status()
-            // Load tracked files for the All Files tree view.
-            allTrackedFiles = (try? await repository.listTrackedFiles()) ?? []
-            // Warm the commit cache for autocomplete.
-            cachedRecentCommits = (try? await repository.log(maxCount: 10, skip: 0, branch: nil)) ?? []
-            // Detect whether GPG/SSH signing is configured.
-            isSigningAvailable = (try? await repository.isSigningConfigured()) ?? false
-            // Re-load diff if the selected entry is still present.
-            if let selected = selectedEntry,
-               statusEntries.contains(where: { $0.id == selected.id }) {
-                await loadDiff(for: selected)
-            } else {
-                selectedEntry = nil
-                currentDiff = nil
-            }
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+    func isSelected(_ entry: StatusEntry, side: DiffSide) -> Bool {
+        selectedPath == entry.path && (entry.isConflicted || selectedSide == side)
     }
 
-    // MARK: Public API — Selection
-
-    /// Select a file and load its diff.
-    func select(_ entry: StatusEntry) async {
-        selectedEntry = entry
-        await loadDiff(for: entry)
-    }
-
-    /// Toggle between staged and unstaged diff view.
-    func toggleStagedUnstaged() async {
-        showingStaged.toggle()
-        if let entry = selectedEntry {
-            await loadDiff(for: entry)
-        }
-    }
-
-    // MARK: Public API — Staging
-
-    func stageFile(_ entry: StatusEntry) async {
-        do {
-            try await repository.stage(paths: [entry.path])
-            await refresh()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    func unstageFile(_ entry: StatusEntry) async {
-        do {
-            try await repository.unstage(paths: [entry.path])
-            await refresh()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    func stageAll() async {
-        do {
-            try await repository.stageAll()
-            await refresh()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    func unstageAll() async {
-        do {
-            try await repository.unstageAll()
-            await refresh()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    func performHunkAction(_ action: HunkAction, hunk: HunkData, in entry: StatusEntry) async {
-        do {
-            switch action {
-            case .stageHunk:
-                try await repository.stageHunk(hunk, in: entry.path)
-            case .unstageHunk:
-                try await repository.unstageHunk(hunk, in: entry.path)
-            case .discardHunk:
-                try await repository.discardHunk(hunk, in: entry.path)
-            case .stageLines:
-                let lines = hunk.lines.filter { $0.type != .context }
-                try await repository.stageLines(lines, in: hunk, file: entry.path)
-            case .unstageLines:
-                let lines = hunk.lines.filter { $0.type != .context }
-                try await repository.unstageLines(lines, in: hunk, file: entry.path)
-            case .discardLines:
-                // Discard lines: revert them from the working tree.
-                let lines = hunk.lines.filter { $0.type != .context }
-                try await repository.discardLines(lines, in: hunk, file: entry.path)
-            }
-            await refresh()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    func discardFile(_ entry: StatusEntry) async {
-        do {
-            try await repository.discardChanges(paths: [entry.path])
-            await refresh()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    // MARK: Public API — Commit
-
-    /// Create a commit from the current staged changes.
-    func commit() async {
-        guard !commitSubject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            errorMessage = "Please enter a commit subject."
-            return
-        }
-        do {
-            let body = commitBody.trimmingCharacters(in: .whitespacesAndNewlines)
-            _ = try await repository.commit(
-                message: commitSubject,
-                body: body.isEmpty ? nil : body,
-                amend: isAmend,
-                sign: signCommit
-            )
-            commitSubject = ""
-            commitBody = ""
-            isAmend = false
-            signCommit = false
-            dismissAutoComplete()
-            await refresh()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    // MARK: Public API — Autocomplete
-
-    /// Examine `text` for a trigger prefix and refresh ``autoCompleteSuggestions``.
-    ///
-    /// Call this whenever `commitSubject` changes. The method is synchronous
-    /// so it executes on the main actor alongside the `@Observable` property
-    /// mutations; expensive lookups (e.g. `c:`) use the pre-warmed cache.
-    func updateAutoComplete(text: String) {
-        guard let (trigger, query) = detectTrigger(in: text) else {
-            autoCompleteTrigger = nil
-            autoCompleteSuggestions = []
-            return
-        }
-
-        autoCompleteTrigger = trigger
-        autoCompleteSuggestions = generateSuggestions(trigger: trigger, query: query)
-    }
-
-    /// Apply a chosen suggestion: replace the trigger + query with `insertText`.
-    func applyAutoComplete(_ suggestion: AutoCompleteSuggestion) {
-        guard let trigger = autoCompleteTrigger else { return }
-        let triggerPrefix = prefix(for: trigger)
-        // Find the last occurrence of the trigger prefix and replace from there.
-        if let range = commitSubject.range(of: triggerPrefix, options: .backwards) {
-            commitSubject = commitSubject.replacingCharacters(in: range, with: suggestion.insertText)
-        }
-        dismissAutoComplete()
-    }
-
-    /// Hide the autocomplete dropdown without modifying the subject text.
-    func dismissAutoComplete() {
-        autoCompleteTrigger = nil
-        autoCompleteSuggestions = []
-    }
-
-    // MARK: Public API — Profiles
-
-    /// Populate ``availableProfiles`` from an external source (e.g. a SwiftData query result).
-    ///
-    /// The first profile with `isDefault == true` is pre-selected, falling back
-    /// to the first profile in the list.
-    func loadProfiles(from profiles: [UserProfileData]) {
-        availableProfiles = profiles
-        if selectedProfile == nil || !profiles.contains(where: { $0.id == selectedProfile?.id }) {
-            selectedProfile = profiles.first(where: \.isDefault) ?? profiles.first
-        }
-    }
-
-    // MARK: Private — Autocomplete Detection
-
-    /// Returns the matched ``AutoCompleteTrigger`` and the query text that follows it,
-    /// or `nil` if the current text does not end with a recognised trigger sequence.
-    private func detectTrigger(in text: String) -> (AutoCompleteTrigger, String)? {
-        // `c:` must be checked before single-char triggers to avoid a false match on `c`.
-        if let range = text.range(of: "c:", options: .backwards) {
-            let query = String(text[range.upperBound...])
-            return (.commit, query)
-        }
-        for (char, trigger) in [("#", AutoCompleteTrigger.issue),
-                                 ("`", .filename),
-                                 ("/", .template)] {
-            if let range = text.range(of: char, options: .backwards) {
-                // Only treat as active when the trigger is at the end of the text
-                // (nothing after it except the query).
-                let query = String(text[range.upperBound...])
-                // Abort if the query contains whitespace — the user has moved on.
-                guard !query.contains(" ") else { continue }
-                return (trigger, query)
-            }
-        }
-        return nil
-    }
-
-    /// Returns the trigger prefix string used when replacing text on selection.
-    private func prefix(for trigger: AutoCompleteTrigger) -> String {
-        switch trigger {
-        case .issue:    return "#"
-        case .commit:   return "c:"
-        case .filename: return "`"
-        case .template: return "/"
-        }
-    }
-
-    // MARK: Private — Suggestion Generation
-
-    private func generateSuggestions(trigger: AutoCompleteTrigger, query: String) -> [AutoCompleteSuggestion] {
-        let query = query.lowercased()
-        switch trigger {
-        case .issue:
-            return issueSuggestions(query: query)
-        case .commit:
-            return commitSuggestions(query: query)
-        case .filename:
-            return filenameSuggestions(query: query)
-        case .template:
-            return templateSuggestions(query: query)
-        }
-    }
-
-    // MARK: Private — Issue Suggestions
-
-    /// Extract issue / PR identifiers from known branch names.
-    ///
-    /// Recognised patterns:
-    /// - `PROJ-123`  — Jira-style alphanumeric project key + number
-    /// - `#42`       — GitHub-style numeric prefix in branch names (e.g. `feature/42-dark-mode`)
-    ///
-    /// Uses the current branch name synchronously. A richer implementation
-    /// could call `localBranches()` asynchronously and cache the results.
-    private func issueSuggestions(query: String) -> [AutoCompleteSuggestion] {
-        var found: [String] = []
-
-        // Scan the current branch name.
-        if let name = repository.currentBranch?.name {
-            found += extractIssueIDs(from: name)
-        }
-
-        // Deduplicate while preserving insertion order.
-        var seen = Set<String>()
-        let unique = found.filter { seen.insert($0).inserted }
-
-        let filtered = query.isEmpty ? unique : unique.filter { $0.lowercased().contains(query) }
-
-        return filtered.map { issueID in
-            AutoCompleteSuggestion(
-                id: issueID,
-                icon: "number",
-                title: issueID,
-                subtitle: repository.currentBranch?.name,
-                insertText: issueID
-            )
-        }
-    }
-
-    /// Returns all issue-like tokens found in `text`.
-    private func extractIssueIDs(from text: String) -> [String] {
-        var results: [String] = []
-        // Jira-style: PROJ-123
-        let jiraPattern = try? NSRegularExpression(pattern: "[A-Z][A-Z0-9]+-\\d+")
-        let nsText = text as NSString
-        let jiraMatches = jiraPattern?.matches(in: text, range: NSRange(location: 0, length: nsText.length)) ?? []
-        results += jiraMatches.map { nsText.substring(with: $0.range) }
-
-        // GitHub-style issue number embedded in branch: feature/42-dark-mode → #42
-        let ghPattern = try? NSRegularExpression(pattern: "(?:^|[/_-])(\\d{1,6})(?:[/_-]|$)")
-        let ghMatches = ghPattern?.matches(in: text, range: NSRange(location: 0, length: nsText.length)) ?? []
-        for match in ghMatches where match.numberOfRanges > 1 {
-            let num = nsText.substring(with: match.range(at: 1))
-            results.append("#\(num)")
-        }
-
-        return results
-    }
-
-    // MARK: Private — Commit Suggestions
-
-    private func commitSuggestions(query: String) -> [AutoCompleteSuggestion] {
-        let candidates = cachedRecentCommits
-        let filtered = query.isEmpty
-            ? candidates
-            : candidates.filter {
-                $0.summary.lowercased().contains(query) ||
-                $0.shortSHA.lowercased().hasPrefix(query)
-            }
-
-        return filtered.prefix(8).map { commit in
-            AutoCompleteSuggestion(
-                id: commit.id,
-                icon: "arrow.triangle.branch",
-                title: commit.summary,
-                subtitle: commit.shortSHA,
-                insertText: commit.shortSHA
-            )
-        }
-    }
-
-    // MARK: Private — Filename Suggestions
-
-    private func filenameSuggestions(query: String) -> [AutoCompleteSuggestion] {
-        let entries = statusEntries
-        let filtered = query.isEmpty
-            ? entries
-            : entries.filter { $0.path.lowercased().contains(query) }
-
-        return filtered.prefix(10).map { entry in
-            let url = URL(fileURLWithPath: entry.path)
-            let filename = url.lastPathComponent
-            let directory = url.deletingLastPathComponent().relativePath.isEmpty
-                ? nil
-                : url.deletingLastPathComponent().relativePath + "/"
-
-            return AutoCompleteSuggestion(
-                id: entry.path,
-                icon: iconName(for: entry),
-                title: filename,
-                subtitle: directory,
-                insertText: entry.path
-            )
-        }
-    }
-
-    private func iconName(for entry: StatusEntry) -> String {
-        switch entry.indexStatus == .unmodified ? entry.workdirStatus : entry.indexStatus {
-        case .added:     return "plus.circle"
-        case .deleted:   return "minus.circle"
-        case .renamed:   return "arrow.right.circle"
-        default:         return "doc.text"
-        }
-    }
-
-    // MARK: Private — Template Suggestions
-
-    /// Built-in templates; a future version could load these from SwiftData.
-    private func templateSuggestions(query: String) -> [AutoCompleteSuggestion] {
-        let builtIn: [(String, String, String)] = [
-            // (id, name, prefix)
-            ("conventional-feat", "feat: New Feature", "feat: "),
-            ("conventional-fix", "fix: Bug Fix", "fix: "),
-            ("conventional-docs", "docs: Documentation", "docs: "),
-            ("conventional-style", "style: Formatting", "style: "),
-            ("conventional-refactor", "refactor: Code Refactoring", "refactor: "),
-            ("conventional-test", "test: Tests", "test: "),
-            ("conventional-chore", "chore: Maintenance", "chore: "),
-            ("conventional-perf", "perf: Performance", "perf: "),
-            ("conventional-ci", "ci: CI/CD", "ci: ")
-        ]
-
-        let filtered = query.isEmpty
-            ? builtIn
-            : builtIn.filter {
-                $0.1.lowercased().contains(query) || $0.2.lowercased().contains(query)
-            }
-
-        return filtered.map { id, name, prefix in
-            AutoCompleteSuggestion(
-                id: id,
-                icon: "text.badge.plus",
-                title: name,
-                subtitle: prefix,
-                insertText: prefix
-            )
-        }
-    }
-
-    // MARK: Private — Default Preview Profiles
-
-    /// Seed ``availableProfiles`` with sensible preview data so that SwiftUI
-    /// Previews and plain `init` sites always have a usable profile without
-    /// requiring a SwiftData container.
-    private func loadDefaultPreviewProfiles() {
-        let defaults: [UserProfileData] = [
-            UserProfileData(
-                id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
-                name: "Your Name",
-                email: "you@example.com",
-                signingKeyID: nil,
-                isDefault: true
-            )
-        ]
-        loadProfiles(from: defaults)
-    }
-
-    // MARK: Private
-
-    private func loadDiff(for entry: StatusEntry) async {
+    private func loadDiff() async {
+        guard let entry = selectedEntry else { return }
         isDiffLoading = true
         defer { isDiffLoading = false }
+        if entry.isConflicted {
+            currentDiff = nil
+            conflictVersions = try? await repository.conflictVersions(path: entry.path)
+            return
+        }
+        conflictVersions = nil
         do {
-            currentDiff = try await repository.diff(
-                for: entry,
-                staged: showingStaged,
-                ignoreWhitespace: ignoreWhitespace
-            )
+            currentDiff = try await repository.diff(for: entry, staged: showingStaged, ignoreWhitespace: ignoreWhitespace)
         } catch {
             currentDiff = nil
             errorMessage = error.localizedDescription
         }
+    }
+
+    // MARK: - Staging
+
+    func stageFile(_ entry: StatusEntry) async {
+        await mutate { try await self.repository.stage(paths: [entry.path]) }
+    }
+
+    func unstageFile(_ entry: StatusEntry) async {
+        await mutate { try await self.repository.unstage(paths: [entry.path]) }
+    }
+
+    func stageAll() async {
+        await mutate { try await self.repository.stageAll() }
+    }
+
+    func unstageAll() async {
+        await mutate { try await self.repository.unstageAll() }
+    }
+
+    func performHunkAction(_ action: HunkAction, hunk: HunkData, lines: [DiffLine] = []) async {
+        guard let path = selectedEntry?.path else { return }
+        let changed = lines.isEmpty ? hunk.lines.filter { $0.type != .context } : lines
+        await mutate {
+            let repo = self.repository
+            switch action {
+            case .stageHunk: try await repo.stageHunk(hunk, in: path)
+            case .unstageHunk: try await repo.unstageHunk(hunk, in: path)
+            case .discardHunk: try await repo.discardHunk(hunk, in: path)
+            case .stageLines: try await repo.stageLines(changed, in: hunk, file: path)
+            case .unstageLines: try await repo.unstageLines(changed, in: hunk, file: path)
+            case .discardLines: try await repo.discardLines(changed, in: hunk, file: path)
+            }
+        }
+    }
+
+    // MARK: - Discard
+
+    func requestDiscard(_ entry: StatusEntry) {
+        pendingDiscard = entry
+    }
+
+    func cancelDiscard() {
+        pendingDiscard = nil
+    }
+
+    /// Takes the entry explicitly: the dialog clears `pendingDiscard` before this task runs.
+    func discard(_ entry: StatusEntry) async {
+        pendingDiscard = nil
+        await mutate { try await self.repository.discardChanges(paths: [entry.path]) }
+    }
+
+    // MARK: - Commit
+
+    func setAmend(_ on: Bool) async {
+        isAmend = on
+        if on {
+            guard !hasSubject, commitBody.isEmpty,
+                  let head = try? await repository.commitDetail("HEAD") else { return }
+            let body = head.body?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            commitSubject = head.summary
+            commitBody = body
+            amendPrefill = (head.summary, body)
+            dismissAutoComplete()
+        } else if let prefill = amendPrefill {
+            if commitSubject == prefill.subject && commitBody == prefill.body {
+                commitSubject = ""
+                commitBody = ""
+            }
+            amendPrefill = nil
+        }
+    }
+
+    func setSignOff(_ on: Bool) {
+        signOff = on
+    }
+
+    func setSignCommit(_ on: Bool) {
+        signCommit = on
+    }
+
+    func commit() async {
+        guard canCommit else {
+            if !hasSubject { errorMessage = "Please enter a commit subject." }
+            return
+        }
+        isCommitting = true
+        defer { isCommitting = false }
+        do {
+            let body = commitBody.trimmingCharacters(in: .whitespacesAndNewlines)
+            try await repository.commit(
+                message: commitSubject.trimmingCharacters(in: .whitespacesAndNewlines),
+                body: body.isEmpty ? nil : body,
+                amend: isAmend,
+                sign: signCommit,
+                signOff: signOff
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+        commitSubject = ""
+        commitBody = ""
+        isAmend = false
+        amendPrefill = nil
+        dismissAutoComplete()
+        await repositoryChanged()
+    }
+
+    // MARK: - Conflicts
+
+    /// Jump to the first unresolved file so the diff panel shows the resolution UI.
+    func resolveNextConflict() async {
+        guard let first = conflictedFiles.first else { return }
+        await select(first)
+    }
+
+    func resolveConflict(taking side: ConflictSide) async {
+        guard let entry = selectedEntry, entry.isConflicted else { return }
+        await mutate { try await self.repository.resolveConflict(path: entry.path, side: side) }
+        if let next = conflictedFiles.first { await select(next) }
+    }
+
+    func abortOperation() async {
+        await runOperation {
+            let repo = self.repository
+            switch self.repositoryState {
+            case .rebase, .rebaseInteractive: try await repo.abortRebase()
+            case .cherrypick: try await repo.abortCherryPick()
+            case .revert: try await repo.abortRevert()
+            default: try await repo.abortMerge()
+            }
+        }
+    }
+
+    func continueOperation() async {
+        await runOperation { try await self.repository.continueOperation() }
+    }
+
+    private func runOperation(_ work: @escaping () async throws -> Void) async {
+        isRunningOperation = true
+        defer { isRunningOperation = false }
+        await mutate(work)
+    }
+
+    // MARK: - Helpers
+
+    func clearError() {
+        errorMessage = nil
+    }
+
+    private func mutate(_ work: () async throws -> Void) async {
+        do {
+            try await work()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        await repositoryChanged()
+    }
+
+    private func repositoryChanged() async {
+        if let onRepositoryChanged {
+            await onRepositoryChanged()
+        } else {
+            await refresh()
+        }
+    }
+}
+
+extension StatusEntry {
+    var isConflicted: Bool { indexStatus == .conflicted || workdirStatus == .conflicted }
+
+    var fileName: String { (path as NSString).lastPathComponent }
+
+    /// Parent directory with a trailing slash, or "" for root files.
+    var directory: String {
+        let dir = (path as NSString).deletingLastPathComponent
+        return dir.isEmpty ? "" : dir + "/"
     }
 }

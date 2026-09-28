@@ -1,185 +1,156 @@
 // Views/WorkingCopy/DiffPanelView.swift
 // Grove
 //
-// The right-hand diff panel of the Working Copy layout. Shows a file header
-// with Staged / Unstaged toggle buttons, then a scrollable DiffView.
+// Right-hand card of the Changes tab: the selected file's diff with hunk actions,
+// or the conflict resolver when the file is conflicted.
 
 import SwiftUI
-import Foundation
 
-// MARK: - DiffPanelView
-
-/// Right-hand panel displaying the diff for the currently selected file.
-///
-/// Consumes ``WorkingCopyViewModel`` from the environment.
 struct DiffPanelView: View {
-
-    // MARK: Environment
-
     @Environment(WorkingCopyViewModel.self) private var viewModel
-
-    // MARK: Body
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider()
-            diffContent
+            if let entry = viewModel.selectedEntry {
+                header(entry)
+                content(entry)
+            } else {
+                EmptyStateView(
+                    systemImage: viewModel.statusEntries.isEmpty ? "checkmark.seal" : "doc.text.magnifyingglass",
+                    title: viewModel.statusEntries.isEmpty ? "Nothing to Commit" : "Select a File",
+                    subtitle: viewModel.statusEntries.isEmpty
+                        ? "Your working tree is clean."
+                        : "Choose a file on the left to see its changes."
+                )
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .panel()
     }
 
     // MARK: Header
 
-    private var header: some View {
-        HStack(spacing: 8) {
-            // File name
-            if let entry = viewModel.selectedEntry {
-                fileNameLabel(entry)
-            } else {
-                Text("No File Selected")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            // Ignore Whitespace toggle
-            ignoreWhitespaceButton
-
-            // Staged / Unstaged toggle
-            stagedUnstagedPicker
+    private func header(_ entry: StatusEntry) -> some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            StatusIcon(status: entry.isConflicted ? .conflicted : (viewModel.showingStaged ? entry.indexStatus : entry.workdirStatus))
+            Text(entry.fileName)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.textPrimary)
+                .lineLimit(1)
+                .layoutPriority(1)
+            Text(entry.directory)
+                .font(.monoCaption)
+                .foregroundStyle(Theme.textSecondary)
+                .lineLimit(1)
+                .truncationMode(.head)
+            Spacer(minLength: Theme.Spacing.sm)
+            if !entry.isConflicted { accessories }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color(white: 0.15, opacity: 1))
+        .padding(.horizontal, Theme.Spacing.lg)
+        .frame(height: 44)
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 0.5) }
     }
 
-    private func fileNameLabel(_ entry: StatusEntry) -> some View {
-        HStack(spacing: 6) {
-            StatusIcon(status: viewModel.showingStaged ? entry.indexStatus : entry.workdirStatus)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(URL(fileURLWithPath: entry.path).lastPathComponent)
-                    .font(.system(size: 12, weight: .medium))
-                    .lineLimit(1)
-
-                let dir = URL(fileURLWithPath: entry.path)
-                    .deletingLastPathComponent().path
-                if dir != "." {
-                    Text(dir)
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.head)
-                }
-            }
+    /// Drops the side badge and stats before squeezing the file name in narrow windows.
+    private var accessories: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Spacing.sm) { diffStats; sidePicker; whitespaceToggle }
+            HStack(spacing: Theme.Spacing.sm) { sidePicker; whitespaceToggle }
+            whitespaceToggle
         }
     }
-
-    // MARK: Ignore Whitespace
-
-    /// Toggle button that enables/disables whitespace-only change filtering.
-    private var ignoreWhitespaceButton: some View {
-        Button {
-            Task {
-                viewModel.ignoreWhitespace.toggle()
-                if let entry = viewModel.selectedEntry {
-                    await viewModel.select(entry)
-                }
-            }
-        } label: {
-            Image(systemName: "text.badge.minus")
-                .font(.system(size: 12))
-                .foregroundStyle(viewModel.ignoreWhitespace ? Color.accentColor : Color.secondary)
-                .help(viewModel.ignoreWhitespace ? "Show Whitespace Changes" : "Ignore Whitespace Changes")
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: Staged / Unstaged Picker
-
-    private var stagedUnstagedPicker: some View {
-        HStack(spacing: 0) {
-            toggleButton(title: "Staged", isActive: viewModel.showingStaged) {
-                if !viewModel.showingStaged {
-                    Task { await viewModel.toggleStagedUnstaged() }
-                }
-            }
-            toggleButton(title: "Unstaged", isActive: !viewModel.showingStaged) {
-                if viewModel.showingStaged {
-                    Task { await viewModel.toggleStagedUnstaged() }
-                }
-            }
-        }
-        .background(Color.secondary.opacity(0.2), in: RoundedRectangle(cornerRadius: 6))
-    }
-
-    private func toggleButton(title: String, isActive: Bool, action: @escaping () -> Void) -> some View {
-        let tintColor: Color = title == "Staged"
-            ? Color(red: 0x2E / 255.0, green: 0xA0 / 255.0, blue: 0x43 / 255.0)  // green
-            : Color(red: 0xE0 / 255.0, green: 0x7B / 255.0, blue: 0x35 / 255.0)  // orange
-
-        return Button(action: action) {
-            Text(title)
-                .font(.system(size: 11, weight: isActive ? .semibold : .regular))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(
-                    isActive ? tintColor : Color.clear,
-                    in: RoundedRectangle(cornerRadius: 5)
-                )
-                .foregroundStyle(isActive ? Color.white : Color.secondary)
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: Diff Content
 
     @ViewBuilder
-    private var diffContent: some View {
-        if viewModel.isDiffLoading {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if viewModel.selectedEntry == nil {
-            EmptyStateView(
-                systemImage: "doc.text.magnifyingglass",
-                title: "Select a File",
-                subtitle: "Choose a file from the list to view its diff."
-            )
-        } else if let diff = viewModel.currentDiff {
-            ScrollView([.horizontal, .vertical]) {
-                DiffView(
-                    diff: diff,
-                    showingStaged: viewModel.showingStaged
-                ) { hunk, action in
-                    guard let entry = viewModel.selectedEntry else { return }
-                    Task { await viewModel.performHunkAction(action, hunk: hunk, in: entry) }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+    private var diffStats: some View {
+        if let stats = viewModel.currentDiff?.stats, stats.additions + stats.deletions > 0 {
+            HStack(spacing: Theme.Spacing.xs) {
+                Text("+\(stats.additions)").foregroundStyle(Theme.added)
+                Text("−\(stats.deletions)").foregroundStyle(Theme.deleted)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(white: 0.11))
-        } else {
-            EmptyStateView(
-                systemImage: "doc.questionmark",
-                title: "No Diff Available",
-                subtitle: "The diff for this file could not be loaded."
-            )
+            .font(.monoCaption)
+            .fixedSize()
         }
     }
-}
 
-// MARK: - Preview
+    @ViewBuilder
+    private var sidePicker: some View {
+        if viewModel.canSwitchDiffSide {
+            Picker("Side", selection: Binding(get: { viewModel.selectedSide }, set: { side in Task { await viewModel.setDiffSide(side) } })) {
+                Text("Unstaged").tag(DiffSide.unstaged)
+                Text("Staged").tag(DiffSide.staged)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .controlSize(.small)
+            .fixedSize()
+        } else {
+            StatusBadge(title: viewModel.showingStaged ? "Staged" : "Unstaged",
+                        symbol: viewModel.showingStaged ? "checkmark.circle" : "pencil",
+                        tone: .neutral)
+                .fixedSize()
+        }
+    }
+
+    private var whitespaceToggle: some View {
+        Button {
+            Task { await viewModel.setIgnoreWhitespace(!viewModel.ignoreWhitespace) }
+        } label: {
+            Image(systemName: "text.word.spacing")
+                .foregroundStyle(viewModel.ignoreWhitespace ? Theme.accent : Theme.textSecondary)
+        }
+        .buttonStyle(.borderless)
+        .help(viewModel.ignoreWhitespace ? "Show Whitespace Changes" : "Ignore Whitespace Changes")
+    }
+
+    // MARK: Content
+
+    @ViewBuilder
+    private func content(_ entry: StatusEntry) -> some View {
+        if entry.isConflicted {
+            ConflictWizardView(
+                versions: viewModel.conflictVersions,
+                oursLabel: viewModel.operationContext?.oursLabel ?? "HEAD",
+                theirsLabel: viewModel.operationContext?.theirsLabel ?? "Incoming",
+                fileURL: viewModel.repository.path.appendingPathComponent(entry.path),
+                onResolve: { side in Task { await viewModel.resolveConflict(taking: side) } }
+            )
+        } else if let diff = viewModel.currentDiff {
+            CanvasScrollView {
+                DiffView(diff: diff, showingStaged: viewModel.showingStaged,
+                         onHunkAction: supportsHunkActions(entry) ? { action, hunk, lines in
+                             Task { await viewModel.performHunkAction(action, hunk: hunk, lines: lines) }
+                         } : nil)
+            }
+            .id(diffIdentity(entry))
+        } else if viewModel.isDiffLoading {
+            ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            EmptyStateView(systemImage: "doc.questionmark", title: "No Diff Available",
+                           subtitle: "The diff for this file could not be loaded.")
+        }
+    }
+
+    /// Partial staging patches need a file that exists on both sides.
+    private func supportsHunkActions(_ entry: StatusEntry) -> Bool {
+        let status = viewModel.showingStaged ? entry.indexStatus : entry.workdirStatus
+        return status == .modified
+    }
+
+    /// Resets scroll position and line selection when switching files or sides.
+    private func diffIdentity(_ entry: StatusEntry) -> String {
+        "\(entry.path)|\(viewModel.showingStaged)"
+    }
+}
 
 #Preview("Diff Panel") {
     let vm = WorkingCopyViewModel(repository: MockGitRepository())
     DiffPanelView()
         .environment(vm)
-        .frame(width: 600, height: 500)
+        .frame(width: 640, height: 500)
+        .padding()
+        .background(Theme.background)
         .task {
             await vm.refresh()
-            if let first = vm.statusEntries.first {
-                await vm.select(first)
-            }
+            if let first = vm.statusEntries.first { await vm.select(first) }
         }
 }
