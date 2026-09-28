@@ -38,7 +38,7 @@ struct HistoryActionSheet: View {
                               message: "Removes this commit and its changes from the branch. " + rewriteNote(commit),
                               primaryTitle: "Delete Commit", isDestructive: true) { _ in await viewModel.drop(commit) }
         case .fileHistory(let path):
-            FileHistorySheet(repository: viewModel.repository, path: path)
+            FileHistorySheet(repository: viewModel.repository, path: path, onRepositoryChanged: viewModel.onRepositoryChanged)
         case .compare(let branch):
             BranchComparisonSheet(repository: viewModel.repository, refs: viewModel.refs, target: branch, onRepositoryChanged: viewModel.onRepositoryChanged)
         }

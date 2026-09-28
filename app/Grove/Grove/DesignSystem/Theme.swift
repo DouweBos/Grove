@@ -46,6 +46,7 @@ enum Theme {
     static let subtleFill = textSecondary.opacity(0.12)
     static let bannerFill = warning.opacity(0.14)
     static let dangerFill = danger.opacity(0.12)
+    static let successFill = success.opacity(0.12)
     static let track = textSecondary.opacity(0.2)
 
     enum Radius {

@@ -18,4 +18,8 @@ extension MockGitRepository {
     func moveFile(from source: String, to destination: String) async throws {
         await simulateLatency()
     }
+
+    func restoreFile(_ path: String, from revision: String, revisionPath: String) async throws {
+        await simulateLatency()
+    }
 }

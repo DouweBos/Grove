@@ -25,6 +25,14 @@ final class FileHistoryViewModel {
     var isLoading = false
     var isLoadingDiff = false
     var errorMessage: String?
+    /// A restore waiting for confirmation because the file has local changes it would overwrite.
+    private(set) var pendingRestore: CommitInfo?
+    /// The version last written into the working copy, for the inline confirmation.
+    private(set) var restoredCommit: CommitInfo?
+    private(set) var isRestoring = false
+
+    /// Set by the presenter so a restore refreshes the Changes list and badges.
+    var onRepositoryChanged: (() async -> Void)?
 
     // MARK: - Configuration
 
@@ -99,6 +107,53 @@ final class FileHistoryViewModel {
         let match = allDiffs.first { $0.path == filePath || $0.diff?.oldPath == filePath }
             ?? (allDiffs.count == 1 ? allDiffs.first : nil)
         return match?.diff ?? limited.first?.diff
+    }
+
+    // MARK: - Restore
+
+    /// A commit that deleted the file has no version to restore.
+    var canRestoreSelected: Bool {
+        guard selectedCommit != nil, !isRestoring else { return false }
+        guard let diff = fileDiff else { return true }
+        let deletesFile = !diff.hunks.isEmpty && diff.hunks.allSatisfy { $0.newCount == 0 }
+        return !deletesFile
+    }
+
+    /// Restores straight away on a clean file; local changes ask first since they'd be overwritten.
+    func requestRestore(_ commit: CommitInfo) async {
+        restoredCommit = nil
+        let entries = (try? await repository.status()) ?? []
+        let isDirty = entries.contains { $0.path == filePath && ($0.indexStatus != .unmodified || $0.workdirStatus != .unmodified) }
+        if isDirty {
+            pendingRestore = commit
+        } else {
+            await restore(commit)
+        }
+    }
+
+    func cancelRestore() {
+        pendingRestore = nil
+    }
+
+    func dismissRestoreNotice() {
+        restoredCommit = nil
+    }
+
+    func restore(_ commit: CommitInfo) async {
+        pendingRestore = nil
+        isRestoring = true
+        errorMessage = nil
+        defer { isRestoring = false }
+        do {
+            // Across a rename the file had another name at that commit.
+            var diff = diffCache.value(for: commit.id)
+            if diff == nil { diff = try await loadFileDiff(at: commit) }
+            try await repository.restoreFile(filePath, from: commit.id, revisionPath: diff?.filePath ?? filePath)
+            restoredCommit = commit
+        } catch {
+            errorMessage = "Restore failed: \(error.localizedDescription)"
+        }
+        await onRepositoryChanged?()
     }
 
     /// Export the file at the selected commit to a user-chosen disk location.

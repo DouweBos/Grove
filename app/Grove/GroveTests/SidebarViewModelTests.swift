@@ -145,6 +145,9 @@ private final class FailingMockRepository: GitRepositoryProtocol {
     func ignore(patterns: [String], localOnly: Bool) async throws { try await backing.ignore(patterns: patterns, localOnly: localOnly) }
     func stopTracking(paths: [String]) async throws { try await backing.stopTracking(paths: paths) }
     func moveFile(from source: String, to destination: String) async throws { try await backing.moveFile(from: source, to: destination) }
+    func restoreFile(_ path: String, from revision: String, revisionPath: String) async throws {
+        try await backing.restoreFile(path, from: revision, revisionPath: revisionPath)
+    }
 }
 
 // MARK: - SidebarViewModelTests

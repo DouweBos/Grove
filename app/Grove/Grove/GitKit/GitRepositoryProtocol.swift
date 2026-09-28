@@ -319,6 +319,8 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func stopTracking(paths: [String]) async throws
     /// Renames or moves a file: `git mv` when tracked, a plain move when untracked.
     func moveFile(from source: String, to destination: String) async throws
+    /// Writes `revisionPath` as it was at `revision` into the working copy at `path`, leaving the index alone.
+    func restoreFile(_ path: String, from revision: String, revisionPath: String) async throws
 }
 
 // MARK: - GitRepositoryProtocol Default Arguments

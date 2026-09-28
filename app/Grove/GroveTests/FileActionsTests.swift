@@ -94,7 +94,43 @@ struct FileActionsTests {
         #expect(vm.statusEntries.map(\.path) == [".gitignore"])
     }
 
+    @Test func restoreAsksFirstWhenTheFileHasLocalChanges() async throws {
+        try write("tracked.txt", "second\n")
+        try git(["commit", "-qam", "second"])
+        try write("tracked.txt", "local edit\n")
+        let repo = try await GitRepository(path: root)
+        let vm = FileHistoryViewModel(repository: repo, filePath: "tracked.txt")
+        await vm.loadHistory()
+        let initial = try #require(vm.commits.last)
+        await vm.requestRestore(initial)
+        #expect(vm.pendingRestore?.id == initial.id)
+        await vm.restore(initial)
+        #expect(try read("tracked.txt") == "tracked\n")
+        #expect(vm.restoredCommit?.id == initial.id)
+    }
+
+    @Test func restoreWritesAcrossARename() async throws {
+        try git(["mv", "tracked.txt", "moved.txt"])
+        try git(["commit", "-qm", "rename"])
+        try write("moved.txt", "after rename\n")
+        try git(["commit", "-qam", "edit"])
+        let repo = try await GitRepository(path: root)
+        let vm = FileHistoryViewModel(repository: repo, filePath: "moved.txt")
+        await vm.loadHistory()
+        let initial = try #require(vm.commits.last)
+        await vm.requestRestore(initial)
+        #expect(vm.pendingRestore == nil)
+        #expect(vm.errorMessage == nil)
+        #expect(vm.commits.count == 3)
+        #expect(try read("moved.txt") == "tracked\n")
+        #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("tracked.txt").path))
+    }
+
     // MARK: Helpers
+
+    private func read(_ file: String) throws -> String {
+        try String(contentsOf: root.appendingPathComponent(file), encoding: .utf8)
+    }
 
     private func write(_ file: String, _ text: String) throws {
         try Data(text.utf8).write(to: root.appendingPathComponent(file))

@@ -100,8 +100,10 @@ struct HistoryToolSheet<Content: View>: View {
 struct FileHistorySheet: View {
     @State private var viewModel: FileHistoryViewModel
 
-    init(repository: any GitRepositoryProtocol, path: String) {
-        _viewModel = State(initialValue: FileHistoryViewModel(repository: repository, filePath: path))
+    init(repository: any GitRepositoryProtocol, path: String, onRepositoryChanged: (() async -> Void)? = nil) {
+        let viewModel = FileHistoryViewModel(repository: repository, filePath: path)
+        viewModel.onRepositoryChanged = onRepositoryChanged
+        _viewModel = State(initialValue: viewModel)
     }
 
     var body: some View {

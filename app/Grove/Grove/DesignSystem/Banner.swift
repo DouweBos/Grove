@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct Banner: View {
-    enum Tone { case caution, negative }
+    enum Tone { case caution, negative, positive }
 
     let symbol: String
     let message: String
@@ -15,7 +15,21 @@ struct Banner: View {
     var action: (() -> Void)?
     var onDismiss: (() -> Void)?
 
-    private var color: Color { tone == .caution ? Theme.warning : Theme.danger }
+    private var color: Color {
+        switch tone {
+        case .caution: Theme.warning
+        case .negative: Theme.danger
+        case .positive: Theme.success
+        }
+    }
+
+    private var fill: Color {
+        switch tone {
+        case .caution: Theme.bannerFill
+        case .negative: Theme.dangerFill
+        case .positive: Theme.successFill
+        }
+    }
 
     var body: some View {
         HStack(spacing: Theme.Spacing.md) {
@@ -39,7 +53,7 @@ struct Banner: View {
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.sm)
-        .background(tone == .caution ? Theme.bannerFill : Theme.dangerFill, in: RoundedRectangle(cornerRadius: Theme.Radius.row))
+        .background(fill, in: RoundedRectangle(cornerRadius: Theme.Radius.row))
     }
 }
 
@@ -48,6 +62,7 @@ struct Banner: View {
         Banner(symbol: "arrow.down.circle", message: "Your branch is 3 commits behind origin/main.",
                actionTitle: "Pull", action: {}, onDismiss: {})
         Banner(symbol: "xmark.octagon", message: "Push rejected: the remote contains work you do not have.", tone: .negative)
+        Banner(symbol: "checkmark.circle", message: "Snapshot saved as stash@{0}.", tone: .positive, onDismiss: {})
     }
     .frame(width: 560)
     .padding()
