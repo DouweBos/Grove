@@ -275,14 +275,7 @@ extension GitRepository {
             let isAnnotated = objectType == "tag"
             let targetSHA   = isAnnotated && !derefSHA.isEmpty ? derefSHA : sha
 
-            let taggerDate: Date?
-            if !taggerDateStr.isEmpty {
-                let formatter = ISO8601DateFormatter()
-                formatter.formatOptions = [.withInternetDateTime, .withColonSeparatorInTimeZone]
-                taggerDate = formatter.date(from: taggerDateStr)
-            } else {
-                taggerDate = nil
-            }
+            let taggerDate = GitDate.parse(taggerDateStr)
 
             result.append(TagInfo(
                 id: name,

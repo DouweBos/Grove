@@ -96,9 +96,6 @@ enum StashParser {
     }
 
     nonisolated private static func parseISO8601(_ string: String) -> Date? {
-        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withColonSeparatorInTimeZone]
-        return f.date(from: trimmed)
+        GitDate.parse(string)
     }
 }

@@ -101,7 +101,7 @@ extension GitRepository {
 
     func commitDetail(_ sha: String) async throws -> CommitInfo {
         let result = try await shell.run(
-            ["log", "--format=\(LogParser.formatString)", "-1", sha]
+            ["log", "--format=\(LogParser.verifiedFormatString)", "-1", sha]
         )
         let commits = LogParser.parse(result.stdout)
         guard let commit = commits.first else {

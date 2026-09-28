@@ -33,7 +33,13 @@ enum LogParser {
     ///
     /// Fields are separated by NUL (`%x00`) to handle multi-line bodies.
     /// A record separator (`%x01`) ends each commit record.
+    /// For lists: the signature field is left empty, because `%G?` runs a gpg/ssh verification per signed
+    /// commit and made loading history several times slower. Single commits use ``verifiedFormatString``.
     nonisolated static var formatString: String {
+        "%H%x00%s%x00%b%x00%an%x00%ae%x00%aI%x00%cn%x00%ce%x00%cI%x00%P%x00%x00%x01"
+    }
+
+    nonisolated static var verifiedFormatString: String {
         "%H%x00%s%x00%b%x00%an%x00%ae%x00%aI%x00%cn%x00%ce%x00%cI%x00%P%x00%G?%x00%x01"
     }
 
@@ -114,13 +120,6 @@ enum LogParser {
     // MARK: Date Parsing
 
     nonisolated private static func parseISO8601(_ string: String) -> Date? {
-        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Create formatters locally to avoid actor-isolation issues on static state.
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withColonSeparatorInTimeZone]
-        if let date = formatter.date(from: trimmed) { return date }
-        formatter.formatOptions = [.withInternetDateTime]
-        if let date = formatter.date(from: trimmed) { return date }
-        return nil
+        GitDate.parse(string)
     }
 }

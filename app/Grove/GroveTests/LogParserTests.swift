@@ -248,6 +248,9 @@ struct LogParserTests {
         #expect(fmt.contains("%ce"))
         #expect(fmt.contains("%cI"))
         #expect(fmt.contains("%P"))
-        #expect(fmt.contains("%G?"))
+        // Lists skip signature verification; single-commit lookups keep it, in the same field slot.
+        #expect(!fmt.contains("%G?"))
+        #expect(LogParser.verifiedFormatString.contains("%G?"))
+        #expect(LogParser.verifiedFormatString.components(separatedBy: "%x00").count == fmt.components(separatedBy: "%x00").count)
     }
 }

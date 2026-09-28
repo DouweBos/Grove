@@ -25,7 +25,9 @@ struct CommitDetailHeader: View {
                         Text("· \(commit.authorDate.commitRelative())")
                             .font(.monoCaption)
                             .foregroundStyle(Theme.textSecondary)
-                        VerifiedBadge(status: commit.isSigned ? .verified : .unsigned)
+                        if let signature = viewModel.selectedSignature {
+                            VerifiedBadge(status: signature)
+                        }
                     }
                 }
             }

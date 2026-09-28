@@ -18,8 +18,17 @@ final class HistoryViewModel {
     // MARK: - Log
 
     private(set) var commits: [CommitInfo] = []
-    private(set) var branches: [BranchInfo] = []
-    private(set) var tags: [TagInfo] = []
+    private(set) var branches: [BranchInfo] = [] {
+        didSet { branchesBySHA = Self.index(branches) }
+    }
+    private(set) var tags: [TagInfo] = [] {
+        didSet { tagsBySHA = Dictionary(grouping: tags, by: \.targetSHA) }
+    }
+    // Rows look refs up by SHA; scanning thousands of tags per row per render made branch switches slow.
+    private var branchesBySHA: [String: [BranchInfo]] = [:]
+    /// Signature state of the selected commit; nil until verified.
+    private(set) var selectedSignature: SignatureStatus?
+    private var tagsBySHA: [String: [TagInfo]] = [:]
     private(set) var graphNodes: [String: GraphNode] = [:]
     private(set) var maxGraphColumns = 1
     private(set) var isLoading = false
@@ -71,9 +80,11 @@ final class HistoryViewModel {
         commits = []
         hasMore = true
         graphNodes = [:]
-        await loadRefs()
+        // Refs only decorate rows, so the log doesn't wait for them.
+        async let refs: Void = loadRefs()
         await loadMore()
         if selectedCommit == nil, let first = commits.first { select(first) }
+        await refs
     }
 
     /// Re-reads the loaded range in place, keeping the selection, after the repository changes.
@@ -161,13 +172,17 @@ final class HistoryViewModel {
     var headBranchName: String? { branches.first(where: \.isHEAD)?.name }
 
     func branches(at commit: CommitInfo) -> [BranchInfo] {
-        branches.filter { $0.targetSHA == commit.id && !$0.id.hasSuffix("/HEAD") }
-            .sorted { ($0.isHEAD ? 0 : $0.isLocal ? 1 : 2) < ($1.isHEAD ? 0 : $1.isLocal ? 1 : 2) }
+        branchesBySHA[commit.id] ?? []
     }
 
     func tags(at commit: CommitInfo) -> [TagInfo] {
-        // Tag refs carry abbreviated SHAs.
-        tags.filter { !$0.targetSHA.isEmpty && commit.id.hasPrefix($0.targetSHA) }
+        tagsBySHA[commit.id] ?? []
+    }
+
+    /// HEAD first, then local, then remote branches; `origin/HEAD` aliases are dropped.
+    private static func index(_ branches: [BranchInfo]) -> [String: [BranchInfo]] {
+        Dictionary(grouping: branches.filter { !$0.id.hasSuffix("/HEAD") }, by: \.targetSHA)
+            .mapValues { $0.sorted { ($0.isHEAD ? 0 : $0.isLocal ? 1 : 2) < ($1.isHEAD ? 0 : $1.isLocal ? 1 : 2) } }
     }
 
     func commit(withID id: String) -> CommitInfo? {
@@ -218,6 +233,9 @@ final class HistoryViewModel {
 
     private func loadDetails(for commit: CommitInfo) async {
         isLoadingDiff = true
+        selectedSignature = nil
+        // Verifying a signature is slow, so only the selected commit is checked, alongside its diff.
+        async let verified = try? repository.commitDetail(commit.id)
         do {
             let diffs = try await repository.diffForCommit(commit.id)
             // A newer selection may have started while this diff was loading.
@@ -227,9 +245,11 @@ final class HistoryViewModel {
         } catch {
             if selectedCommit?.id == commit.id { errorMessage = error.localizedDescription }
         }
-        if selectedCommit?.id == commit.id {
-            isLoadingDiff = false
-            if detailTab == .tree { await loadTree() }
+        guard selectedCommit?.id == commit.id else { return }
+        isLoadingDiff = false
+        if detailTab == .tree { await loadTree() }
+        if let isSigned = await verified?.isSigned, selectedCommit?.id == commit.id {
+            selectedSignature = isSigned ? .verified : .unsigned
         }
     }
 

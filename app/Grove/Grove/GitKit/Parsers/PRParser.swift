@@ -204,8 +204,6 @@ enum PRParser {
     /// Parse an ISO 8601 date string produced by the `gh` CLI.
     private static func parseDate(_ string: String?) -> Date {
         guard let string else { return Date() }
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: string) ?? Date()
+        return GitDate.parse(string) ?? Date()
     }
 }

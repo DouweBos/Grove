@@ -39,11 +39,6 @@ struct CommitRow: View {
                     if commit.isMerge {
                         Image(systemName: "arrow.triangle.merge").accessibilityLabel("Merge commit")
                     }
-                    if commit.isSigned {
-                        Image(systemName: "checkmark.seal.fill")
-                            .foregroundStyle(Theme.success)
-                            .accessibilityLabel("Signed")
-                    }
                 }
                 .font(.monoCaption)
                 .foregroundStyle(Theme.textSecondary)

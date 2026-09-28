@@ -166,7 +166,7 @@ extension GitRepository {
         let result = try await shell.run([
             "for-each-ref",
             "--sort=-creatordate",
-            "--format=%(refname:short)%00%(objectname:short)%00%(objecttype)%00%(*objectname:short)%00%(contents:subject)%00%(taggername)%00%(taggerdate:iso-strict)",
+            "--format=%(refname:short)%00%(objectname)%00%(objecttype)%00%(*objectname)%00%(contents:subject)%00%(taggername)%00%(taggerdate:iso-strict)",
             "refs/tags/"
         ])
         return parseTagList(result.stdout)

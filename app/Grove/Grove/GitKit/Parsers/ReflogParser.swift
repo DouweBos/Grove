@@ -78,8 +78,6 @@ enum ReflogParser {
     // MARK: Date Parsing
 
     nonisolated private static func parseISO8601(_ string: String) -> Date? {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withColonSeparatorInTimeZone]
-        return f.date(from: string.trimmingCharacters(in: .whitespacesAndNewlines))
+        GitDate.parse(string)
     }
 }
