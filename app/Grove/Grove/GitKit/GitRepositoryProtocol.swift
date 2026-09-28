@@ -334,6 +334,13 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     /// `base` overrides where the branch starts; nil uses git-flow's default for `kind`.
     func startFlowBranch(_ kind: GitFlowKind, name: String, base: String?, config: GitFlowConfig) async throws
     func finishFlowBranch(_ kind: GitFlowKind, name: String, config: GitFlowConfig, options: GitFlowFinishOptions) async throws
+
+    // MARK: git-svn (GitRepository+SVN.swift)
+
+    func svnStatus() async -> SVNStatus
+    /// `git svn rebase`, or `git svn fetch` when `rebase` is false.
+    func svnFetch(rebase: Bool) async throws
+    func svnDcommit() async throws
 }
 
 // MARK: - GitRepositoryProtocol Default Arguments
@@ -421,4 +428,7 @@ extension GitRepositoryProtocol {
     func initializeGitFlow(_ config: GitFlowConfig) async throws {}
     func startFlowBranch(_ kind: GitFlowKind, name: String, base: String?, config: GitFlowConfig) async throws {}
     func finishFlowBranch(_ kind: GitFlowKind, name: String, config: GitFlowConfig, options: GitFlowFinishOptions) async throws {}
+    func svnStatus() async -> SVNStatus { SVNStatus() }
+    func svnFetch(rebase: Bool) async throws {}
+    func svnDcommit() async throws {}
 }

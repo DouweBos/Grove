@@ -75,6 +75,8 @@ struct GitFlowSheetView: View {
 #Preview {
     let repo = MockGitRepository()
     let refs = RepositoryRefs(repository: repo)
-    return RepositoryMoreMenu(toolbarState: RepositoryToolbarState(refs: refs, gitFlow: GitFlowViewModel(repository: repo, refs: refs))) { _ in }
+    let state = RepositoryToolbarState(refs: refs, gitFlow: GitFlowViewModel(repository: repo, refs: refs),
+                                       svn: SVNViewModel(repository: repo))
+    return RepositoryMoreMenu(toolbarState: state) { _ in }
         .padding()
 }

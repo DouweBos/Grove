@@ -34,6 +34,7 @@ final class RepositorySession {
     let autoFetcher: AutoFetchScheduler
     let blameVM: BlameViewModel
     let gitFlowVM: GitFlowViewModel
+    let svnVM: SVNViewModel
 
     // MARK: - Navigation
 
@@ -74,8 +75,10 @@ final class RepositorySession {
         self.branchesReviewVM = BranchesReviewViewModel(repository: repository, refs: refs)
         self.pullRequestsVM   = PullRequestsViewModel(repository: repository)
         let gitFlowVM = GitFlowViewModel(repository: repository, refs: refs)
+        let svnVM = SVNViewModel(repository: repository)
         self.gitFlowVM        = gitFlowVM
-        self.toolbarState     = RepositoryToolbarState(refs: refs, gitFlow: gitFlowVM)
+        self.svnVM            = svnVM
+        self.toolbarState     = RepositoryToolbarState(refs: refs, gitFlow: gitFlowVM, svn: svnVM)
         self.repositorySettingsVM = RepositorySettingsViewModel(repository: repository)
         self.autoFetcher      = AutoFetchScheduler(repository: repository)
         self.blameVM          = BlameViewModel(repository: repository)
@@ -99,6 +102,7 @@ final class RepositorySession {
         branchesReviewVM.undoManager = gitUndoManager
         pullRequestsVM.onRepositoryChanged = refresh
         gitFlowVM.onRepositoryChanged = refresh
+        svnVM.onRepositoryChanged = refresh
         sidebarVM.gitFlow = gitFlowVM
         toolbarState.onAddSubmodule = { [sidebarVM] in sidebarVM.requestAddSubmodule() }
     }
@@ -152,7 +156,8 @@ final class RepositorySession {
             async let history: Void = reload(visible)
             async let tab: Void = refreshSelectedTab()
             async let flow: Void = gitFlowVM.refresh()
-            _ = await (refsRead.value, workingCopy, history, tab, flow)
+            async let svn: Void = svnVM.refresh()
+            _ = await (refsRead.value, workingCopy, history, tab, flow, svn)
         } while needsAnotherRefresh
     }
 
@@ -184,9 +189,9 @@ final class RepositorySession {
         case .fetch:
             toolbarState.present(.fetch)
         case .pull:
-            toolbarState.present(.pull)
+            if svnVM.status.isSVN { svnVM.present(.fetch) } else { toolbarState.present(.pull) }
         case .push:
-            toolbarState.present(.push)
+            if svnVM.status.isSVN { svnVM.present(.dcommit) } else { toolbarState.present(.push) }
         case .newBranch:
             toolbarState.present(.branch)
         case .stash:
