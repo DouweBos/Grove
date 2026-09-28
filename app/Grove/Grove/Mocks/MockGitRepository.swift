@@ -38,7 +38,7 @@ final class MockGitRepository: GitRepositoryProtocol {
 
     // MARK: Helpers
 
-    /// How often each detail loader ran, so tests can tell a cache hit from a re-read.
+    /// How often each git call ran, keyed by its signature, e.g. `"tags()"`; tests check for cache hits and duplicate reads.
     @ObservationIgnored private(set) var callCounts: [String: Int] = [:]
 
     func recordCall(_ name: String = #function) {
@@ -46,7 +46,8 @@ final class MockGitRepository: GitRepositoryProtocol {
     }
 
     /// Simulates a realistic async round-trip (50 ms by default).
-    func simulateLatency(_ nanoseconds: UInt64 = 50_000_000) async {
+    func simulateLatency(_ nanoseconds: UInt64 = 50_000_000, caller: String = #function) async {
+        recordCall(caller)
         try? await Task.sleep(nanoseconds: nanoseconds)
     }
 
@@ -62,7 +63,6 @@ final class MockGitRepository: GitRepositoryProtocol {
     }
 
     func listTrackedFiles() async throws -> [String] {
-        recordCall()
         await simulateLatency()
         return MockData.trackedFiles
     }
@@ -116,19 +116,16 @@ final class MockGitRepository: GitRepositoryProtocol {
     // MARK: Diff
 
     func diff(for entry: StatusEntry, staged: Bool, ignoreWhitespace: Bool = false) async throws -> DiffResult {
-        recordCall()
         await simulateLatency()
         return MockData.diffResult(for: entry.path)
     }
 
     func diffForCommit(_ sha: String) async throws -> [FileDiff] {
-        recordCall()
         await simulateLatency()
         return MockData.commitFileDiffs
     }
 
     func filesInCommit(_ sha: String) async throws -> [String] {
-        recordCall()
         await simulateLatency()
         return MockData.trackedFiles
     }
@@ -161,7 +158,6 @@ final class MockGitRepository: GitRepositoryProtocol {
     }
 
     func commitDetail(_ sha: String) async throws -> CommitInfo {
-        recordCall()
         await simulateLatency()
         return MockData.commits.first(where: { $0.id == sha }) ?? MockData.commits[0]
     }

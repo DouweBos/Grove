@@ -113,12 +113,13 @@ struct FileHistorySheet: View {
 
 struct BranchComparisonSheet: View {
     let repository: any GitRepositoryProtocol
+    var refs: RepositoryRefs?
     let target: BranchInfo
     var onRepositoryChanged: (() async -> Void)?
 
     var body: some View {
         HistoryToolSheet(title: "Compare Branches") {
-            BranchComparisonView(repository: repository, initialTarget: target, onRepositoryChanged: onRepositoryChanged)
+            BranchComparisonView(repository: repository, refs: refs, initialTarget: target, onRepositoryChanged: onRepositoryChanged)
         }
     }
 }

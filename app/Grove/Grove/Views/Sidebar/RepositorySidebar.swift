@@ -51,7 +51,7 @@ struct RepositorySidebar: View {
             }
         }
         .task {
-            await viewModel.refresh()
+            await viewModel.loadIfNeeded()
         }
     }
 }

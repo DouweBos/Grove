@@ -6,6 +6,8 @@ import SwiftUI
 /// Both sides of `base...compare`: commits only in each branch, plus the files `compare` changed, with Merge / Rebase actions.
 struct BranchComparisonView: View {
     let repository: any GitRepositoryProtocol
+    /// The session's shared refs; without them (previews) the branches are read directly.
+    var refs: RepositoryRefs?
     var initialTarget: BranchInfo?
     var onRepositoryChanged: (() async -> Void)?
 
@@ -163,15 +165,23 @@ struct BranchComparisonView: View {
 
     private func loadBranches() async {
         do {
-            async let local = repository.localBranches()
-            async let remote = repository.remoteBranches()
-            let (l, r) = try await (local, remote)
+            let (l, r) = try await readBranches()
             branches = l + r.filter { !$0.id.hasSuffix("/HEAD") }
             source = l.first(where: \.isHEAD) ?? l.first
             if let initialTarget { target = branches.first { $0.id == initialTarget.id } ?? initialTarget }
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func readBranches() async throws -> (local: [BranchInfo], remote: [BranchInfo]) {
+        guard let refs else {
+            async let local = repository.localBranches()
+            async let remote = repository.remoteBranches()
+            return try await (local, remote)
+        }
+        await refs.loadIfNeeded()
+        return (refs.localBranches, refs.remoteBranches)
     }
 
     private func compare() async {

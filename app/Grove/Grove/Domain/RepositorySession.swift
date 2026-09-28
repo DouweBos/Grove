@@ -12,14 +12,15 @@ import os
 
 /// Bundles every ViewModel and service needed while a repository window is open.
 ///
-/// The view creates a single `@State` session and calls `start()` / `stop()`
-/// in `.task` / `.onDisappear`.
+/// The window keeps a few sessions: `start()` when shown, `pause()` when left, `stop()` when evicted.
 @MainActor
 @Observable
 final class RepositorySession {
 
     // MARK: - ViewModels
 
+    /// One read of branches, tags and remotes per refresh, shared by every view below.
+    let refs: RepositoryRefs
     let sidebarVM: SidebarViewModel
     let workingCopyVM: WorkingCopyViewModel
     let historyVM: HistoryViewModel
@@ -28,7 +29,7 @@ final class RepositorySession {
     let branchesReviewVM: BranchesReviewViewModel
     let pullRequestsVM: PullRequestsViewModel
     let repositorySettingsVM: RepositorySettingsViewModel
-    let toolbarState = RepositoryToolbarState()
+    let toolbarState: RepositoryToolbarState
     let gitUndoManager = GitUndoManager()
     let autoFetcher: AutoFetchScheduler
     let blameVM: BlameViewModel
@@ -38,25 +39,40 @@ final class RepositorySession {
     /// Sidebar-driven navigation selection.
     var selectedItem: SidebarItem = .workingCopy
 
-    /// Cached filtered history ViewModels keyed by ref name.
+    /// Cached filtered history ViewModels keyed by ref name; see RepositorySession+Refresh.
     var filteredHistoryVMs: [String: HistoryViewModel] = [:]
+    /// Ref names of `filteredHistoryVMs`, least recently shown first.
+    var filteredHistoryOrder: [String] = []
+
+    // MARK: - Refresh State
+
+    /// Bumped by every `refreshAll()`; a tab refreshed at the current value is up to date.
+    private(set) var refreshGeneration = 0
+    var tabRefreshes: [RefreshedTab: TabRefresh] = [:]
+    private var isRefreshing = false
+    private var needsAnotherRefresh = false
 
     // MARK: - Private
 
     let repository: any GitRepositoryProtocol
     private var fileWatcher: FileWatcher?
+    /// False while paused: nothing watches or fetches, but every loaded list stays.
+    private(set) var isActive = false
 
     // MARK: - Init
 
     init(repository: any GitRepositoryProtocol) {
         self.repository = repository
-        self.sidebarVM        = SidebarViewModel(repository: repository)
+        let refs = RepositoryRefs(repository: repository, readsStatus: false)
+        self.refs = refs
+        self.sidebarVM        = SidebarViewModel(repository: repository, refs: refs)
         self.workingCopyVM    = WorkingCopyViewModel(repository: repository)
-        self.historyVM        = HistoryViewModel(repository: repository)
+        self.historyVM        = HistoryViewModel(repository: repository, refs: refs)
         self.stashesVM        = StashesViewModel(repository: repository)
         self.reflogVM         = ReflogViewModel(repository: repository)
-        self.branchesReviewVM = BranchesReviewViewModel(repository: repository)
+        self.branchesReviewVM = BranchesReviewViewModel(repository: repository, refs: refs)
         self.pullRequestsVM   = PullRequestsViewModel(repository: repository)
+        self.toolbarState     = RepositoryToolbarState(refs: refs)
         self.repositorySettingsVM = RepositorySettingsViewModel(repository: repository)
         self.autoFetcher      = AutoFetchScheduler(repository: repository)
         self.blameVM          = BlameViewModel(repository: repository)
@@ -67,6 +83,7 @@ final class RepositorySession {
     private func wireFeatureViewModels() {
         let refresh: () async -> Void = { [weak self] in await self?.refreshAll() }
         sidebarVM.onRepositoryChanged = refresh
+        sidebarVM.changeCountSource = { [workingCopyVM] in workingCopyVM.changedCount }
         sidebarVM.undoManager = gitUndoManager
         workingCopyVM.onRepositoryChanged = refresh
         workingCopyVM.undoManager = gitUndoManager
@@ -82,52 +99,63 @@ final class RepositorySession {
 
     // MARK: - Lifecycle
 
-    /// Start watching the repository for filesystem changes and begin auto-fetch.
+    /// Watches the repository, starts auto-fetch and refreshes; lists loaded before a pause stay visible meanwhile.
     func start() async {
+        guard !isActive else { return }
+        isActive = true
         let watcher = FileWatcher(paths: [repository.path.path], latency: 1.0) { [weak self] in
             Task { @MainActor in
-                await self?.refreshAll()
+                guard let self, self.isActive else { return }
+                await self.refreshAll()
             }
         }
         watcher.start()
         fileWatcher = watcher
-
-        await sidebarVM.refresh()
-        await workingCopyVM.refresh()
         autoFetcher.start()
+        await refreshAll()
     }
 
-    /// Reload everything that reflects repository state. Views that were never
-    /// opened stay unloaded; loaded lists refresh in place.
+    /// Leaving the repository: stops watching and fetching but keeps every loaded list for a quick return.
+    func pause() {
+        guard isActive else { return }
+        isActive = false
+        fileWatcher?.stop()
+        fileWatcher = nil
+        autoFetcher.stop()
+    }
+
+    /// Stop the file watcher and auto-fetcher for good, e.g. when the session is evicted.
+    func stop() {
+        pause()
+    }
+
+    /// Reload everything that reflects repository state. Only what's on screen reloads now;
+    /// hidden history lists and tabs are marked stale and reload when shown.
     func refreshAll() async {
         guard !isRefreshing else { return needsAnotherRefresh = true }
         isRefreshing = true
         defer { isRefreshing = false }
         repeat {
             needsAnotherRefresh = false
-            async let sidebar: Void = sidebarVM.refresh()
+            refreshGeneration += 1
+            let visible = visibleHistoryVM
+            for vm in [historyVM] + Array(filteredHistoryVMs.values) where vm !== visible { vm.markStale() }
+            // Started first so the history list and Branches Review join this read instead of their own.
+            let refsRead = refs.beginRefresh()
             async let workingCopy: Void = workingCopyVM.refresh()
-            async let history: Void = historyVM.reload()
-            _ = await (sidebar, workingCopy, history)
-            for vm in filteredHistoryVMs.values { await vm.reload() }
-            if !stashesVM.stashes.isEmpty || selectedItem == .stashes { await stashesVM.refresh() }
-            if selectedItem == .reflog { await reflogVM.refresh() }
-            if selectedItem == .branchesReview { await branchesReviewVM.refresh() }
+            async let history: Void = reload(visible)
+            async let tab: Void = refreshSelectedTab()
+            _ = await (refsRead.value, workingCopy, history, tab)
         } while needsAnotherRefresh
     }
 
-    private var isRefreshing = false
-    private var needsAnotherRefresh = false
-
-    /// Stop the file watcher and auto-fetcher.
-    func stop() {
-        fileWatcher?.stop()
-        autoFetcher.stop()
+    private func reload(_ vm: HistoryViewModel?) async {
+        await vm?.reload()
     }
 
     // MARK: - Action Handling
 
-    // swiftlint:disable:next cyclomatic_complexity function_body_length
+    // swiftlint:disable:next cyclomatic_complexity
     func handleAction(_ action: GroveAction) {
         switch action {
         case .navigateWorkingCopy:
@@ -147,39 +175,19 @@ final class RepositorySession {
         case .navigateSettings:
             sidebarVM.select(.settings)
         case .fetch:
-            Task {
-                toolbarState.remotes = (try? await repository.remotes()) ?? []
-                toolbarState.isFetchPresented = true
-            }
+            toolbarState.present(.fetch)
         case .pull:
-            Task {
-                toolbarState.remoteBranches = (try? await repository.remoteBranches()) ?? []
-                toolbarState.remotes = (try? await repository.remotes()) ?? []
-                toolbarState.isPullPresented = true
-            }
+            toolbarState.present(.pull)
         case .push:
-            Task {
-                toolbarState.localBranches = (try? await repository.localBranches()) ?? []
-                toolbarState.remotes = (try? await repository.remotes()) ?? []
-                toolbarState.isPushPresented = true
-            }
+            toolbarState.present(.push)
         case .newBranch:
-            Task {
-                toolbarState.localBranches = (try? await repository.localBranches()) ?? []
-                toolbarState.isBranchPresented = true
-            }
+            toolbarState.present(.branch)
         case .stash:
-            toolbarState.isStashPresented = true
+            toolbarState.present(.stash)
         case .merge:
-            Task {
-                toolbarState.localBranches = (try? await repository.localBranches()) ?? []
-                toolbarState.isMergePresented = true
-            }
+            toolbarState.present(.merge)
         case .rebase:
-            Task {
-                toolbarState.localBranches = (try? await repository.localBranches()) ?? []
-                toolbarState.isRebasePresented = true
-            }
+            toolbarState.present(.rebase)
         case .commit:
             guard selectedItem == .workingCopy else { return }
             Task { await workingCopyVM.commit() }
@@ -216,20 +224,5 @@ final class RepositorySession {
     func restoreSelection(_ item: SidebarItem) {
         sidebarVM.select(item)
         selectedItem = item
-    }
-
-    // MARK: - Helpers
-
-    /// Returns a history ViewModel filtered to a specific branch or tag,
-    /// reusing cached instances so re-renders don't discard loaded data.
-    func filteredHistoryVM(for branch: String) -> HistoryViewModel {
-        if let existing = filteredHistoryVMs[branch] {
-            return existing
-        }
-        let vm = HistoryViewModel(repository: repository)
-        vm.filterBranch = branch
-        vm.onRepositoryChanged = { [weak self] in await self?.refreshAll() }
-        filteredHistoryVMs[branch] = vm
-        return vm
     }
 }

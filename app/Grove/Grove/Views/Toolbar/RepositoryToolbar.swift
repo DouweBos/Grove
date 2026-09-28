@@ -10,9 +10,7 @@ import Observation
 
 // MARK: - RepositoryToolbarState
 
-/// Observable state for the repository toolbar sheet presentations.
-///
-/// Owned as `@State` in the hosting view so SwiftUI tracks changes.
+/// Observable state for the repository toolbar sheet presentations. Owned by the session.
 @MainActor
 @Observable
 final class RepositoryToolbarState {
@@ -28,9 +26,30 @@ final class RepositoryToolbarState {
     var isFetching = false
     var isSyncing = false
 
-    var localBranches: [BranchInfo] = []
-    var remoteBranches: [BranchInfo] = []
-    var remotes: [RemoteInfo] = []
+    /// Sheets read branches and remotes from here, so they open without waiting for git.
+    let refs: RepositoryRefs
+
+    init(refs: RepositoryRefs) {
+        self.refs = refs
+    }
+
+    enum Sheet { case fetch, pull, push, sync, branch, tag, stash, merge, rebase }
+
+    /// Shows the sheet at once with the last-read refs, reading them first only if they never loaded.
+    func present(_ sheet: Sheet) {
+        switch sheet {
+        case .fetch: isFetchPresented = true
+        case .pull: isPullPresented = true
+        case .push: isPushPresented = true
+        case .sync: isSyncPresented = true
+        case .branch: isBranchPresented = true
+        case .tag: isTagPresented = true
+        case .stash: isStashPresented = true
+        case .merge: isMergePresented = true
+        case .rebase: isRebasePresented = true
+        }
+        if !refs.hasLoaded { Task { await refs.loadIfNeeded() } }
+    }
 }
 
 // MARK: - RepositoryToolbar
@@ -77,21 +96,18 @@ struct RepositoryToolbar: ToolbarContent {
                 }
                 Divider()
                 Button {
-                    toolbarState.isStashPresented = true
+                    toolbarState.present(.stash)
                 } label: {
                     Label("Stash Changes…", systemImage: "tray.and.arrow.down")
                 }
                 Divider()
                 Button {
-                    Task {
-                        toolbarState.localBranches = (try? await repository.localBranches()) ?? []
-                        toolbarState.isBranchPresented = true
-                    }
+                    toolbarState.present(.branch)
                 } label: {
                     Label("New Branch…", systemImage: "arrow.triangle.branch")
                 }
                 Button {
-                    toolbarState.isTagPresented = true
+                    toolbarState.present(.tag)
                 } label: {
                     Label("New Tag…", systemImage: "tag")
                 }
@@ -115,10 +131,7 @@ struct RepositoryToolbar: ToolbarContent {
 
     private var syncButton: some View {
         Button {
-            Task {
-                toolbarState.remotes = (try? await repository.remotes()) ?? []
-                toolbarState.isSyncPresented = true
-            }
+            toolbarState.present(.sync)
         } label: {
             Label("Sync", systemImage: "arrow.triangle.2.circlepath")
         }
@@ -130,10 +143,7 @@ struct RepositoryToolbar: ToolbarContent {
 
     private var fetchButton: some View {
         Button {
-            Task {
-                toolbarState.remotes = (try? await repository.remotes()) ?? []
-                toolbarState.isFetchPresented = true
-            }
+            toolbarState.present(.fetch)
         } label: {
             Label("Fetch", systemImage: "arrow.clockwise")
         }
@@ -144,11 +154,7 @@ struct RepositoryToolbar: ToolbarContent {
 
     private var pullButton: some View {
         Button {
-            Task {
-                toolbarState.remoteBranches = (try? await repository.remoteBranches()) ?? []
-                toolbarState.remotes = (try? await repository.remotes()) ?? []
-                toolbarState.isPullPresented = true
-            }
+            toolbarState.present(.pull)
         } label: {
             Label("Pull", systemImage: "arrow.down.to.line")
         }
@@ -159,11 +165,7 @@ struct RepositoryToolbar: ToolbarContent {
 
     private var pushButton: some View {
         Button {
-            Task {
-                toolbarState.localBranches = (try? await repository.localBranches()) ?? []
-                toolbarState.remotes = (try? await repository.remotes()) ?? []
-                toolbarState.isPushPresented = true
-            }
+            toolbarState.present(.push)
         } label: {
             Label("Push", systemImage: "arrow.up.to.line")
         }
@@ -203,6 +205,8 @@ struct RepositoryToolbarSheets<Content: View>: View {
 
     @State private var isNarrow = false
 
+    private var refs: RepositoryRefs { toolbarState.refs }
+
     var body: some View {
         content
             // Titled pills plus the remote actions need ~760pt; below that the toolbar would overflow.
@@ -217,19 +221,19 @@ struct RepositoryToolbarSheets<Content: View>: View {
                 ) { sidebarVM.select($0) }
             }
             .sheet(isPresented: $toolbarState.isPushPresented) {
-                PushDialogView(repository: repository, remotes: toolbarState.remotes, onComplete: onComplete)
+                PushDialogView(repository: repository, refs: refs, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isPullPresented) {
-                PullDialogView(repository: repository, onComplete: onComplete)
+                PullDialogView(repository: repository, refs: refs, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isFetchPresented) {
-                FetchDialogView(repository: repository, remotes: toolbarState.remotes, onComplete: onComplete)
+                FetchDialogView(repository: repository, remotes: refs.remotes, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isSyncPresented) {
-                SyncDialogView(repository: repository, remotes: toolbarState.remotes, onComplete: onComplete)
+                SyncDialogView(repository: repository, remotes: refs.remotes, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isBranchPresented) {
-                CreateBranchDialogView(repository: repository, localBranches: toolbarState.localBranches) { _ in onComplete() }
+                CreateBranchDialogView(repository: repository, localBranches: refs.localBranches) { _ in onComplete() }
             }
             .sheet(isPresented: $toolbarState.isTagPresented) {
                 CreateTagDialogView(repository: repository) { _ in onComplete() }
@@ -238,10 +242,10 @@ struct RepositoryToolbarSheets<Content: View>: View {
                 StashDialogView(repository: repository, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isMergePresented) {
-                MergeDialogView(repository: repository, localBranches: toolbarState.localBranches, onComplete: onComplete)
+                MergeDialogView(repository: repository, localBranches: refs.localBranches, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isRebasePresented) {
-                RebaseDialogView(repository: repository, localBranches: toolbarState.localBranches, onComplete: onComplete)
+                RebaseDialogView(repository: repository, localBranches: refs.localBranches, onComplete: onComplete)
             }
     }
 }
@@ -267,7 +271,7 @@ extension View {
 
 #Preview {
     let repo = MockGitRepository()
-    let state = RepositoryToolbarState()
+    let state = RepositoryToolbarState(refs: RepositoryRefs(repository: repo))
     return NavigationStack {
         Text("Repository Content")
             .frame(width: 800, height: 600)

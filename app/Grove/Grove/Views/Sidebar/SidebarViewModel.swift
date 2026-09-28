@@ -14,17 +14,30 @@ final class SidebarViewModel {
     // MARK: - State
 
     var selection: SidebarItem? = .workingCopy
-    var localBranches: [BranchInfo] = []
-    var remoteBranches: [BranchInfo] = []
-    var tags: [TagInfo] = []
-    var remotes: [RemoteInfo] = []
-    var worktrees: [WorktreeInfo] = []
-    var submodules: [SubmoduleInfo] = []
-    var isLoading = false
-    var errorMessage: String?
+    /// Shared with the session's other views, so the sidebar never reads refs on its own.
+    let refs: RepositoryRefs
+    var localBranches: [BranchInfo] { refs.localBranches }
+    var remoteBranches: [BranchInfo] { refs.remoteBranches }
+    var tags: [TagInfo] { refs.tags }
+    var remotes: [RemoteInfo] { refs.remotes }
+    var worktrees: [WorktreeInfo] { refs.worktrees }
+    var submodules: [SubmoduleInfo] { refs.submodules }
+    var isLoading: Bool { refs.isRefreshing }
 
-    /// Untracked change count shown on the Working Copy badge.
-    var workingCopyBadgeCount: Int = 0
+    /// A failed action, else a failed ref read.
+    var errorMessage: String? {
+        get { actionError ?? refs.errorMessage }
+        set {
+            actionError = newValue
+            if newValue == nil { refs.dismissError() }
+        }
+    }
+    private var actionError: String?
+
+    /// Changed-file count shown on the Changes badge.
+    var workingCopyBadgeCount: Int { changeCountSource?() ?? refs.changedCount }
+    /// Set by the session to count from the Changes list instead of a second status read.
+    var changeCountSource: (() -> Int)?
 
     /// Worktrees other than the one this window shows; from a linked worktree that includes the main one.
     var otherWorktrees: [WorktreeInfo] {
@@ -155,8 +168,9 @@ final class SidebarViewModel {
 
     // MARK: - Init
 
-    init(repository: any GitRepositoryProtocol) {
+    init(repository: any GitRepositoryProtocol, refs: RepositoryRefs? = nil) {
         self.repository = repository
+        self.refs = refs ?? RepositoryRefs(repository: repository)
         loadPinnedBranches()
     }
 
@@ -175,43 +189,12 @@ final class SidebarViewModel {
     // MARK: - Actions
 
     func refresh() async {
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
-
-        // Fetch each data source concurrently. Each call is wrapped so
-        // one failure doesn't prevent the others from loading.
-        async let lb: [BranchInfo]? = tryOrNil { try await repository.localBranches() }
-        async let rb: [BranchInfo]? = tryOrNil { try await repository.remoteBranches() }
-        async let tg: [TagInfo]? = tryOrNil { try await repository.tags() }
-        async let rm: [RemoteInfo]? = tryOrNil { try await repository.remotes() }
-        async let st: [StatusEntry]? = tryOrNil { try await repository.status() }
-        async let wt: [WorktreeInfo]? = tryOrNil { try await repository.worktrees() }
-        async let sm: [SubmoduleInfo]? = tryOrNil { try await repository.submodules() }
-
-        let (local, remote, tagList, remoteList, statusList) = await (lb, rb, tg, rm, st)
-        let (worktreeList, submoduleList) = await (wt, sm)
-        if let worktreeList { worktrees = worktreeList }
-        if let submoduleList { submodules = submoduleList }
-
-        if let local { localBranches = local }
-        if let remote { remoteBranches = remote }
-        if let tagList { tags = tagList }
-        if let remoteList { remotes = remoteList }
-        if let statusList {
-            workingCopyBadgeCount = statusList.filter {
-                $0.indexStatus != .unmodified || $0.workdirStatus != .unmodified
-            }.count
-        }
+        await refs.refresh()
     }
 
-    /// Run an async throwing closure, returning `nil` on error.
-    private func tryOrNil<T>(_ body: @Sendable () async throws -> T) async -> T? {
-        do { return try await body() }
-        catch {
-            errorMessage = errorMessage ?? error.localizedDescription
-            return nil
-        }
+    /// The session normally loads refs first; this only covers a sidebar shown on its own, e.g. in previews.
+    func loadIfNeeded() async {
+        await refs.loadIfNeeded()
     }
 
     func checkout(branch: BranchInfo) async {

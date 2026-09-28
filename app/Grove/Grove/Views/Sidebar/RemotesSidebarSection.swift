@@ -80,8 +80,7 @@ struct RemotesSidebarSection: View {
 
 #Preview {
     let vm = SidebarViewModel(repository: MockGitRepository())
-    vm.remotes = MockData.remotes
-    vm.remoteBranches = MockData.branches.filter(\.isRemote)
+    vm.refs.replace(remoteBranches: MockData.branches.filter(\.isRemote), remotes: MockData.remotes)
     return List(selection: Binding<SidebarItem?>.constant(.history)) {
         RemotesSidebarSection()
     }

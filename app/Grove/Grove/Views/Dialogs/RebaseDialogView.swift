@@ -58,6 +58,10 @@ struct RebaseDialogView: View {
                 )
             }
         }
+        // Opened before the refs first loaded: pick a branch once they arrive.
+        .onChange(of: candidates) { _, names in
+            if selectedBranch.isEmpty, let first = names.first { selectedBranch = first }
+        }
     }
 
     private func performRebase() {

@@ -67,14 +67,14 @@ struct RepositoryContentRouter: View {
             StashesView()
                 .environment(session.stashesVM)
                 .task(id: "stashes-initial") {
-                    await session.stashesVM.refresh()
+                    await session.refreshOnEntry(.stashes)
                 }
 
         case .reflog:
             ReflogView()
                 .environment(session.reflogVM)
                 .task(id: "reflog-initial") {
-                    await session.reflogVM.refresh()
+                    await session.refreshOnEntry(.reflog)
                 }
 
         case .blame:
@@ -84,14 +84,14 @@ struct RepositoryContentRouter: View {
             PullRequestsView()
                 .environment(session.pullRequestsVM)
                 .task(id: "pullrequests-initial") {
-                    await session.pullRequestsVM.refresh()
+                    await session.refreshOnEntry(.pullRequests)
                 }
 
         case .branchesReview:
             BranchesReviewView()
                 .environment(session.branchesReviewVM)
                 .task(id: "branchesreview-initial") {
-                    await session.branchesReviewVM.refresh()
+                    await session.refreshOnEntry(.branchesReview)
                 }
 
         case .settings:

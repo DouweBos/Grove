@@ -31,7 +31,9 @@ final class HistoryViewModel {
     private var tagsBySHA: [String: [TagInfo]] = [:]
     private(set) var graphNodes: [String: GraphNode] = [:]
     private(set) var maxGraphColumns = 1
-    private(set) var isLoading = false
+    private(set) var isLoading = false {
+        didSet { if !isLoading, pendingReload { Task { await reloadLog() } } }
+    }
     private(set) var hasMore = true
     private(set) var searchText = ""
     var filterBranch: String?
@@ -56,15 +58,23 @@ final class HistoryViewModel {
     var undoManager: GitUndoManager?
 
     let repository: any GitRepositoryProtocol
+    /// The session's shared refs; rows decorate from them instead of reading refs per list.
+    let refs: RepositoryRefs
     private let pageSize = 100
     private var hasLoaded = false
+    /// Set while hidden during a repository change, so the next appearance reloads.
+    private(set) var isStale = false
+    /// A reload asked for while the log was loading; it runs once that finishes.
+    private var pendingReload = false
+    private var appliedRefsGeneration: Int?
     private var detailTask: Task<Void, Never>?
     private var prefetchTask: Task<Void, Never>?
     // Keyed by SHA: a commit's diff, tree and signature never change, so revisits skip git entirely.
     @ObservationIgnored private var detailCache = LRUCache<String, CommitDetails>(capacity: 50)
 
-    init(repository: any GitRepositoryProtocol) {
+    init(repository: any GitRepositoryProtocol, refs: RepositoryRefs? = nil) {
         self.repository = repository
+        self.refs = refs ?? RepositoryRefs(repository: repository)
     }
 
     // Setters for the actions extension, which lives in its own file.
@@ -74,12 +84,21 @@ final class HistoryViewModel {
     // MARK: - Loading
 
     func loadIfNeeded() async {
-        guard !hasLoaded else { return }
-        await loadInitial()
+        guard hasLoaded else { return await loadInitial() }
+        guard isStale else { return }
+        isStale = false
+        syncRefs()
+        await reloadLog()
+    }
+
+    /// The repository changed while this list was hidden; it reloads when shown again.
+    func markStale() {
+        if hasLoaded { isStale = true }
     }
 
     func loadInitial() async {
         hasLoaded = true
+        isStale = false
         commits = []
         hasMore = true
         graphNodes = [:]
@@ -91,9 +110,19 @@ final class HistoryViewModel {
     }
 
     /// Re-reads the loaded range in place, keeping the selection, after the repository changes.
+    /// Joins the session's ref read when one is already running.
     func reload() async {
-        guard hasLoaded, !isLoading else { return }
-        await loadRefs()
+        guard hasLoaded else { return }
+        isStale = false
+        async let refsRead: Void = refs.refresh()
+        await reloadLog()
+        await refsRead
+        syncRefs()
+    }
+
+    private func reloadLog() async {
+        guard !isLoading else { return pendingReload = true }
+        pendingReload = false
         isLoading = true
         defer { isLoading = false }
         do {
@@ -134,16 +163,16 @@ final class HistoryViewModel {
     }
 
     private func loadRefs() async {
-        do {
-            async let local = repository.localBranches()
-            async let remote = repository.remoteBranches()
-            async let tagList = repository.tags()
-            let (l, r, t) = try await (local, remote, tagList)
-            branches = l + r
-            tags = t
-        } catch {
-            // Refs only decorate rows; the log is still usable without them.
-        }
+        await refs.loadIfNeeded()
+        syncRefs()
+    }
+
+    /// Re-indexes only when the shared refs actually changed; thousands of tags make that costly.
+    func syncRefs() {
+        guard appliedRefsGeneration != refs.generation else { return }
+        appliedRefsGeneration = refs.generation
+        branches = refs.localBranches + refs.remoteBranches
+        tags = refs.tags
     }
 
     // MARK: - Filter

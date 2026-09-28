@@ -10,18 +10,20 @@ struct PullDialogView: View {
     @Environment(\.dismiss) private var dismiss
 
     let repository: any GitRepositoryProtocol
+    /// Last-read remotes and remote branches, so the sheet doesn't wait on git to list them.
+    let refs: RepositoryRefs
     var onComplete: () -> Void = {}
 
     @State private var strategy: PullStrategy = .merge
     @State private var autoStash = false
     @State private var options = PullOptions()
-    @State private var remotes: [RemoteInfo] = []
-    @State private var remoteBranches: [BranchInfo] = []
     /// Remote branch to pull, as `remote/branch`.
     @State private var source: String?
     @State private var progressTitle: String?
     @State private var errorMessage: String?
 
+    private var remotes: [RemoteInfo] { refs.remotes }
+    private var remoteBranches: [BranchInfo] { refs.remoteBranches }
     private var branch: BranchInfo? { repository.currentBranch }
     private var upstream: String? { branch?.upstreamShortName }
 
@@ -83,10 +85,11 @@ struct PullDialogView: View {
             }
         }
         .task {
-            strategy = await repository.defaultPullStrategy()
-            remotes = (try? await repository.remotes()) ?? []
-            remoteBranches = (try? await repository.remoteBranches()) ?? []
             source = PullSourcePicker.defaultSource(for: branch, in: remoteBranches)
+            strategy = await repository.defaultPullStrategy()
+        }
+        .onChange(of: remoteBranches) { _, branches in
+            if source == nil { source = PullSourcePicker.defaultSource(for: branch, in: branches) }
         }
     }
 
@@ -185,5 +188,6 @@ struct PullStrategyField: View {
 }
 
 #Preview {
-    PullDialogView(repository: MockGitRepository())
+    let repo = MockGitRepository()
+    return PullDialogView(repository: repo, refs: RepositoryRefs(repository: repo))
 }

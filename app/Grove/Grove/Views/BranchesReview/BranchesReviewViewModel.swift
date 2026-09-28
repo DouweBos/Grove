@@ -83,8 +83,12 @@ final class BranchesReviewViewModel {
 
     let repository: any GitRepositoryProtocol
 
-    init(repository: any GitRepositoryProtocol) {
+    /// The session's shared refs; without them (previews, tests) branches are read directly.
+    private let refs: RepositoryRefs?
+
+    init(repository: any GitRepositoryProtocol, refs: RepositoryRefs? = nil) {
         self.repository = repository
+        self.refs = refs
     }
 
     var staleDays: Int { GrovePreferences.staleBranchDays }
@@ -112,7 +116,7 @@ final class BranchesReviewViewModel {
         isLoading = true
         defer { isLoading = false }
         do {
-            let local = try await repository.localBranches()
+            let local = try await localBranches()
             let primary = Self.primaryBranchName(from: local)
             let tips = Dictionary(try await repository.branchTips().map { ($0.name, $0) }) { first, _ in first }
             let counts = await aheadBehindCounts(for: local, primary: primary, tips: tips)
@@ -123,6 +127,12 @@ final class BranchesReviewViewModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func localBranches() async throws -> [BranchInfo] {
+        guard let refs else { return try await repository.localBranches() }
+        await refs.settled()
+        return refs.localBranches
     }
 
     /// Counts only branches whose tip or the primary's tip moved since the last refresh.

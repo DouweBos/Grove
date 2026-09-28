@@ -9,12 +9,12 @@ struct PushDialogView: View {
     @Environment(\.dismiss) private var dismiss
 
     let repository: any GitRepositoryProtocol
-    let remotes: [RemoteInfo]
+    /// Last-read remotes and remote branches, so the sheet opens without waiting on git.
+    let refs: RepositoryRefs
     var onComplete: () -> Void = {}
 
     @State private var selectedRemote: String
     @State private var targetBranch: String
-    @State private var remoteBranches: [BranchInfo] = []
     @State private var setUpstream: Bool
     @State private var pushAllTags = false
     @State private var forceWithLease = false
@@ -26,11 +26,12 @@ struct PushDialogView: View {
 
     init(
         repository: any GitRepositoryProtocol,
-        remotes: [RemoteInfo] = [],
+        refs: RepositoryRefs,
         onComplete: @escaping () -> Void = {}
     ) {
         self.repository = repository
-        self.remotes = remotes
+        self.refs = refs
+        let remotes = refs.remotes
         self.onComplete = onComplete
         let remote = repository.currentBranch?.upstreamRemoteName ?? remotes.first?.name ?? "origin"
         _selectedRemote = State(initialValue: remote)
@@ -38,6 +39,8 @@ struct PushDialogView: View {
         _setUpstream = State(initialValue: repository.currentBranch?.upstream == nil)
     }
 
+    private var remotes: [RemoteInfo] { refs.remotes }
+    private var remoteBranches: [BranchInfo] { refs.remoteBranches }
     private var branch: BranchInfo? { repository.currentBranch }
     private var branchName: String { branch?.name ?? "HEAD" }
     private var trimmedTarget: String { targetBranch.trimmingCharacters(in: .whitespaces) }
@@ -129,9 +132,6 @@ struct PushDialogView: View {
                 )
             }
         }
-        .task {
-            remoteBranches = (try? await repository.remoteBranches()) ?? []
-        }
         .onChange(of: selectedRemote) { oldRemote, newRemote in
             // Only follow the remote while the branch name is still the untouched default.
             if targetBranch == Self.defaultTarget(for: branch, on: oldRemote) {
@@ -181,5 +181,8 @@ struct PushDialogView: View {
 }
 
 #Preview {
-    PushDialogView(repository: MockGitRepository(), remotes: MockData.remotes)
+    let repo = MockGitRepository()
+    let refs = RepositoryRefs(repository: repo)
+    refs.replace(remoteBranches: MockData.branches.filter(\.isRemote), remotes: MockData.remotes)
+    return PushDialogView(repository: repo, refs: refs)
 }

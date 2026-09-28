@@ -42,7 +42,7 @@ struct ArchivedBranchesSidebarSection: View {
 
 #Preview {
     let vm = SidebarViewModel(repository: MockGitRepository())
-    vm.localBranches = MockData.branches.filter(\.isLocal)
+    vm.refs.replace(localBranches: MockData.branches.filter(\.isLocal))
     vm.archivedBranchNames = Set(vm.localBranches.dropFirst().map(\.name))
     return List(selection: Binding<SidebarItem?>.constant(nil)) {
         ArchivedBranchesSidebarSection()

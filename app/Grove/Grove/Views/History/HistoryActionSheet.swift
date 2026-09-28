@@ -40,7 +40,7 @@ struct HistoryActionSheet: View {
         case .fileHistory(let path):
             FileHistorySheet(repository: viewModel.repository, path: path)
         case .compare(let branch):
-            BranchComparisonSheet(repository: viewModel.repository, target: branch, onRepositoryChanged: viewModel.onRepositoryChanged)
+            BranchComparisonSheet(repository: viewModel.repository, refs: viewModel.refs, target: branch, onRepositoryChanged: viewModel.onRepositoryChanged)
         }
     }
 

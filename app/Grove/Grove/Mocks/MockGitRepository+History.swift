@@ -8,7 +8,6 @@ extension MockGitRepository {
     // MARK: Blame
 
     func blame(file: String, revision: String?) async throws -> [BlameEntry] {
-        recordCall()
         await simulateLatency(120_000_000)
         return MockData.blameEntries
     }
@@ -33,7 +32,6 @@ extension MockGitRepository {
     }
 
     func pullRequestComments(number: Int) async throws -> [PRComment] {
-        recordCall()
         await simulateLatency(60_000_000)
         return MockData.prComments
     }

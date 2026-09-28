@@ -44,6 +44,7 @@ final class QuickActionsViewModel {
 
     private var itemCandidates: [QuickActionResult] = []
     private var fileCandidates: [QuickActionResult] = []
+    private var commitCandidates: [QuickActionResult] = []
 
     let session: RepositorySession
     private var repository: any GitRepositoryProtocol { session.repository }
@@ -63,7 +64,8 @@ final class QuickActionsViewModel {
         searchText = ""
         selectedIndex = 0
         isPresented = true
-        updateResults()
+        // Refs come from the session's last read, so they're searchable before the commits and files arrive.
+        rebuildItems()
         Task { await loadCandidates() }
     }
 
@@ -142,35 +144,37 @@ final class QuickActionsViewModel {
     // MARK: - Data
 
     private func loadCandidates() async {
-        async let local = try? repository.localBranches()
-        async let remote = try? repository.remoteBranches()
-        async let tags = try? repository.tags()
+        async let refsRead: Void = session.refs.loadIfNeeded()
         async let commits = try? repository.log(maxCount: 200, skip: 0, branch: nil)
         async let files = try? repository.listTrackedFiles()
-        let (localBranches, remoteBranches, tagList, commitList, fileList) = await (local, remote, tags, commits, files)
-
-        var items = Self.staticItems
-        items += (localBranches ?? []).map {
-            QuickActionResult(id: "branch-\($0.id)", title: $0.name, subtitle: $0.isHEAD ? "current branch" : $0.upstream,
-                              symbol: "arrow.triangle.branch", kind: "Branch", target: .navigate(.branch($0)))
-        }
-        items += (remoteBranches ?? []).map {
-            QuickActionResult(id: "remote-\($0.id)", title: $0.name, subtitle: nil, symbol: "cloud",
-                              kind: "Remote", target: .navigate(.remoteBranch($0)))
-        }
-        items += (tagList ?? []).map {
-            QuickActionResult(id: "tag-\($0.id)", title: $0.name, subtitle: String($0.targetSHA.prefix(7)), symbol: "tag",
-                              kind: "Tag", target: .navigate(.tag($0)))
-        }
-        items += (commitList ?? []).map {
+        let (_, commitList, fileList) = await (refsRead, commits, files)
+        commitCandidates = (commitList ?? []).map {
             QuickActionResult(id: "commit-\($0.id)", title: $0.summary, subtitle: "\($0.shortSHA) \u{00B7} \($0.authorName)",
                               symbol: "smallcircle.filled.circle", kind: "Commit", target: .commit($0))
         }
-        itemCandidates = items
         fileCandidates = (fileList ?? []).map {
             QuickActionResult(id: "file-\($0)", title: ($0 as NSString).lastPathComponent, subtitle: $0, symbol: "doc.text",
                               kind: "File", target: .blame($0))
         }
+        rebuildItems()
+    }
+
+    private func rebuildItems() {
+        let refs = session.refs
+        var items = Self.staticItems
+        items += refs.localBranches.map {
+            QuickActionResult(id: "branch-\($0.id)", title: $0.name, subtitle: $0.isHEAD ? "current branch" : $0.upstream,
+                              symbol: "arrow.triangle.branch", kind: "Branch", target: .navigate(.branch($0)))
+        }
+        items += refs.remoteBranches.map {
+            QuickActionResult(id: "remote-\($0.id)", title: $0.name, subtitle: nil, symbol: "cloud",
+                              kind: "Remote", target: .navigate(.remoteBranch($0)))
+        }
+        items += refs.tags.map {
+            QuickActionResult(id: "tag-\($0.id)", title: $0.name, subtitle: String($0.targetSHA.prefix(7)), symbol: "tag",
+                              kind: "Tag", target: .navigate(.tag($0)))
+        }
+        itemCandidates = items + commitCandidates
         updateResults()
     }
 

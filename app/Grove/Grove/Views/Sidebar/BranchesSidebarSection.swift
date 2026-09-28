@@ -145,7 +145,7 @@ struct BranchContextMenu: View {
 
 #Preview {
     let vm = SidebarViewModel(repository: MockGitRepository())
-    vm.localBranches = MockData.branches.filter(\.isLocal)
+    vm.refs.replace(localBranches: MockData.branches.filter(\.isLocal))
     return List(selection: Binding<SidebarItem?>.constant(.history)) {
         BranchesSidebarSection()
     }

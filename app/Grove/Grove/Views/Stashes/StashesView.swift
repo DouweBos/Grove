@@ -63,6 +63,7 @@ private struct StashListPanel: View {
     var body: some View {
         VStack(spacing: 0) {
             PanelHeader(title: "Stashes", detail: "\(viewModel.stashes.count)") {
+                if viewModel.isLoading && !viewModel.stashes.isEmpty { ProgressView().controlSize(.small) }
                 Button { GroveAction.stash.post() } label: { Image(systemName: "plus") }
                     .buttonStyle(.borderless)
                     .help("Stash Changes\u{2026}")

@@ -46,6 +46,8 @@ final class WorkingCopyViewModel {
     private var trackedFilesAreStale = true
 
     var conflictedFiles: [StatusEntry] { statusEntries.filter(\.isConflicted) }
+    /// Staged or unstaged entries, for the Changes badge.
+    var changedCount: Int { statusEntries.filter { $0.indexStatus != .unmodified || $0.workdirStatus != .unmodified }.count }
     var stagedFiles: [StatusEntry] { statusEntries.filter { !$0.isConflicted && $0.indexStatus != .unmodified } }
     var unstagedFiles: [StatusEntry] { statusEntries.filter { !$0.isConflicted && $0.workdirStatus != .unmodified } }
 

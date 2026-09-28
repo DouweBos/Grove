@@ -64,7 +64,7 @@ struct TagsSidebarSection: View {
 
 #Preview {
     let vm = SidebarViewModel(repository: MockGitRepository())
-    vm.tags = MockData.tags
+    vm.refs.replace(tags: MockData.tags)
     return List(selection: Binding<SidebarItem?>.constant(.history)) {
         TagsSidebarSection()
     }
