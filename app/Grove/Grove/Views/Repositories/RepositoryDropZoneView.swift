@@ -101,11 +101,8 @@ struct RepositoryDropZoneView: View {
                         Text(bookmark.displayName)
                             .font(.rowTitle)
                             .foregroundStyle(Theme.textPrimary)
-                        Text(abbreviatingHome((bookmark.path as NSString).deletingLastPathComponent))
-                            .font(.monoCaption)
-                            .foregroundStyle(Theme.textSecondary)
                             .lineLimit(1)
-                            .truncationMode(.head)
+                            .truncationMode(.middle)
                         Spacer(minLength: Theme.Spacing.sm)
                         if let date = bookmark.displayLastOpenedDate {
                             Text(date, format: .relative(presentation: .named))
@@ -118,6 +115,7 @@ struct RepositoryDropZoneView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .help(abbreviatingHome(bookmark.path))
             }
         }
         .panel()
