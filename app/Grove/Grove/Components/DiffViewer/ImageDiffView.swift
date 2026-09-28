@@ -208,7 +208,7 @@ struct ImageDiffView: View {
                 .shadow(radius: 3)
             Image(systemName: "arrow.left.and.right")
                 .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(.black)
+                .foregroundStyle(Theme.textPrimary)
         }
         .frame(maxHeight: .infinity, alignment: .center)
     }
