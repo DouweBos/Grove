@@ -58,6 +58,24 @@ final class WindowViewModel {
     /// Tab to reopen on after switching worktrees.
     private var pendingSelection: SidebarItem?
 
+    // MARK: Info Panel Snapshots
+
+    /// Last read state per repository path; see WindowViewModel+Snapshots.
+    private(set) var repositorySnapshots: [String: RepositorySnapshot] = [:]
+    private(set) var refreshingSnapshotPaths: Set<String> = []
+    private(set) var snapshotErrors: [String: String] = [:]
+
+    func storeSnapshot(_ snapshot: RepositorySnapshot, for path: String) {
+        repositorySnapshots[path] = snapshot
+        snapshotErrors[path] = nil
+    }
+
+    func storeSnapshotError(_ message: String, for path: String) { snapshotErrors[path] = message }
+
+    func setSnapshotRefreshing(_ refreshing: Bool, for path: String) {
+        if refreshing { refreshingSnapshotPaths.insert(path) } else { refreshingSnapshotPaths.remove(path) }
+    }
+
     // MARK: History
 
     /// Locations to return to, most recent last; see WindowViewModel+History.

@@ -13,9 +13,9 @@ struct RepositoryInfoPanel: View {
 
     let bookmark: RepositoryBookmarkData
 
-    @State private var snapshot: RepositorySnapshot?
-    @State private var loadError: String?
-    @State private var isLoading = false
+    private var snapshot: RepositorySnapshot? { viewModel.snapshot(for: bookmark) }
+    private var isRefreshing: Bool { viewModel.isRefreshingSnapshot(for: bookmark) }
+    private var loadError: String? { viewModel.snapshotError(for: bookmark) }
 
     private var exists: Bool { FileManager.default.fileExists(atPath: bookmark.path) }
 
@@ -38,7 +38,8 @@ struct RepositoryInfoPanel: View {
                 if let snapshot {
                     RecentCommitsCard(commits: snapshot.commits, branch: snapshot.branch?.name)
                     if !snapshot.remotes.isEmpty { RemotesCard(remotes: snapshot.remotes) }
-                } else if isLoading {
+                } else if isRefreshing {
+                    // Only the first read of a repository has nothing to show yet.
                     ProgressStrip(title: "Reading repository…", detail: "")
                 }
             }
@@ -48,7 +49,7 @@ struct RepositoryInfoPanel: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Theme.background)
-        .task(id: bookmark.id) { await load() }
+        .task(id: bookmark.id) { await viewModel.refreshSnapshot(for: bookmark) }
     }
 
     // MARK: Header
@@ -76,6 +77,12 @@ struct RepositoryInfoPanel: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(Theme.textSecondary)
                     .help("Reveal in Finder")
+                    if isRefreshing, snapshot != nil {
+                        ProgressView()
+                            .controlSize(.mini)
+                            .help("Refreshing…")
+                            .accessibilityLabel("Refreshing")
+                    }
                 }
                 badges
             }
@@ -173,41 +180,6 @@ struct RepositoryInfoPanel: View {
                 .truncationMode(.middle)
         }
     }
-
-    // MARK: Loading
-
-    private func load() async {
-        snapshot = nil
-        loadError = nil
-        guard exists else { return }
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            // Inspect, not open: merely selecting a bookmark shouldn't bump "Last Opened".
-            let repo = try await viewModel.manager.inspectRepository(at: URL(fileURLWithPath: bookmark.path))
-            async let entries = repo.status()
-            async let remotes = repo.remotes()
-            async let commits = repo.log(maxCount: 6, skip: 0, branch: nil)
-            let changed = try await entries.filter { $0.indexStatus != .unmodified || $0.workdirStatus != .unmodified }.count
-            snapshot = RepositorySnapshot(
-                branch: repo.currentBranch,
-                changedCount: changed,
-                remotes: (try? await remotes) ?? [],
-                commits: (try? await commits) ?? []
-            )
-        } catch {
-            loadError = "Grove couldn't read this repository: \(error.localizedDescription)"
-        }
-    }
-}
-
-// MARK: - RepositorySnapshot
-
-private struct RepositorySnapshot {
-    let branch: BranchInfo?
-    let changedCount: Int
-    let remotes: [RemoteInfo]
-    let commits: [CommitInfo]
 }
 
 #Preview {
