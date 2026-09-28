@@ -48,6 +48,8 @@ final class BranchesReviewViewModel {
     private(set) var isLoading = false
     private(set) var isDeleting = false
     var errorMessage: String?
+    /// Set when the merged-branches check failed; deleting stays off so unmerged branches aren't force-deleted as merged.
+    private(set) var mergeStatusError: String?
     var pendingDelete: PendingDelete?
 
     var onRepositoryChanged: (() async -> Void)?
@@ -72,6 +74,8 @@ final class BranchesReviewViewModel {
         branches.filter { $0.category == category }.count
     }
 
+    var canDelete: Bool { mergeStatusError == nil && !isDeleting && !isLoading }
+
     var selectedBranches: [ReviewedBranch] {
         branches.filter { selectedIDs.contains($0.id) }
     }
@@ -84,7 +88,14 @@ final class BranchesReviewViewModel {
         do {
             let local = try await repository.localBranches()
             let primary = Self.primaryBranchName(from: local)
-            let merged = (try? await repository.mergedBranches(into: primary)) ?? []
+            let merged: Set<String>
+            do {
+                merged = try await repository.mergedBranches(into: primary)
+                mergeStatusError = nil
+            } catch {
+                merged = []
+                mergeStatusError = error.localizedDescription
+            }
             var reviewed: [ReviewedBranch] = []
             for branch in local {
                 reviewed.append(await review(branch, primary: primary, merged: merged))
@@ -144,7 +155,7 @@ final class BranchesReviewViewModel {
 
     func requestDelete(_ branches: [ReviewedBranch]) {
         let deletable = branches.filter(\.isDeletable)
-        guard !deletable.isEmpty else { return }
+        guard canDelete, !deletable.isEmpty else { return }
         pendingDelete = PendingDelete(branches: deletable)
     }
 
@@ -155,6 +166,7 @@ final class BranchesReviewViewModel {
     /// Takes the dialog item because the dialog clears `pendingDelete` before running its action.
     func confirmDelete(_ pending: PendingDelete) async {
         pendingDelete = nil
+        guard mergeStatusError == nil else { return }
         isDeleting = true
         defer { isDeleting = false }
         var failures: [String] = []

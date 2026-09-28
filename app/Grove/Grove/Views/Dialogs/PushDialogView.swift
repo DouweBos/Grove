@@ -13,8 +13,10 @@ struct PushDialogView: View {
     var onComplete: () -> Void = {}
 
     @State private var selectedRemote: String
+    @State private var setUpstream: Bool
     @State private var pushAllTags = false
     @State private var forceWithLease = false
+    @State private var isConfirmingForce = false
     @State private var isPushing = false
     @State private var errorMessage: String?
 
@@ -28,9 +30,16 @@ struct PushDialogView: View {
         self.onComplete = onComplete
         let upstreamRemote = repository.currentBranch?.upstreamRemoteName
         _selectedRemote = State(initialValue: upstreamRemote ?? remotes.first?.name ?? "origin")
+        _setUpstream = State(initialValue: repository.currentBranch?.upstream == nil)
     }
 
-    private var branchName: String { repository.currentBranch?.name ?? "HEAD" }
+    private var branch: BranchInfo? { repository.currentBranch }
+    private var branchName: String { branch?.name ?? "HEAD" }
+    private var tracksSelectedRemote: Bool { branch?.upstream != nil && branch?.upstreamRemoteName == selectedRemote }
+
+    private var destination: String {
+        tracksSelectedRemote && !setUpstream ? (branch?.upstreamShortName ?? "") : "\(selectedRemote)/\(branchName)"
+    }
 
     var body: some View {
         DialogSheet(
@@ -39,10 +48,11 @@ struct PushDialogView: View {
             symbol: "arrow.up.to.line",
             progress: isPushing ? "Pushing to \(selectedRemote)…" : nil,
             errorMessage: errorMessage,
-            primaryTitle: "Push",
-            isPrimaryDisabled: remotes.isEmpty,
+            primaryTitle: forceWithLease ? "Force Push…" : "Push",
+            isDestructive: forceWithLease,
+            isPrimaryDisabled: remotes.isEmpty || branch == nil,
             onCancel: { dismiss() },
-            onPrimary: performPush
+            onPrimary: { forceWithLease ? isConfirmingForce = true : performPush() }
         ) {
             DialogCard {
                 DialogField("Remote") {
@@ -53,12 +63,19 @@ struct PushDialogView: View {
                     .disabled(remotes.isEmpty)
                 }
                 DialogField("Destination") {
-                    Text("\(selectedRemote)/\(branchName)")
+                    Text(destination)
                         .font(.monoCaption)
                         .foregroundStyle(Theme.textSecondary)
                 }
+                DialogOptionRow(
+                    isOn: $setUpstream,
+                    label: "Set Upstream",
+                    description: branch?.upstream == nil
+                        ? "'\(branchName)' doesn't track a remote branch yet; pull and sync will use \(selectedRemote)/\(branchName)."
+                        : "Tracks \(selectedRemote)/\(branchName) instead of \(branch?.upstreamShortName ?? "the current upstream")."
+                )
             }
-            DialogOptionsSection {
+            DialogOptionsSection(isExpanded: forceWithLease) {
                 DialogOptionRow(
                     isOn: $pushAllTags,
                     label: "Push All Tags",
@@ -71,6 +88,11 @@ struct PushDialogView: View {
                 )
             }
         }
+        .confirmationDialog("Force push \(branchName) to \(selectedRemote)?", isPresented: $isConfirmingForce) {
+            Button("Force Push", role: .destructive, action: performPush)
+        } message: {
+            Text("Commits on \(destination) that aren't in your branch will be discarded. The push is refused if the remote moved since your last fetch.")
+        }
     }
 
     private func performPush() {
@@ -78,7 +100,8 @@ struct PushDialogView: View {
         errorMessage = nil
         Task {
             do {
-                try await repository.push(remote: selectedRemote, force: false, forceWithLease: forceWithLease, progress: nil)
+                try await repository.push(remote: selectedRemote, forceWithLease: forceWithLease,
+                                          setUpstream: setUpstream, progress: nil)
                 if pushAllTags {
                     try await repository.pushAllTags(remote: selectedRemote)
                 }
@@ -87,6 +110,7 @@ struct PushDialogView: View {
             } catch {
                 errorMessage = error.localizedDescription
                 isPushing = false
+                onComplete()
             }
         }
     }

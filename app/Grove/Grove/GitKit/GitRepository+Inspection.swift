@@ -42,6 +42,35 @@ extension GitRepository {
         return (parts[0], parts[1])
     }
 
+    func compareBranches(base: String, compare: String) async throws -> BranchComparison {
+        let shell = inspectionShell
+        let range = "\(base)...\(compare)"
+        let log = try await shell.run(["log", "--left-right", "--cherry-mark", "--date-order", "-1000",
+                                       "--format=%m%x00\(LogParser.formatString)", range])
+        let numstat = try await shell.run(["diff", "--numstat", "--no-renames", range])
+        var comparison = BranchComparison(files: Self.parseNumstat(numstat.stdout))
+        for record in log.stdout.components(separatedBy: "\u{01}") {
+            let trimmed = record.trimmingCharacters(in: .newlines)
+            guard let mark = trimmed.first, let commit = LogParser.parse(String(trimmed.dropFirst(2))).first else { continue }
+            switch mark {
+            case "<": comparison.onlyInBase.append(commit)
+            case ">": comparison.onlyInCompare.append(commit)
+            default: comparison.equivalentCount += 1
+            }
+        }
+        // `=` marks both copies of a patch, so pairs are roughly half.
+        comparison.equivalentCount = (comparison.equivalentCount + 1) / 2
+        return comparison
+    }
+
+    nonisolated static func parseNumstat(_ output: String) -> [ChangedFileStat] {
+        output.split(separator: "\n").compactMap { line in
+            let parts = line.split(separator: "\t", maxSplits: 2).map(String.init)
+            guard parts.count == 3 else { return nil }
+            return ChangedFileStat(path: parts[2], additions: Int(parts[0]), deletions: Int(parts[1]))
+        }
+    }
+
     // MARK: Local Config
 
     func localConfigValue(_ key: String) async throws -> String? {

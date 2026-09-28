@@ -1,10 +1,9 @@
 // Views/History/BranchComparisonView.swift
 // Grove
 
-import AppKit
 import SwiftUI
 
-/// Commits in `target` that aren't in `source` (`git log source..target`), with Merge / Rebase actions.
+/// Both sides of `base...compare`: commits only in each branch, plus the files `compare` changed, with Merge / Rebase actions.
 struct BranchComparisonView: View {
     let repository: any GitRepositoryProtocol
     var initialTarget: BranchInfo?
@@ -12,13 +11,20 @@ struct BranchComparisonView: View {
     @State private var branches: [BranchInfo] = []
     @State private var source: BranchInfo?
     @State private var target: BranchInfo?
-    @State private var commits: [CommitInfo] = []
+    @State private var comparison = BranchComparison()
     @State private var isLoading = false
     @State private var isActing = false
     @State private var errorMessage: String?
     @State private var pendingAction: ComparisonAction?
+    @State private var showsTarget = true
+    @State private var showsSource = true
+    @State private var showsFiles = false
 
     private enum ComparisonAction { case merge, rebase }
+
+    private var isIdentical: Bool {
+        comparison.onlyInBase.isEmpty && comparison.onlyInCompare.isEmpty && comparison.files.isEmpty
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,7 +35,7 @@ struct BranchComparisonView: View {
                     .padding(Theme.Spacing.sm)
             }
             content
-            if let source, let target, !commits.isEmpty {
+            if let source, let target, !comparison.onlyInCompare.isEmpty {
                 actionBar(source: source, target: target)
             }
         }
@@ -60,16 +66,31 @@ struct BranchComparisonView: View {
                 .help("Swap branches")
             branchPicker("Compare", selection: $target)
             Spacer()
-            if let source, let target, !commits.isEmpty {
-                Text("\(commits.count) commit\(commits.count == 1 ? "" : "s") in \(target.name) not in \(source.name)")
-                    .font(.monoCaption)
-                    .foregroundStyle(Theme.textSecondary)
-                    .lineLimit(1)
+            if source != nil, target != nil, !isLoading {
+                countsSummary
             }
         }
         .padding(.horizontal, Theme.Spacing.lg)
         .frame(height: 48)
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 0.5) }
+    }
+
+    private var countsSummary: some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            Label("\(comparison.onlyInBase.count)", systemImage: "arrow.left")
+                .help("Commits only in \(source?.name ?? "base")")
+            Label("\(comparison.onlyInCompare.count)", systemImage: "arrow.right")
+                .help("Commits only in \(target?.name ?? "compare")")
+            if comparison.equivalentCount > 0 {
+                Label("\(comparison.equivalentCount)", systemImage: "equal")
+                    .help("Commits with the same patch on both sides")
+            }
+            Label("\(comparison.files.count)", systemImage: "doc")
+                .help("Files changed in \(target?.name ?? "compare") since the merge base")
+        }
+        .font(.monoCaption)
+        .foregroundStyle(Theme.textSecondary)
+        .lineLimit(1)
     }
 
     private func branchPicker(_ label: String, selection: Binding<BranchInfo?>) -> some View {
@@ -85,19 +106,33 @@ struct BranchComparisonView: View {
     private var content: some View {
         if isLoading {
             ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if source == nil || target == nil {
-            EmptyStateView(systemImage: "arrow.left.arrow.right", title: "Choose Two Branches",
-                           subtitle: "See which commits one branch has that the other doesn't.")
-        } else if commits.isEmpty {
-            EmptyStateView(systemImage: "checkmark.circle", title: "Nothing to Bring Over",
-                           subtitle: "\(target?.name ?? "") has no commits that \(source?.name ?? "") lacks.")
-        } else {
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(commits) { ComparisonCommitRow(commit: $0) }
-                }
-                .padding(.vertical, Theme.Spacing.xs)
+        } else if let source, let target {
+            if isIdentical {
+                EmptyStateView(systemImage: "checkmark.circle", title: "Branches Match",
+                               subtitle: "\(source.name) and \(target.name) have the same commits.")
+            } else {
+                comparisonList(source: source, target: target)
             }
+        } else {
+            EmptyStateView(systemImage: "arrow.left.arrow.right", title: "Choose Two Branches",
+                           subtitle: "See which commits each branch has that the other doesn't.")
+        }
+    }
+
+    private func comparisonList(source: BranchInfo, target: BranchInfo) -> some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ComparisonSectionHeader(title: "Only in \(target.name)", symbol: "arrow.right",
+                                        count: comparison.onlyInCompare.count, isExpanded: $showsTarget)
+                if showsTarget { ForEach(comparison.onlyInCompare) { ComparisonCommitRow(commit: $0) } }
+                ComparisonSectionHeader(title: "Only in \(source.name)", symbol: "arrow.left",
+                                        count: comparison.onlyInBase.count, isExpanded: $showsSource)
+                if showsSource { ForEach(comparison.onlyInBase) { ComparisonCommitRow(commit: $0) } }
+                ComparisonSectionHeader(title: "Files changed in \(target.name)", symbol: "doc",
+                                        count: comparison.files.count, isExpanded: $showsFiles)
+                if showsFiles { ForEach(comparison.files) { ComparisonFileRow(file: $0) } }
+            }
+            .padding(.bottom, Theme.Spacing.sm)
         }
     }
 
@@ -139,14 +174,14 @@ struct BranchComparisonView: View {
     }
 
     private func compare() async {
-        guard let source, let target, source.id != target.id else { return commits = [] }
+        guard let source, let target, source.id != target.id else { return comparison = BranchComparison() }
         isLoading = true
         defer { isLoading = false }
         do {
-            commits = try await repository.log(maxCount: 500, skip: 0, branch: "\(source.name)..\(target.name)")
+            comparison = try await repository.compareBranches(base: source.name, compare: target.name)
         } catch {
             errorMessage = error.localizedDescription
-            commits = []
+            comparison = BranchComparison()
         }
     }
 
@@ -173,35 +208,6 @@ struct BranchComparisonView: View {
             await compare()
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-}
-
-private struct ComparisonCommitRow: View {
-    let commit: CommitInfo
-
-    var body: some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            AvatarView(name: commit.authorName, email: commit.authorEmail, size: .small)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(commit.summary).font(.rowTitle).lineLimit(1)
-                Text("\(commit.shortSHA) · \(commit.authorName) · \(commit.authorDate.commitRelative())")
-                    .font(.monoCaption)
-                    .foregroundStyle(Theme.textSecondary)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 0)
-            if commit.isMerge {
-                Image(systemName: "arrow.triangle.merge").foregroundStyle(Theme.textSecondary)
-            }
-        }
-        .padding(.horizontal, Theme.Spacing.lg)
-        .frame(height: 44)
-        .contextMenu {
-            Button("Copy Commit SHA") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(commit.id, forType: .string)
-            }
         }
     }
 }

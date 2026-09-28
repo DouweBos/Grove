@@ -109,3 +109,47 @@ enum ResetMode: String, Sendable {
     /// Move HEAD, reset index, and discard all working-tree changes.
     case hard
 }
+
+// MARK: - PullStrategy
+
+/// How `git pull` integrates fetched commits; always passed explicitly so `pull.rebase` / `pull.ff` can't override the choice.
+enum PullStrategy: String, CaseIterable, Sendable {
+    case merge
+    case rebase
+    case fastForwardOnly
+
+    var title: String {
+        switch self {
+        case .merge: "Merge"
+        case .rebase: "Rebase"
+        case .fastForwardOnly: "Fast-Forward"
+        }
+    }
+
+    var summary: String {
+        switch self {
+        case .merge: "Creates a merge commit when your branch and the remote have diverged."
+        case .rebase: "Replays your local commits on top of the fetched ones."
+        case .fastForwardOnly: "Only moves your branch forward; fails if it has diverged."
+        }
+    }
+}
+
+// MARK: - BranchComparison
+
+/// Both sides of `git log --left-right --cherry-mark base...compare`, plus the files `compare` changed since the merge base.
+struct BranchComparison: Sendable {
+    var onlyInBase: [CommitInfo] = []
+    var onlyInCompare: [CommitInfo] = []
+    /// Commits whose patch exists on both sides (cherry-picked or rebased), counted once per pair.
+    var equivalentCount = 0
+    var files: [ChangedFileStat] = []
+}
+
+/// One `git diff --numstat` row; counts are nil for binary files.
+struct ChangedFileStat: Identifiable, Hashable, Sendable {
+    var id: String { path }
+    let path: String
+    let additions: Int?
+    let deletions: Int?
+}
