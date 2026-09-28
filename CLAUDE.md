@@ -34,5 +34,6 @@ Releases: run the Release workflow on `main` (version + `beta` or `production` c
 ## Conventions
 
 - Files under 500 lines, views under 300; split when approaching that.
+- Commit when a thing is done. Every feature, fix or refactor gets its own commit the moment it works — don't leave finished work sitting in the tree waiting for the end of the session. One commit per feature/fix, with its tests and docs in it, so each one stands alone and is revertable. Several unrelated changes already piled up in the tree → split them by hunk rather than committing one lump. Committing is not pushing: push only when asked.
 - Commit messages: Conventional Commits, `type(scope): subject`, one short lowercase subject.
 - Comments explain why, in 1–2 lines, describing the code as it stands.
