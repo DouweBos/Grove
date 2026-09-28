@@ -3,49 +3,33 @@
 
 import SwiftUI
 
-/// The full History view: commit list (left) | commit detail panel (right).
-///
-/// Uses `HSplitView` to provide a resizable two-column layout.
-/// The view model is injected from the parent repository window.
+/// History tab: commit list card on the left, commit detail card on the right.
 struct HistoryView: View {
-
     @Environment(HistoryViewModel.self) private var viewModel
 
-    // Sidebar provides branch/tag data for decorating commit rows
-    @State private var branches: [BranchInfo] = []
-    @State private var tags: [TagInfo] = []
-
     var body: some View {
-        HSplitView {
-            // Left: commit list
-            CommitListView(branches: branches, tags: tags)
-                .frame(minWidth: 280)
-
-            // Right: detail panel
-            CommitDetailPanel()
-                .frame(minWidth: 300)
-                .background(Theme.surface)
-        }
-        .task {
-            await loadBranchesAndTags()
-        }
-        .onChange(of: viewModel.selectedCommit) { _, newCommit in
-            if let commit = newCommit {
-                Task { await viewModel.selectCommit(commit) }
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            // Side by side needs ~600pt; narrower (sidebar open in a small window) stacks the cards.
+            if width >= 600 {
+                HStack(spacing: Theme.Spacing.md) {
+                    CommitListView()
+                        .frame(width: min(max(280, width * 0.44), width - 320))
+                    CommitDetailPanel()
+                }
+            } else {
+                VStack(spacing: Theme.Spacing.md) {
+                    CommitListView()
+                        .frame(height: geometry.size.height * 0.45)
+                    CommitDetailPanel()
+                }
             }
         }
-    }
-
-    private func loadBranchesAndTags() async {
-        do {
-            async let lb = viewModel.repository.localBranches()
-            async let rb = viewModel.repository.remoteBranches()
-            async let tg = viewModel.repository.tags()
-            let (local, remote, tagList) = try await (lb, rb, tg)
-            branches = local + remote
-            tags = tagList
-        } catch {
-            // Non-critical — commit rows just won't have labels
+        .padding(.bottom, Theme.Spacing.md)
+        .task { await viewModel.loadIfNeeded() }
+        .sheet(item: Binding(get: { viewModel.pendingAction }, set: { if $0 == nil { viewModel.dismissAction() } })) { action in
+            HistoryActionSheet(action: action)
+                .environment(viewModel)
         }
     }
 }
@@ -54,5 +38,7 @@ struct HistoryView: View {
     let vm = HistoryViewModel(repository: MockGitRepository())
     return HistoryView()
         .environment(vm)
-        .frame(width: 800, height: 500)
+        .frame(width: 1000, height: 600)
+        .padding()
+        .background(Theme.background)
 }

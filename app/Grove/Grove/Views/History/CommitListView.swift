@@ -3,167 +3,172 @@
 
 import SwiftUI
 
-/// Scrollable commit list with a search/filter bar at the top.
-///
-/// Displays commits grouped by date and handles infinite-scroll pagination.
+/// Left panel of History: header with filter, date-grouped commit rows, infinite scroll.
 struct CommitListView: View {
-
     @Environment(HistoryViewModel.self) private var viewModel
-
-    // Branches and tags for label decoration — injected from parent.
-    var branches: [BranchInfo] = []
-    var tags: [TagInfo] = []
+    @FocusState private var isListFocused: Bool
 
     var body: some View {
-        @Bindable var vm = viewModel
-
         VStack(spacing: 0) {
-            // MARK: Filter bar
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("Filter commits…", text: $vm.searchText)
-                    .textFieldStyle(.plain)
-                if !viewModel.searchText.isEmpty {
-                    Button {
-                        vm.searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
+            PanelHeader(title: title, detail: countLabel) {
+                HistoryFilterField(text: viewModel.searchText) { viewModel.setSearchText($0) }
+                    .frame(maxWidth: 190)
             }
-            .padding(8)
-            .background(.bar)
+            if let error = viewModel.errorMessage, viewModel.pendingAction == nil {
+                Banner(symbol: "exclamationmark.triangle", message: error, tone: .negative,
+                       onDismiss: { viewModel.dismissError() })
+                    .padding(Theme.Spacing.sm)
+            }
+            content
+        }
+        .panel()
+    }
 
-            Divider()
+    @ViewBuilder
+    private var content: some View {
+        let visible = viewModel.filteredCommits
+        if visible.isEmpty && !viewModel.isLoading {
+            if viewModel.isFiltering {
+                EmptyStateView(systemImage: "magnifyingglass", title: "No Matching Commits",
+                               subtitle: "Nothing in the loaded history matches \u{201C}\(viewModel.searchText)\u{201D}.")
+            } else {
+                EmptyStateView(systemImage: "clock", title: "No Commits Yet",
+                               subtitle: "Commits you make will show up here.")
+            }
+        } else {
+            list(visible)
+        }
+    }
 
-            // MARK: Commit list
-            List(selection: $vm.selectedCommit) {
-                ForEach(groupedCommits, id: \.key) { group in
-                    Section {
+    private func list(_ visible: [CommitInfo]) -> some View {
+        let showsGraph = !viewModel.isFiltering
+        return ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(Self.groups(visible)) { group in
+                        DateGroupHeader(date: group.date,
+                                        lanes: viewModel.graphNodes[group.commits[0].id]?.lanesAbove ?? [],
+                                        maxGraphColumns: viewModel.maxGraphColumns,
+                                        showsGraph: showsGraph)
                         ForEach(group.commits) { commit in
-                            CommitRow(
-                                commit: commit,
-                                branches: branchesFor(commit),
-                                tags: tagsFor(commit),
-                                graphNode: viewModel.graphNodes[commit.id],
-                                maxGraphColumns: viewModel.maxGraphColumns
-                            )
-                            .tag(commit)
-                            // Drag source: the full 40-char SHA is the transfer payload.
-                            // Dropping onto Working Copy triggers cherry-pick.
-                            .draggable(commit.id)
-                            .contextMenu { contextMenu(for: commit) }
-                            .onAppear {
-                                // Trigger pagination when the last item appears
-                                if commit.id == viewModel.filteredCommits.last?.id {
-                                    Task { await viewModel.loadMore() }
-                                }
-                            }
+                            row(commit, showsGraph: showsGraph)
                         }
-                    } header: {
-                        DateGroupHeader(date: group.date)
+                    }
+                    if viewModel.isLoading {
+                        ProgressView().controlSize(.small).padding(Theme.Spacing.md)
                     }
                 }
-
-                if viewModel.isLoading {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                            .controlSize(.small)
-                        Spacer()
-                    }
-                    .listRowSeparator(.hidden)
+                .padding(.bottom, Theme.Spacing.sm)
+            }
+            .focusable()
+            .focused($isListFocused)
+            .focusEffectDisabled()
+            .onMoveCommand { direction in
+                switch direction {
+                case .up: viewModel.selectAdjacent(offset: -1)
+                case .down: viewModel.selectAdjacent(offset: 1)
+                default: break
                 }
             }
-            .listStyle(.plain)
+            .onChange(of: viewModel.selectedCommit?.id) { _, id in
+                if let id { withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(id) } }
+            }
         }
-        .task {
-            await viewModel.loadInitial()
+    }
+
+    private func row(_ commit: CommitInfo, showsGraph: Bool) -> some View {
+        CommitRow(
+            commit: commit,
+            branches: viewModel.branches(at: commit),
+            tags: viewModel.tags(at: commit),
+            graphNode: showsGraph ? viewModel.graphNodes[commit.id] : nil,
+            maxGraphColumns: viewModel.maxGraphColumns,
+            isHead: commit.id == viewModel.headSHA,
+            isSelected: commit.id == viewModel.selectedCommit?.id
+        )
+        .id(commit.id)
+        .onTapGesture {
+            isListFocused = true
+            viewModel.select(commit)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(isSelectedTrait(commit) ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { viewModel.select(commit) }
+        // Dropping the SHA onto Working Copy cherry-picks it.
+        .draggable(commit.id)
+        .contextMenu { CommitContextMenu(commit: commit) }
+        .onAppear { viewModel.rowAppeared(commit) }
+    }
+
+    private func isSelectedTrait(_ commit: CommitInfo) -> Bool {
+        commit.id == viewModel.selectedCommit?.id
+    }
+
+    private var title: String {
+        viewModel.filterBranch ?? viewModel.headBranchName ?? "HEAD"
+    }
+
+    private var countLabel: String {
+        let count = viewModel.commits.count
+        let suffix = viewModel.hasMore ? "+" : ""
+        return "\(count)\(suffix) commit\(count == 1 && suffix.isEmpty ? "" : "s")"
     }
 
     // MARK: - Grouping
 
-    private struct CommitGroup {
-        let key: String
+    struct DayGroup: Identifiable {
+        let id: DateComponents
         let date: Date
         var commits: [CommitInfo]
     }
 
-    private var groupedCommits: [CommitGroup] {
-        var groups: [String: CommitGroup] = [:]
-        var order: [String] = []
-
-        for commit in viewModel.filteredCommits {
-            let key = dayKey(for: commit.authorDate)
-            if groups[key] == nil {
-                groups[key] = CommitGroup(key: key, date: commit.authorDate, commits: [])
-                order.append(key)
+    /// Consecutive commits from the same calendar day share a header.
+    static func groups(_ commits: [CommitInfo]) -> [DayGroup] {
+        var result: [DayGroup] = []
+        for commit in commits {
+            let day = Calendar.current.dateComponents([.year, .month, .day], from: commit.authorDate)
+            if result.last?.id == day {
+                result[result.count - 1].commits.append(commit)
+            } else {
+                result.append(DayGroup(id: day, date: commit.authorDate, commits: [commit]))
             }
-            groups[key]!.commits.append(commit)
         }
-
-        return order.compactMap { groups[$0] }
+        return result
     }
+}
 
-    private func dayKey(for date: Date) -> String {
-        let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
-        return "\(components.year!)-\(components.month!)-\(components.day!)"
-    }
+/// Compact search field that lives in the list's panel header.
+struct HistoryFilterField: View {
+    let text: String
+    let onChange: (String) -> Void
 
-    // MARK: - Helpers
-
-    private func branchesFor(_ commit: CommitInfo) -> [BranchInfo] {
-        branches.filter { $0.targetSHA == commit.id }
-    }
-
-    private func tagsFor(_ commit: CommitInfo) -> [TagInfo] {
-        tags.filter { $0.targetSHA == commit.id }
-    }
-
-    // MARK: - Context Menu
-
-    @ViewBuilder
-    private func contextMenu(for commit: CommitInfo) -> some View {
-        Button("Copy Commit SHA") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(commit.id, forType: .string)
+    var body: some View {
+        HStack(spacing: Theme.Spacing.xs) {
+            Image(systemName: "magnifyingglass").foregroundStyle(Theme.textSecondary)
+            TextField("Filter", text: Binding(get: { text }, set: onChange))
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+            if !text.isEmpty {
+                Button { onChange("") } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.textSecondary)
+                    .accessibilityLabel("Clear filter")
+            }
         }
-        Button("Copy Short SHA") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(commit.shortSHA, forType: .string)
-        }
-        Divider()
-        Button("Create Branch from \"\(commit.shortSHA)\"…") {
-            Task { await viewModel.createBranch(from: commit) }
-        }
-        Button("Create Tag at \"\(commit.shortSHA)\"…") {
-            Task { await viewModel.createTag(at: commit) }
-        }
-        Divider()
-        Button("Cherry-Pick \"\(commit.shortSHA)\"…") {
-            Task { await viewModel.cherryPick(commit) }
-        }
-        Button("Revert \"\(commit.shortSHA)\"…") { }
-        Divider()
-        Button("Reset HEAD to \"\(commit.shortSHA)\"…") { }
-        Divider()
-        Button("Edit Commit Message of \"\(commit.shortSHA)\"…") { }
-        Button("Squash with Parent Revision…") { }
-        Button("Delete \"\(commit.shortSHA)\"…", role: .destructive) { }
+        .font(.system(size: 11))
+        .padding(.horizontal, Theme.Spacing.sm)
+        .padding(.vertical, 4)
+        .background(Theme.subtleFill, in: Capsule())
+        .help("Filter by message, author or SHA")
     }
 }
 
 #Preview {
     let vm = HistoryViewModel(repository: MockGitRepository())
-    return CommitListView(
-        branches: MockData.branches,
-        tags: MockData.tags
-    )
-    .environment(vm)
-    .frame(width: 400, height: 500)
-    .task { await vm.loadInitial() }
+    return CommitListView()
+        .environment(vm)
+        .frame(width: 420, height: 560)
+        .padding()
+        .background(Theme.background)
+        .task { await vm.loadInitial() }
 }
