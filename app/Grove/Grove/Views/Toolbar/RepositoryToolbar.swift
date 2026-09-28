@@ -44,22 +44,36 @@ struct RepositoryToolbar: ToolbarContent {
 
     let repository: any GitRepositoryProtocol
     let toolbarState: RepositoryToolbarState
+    let selection: SidebarItem?
+    let changeCount: Int
+    let onNavigate: (SidebarItem) -> Void
 
     var body: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
+        ToolbarItem(placement: .principal) {
+            PillTabBar(
+                tabs: visibleTabs.map {
+                    PillTab(id: $0, title: $0.title, symbol: $0.symbol, badge: $0 == .changes ? changeCount : nil)
+                },
+                selection: currentTab,
+                compact: true
+            ) { onNavigate($0.item) }
+        }
+        ToolbarItemGroup(placement: .primaryAction) {
             fetchButton
-        }
-        ToolbarItem(placement: .primaryAction) {
             pullButton
-        }
-        ToolbarItem(placement: .primaryAction) {
             pushButton
-        }
-        ToolbarItem(placement: .primaryAction) {
             syncButton
         }
         ToolbarItem(placement: .primaryAction) {
             Menu {
+                ForEach(RepositoryTab.secondary, id: \.self) { tab in
+                    Button {
+                        onNavigate(tab.item)
+                    } label: {
+                        Label(tab.title, systemImage: tab.symbol)
+                    }
+                }
+                Divider()
                 Button {
                     toolbarState.isStashPresented = true
                 } label: {
@@ -84,6 +98,15 @@ struct RepositoryToolbar: ToolbarContent {
             }
             .help("More actions")
         }
+    }
+
+    private var currentTab: RepositoryTab? {
+        selection.map(RepositoryTab.init(item:))
+    }
+
+    private var visibleTabs: [RepositoryTab] {
+        guard let currentTab, RepositoryTab.secondary.contains(currentTab) else { return RepositoryTab.primary }
+        return RepositoryTab.primary + [currentTab]
     }
 
     // MARK: Sync
@@ -157,22 +180,30 @@ struct RepositoryToolbarSheets<Content: View>: View {
 
     @Bindable var toolbarState: RepositoryToolbarState
     let repository: any GitRepositoryProtocol
+    let sidebarVM: SidebarViewModel
     let content: Content
 
     init(
         toolbarState: RepositoryToolbarState,
         repository: any GitRepositoryProtocol,
+        sidebarVM: SidebarViewModel,
         @ViewBuilder content: () -> Content
     ) {
         self.toolbarState = toolbarState
         self.repository = repository
+        self.sidebarVM = sidebarVM
         self.content = content()
     }
 
     var body: some View {
         content
             .toolbar {
-                RepositoryToolbar(repository: repository, toolbarState: toolbarState)
+                RepositoryToolbar(
+                    repository: repository,
+                    toolbarState: toolbarState,
+                    selection: sidebarVM.selection,
+                    changeCount: sidebarVM.workingCopyBadgeCount
+                ) { sidebarVM.select($0) }
             }
             .sheet(isPresented: $toolbarState.isPushPresented) {
                 PushDialogView(
@@ -234,9 +265,10 @@ extension View {
     /// Wraps the view with repository toolbar buttons and their sheets.
     func repositoryToolbar(
         repository: any GitRepositoryProtocol,
-        state: RepositoryToolbarState
+        state: RepositoryToolbarState,
+        sidebarVM: SidebarViewModel
     ) -> some View {
-        RepositoryToolbarSheets(toolbarState: state, repository: repository) {
+        RepositoryToolbarSheets(toolbarState: state, repository: repository, sidebarVM: sidebarVM) {
             self
         }
     }
@@ -250,6 +282,6 @@ extension View {
     return NavigationStack {
         Text("Repository Content")
             .frame(width: 800, height: 600)
-            .repositoryToolbar(repository: repo, state: state)
+            .repositoryToolbar(repository: repo, state: state, sidebarVM: SidebarViewModel(repository: repo))
     }
 }

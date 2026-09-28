@@ -43,6 +43,7 @@ struct RootWindowHost: View {
             detailContent
         }
         .navigationTitle(windowVM.openRepo?.displayName ?? "Grove")
+        .toolbar(removing: .title)
         .frame(minWidth: 900, minHeight: 600)
         .environment(windowVM)
         .toolbar { toolbarContent }
@@ -50,21 +51,6 @@ struct RootWindowHost: View {
         .onChange(of: windowVM.openRepo) { _, ref in
             if let ref {
                 windowVM.loadSessionIfNeeded(for: ref)
-            }
-        }
-        // Column visibility ↔ sourceMode sync (browser only)
-        .onChange(of: columnVisibility) { _, newVisibility in
-            if windowVM.isBrowsing {
-                if newVisibility == .detailOnly {
-                    windowVM.setSourceMode(.none)
-                } else if windowVM.sourceMode == .none {
-                    windowVM.setSourceMode(.local)
-                }
-            }
-        }
-        .onChange(of: windowVM.sourceMode) { oldMode, newMode in
-            if windowVM.isBrowsing && oldMode == .none && newMode != .none && columnVisibility == .detailOnly {
-                columnVisibility = .all
             }
         }
         // Repository actions → forward to active session
@@ -76,6 +62,12 @@ struct RootWindowHost: View {
         }
         .onDisappear {
             windowVM.stopAllSessions()
+        }
+        // `-GroveOpenRepository <path>` opens a repository on launch.
+        .task {
+            if let path = UserDefaults.standard.string(forKey: "GroveOpenRepository") {
+                windowVM.openReference(RepositoryReference(path: path))
+            }
         }
         // Browser sheets
         .sheet(isPresented: $vm.isShowingCloneDialog) {
@@ -99,7 +91,12 @@ struct RootWindowHost: View {
         if let ref = windowVM.openRepo {
             if let loaded = windowVM.currentSession {
                 RepositoryContentRouter(session: loaded.session, repository: loaded.repository)
-                    .repositoryToolbar(repository: loaded.repository, state: loaded.session.toolbarState)
+                    .quickActions(repository: loaded.repository) { loaded.session.sidebarVM.select($0) }
+                    .repositoryToolbar(
+                        repository: loaded.repository,
+                        state: loaded.session.toolbarState,
+                        sidebarVM: loaded.session.sidebarVM
+                    )
                     .environment(loaded.session.gitUndoManager)
                     .focusedValue(\.gitUndoManager, loaded.session.gitUndoManager)
                     .id(ref.path)

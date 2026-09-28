@@ -77,7 +77,7 @@ struct SearchField<TokenLabel: View>: View {
         .padding(.vertical, 5)
         .background {
             RoundedRectangle(cornerRadius: 6)
-                .fill(.background)
+                .fill(Theme.surface)
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
                         .strokeBorder(

@@ -67,7 +67,7 @@ struct LoadingProgressView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
+        .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 10))
     }
 
     // MARK: Compact Variant

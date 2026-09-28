@@ -32,20 +32,17 @@ struct UnifiedSidebar: View {
         .animation(.easeInOut(duration: 0.15), value: session != nil)
         .frame(minWidth: 320)
         .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button {
-                    viewModel.setSourceMode(.cloud)
-                } label: {
-                    Image(systemName: viewModel.sourceMode == .cloud ? "cloud.fill" : "cloud")
+            if session == nil {
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Button("Add Existing Repository…", systemImage: "folder.badge.plus") { viewModel.showAddDialog() }
+                        Button("Clone Repository…", systemImage: "square.and.arrow.down") { viewModel.showCloneDialog() }
+                        Button("Create New Repository…", systemImage: "plus.square") { viewModel.showCreateDialog() }
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .help("Add a repository")
                 }
-                .help("Cloud Repositories")
-
-                Button {
-                    viewModel.setSourceMode(.local)
-                } label: {
-                    Image(systemName: viewModel.sourceMode == .local ? "externaldrive.fill" : "externaldrive")
-                }
-                .help("Local Repositories")
             }
         }
     }

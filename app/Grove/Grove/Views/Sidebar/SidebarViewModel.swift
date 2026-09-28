@@ -24,6 +24,30 @@ final class SidebarViewModel {
     /// Untracked change count shown on the Working Copy badge.
     var workingCopyBadgeCount: Int = 0
 
+    func select(_ item: SidebarItem) {
+        selection = item
+    }
+
+    /// Dropping on Changes: `stash@{N}` applies a stash, a SHA cherry-picks,
+    /// a branch merges (or rebases when `rebase` is set, i.e. Option held).
+    func handleWorkingCopyDrop(_ payload: String, rebase: Bool) -> Bool {
+        if payload.hasPrefix("stash@{"), payload.hasSuffix("}"),
+           let index = Int(payload.dropFirst("stash@{".count).dropLast()) {
+            Task { await stashApply(index: index) }
+            return true
+        }
+        let isHex = payload.unicodeScalars.allSatisfy { CharacterSet(charactersIn: "0123456789abcdefABCDEF").contains($0) }
+        if isHex && payload.count >= 7 {
+            Task { await cherryPick(sha: payload) }
+            return true
+        }
+        guard let branch = localBranches.first(where: { $0.name == payload }) else { return false }
+        Task {
+            if rebase { await self.rebase(onto: branch) } else { await merge(branch: branch) }
+        }
+        return true
+    }
+
     // MARK: - Pinned Branches
 
     /// Branch names that are pinned to the top of the sidebar.

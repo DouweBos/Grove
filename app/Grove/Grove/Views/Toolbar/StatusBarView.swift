@@ -27,33 +27,19 @@ struct StatusBarView: View {
     // MARK: Body
 
     var body: some View {
-        HStack(spacing: 8) {
-            // Left: state badge (merge, rebase, etc.)
+        HStack(spacing: Theme.Spacing.sm) {
             repositoryStateBadge
-
             Spacer()
-
-            // Centre: auto-fetch activity or last-fetch time
             fetchStatusView
-
-            // Right: current branch
             if let branch = repository.currentBranch {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.triangle.branch")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(branch.name)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Label(branch.name, systemImage: "arrow.triangle.branch")
+                    .labelStyle(.titleAndIcon)
             }
         }
-        .padding(.horizontal, 12)
-        .frame(height: 24)
-        .background(.bar)
-        .overlay(alignment: .top) {
-            Divider()
-        }
+        .font(.monoCaption)
+        .foregroundStyle(Theme.textSecondary)
+        .padding(.horizontal, Theme.Spacing.xl)
+        .frame(height: 28)
     }
 
     // MARK: Fetch Status
@@ -63,26 +49,16 @@ struct StatusBarView: View {
         if let fetcher = autoFetcher {
             if fetcher.isFetching {
                 HStack(spacing: 6) {
-                    ProgressView()
-                        .scaleEffect(0.6)
-                        .frame(width: 14, height: 14)
+                    ProgressView().controlSize(.mini)
                     Text("Fetching\u{2026}")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
             } else if let description = fetcher.lastFetchRelativeDescription {
                 Text(description)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
             }
         } else if let message = activityMessage {
             HStack(spacing: 6) {
-                ProgressView()
-                    .scaleEffect(0.6)
-                    .frame(width: 14, height: 14)
+                ProgressView().controlSize(.mini)
                 Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -95,35 +71,16 @@ struct StatusBarView: View {
         case .normal:
             EmptyView()
         case .merge:
-            StateBadge(label: "MERGING", color: .orange)
+            StatusBadge(title: "Merging", symbol: "arrow.triangle.merge", tone: .caution)
         case .rebase, .rebaseInteractive:
-            StateBadge(label: "REBASING", color: .blue)
+            StatusBadge(title: "Rebasing", symbol: "arrow.triangle.pull", tone: .caution)
         case .revert:
-            StateBadge(label: "REVERTING", color: .purple)
+            StatusBadge(title: "Reverting", symbol: "arrow.uturn.backward", tone: .caution)
         case .cherrypick:
-            StateBadge(label: "CHERRY-PICKING", color: .green)
+            StatusBadge(title: "Cherry-picking", symbol: "arrow.right.doc.on.clipboard", tone: .caution)
         case .bisect:
-            StateBadge(label: "BISECTING", color: .yellow)
+            StatusBadge(title: "Bisecting", symbol: "scope", tone: .caution)
         }
-    }
-}
-
-// MARK: - StateBadge
-
-private struct StateBadge: View {
-    let label: String
-    let color: Color
-
-    var body: some View {
-        Text(label)
-            .font(.system(size: 9, weight: .semibold))
-            .foregroundStyle(color)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(color.opacity(0.15))
-            )
     }
 }
 

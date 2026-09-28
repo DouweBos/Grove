@@ -21,6 +21,7 @@ final class RepositorySession {
     // MARK: - ViewModels
 
     let sidebarVM: SidebarViewModel
+    let workingCopyVM: WorkingCopyViewModel
     let historyVM: HistoryViewModel
     let stashesVM: StashesViewModel
     let reflogVM: ReflogViewModel
@@ -48,6 +49,7 @@ final class RepositorySession {
     init(repository: any GitRepositoryProtocol) {
         self.repository = repository
         self.sidebarVM        = SidebarViewModel(repository: repository)
+        self.workingCopyVM    = WorkingCopyViewModel(repository: repository)
         self.historyVM        = HistoryViewModel(repository: repository)
         self.stashesVM        = StashesViewModel(repository: repository)
         self.reflogVM         = ReflogViewModel(repository: repository)
@@ -61,17 +63,38 @@ final class RepositorySession {
     /// Start watching the repository for filesystem changes and begin auto-fetch.
     func start() async {
         let watcher = FileWatcher(paths: [repository.path.path], latency: 1.0) { [weak self] in
-            guard let vm = self?.sidebarVM else { return }
             Task { @MainActor in
-                await vm.refresh()
+                await self?.refreshAll()
             }
         }
         watcher.start()
         fileWatcher = watcher
 
         await sidebarVM.refresh()
+        await workingCopyVM.refresh()
         autoFetcher.start()
     }
+
+    /// Reload everything that reflects repository state. Views that were never
+    /// opened stay unloaded; loaded lists refresh in place.
+    func refreshAll() async {
+        guard !isRefreshing else { return needsAnotherRefresh = true }
+        isRefreshing = true
+        defer { isRefreshing = false }
+        repeat {
+            needsAnotherRefresh = false
+            async let sidebar: Void = sidebarVM.refresh()
+            async let workingCopy: Void = workingCopyVM.refresh()
+            async let history: Void = historyVM.reload()
+            _ = await (sidebar, workingCopy, history)
+            for vm in filteredHistoryVMs.values { await vm.reload() }
+            if !stashesVM.stashes.isEmpty || selectedItem == .stashes { await stashesVM.refresh() }
+            if selectedItem == .reflog { await reflogVM.refresh() }
+        } while needsAnotherRefresh
+    }
+
+    private var isRefreshing = false
+    private var needsAnotherRefresh = false
 
     /// Stop the file watcher and auto-fetcher.
     func stop() {
@@ -84,17 +107,17 @@ final class RepositorySession {
     func handleAction(_ action: GroveAction) {
         switch action {
         case .navigateWorkingCopy:
-            sidebarVM.selection = .workingCopy
+            sidebarVM.select(.workingCopy)
         case .navigateHistory:
-            sidebarVM.selection = .history
+            sidebarVM.select(.history)
         case .navigateStashes:
-            sidebarVM.selection = .stashes
+            sidebarVM.select(.stashes)
         case .navigateReflog:
-            sidebarVM.selection = .reflog
+            sidebarVM.select(.reflog)
         case .navigatePullRequests:
-            sidebarVM.selection = .pullRequests
+            sidebarVM.select(.pullRequests)
         case .navigateBranchesReview:
-            sidebarVM.selection = .branchesReview
+            sidebarVM.select(.branchesReview)
         case .fetch:
             Task {
                 toolbarState.remotes = (try? await repository.remotes()) ?? []
@@ -130,7 +153,11 @@ final class RepositorySession {
                 toolbarState.isRebasePresented = true
             }
         case .commit:
-            break
+            guard selectedItem == .workingCopy else { return }
+            Task {
+                await workingCopyVM.commit()
+                await refreshAll()
+            }
         case .quickActions:
             break
         case .quickOpen:
@@ -139,7 +166,7 @@ final class RepositorySession {
             Task {
                 do {
                     try await gitUndoManager.undo()
-                    await sidebarVM.refresh()
+                    await refreshAll()
                 } catch {
                     gitUndoManager.errorMessage = error.localizedDescription
                 }
@@ -148,7 +175,7 @@ final class RepositorySession {
             Task {
                 do {
                     try await gitUndoManager.redo()
-                    await sidebarVM.refresh()
+                    await refreshAll()
                 } catch {
                     gitUndoManager.errorMessage = error.localizedDescription
                 }

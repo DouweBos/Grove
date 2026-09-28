@@ -69,19 +69,19 @@ struct RepositoryDropZoneView: View {
     private var actionButtons: some View {
         HStack(spacing: 20) {
             Button("Add") {
-                viewModel.isShowingAddDialog = true
+                viewModel.showAddDialog()
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
 
             Button("Create") {
-                viewModel.isShowingCreateDialog = true
+                viewModel.showCreateDialog()
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
 
             Button("Clone") {
-                viewModel.isShowingCloneDialog = true
+                viewModel.showCloneDialog()
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)

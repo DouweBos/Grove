@@ -34,9 +34,11 @@ final class FileWatcher: Sendable {
         let cfPaths = paths as CFArray
 
         // C function pointer — cannot capture context, so we pass the box via FSEventStreamContext.info
-        let callback: FSEventStreamCallback = { _, info, numEvents, _, _, _ in
+        let callback: FSEventStreamCallback = { _, info, numEvents, eventPaths, _, _ in
             guard let info else { return }
             let b = Unmanaged<StreamBox>.fromOpaque(info).takeUnretainedValue()
+            let paths = Unmanaged<CFArray>.fromOpaque(eventPaths).takeUnretainedValue() as? [String] ?? []
+            guard paths.contains(where: { !FileWatcher.isGitHousekeeping($0) }) else { return }
             Logger.fileWatcher.debug("FSEvents callback fired: \(numEvents, privacy: .public) event(s)")
             b.invokeHandler()
         }
@@ -50,7 +52,7 @@ final class FileWatcher: Sendable {
         )
 
         let flags = UInt32(
-            kFSEventStreamCreateFlagUseCFTypes
+            kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagFileEvents
         )
 
         guard let stream = FSEventStreamCreate(
@@ -70,6 +72,15 @@ final class FileWatcher: Sendable {
         FSEventStreamStart(stream)
         box.set(stream: stream)
         Logger.fileWatcher.info("File watcher started")
+    }
+
+    /// Git's own lock files, objects and logs change during every git command;
+    /// reacting to them would make each refresh trigger another.
+    static func isGitHousekeeping(_ path: String) -> Bool {
+        guard let range = path.range(of: "/.git/") else { return path.hasSuffix("/.git") }
+        let inner = path[range.upperBound...]
+        return inner.hasSuffix(".lock") || inner.hasPrefix("objects/") || inner.hasPrefix("logs/")
+            || inner == "FETCH_HEAD" || inner.hasPrefix("gk/")
     }
 
     func stop() {

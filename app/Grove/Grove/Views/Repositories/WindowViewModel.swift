@@ -9,18 +9,6 @@ import Foundation
 import Observation
 import os
 
-// MARK: - BrowserSourceMode
-
-/// Which source is active in the repository browser sidebar.
-enum BrowserSourceMode {
-    /// Local bookmarks (default). Toggled by the disk icon.
-    case local
-    /// Connected cloud service repositories. Toggled by the cloud icon.
-    case cloud
-    /// No source selected (sidebar is hidden).
-    case none
-}
-
 // MARK: - WindowViewModel
 
 /// Drives the main window: navigation between the browser and open
@@ -66,11 +54,6 @@ final class WindowViewModel {
     var isShowingAddDialog = false
     var isShowingCreateDialog = false
 
-    // MARK: Source Mode
-
-    /// Which source the sidebar is showing: local bookmarks or cloud repos.
-    private(set) var sourceMode: BrowserSourceMode = .local
-
     // MARK: Error State
 
     var errorMessage: String?
@@ -108,9 +91,9 @@ final class WindowViewModel {
 
     // MARK: Navigation Actions
 
-    func setSourceMode(_ mode: BrowserSourceMode) {
-        sourceMode = mode
-    }
+    func showAddDialog() { isShowingAddDialog = true }
+    func showCloneDialog() { isShowingCloneDialog = true }
+    func showCreateDialog() { isShowingCreateDialog = true }
 
     func openSelectedBookmark() {
         guard let bookmark = selectedBookmark else { return }
@@ -123,13 +106,16 @@ final class WindowViewModel {
     }
 
     func openReference(_ reference: RepositoryReference) {
-        sourceMode = .none
+        sessionErrors[reference.path] = nil
         openRepo = reference
     }
 
+    /// Closing stops the watcher and auto-fetch; reopening starts a fresh session.
     func closeRepository() {
+        if let path = openRepo?.path, let loaded = sessions.removeValue(forKey: path) {
+            loaded.session.stop()
+        }
         openRepo = nil
-        sourceMode = .local
     }
 
     // MARK: Session Loading

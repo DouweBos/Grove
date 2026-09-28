@@ -124,7 +124,7 @@ final class GitRepository: GitRepositoryProtocol {
     }
 
     func status() async throws -> [StatusEntry] {
-        let result = try await shell.run(["status", "--porcelain=v2", "-uall"])
+        let result = try await shell.run(["--no-optional-locks", "status", "--porcelain=v2", "-uall"])
         return StatusParser.parse(result.stdout)
     }
 

@@ -3,17 +3,15 @@
 
 import SwiftUI
 
-/// Uppercase, muted gray section label used in the sidebar (BRANCHES, REMOTES, TAGS).
+/// Muted section label used in the sidebar (Branches, Remotes, Tags).
 struct SidebarSectionHeader: View {
 
     let title: String
 
     var body: some View {
-        Text(title.uppercased())
-            .font(.caption)
-            .fontWeight(.semibold)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 4)
+        Text(title)
+            .font(.sectionLabel)
+            .foregroundStyle(Theme.textSecondary)
     }
 }
 

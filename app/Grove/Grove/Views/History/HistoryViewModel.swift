@@ -58,6 +58,30 @@ final class HistoryViewModel {
         await loadMore()
     }
 
+    /// Re-reads the loaded range in place, keeping the selection, after the repository changes.
+    func reload() async {
+        guard !commits.isEmpty, !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let count = max(loadedCount, pageSize)
+            let page = try await repository.log(maxCount: count, skip: 0, branch: filterBranch)
+            guard page.map(\.id) != commits.map(\.id) else { return }
+            commits = page
+            loadedCount = page.count
+            hasMore = page.count == count
+            graphNodes = [:]
+            buildGraph()
+            if let selected = selectedCommit, !page.contains(where: { $0.id == selected.id }) {
+                selectedCommit = nil
+                commitDiffs = []
+                selectedFileDiff = nil
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func loadMore() async {
         guard hasMore, !isLoading else { return }
         isLoading = true

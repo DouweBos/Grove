@@ -89,7 +89,7 @@ struct ImageDiffView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(.background)
+        .background(Theme.surface)
     }
 
     // MARK: Content Area
@@ -262,7 +262,7 @@ struct ImageDiffView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(.background.secondary)
+            .background(Theme.surfaceRaised)
 
             // Image or placeholder
             imageLayerView(image, missingLabel: missingLabel)

@@ -26,7 +26,7 @@ struct FileHistoryView: View {
             // MARK: Right — diff panel
             fileDiffPanel
                 .frame(minWidth: 300)
-                .background(.background)
+                .background(Theme.surface)
         }
         .task {
             await viewModel.loadHistory()

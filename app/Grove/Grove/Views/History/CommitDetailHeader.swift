@@ -77,7 +77,7 @@ struct CommitDetailHeader: View {
             }
         }
         .padding(12)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 8))
+        .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 8))
     }
 }
 

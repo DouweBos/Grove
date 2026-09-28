@@ -18,7 +18,7 @@ struct PullRequestsView: View {
 
             PullRequestDetailView()
                 .frame(minWidth: 320)
-                .background(.background)
+                .background(Theme.surface)
         }
     }
 }

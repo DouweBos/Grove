@@ -33,3 +33,67 @@ enum SidebarItem: Hashable, Sendable {
     /// History filtered to a specific tag.
     case tag(TagInfo)
 }
+
+// MARK: - RepositoryTab
+
+/// Top-level destinations shown as pills in the window toolbar.
+enum RepositoryTab: CaseIterable, Hashable {
+    case changes, history, stashes, pullRequests, reflog, review, blame, settings
+
+    /// Always shown; the rest live in the toolbar's More menu and get a pill only while open.
+    static let primary: [RepositoryTab] = [.changes, .history, .stashes, .pullRequests]
+    static let secondary: [RepositoryTab] = [.reflog, .review, .blame, .settings]
+
+    var title: String {
+        switch self {
+        case .changes: "Changes"
+        case .history: "History"
+        case .stashes: "Stashes"
+        case .pullRequests: "Pull Requests"
+        case .reflog: "Reflog"
+        case .review: "Branches Review"
+        case .blame: "Blame"
+        case .settings: "Settings"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .changes: "tray"
+        case .history: "clock"
+        case .stashes: "tray.2"
+        case .pullRequests: "arrow.triangle.pull"
+        case .reflog: "clock.arrow.circlepath"
+        case .review: "checklist"
+        case .blame: "text.line.first.and.arrowtriangle.forward"
+        case .settings: "gearshape"
+        }
+    }
+
+    var item: SidebarItem {
+        switch self {
+        case .changes: .workingCopy
+        case .history: .history
+        case .stashes: .stashes
+        case .pullRequests: .pullRequests
+        case .reflog: .reflog
+        case .review: .branchesReview
+        case .blame: .blame
+        case .settings: .settings
+        }
+    }
+
+    /// Branch, remote and tag selections are filtered history, so they keep History lit.
+    init(item: SidebarItem) {
+        switch item {
+        case .workingCopy: self = .changes
+        case .history, .branch, .remoteBranch, .tag: self = .history
+        case .stashes: self = .stashes
+        case .pullRequests: self = .pullRequests
+        case .reflog: self = .reflog
+        case .branchesReview: self = .review
+        case .blame: self = .blame
+        case .settings: self = .settings
+        }
+    }
+}

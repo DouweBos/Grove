@@ -111,7 +111,7 @@ struct ReflogDetailPanel: View {
                 }
             }
             .padding(10)
-            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 8))
+            .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 8))
         }
         .padding(12)
         .sheet(isPresented: $isCreateBranchPresented) {
@@ -223,7 +223,7 @@ struct ReflogDetailPanel: View {
             }
         }
         .padding(12)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 8))
+        .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 8))
     }
 
     // MARK: - Create Branch Sheet

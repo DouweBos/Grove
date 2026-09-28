@@ -6,8 +6,8 @@
 //   Left (~35%): WorkingCopyLeftColumn (CommitComposer + FileStatusList)
 //   Right (~65%): DiffPanelView
 //
-// The ViewModel is owned here and propagated via the environment so all
-// child views can access shared state without prop-drilling.
+// The ViewModel is owned by RepositorySession so it survives tab switches
+// and refreshes when the repository changes on disk.
 
 import SwiftUI
 
@@ -21,15 +21,7 @@ import SwiftUI
 /// ```
 struct WorkingCopyView: View {
 
-    // MARK: State
-
-    @State private var viewModel: WorkingCopyViewModel
-
-    // MARK: Init
-
-    init(repository: any GitRepositoryProtocol) {
-        _viewModel = State(wrappedValue: WorkingCopyViewModel(repository: repository))
-    }
+    let viewModel: WorkingCopyViewModel
 
     // MARK: Body
 
@@ -42,7 +34,6 @@ struct WorkingCopyView: View {
                 .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
         }
         .environment(viewModel)
-        .task { await viewModel.refresh() }
         .alert("Error", isPresented: errorBinding) {
             Button("OK") { viewModel.clearError() }
         } message: {
@@ -65,6 +56,6 @@ struct WorkingCopyView: View {
 // MARK: - Preview
 
 #Preview("Working Copy") {
-    WorkingCopyView(repository: MockGitRepository())
+    WorkingCopyView(viewModel: WorkingCopyViewModel(repository: MockGitRepository()))
         .frame(width: 900, height: 600)
 }

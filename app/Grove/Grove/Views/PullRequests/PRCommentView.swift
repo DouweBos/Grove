@@ -41,7 +41,7 @@ struct PRCommentView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(10)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 8))
+        .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 8))
     }
 
     // MARK: - Review Badge

@@ -4,6 +4,7 @@
 // Routes sidebar selection to the appropriate content view inside
 // the unified NavigationSplitView detail pane.
 
+import AppKit
 import SwiftUI
 
 // MARK: - RepositoryContentRouter
@@ -19,8 +20,20 @@ struct RepositoryContentRouter: View {
 
     var body: some View {
         contentView
-            .safeAreaInset(edge: .bottom) {
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, Theme.Spacing.lg)
+            .padding(.top, Theme.Spacing.sm)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 StatusBarView(repository: repository, autoFetcher: session.autoFetcher)
+            }
+            .background(Theme.background)
+            .foregroundStyle(Theme.textPrimary)
+            // `-GroveAction <rawValue>` runs an action once the repository opens.
+            .task {
+                if let raw = UserDefaults.standard.string(forKey: "GroveAction"),
+                   let action = GroveAction(rawValue: raw) {
+                    session.handleAction(action)
+                }
             }
             .onChange(of: session.sidebarVM.selection) { _, newItem in
                 if let item = newItem {
@@ -35,7 +48,13 @@ struct RepositoryContentRouter: View {
     private var contentView: some View {
         switch session.selectedItem {
         case .workingCopy:
-            WorkingCopyView(repository: repository)
+            WorkingCopyView(viewModel: session.workingCopyVM)
+                .dropDestination(for: String.self) { items, _ in
+                    guard let payload = items.first else { return false }
+                    return session.sidebarVM.handleWorkingCopyDrop(
+                        payload, rebase: NSEvent.modifierFlags.contains(.option)
+                    )
+                }
 
         case .history:
             HistoryView()

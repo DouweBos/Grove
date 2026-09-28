@@ -24,7 +24,7 @@ struct HistoryView: View {
             // Right: detail panel
             CommitDetailPanel()
                 .frame(minWidth: 300)
-                .background(.background)
+                .background(Theme.surface)
         }
         .task {
             await loadBranchesAndTags()

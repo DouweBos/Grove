@@ -19,12 +19,14 @@ struct SidebarBranchRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "arrow.triangle.branch")
-                .imageScale(.small)
-                .foregroundStyle(branch.isHEAD ? Color.accentColor : .secondary)
+        HStack(spacing: 6) {
+            Image(systemName: branch.isHEAD ? "checkmark.circle.fill" : "arrow.triangle.branch")
+                .font(.system(size: 12))
+                .foregroundStyle(branch.isHEAD ? Theme.accent : Theme.textSecondary)
+                .frame(width: 16)
 
             Text(displayName)
+                .fontWeight(branch.isHEAD ? .semibold : .regular)
                 .lineLimit(1)
                 .truncationMode(.middle)
 
@@ -33,7 +35,7 @@ struct SidebarBranchRow: View {
             if isPinned {
                 Image(systemName: "pin.fill")
                     .imageScale(.small)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.textSecondary)
                     .rotationEffect(.degrees(45))
             }
 
@@ -41,7 +43,7 @@ struct SidebarBranchRow: View {
                 AheadBehindIndicator(ahead: branch.ahead, behind: branch.behind)
             }
         }
-        .font(.subheadline)
+        .font(.system(size: 13))
     }
 }
 
@@ -62,7 +64,6 @@ private struct AheadBehindIndicator: View {
             }
             if ahead > 0 && behind > 0 {
                 Text(":")
-                    .foregroundStyle(.tertiary)
             }
             if behind > 0 {
                 Image(systemName: "arrow.down")
@@ -70,10 +71,8 @@ private struct AheadBehindIndicator: View {
                 Text("\(behind)")
             }
         }
-        .font(.caption2)
-        .fontWeight(.medium)
-        .foregroundStyle(.secondary)
-        .monospacedDigit()
+        .font(.system(size: 11, weight: .medium, design: .monospaced))
+        .foregroundStyle(Theme.textSecondary)
     }
 }
 

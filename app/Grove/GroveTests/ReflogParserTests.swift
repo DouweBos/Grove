@@ -136,8 +136,8 @@ struct ReflogParserTests {
         #expect(fmt.contains("%H"))
         #expect(fmt.contains("%P"))
         #expect(fmt.contains("%gs"))
-        #expect(fmt.contains("%an"))
-        #expect(fmt.contains("%ae"))
+        #expect(fmt.contains("%cn"))
+        #expect(fmt.contains("%ce"))
         #expect(fmt.contains("%aI"))
     }
 

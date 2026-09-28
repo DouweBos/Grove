@@ -17,7 +17,7 @@ struct StashesView: View {
 
             StashDetailView()
                 .frame(minWidth: 300)
-                .background(.background)
+                .background(Theme.surface)
         }
     }
 }

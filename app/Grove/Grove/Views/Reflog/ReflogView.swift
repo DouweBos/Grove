@@ -23,7 +23,7 @@ struct ReflogView: View {
 
             ReflogDetailPanel()
                 .frame(minWidth: 300)
-                .background(.background)
+                .background(Theme.surface)
         }
     }
 }
