@@ -3,7 +3,7 @@
 
 import SwiftUI
 
-/// Browser sidebar row: repository name over its dimmed parent folder.
+/// Browser sidebar row: repository name; the full path is in the tooltip.
 struct RepositoryRow: View {
 
     let bookmark: RepositoryBookmarkData
@@ -11,10 +11,6 @@ struct RepositoryRow: View {
 
     /// On the accent selection highlight fixed tokens become unreadable; hierarchical styles adapt.
     private var isOnSelection: Bool { prominence == .increased }
-
-    private var parentPath: String {
-        abbreviatingHome((bookmark.path as NSString).deletingLastPathComponent)
-    }
 
     private var exists: Bool { FileManager.default.fileExists(atPath: bookmark.path) }
 
@@ -24,17 +20,10 @@ struct RepositoryRow: View {
                 .font(.system(size: 12))
                 .foregroundStyle(isOnSelection ? AnyShapeStyle(.primary) : AnyShapeStyle(exists ? Theme.textSecondary : Theme.warning))
                 .frame(width: 18)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(bookmark.displayName)
-                    .font(.system(size: 13))
-                    .foregroundStyle(isOnSelection ? AnyShapeStyle(.primary) : AnyShapeStyle(Theme.textPrimary))
-                    .lineLimit(1)
-                Text(parentPath)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(isOnSelection ? AnyShapeStyle(.secondary) : AnyShapeStyle(Theme.textSecondary))
-                    .lineLimit(1)
-                    .truncationMode(.head)
-            }
+            Text(bookmark.displayName)
+                .font(.system(size: 13))
+                .foregroundStyle(isOnSelection ? AnyShapeStyle(.primary) : AnyShapeStyle(Theme.textPrimary))
+                .lineLimit(1)
         }
         .padding(.vertical, 1)
         .help(exists ? bookmark.path : "\(bookmark.path) no longer exists")
