@@ -86,6 +86,17 @@ struct RemoteSyncTests {
         #expect(repo.currentBranch?.upstreamShortName == "origin/feature")
     }
 
+    @Test func pushesToDifferentlyNamedRemoteBranch() async throws {
+        try git(["checkout", "-q", "-b", "feature"], in: "a")
+        try commit("a", file: "feature.txt", message: "feature")
+
+        let repo = try await GitRepository(path: root.appendingPathComponent("a"))
+        try await repo.push(remote: "origin", branch: "review/feature", forceWithLease: false, setUpstream: true, progress: nil)
+
+        #expect(repo.currentBranch?.upstreamShortName == "origin/review/feature")
+        #expect(try git(["branch", "--list", "review/feature"], in: "origin.git").contains("review/feature"))
+    }
+
     @Test func syncPublishesBranchWithoutUpstream() async throws {
         try git(["checkout", "-q", "-b", "sync"], in: "a")
         try commit("a", file: "sync.txt", message: "sync")

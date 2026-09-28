@@ -3,7 +3,7 @@
 
 import SwiftUI
 
-/// Pushes the checked-out branch to a remote.
+/// Pushes the checked-out branch to a branch on a remote, its upstream by default.
 struct PushDialogView: View {
 
     @Environment(\.dismiss) private var dismiss
@@ -13,6 +13,8 @@ struct PushDialogView: View {
     var onComplete: () -> Void = {}
 
     @State private var selectedRemote: String
+    @State private var targetBranch: String
+    @State private var remoteBranches: [BranchInfo] = []
     @State private var setUpstream: Bool
     @State private var pushAllTags = false
     @State private var forceWithLease = false
@@ -28,17 +30,37 @@ struct PushDialogView: View {
         self.repository = repository
         self.remotes = remotes
         self.onComplete = onComplete
-        let upstreamRemote = repository.currentBranch?.upstreamRemoteName
-        _selectedRemote = State(initialValue: upstreamRemote ?? remotes.first?.name ?? "origin")
+        let remote = repository.currentBranch?.upstreamRemoteName ?? remotes.first?.name ?? "origin"
+        _selectedRemote = State(initialValue: remote)
+        _targetBranch = State(initialValue: Self.defaultTarget(for: repository.currentBranch, on: remote))
         _setUpstream = State(initialValue: repository.currentBranch?.upstream == nil)
     }
 
     private var branch: BranchInfo? { repository.currentBranch }
     private var branchName: String { branch?.name ?? "HEAD" }
-    private var tracksSelectedRemote: Bool { branch?.upstream != nil && branch?.upstreamRemoteName == selectedRemote }
+    private var trimmedTarget: String { targetBranch.trimmingCharacters(in: .whitespaces) }
+    private var destination: String { "\(selectedRemote)/\(trimmedTarget)" }
 
-    private var destination: String {
-        tracksSelectedRemote && !setUpstream ? (branch?.upstreamShortName ?? "") : "\(selectedRemote)/\(branchName)"
+    private var upstreamDescription: String {
+        guard let upstream = branch?.upstreamShortName else {
+            return "'\(branchName)' doesn't track a remote branch yet; pull and sync will use \(destination)."
+        }
+        return upstream == destination ? "Already tracks \(upstream)." : "Tracks \(destination) instead of \(upstream)."
+    }
+
+    /// Branch names already on the selected remote, offered next to the free-form field.
+    private var existingTargets: [String] {
+        remoteBranches.filter { $0.remoteName == selectedRemote }
+            .map { String($0.name.dropFirst(selectedRemote.count + 1)) }
+            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    /// The upstream's branch name when it lives on `remote`, else the local branch's name.
+    private static func defaultTarget(for branch: BranchInfo?, on remote: String) -> String {
+        if let upstream = branch?.upstreamShortName, branch?.upstreamRemoteName == remote {
+            return String(upstream.dropFirst(remote.count + 1))
+        }
+        return branch?.name ?? ""
     }
 
     var body: some View {
@@ -50,29 +72,26 @@ struct PushDialogView: View {
             errorMessage: errorMessage,
             primaryTitle: forceWithLease ? "Force Push…" : "Push",
             isDestructive: forceWithLease,
-            isPrimaryDisabled: remotes.isEmpty || branch == nil,
+            isPrimaryDisabled: remotes.isEmpty || branch == nil || trimmedTarget.isEmpty,
             onCancel: { dismiss() },
             onPrimary: { forceWithLease ? isConfirmingForce = true : performPush() }
         ) {
             DialogCard {
-                DialogField("Remote") {
-                    Picker("Remote", selection: $selectedRemote) {
-                        ForEach(remotes) { Text($0.name).tag($0.name) }
+                if remotes.count > 1 {
+                    DialogField("Remote") {
+                        Picker("Remote", selection: $selectedRemote) {
+                            ForEach(remotes) { Text($0.name).tag($0.name) }
+                        }
+                        .labelsHidden()
                     }
-                    .labelsHidden()
-                    .disabled(remotes.isEmpty)
                 }
-                DialogField("Destination") {
-                    Text(destination)
-                        .font(.monoCaption)
-                        .foregroundStyle(Theme.textSecondary)
+                DialogField("To Branch") {
+                    targetField
                 }
                 DialogOptionRow(
                     isOn: $setUpstream,
                     label: "Set Upstream",
-                    description: branch?.upstream == nil
-                        ? "'\(branchName)' doesn't track a remote branch yet; pull and sync will use \(selectedRemote)/\(branchName)."
-                        : "Tracks \(selectedRemote)/\(branchName) instead of \(branch?.upstreamShortName ?? "the current upstream")."
+                    description: upstreamDescription
                 )
             }
             DialogOptionsSection(isExpanded: forceWithLease) {
@@ -88,10 +107,28 @@ struct PushDialogView: View {
                 )
             }
         }
-        .confirmationDialog("Force push \(branchName) to \(selectedRemote)?", isPresented: $isConfirmingForce) {
+        .task {
+            remoteBranches = (try? await repository.remoteBranches()) ?? []
+        }
+        .onChange(of: selectedRemote) { oldRemote, newRemote in
+            // Only follow the remote while the branch name is still the untouched default.
+            if targetBranch == Self.defaultTarget(for: branch, on: oldRemote) {
+                targetBranch = Self.defaultTarget(for: branch, on: newRemote)
+            }
+        }
+        .confirmationDialog("Force push \(branchName) to \(destination)?", isPresented: $isConfirmingForce) {
             Button("Force Push", role: .destructive, action: performPush)
         } message: {
             Text("Commits on \(destination) that aren't in your branch will be discarded. The push is refused if the remote moved since your last fetch.")
+        }
+    }
+
+    private var targetField: some View {
+        HStack(spacing: Theme.Spacing.xs) {
+            Text("\(selectedRemote)/")
+                .font(.monoCaption)
+                .foregroundStyle(Theme.textSecondary)
+            ComboBox(text: $targetBranch, items: existingTargets, placeholder: "Branch name", isMonospaced: true)
         }
     }
 
@@ -100,7 +137,7 @@ struct PushDialogView: View {
         errorMessage = nil
         Task {
             do {
-                try await repository.push(remote: selectedRemote, forceWithLease: forceWithLease,
+                try await repository.push(remote: selectedRemote, branch: trimmedTarget, forceWithLease: forceWithLease,
                                           setUpstream: setUpstream, progress: nil)
                 if pushAllTags {
                     try await repository.pushAllTags(remote: selectedRemote)

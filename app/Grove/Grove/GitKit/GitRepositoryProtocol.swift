@@ -108,6 +108,9 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
               progress: (@Sendable (Double) -> Void)?) async throws
     /// Pushes HEAD; `setUpstream` adds `-u` so a branch's first push starts tracking the remote branch.
     func push(remote: String?, forceWithLease: Bool, setUpstream: Bool, progress: (@Sendable (Double) -> Void)?) async throws
+    /// Pushes HEAD to `branch` on `remote`, which may differ from the local branch's name.
+    func push(remote: String, branch: String, forceWithLease: Bool, setUpstream: Bool,
+              progress: (@Sendable (Double) -> Void)?) async throws
     /// Fetch, pull, then push in sequence; a branch without an upstream is pushed with `-u`.
     func sync(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws
     /// The strategy the effective `pull.rebase` / `pull.ff` config implies.
@@ -329,6 +332,10 @@ extension GitRepositoryProtocol {
     func pull(remote: String?, branch: String?, strategy: PullStrategy, options: PullOptions,
               progress: (@Sendable (Double) -> Void)?) async throws {
         try await pull(remote: remote, strategy: strategy, progress: progress)
+    }
+    func push(remote: String, branch: String, forceWithLease: Bool, setUpstream: Bool,
+              progress: (@Sendable (Double) -> Void)?) async throws {
+        try await push(remote: remote, forceWithLease: forceWithLease, setUpstream: setUpstream, progress: progress)
     }
     func pruneWorktrees() async throws {}
     func fileContents(path: String, revision: String?) async throws -> String { "" }
