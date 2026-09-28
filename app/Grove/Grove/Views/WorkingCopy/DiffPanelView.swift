@@ -8,6 +8,7 @@ import SwiftUI
 
 struct DiffPanelView: View {
     @Environment(WorkingCopyViewModel.self) private var viewModel
+    @AppStorage(GrovePreferences.Key.mergeToolPath) private var mergeToolPath = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,7 +21,7 @@ struct DiffPanelView: View {
                     title: viewModel.statusEntries.isEmpty ? "Nothing to Commit" : "Select a File",
                     subtitle: viewModel.statusEntries.isEmpty
                         ? "Your working tree is clean."
-                        : "Choose a file on the left to see its changes."
+                        : "Choose a file to see its changes."
                 )
             }
         }
@@ -54,9 +55,16 @@ struct DiffPanelView: View {
     /// Drops the side badge and stats before squeezing the file name in narrow windows.
     private var accessories: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: Theme.Spacing.sm) { diffStats; sidePicker; whitespaceToggle }
-            HStack(spacing: Theme.Spacing.sm) { sidePicker; whitespaceToggle }
-            whitespaceToggle
+            HStack(spacing: Theme.Spacing.sm) { diffStats; sidePicker; textToggles }
+            HStack(spacing: Theme.Spacing.sm) { sidePicker; textToggles }
+            textToggles
+        }
+    }
+
+    @ViewBuilder
+    private var textToggles: some View {
+        if let entry = viewModel.selectedEntry, !ImageDiffView.supports(path: entry.path) {
+            HStack(spacing: Theme.Spacing.sm) { WrapLinesToggle(); whitespaceToggle }
         }
     }
 
@@ -112,10 +120,16 @@ struct DiffPanelView: View {
                 oursLabel: viewModel.operationContext?.oursLabel ?? "HEAD",
                 theirsLabel: viewModel.operationContext?.theirsLabel ?? "Incoming",
                 fileURL: viewModel.repository.path.appendingPathComponent(entry.path),
-                onResolve: { side in Task { await viewModel.resolveConflict(taking: side) } }
+                onResolve: { side in Task { await viewModel.resolveConflict(taking: side) } },
+                onOpenMergeTool: mergeToolPath.isEmpty ? nil : { Task { await viewModel.openInMergeTool(entry) } }
             )
+        } else if ImageDiffView.supports(path: entry.path) {
+            RepositoryImageDiffView(repository: viewModel.repository, path: entry.path,
+                                    old: viewModel.showingStaged ? .commit("HEAD") : .index,
+                                    new: viewModel.showingStaged ? .index : .workingTree,
+                                    reloadToken: viewModel.diffLoadCount)
         } else if let diff = viewModel.currentDiff {
-            CanvasScrollView {
+            DiffScrollView {
                 DiffView(diff: diff, showingStaged: viewModel.showingStaged,
                          onHunkAction: supportsHunkActions(entry) ? { action, hunk, lines in
                              Task { await viewModel.performHunkAction(action, hunk: hunk, lines: lines) }
