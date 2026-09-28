@@ -15,6 +15,8 @@ struct PreferencesView: View {
                 .tabItem { Label("General", systemImage: "gearshape") }
             GitConfigPreferencesTab()
                 .tabItem { Label("Git", systemImage: "terminal") }
+            ProfilesPreferencesTab()
+                .tabItem { Label("Profiles", systemImage: "person.2") }
             ServicesPreferencesTab()
                 .tabItem { Label("Accounts", systemImage: "person.crop.circle") }
             EditorPreferencesTab()

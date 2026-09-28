@@ -39,6 +39,7 @@ final class RepositorySettingsViewModel {
     struct Snapshot: Equatable {
         var userName = ""
         var userEmail = ""
+        var userSigningKey = ""
         var pullStrategy = PullStrategy.inherit
         var remoteURLs: [String: String] = [:]
     }
@@ -69,11 +70,13 @@ final class RepositorySettingsViewModel {
             let repository = repository
             async let name = repository.localConfigValue("user.name")
             async let email = repository.localConfigValue("user.email")
+            async let signingKey = repository.localConfigValue("user.signingkey")
             async let rebase = repository.localConfigValue("pull.rebase")
             async let remoteList = repository.remotes()
             var snapshot = Snapshot()
             snapshot.userName = try await name ?? ""
             snapshot.userEmail = try await email ?? ""
+            snapshot.userSigningKey = try await signingKey ?? ""
             snapshot.pullStrategy = PullStrategy(configValue: try await rebase)
             let remotes = try await remoteList
             snapshot.remoteURLs = Dictionary(remotes.map { ($0.name, $0.url) }) { first, _ in first }
@@ -92,6 +95,7 @@ final class RepositorySettingsViewModel {
         var result = new
         if draft.userName != old.userName { result.userName = draft.userName }
         if draft.userEmail != old.userEmail { result.userEmail = draft.userEmail }
+        if draft.userSigningKey != old.userSigningKey { result.userSigningKey = draft.userSigningKey }
         if draft.pullStrategy != old.pullStrategy { result.pullStrategy = draft.pullStrategy }
         for (remote, url) in draft.remoteURLs where new.remoteURLs[remote] != nil && url != old.remoteURLs[remote] {
             result.remoteURLs[remote] = url
@@ -103,6 +107,21 @@ final class RepositorySettingsViewModel {
 
     func setUserName(_ value: String) { edit { $0.userName = value } }
     func setUserEmail(_ value: String) { edit { $0.userEmail = value } }
+    func setUserSigningKey(_ value: String) { edit { $0.userSigningKey = value } }
+
+    /// Fills the identity fields from a profile; Save writes them.
+    func applyProfile(_ profile: UserProfile) {
+        edit {
+            $0.userName = profile.userName
+            $0.userEmail = profile.email
+            $0.userSigningKey = profile.signingKey
+        }
+    }
+
+    /// The profile the identity fields currently match, if any.
+    func matchingProfile(in profiles: [UserProfile]) -> UserProfile? {
+        profiles.first { $0.matches(CommitIdentity(name: draft.userName, email: draft.userEmail)) && $0.signingKey == draft.userSigningKey }
+    }
     func setPullStrategy(_ value: PullStrategy) { edit { $0.pullStrategy = value } }
     func setRemoteURL(_ url: String, for remote: String) { edit { $0.remoteURLs[remote] = url } }
 
@@ -127,6 +146,9 @@ final class RepositorySettingsViewModel {
             }
             if target.userEmail != saved.userEmail {
                 try await repository.setLocalConfigValue("user.email", to: trimmed(target.userEmail))
+            }
+            if target.userSigningKey != saved.userSigningKey {
+                try await repository.setLocalConfigValue("user.signingkey", to: trimmed(target.userSigningKey))
             }
             if target.pullStrategy != saved.pullStrategy {
                 try await repository.setLocalConfigValue("pull.rebase", to: target.pullStrategy.configValue)

@@ -116,7 +116,7 @@ struct CommitComposerView: View {
 
     private var footer: some View {
         HStack(spacing: Theme.Spacing.sm) {
-            identityLabel
+            CommitIdentityMenu()
             Spacer(minLength: Theme.Spacing.sm)
             Button {
                 Task { await viewModel.commit() }
@@ -130,30 +130,6 @@ struct CommitComposerView: View {
             .fixedSize()
             .disabled(!viewModel.canCommit)
             .help("Commit (⌘↩)")
-        }
-    }
-
-    @ViewBuilder
-    private var identityLabel: some View {
-        if let identity = viewModel.identity {
-            HStack(spacing: Theme.Spacing.sm) {
-                InitialAvatar(name: identity.name, size: 22)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(identity.name)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Theme.textPrimary)
-                    Text(identity.email)
-                        .font(.system(size: 11))
-                        .foregroundStyle(Theme.textSecondary)
-                }
-                .lineLimit(1)
-            }
-            .help("Committing as \(identity.name) <\(identity.email)>")
-        } else {
-            Label("No git identity", systemImage: "person.crop.circle.badge.exclamationmark")
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.warning)
-                .help("Set user.name and user.email in your git config")
         }
     }
 }
