@@ -54,6 +54,7 @@ struct TagsSidebarSection: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(tag.name, forType: .string)
                 }
+                Button("Reveal in History", systemImage: "clock.arrow.circlepath") { viewModel.revealInHistory(.tag(tag)) }
                 Divider()
                 Button("Delete Tag…", systemImage: "trash", role: .destructive) {
                     tagToDelete = tag

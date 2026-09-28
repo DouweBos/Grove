@@ -82,6 +82,9 @@ private struct StashListPanel: View {
                         .contextMenu {
                             Button("Apply Stash", systemImage: "arrow.down.doc") { viewModel.request(.apply, on: stash) }
                             Button("Pop Stash", systemImage: "arrow.up.bin") { viewModel.request(.pop, on: stash) }
+                            Button("Reveal Base Commit in History", systemImage: "clock.arrow.circlepath") {
+                                Task { await viewModel.revealBaseInHistory(stash) }
+                            }
                             Divider()
                             Button("Drop Stash\u{2026}", systemImage: "trash", role: .destructive) { viewModel.request(.drop, on: stash) }
                         }
@@ -163,6 +166,12 @@ private struct StashDetailPanel: View {
                 HStack(spacing: Theme.Spacing.md) {
                     Text("stash@{\(stash.id)}")
                     Text(String(stash.sha.prefix(7))).textSelection(.enabled)
+                    Button { Task { await viewModel.revealBaseInHistory(stash) } } label: {
+                        Image(systemName: "clock.arrow.circlepath")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Reveal the commit this stash was made on in History")
+                    .accessibilityLabel("Reveal base commit in History")
                     if let branch = stash.branchName { Label(branch, systemImage: "arrow.triangle.branch") }
                     Text(stash.date.formatted(date: .abbreviated, time: .shortened))
                 }

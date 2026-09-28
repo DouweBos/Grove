@@ -86,6 +86,8 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func log(maxCount: Int, skip: Int, revisions: [String]) async throws -> [CommitInfo]
     /// SHAs reachable from `revision` but not from `base`.
     func commits(in revision: String, notIn base: String) async throws -> Set<String>
+    /// Whether `commit` is `descendant` or one of its ancestors.
+    func isAncestor(_ commit: String, of descendant: String) async -> Bool
     /// Return full detail for a single commit SHA.
     func commitDetail(_ sha: String) async throws -> CommitInfo
 
@@ -324,6 +326,7 @@ extension GitRepositoryProtocol {
     }
 
     func commits(in revision: String, notIn base: String) async throws -> Set<String> { [] }
+    func isAncestor(_ commit: String, of descendant: String) async -> Bool { false }
 
     @discardableResult
     func commit(message: String, body: String?, amend: Bool, sign: Bool, signOff: Bool) async throws -> CommitInfo {

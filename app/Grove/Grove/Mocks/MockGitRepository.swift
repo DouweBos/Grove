@@ -162,6 +162,10 @@ final class MockGitRepository: GitRepositoryProtocol {
         return MockData.commits.first(where: { $0.id == sha }) ?? MockData.commits[0]
     }
 
+    func isAncestor(_ commit: String, of descendant: String) async -> Bool {
+        MockData.commits.contains { $0.id == commit }
+    }
+
     // MARK: Branches
 
     func localBranches() async throws -> [BranchInfo] {

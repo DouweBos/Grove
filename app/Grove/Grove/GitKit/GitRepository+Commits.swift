@@ -87,6 +87,11 @@ extension GitRepository {
         return Set(result.stdout.split(separator: "\n").map(String.init))
     }
 
+    func isAncestor(_ commit: String, of descendant: String) async -> Bool {
+        let result = try? await shell.runAllowingFailure(["merge-base", "--is-ancestor", commit, descendant])
+        return result?.isSuccess ?? false
+    }
+
     func fileLog(path: String, maxCount: Int) async throws -> [CommitInfo] {
         let args = [
             "log",

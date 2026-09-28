@@ -205,6 +205,9 @@ final class HistoryViewModel {
         return true
     }
 
+    /// What the log lists; HEAD until refs reveal an upstream to show beside it.
+    var logRevisions: [String] { revisions.isEmpty ? ["HEAD"] : revisions }
+
     /// The local branch whose history this is: the filter, or the checked-out branch.
     private var trackedBranch: BranchInfo? {
         guard let name = filterBranch ?? headBranchName else { return nil }

@@ -73,6 +73,9 @@ struct RemotesSidebarSection: View {
                     NSPasteboard.general.setString(branch.name, forType: .string)
                 }
                 if let pullRequest { OpenPullRequestButton(pullRequest: pullRequest) }
+                Button("Reveal in History", systemImage: "clock.arrow.circlepath") {
+                    viewModel.revealInHistory(.remoteBranch(branch))
+                }
                 Divider()
                 Button("Delete on Remote…", systemImage: "trash", role: .destructive) {
                     branchToDelete = branch

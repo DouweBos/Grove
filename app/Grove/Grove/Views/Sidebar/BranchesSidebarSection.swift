@@ -144,6 +144,7 @@ struct BranchContextMenu: View {
         if let pullRequest = viewModel.refs.openPullRequest(for: branch) {
             OpenPullRequestButton(pullRequest: pullRequest)
         }
+        Button("Reveal in History", systemImage: "clock.arrow.circlepath") { viewModel.revealInHistory(.branch(branch)) }
         Divider()
         Button("Merge into Current Branch", systemImage: "arrow.triangle.merge") {
             Task { await viewModel.merge(branch: branch) }

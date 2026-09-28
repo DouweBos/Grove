@@ -40,6 +40,8 @@ final class StashesViewModel {
 
     /// Set by the session so a mutation refreshes every view.
     var onRepositoryChanged: (() async -> Void)?
+    /// Set by the session to select a commit in History.
+    var onRevealInHistory: ((String) -> Void)?
 
     let repository: any GitRepositoryProtocol
     // A stash commit is immutable, so its diff is cached by SHA; indices shift but SHAs don't.
@@ -123,6 +125,16 @@ final class StashesViewModel {
         }
         await refresh()
         await onRepositoryChanged?()
+    }
+
+    /// The stash commit itself isn't on any branch; its first parent is the commit it was made on.
+    func revealBaseInHistory(_ stash: StashEntry) async {
+        do {
+            guard let base = try await repository.commitDetail(stash.sha).parentIDs.first else { return }
+            onRevealInHistory?(base)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func dismissError() {

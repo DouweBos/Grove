@@ -79,6 +79,10 @@ struct CommitListView: View {
             .onChange(of: viewModel.selectedCommit?.id) { _, id in
                 if let id { withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(id) } }
             }
+            // A reveal from another tab selects before this list exists.
+            .onAppear {
+                if let id = viewModel.selectedCommit?.id { proxy.scrollTo(id, anchor: .center) }
+            }
         }
     }
 

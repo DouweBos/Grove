@@ -36,14 +36,37 @@ extension HistoryViewModel {
     /// Selects a commit by SHA, e.g. a parent from the detail header, paging it in if needed.
     @discardableResult
     func selectCommit(id: String) async -> Bool {
-        while commit(withID: id) == nil, hasMore {
+        while commit(withID: id) == nil {
+            // Another read (a reload after refs arrived) may be running; paging waits for it.
+            if isLoading {
+                try? await Task.sleep(for: .milliseconds(20))
+                continue
+            }
+            guard hasMore else { break }
             let before = commits.count
             await loadMore()
-            if commits.count == before { break }
+            if commits.count == before, !isLoading { break }
         }
         guard let commit = commit(withID: id) else { return false }
         setSearchText("")
         select(commit)
         return true
+    }
+
+    /// Whether this history holds `sha`, loaded yet or not.
+    func contains(_ sha: String) async -> Bool {
+        if commit(withID: sha) != nil { return true }
+        for revision in logRevisions where await repository.isAncestor(sha, of: revision) {
+            return true
+        }
+        return false
+    }
+
+    /// Loads the log if it hasn't been, then selects `sha`, paging it in.
+    func reveal(_ sha: String) async {
+        await loadIfNeeded()
+        if await !selectCommit(id: sha) {
+            errorMessage = "Commit \(sha.prefix(7)) isn't in \(filterBranch ?? headBranchName ?? "HEAD")'s history."
+        }
     }
 }
