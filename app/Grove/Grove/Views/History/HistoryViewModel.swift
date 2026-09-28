@@ -49,6 +49,8 @@ final class HistoryViewModel {
 
     // MARK: - Detail
 
+    /// Selected commit SHAs; the focused one is ``selectedCommit``.
+    private(set) var selection = ListSelection<String>()
     private(set) var selectedCommit: CommitInfo?
     private(set) var commitDiffs: [FileDiff] = []
     private(set) var expandedPaths: Set<String> = []
@@ -141,10 +143,11 @@ final class HistoryViewModel {
             commits = page
             hasMore = page.count == count
             buildGraph()
-            if let selected = selectedCommit, !page.contains(where: { $0.id == selected.id }) {
-                clearSelection()
-                if let first = page.first { select(first) }
-            }
+            let loaded = Set(page.map(\.id))
+            var kept = selection
+            kept.reconcile { loaded.contains($0) ? $0 : nil }
+            if kept.focus == nil, let first = page.first { kept.select(first.id) }
+            applySelection(kept)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -277,6 +280,19 @@ final class HistoryViewModel {
     // MARK: - Selection
 
     func select(_ commit: CommitInfo) {
+        var next = ListSelection<String>()
+        next.select(commit.id)
+        applySelection(next)
+    }
+
+    /// Takes a new selection and shows its focused commit in the detail pane.
+    func applySelection(_ next: ListSelection<String>) {
+        selection = next
+        guard let id = next.focus, let commit = commit(withID: id) else { return clearSelection() }
+        showDetail(for: commit)
+    }
+
+    private func showDetail(for commit: CommitInfo) {
         guard selectedCommit?.id != commit.id else { return }
         detailTask?.cancel()
         selectedCommit = commit
@@ -292,32 +308,9 @@ final class HistoryViewModel {
         detailTask = Task { await loadDetails(for: commit) }
     }
 
-    /// Selects a parent SHA from the detail header, paging it in if needed.
-    func selectCommit(id: String) async {
-        while commit(withID: id) == nil, hasMore {
-            let before = commits.count
-            await loadMore()
-            if commits.count == before { break }
-        }
-        if let commit = commit(withID: id) {
-            setSearchText("")
-            select(commit)
-        }
-    }
-
-    /// Arrow-key navigation through the visible (filtered) list.
-    func selectAdjacent(offset: Int) {
-        let visible = filteredCommits
-        guard !visible.isEmpty else { return }
-        let current = selectedCommit.flatMap { sel in visible.firstIndex { $0.id == sel.id } }
-        let index = min(max((current ?? -1) + offset, 0), visible.count - 1)
-        select(visible[index])
-        let next = index + (offset < 0 ? -1 : 1)
-        if visible.indices.contains(next) { prefetchDiff(for: visible[next]) }
-    }
-
     private func clearSelection() {
         detailTask?.cancel()
+        selection.clear()
         selectedCommit = nil
         commitDiffs = []
         expandedPaths = []
@@ -354,7 +347,7 @@ final class HistoryViewModel {
     }
 
     /// Warms the diff of the commit the arrow keys will land on next; debounced so held keys don't pile up git calls.
-    private func prefetchDiff(for commit: CommitInfo) {
+    func prefetchDiff(for commit: CommitInfo) {
         prefetchTask?.cancel()
         guard detailCache.peek(commit.id)?.diffs == nil else { return }
         prefetchTask = Task {

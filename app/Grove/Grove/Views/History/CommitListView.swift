@@ -1,6 +1,7 @@
 // Views/History/CommitListView.swift
 // Grove
 
+import AppKit
 import SwiftUI
 
 /// Left panel of History: header with filter, date-grouped commit rows, infinite scroll.
@@ -71,8 +72,10 @@ struct CommitListView: View {
                 isListFocused = true
             }
             // onKeyPress rather than onMoveCommand: the scroll view swallows move commands itself.
-            .onKeyPress(.downArrow) { viewModel.selectAdjacent(offset: 1); return .handled }
-            .onKeyPress(.upArrow) { viewModel.selectAdjacent(offset: -1); return .handled }
+            .onKeyPress(keys: [.upArrow, .downArrow]) { press in
+                viewModel.selectAdjacent(offset: press.key == .upArrow ? -1 : 1, extend: press.modifiers.contains(.shift))
+                return .handled
+            }
             .onChange(of: viewModel.selectedCommit?.id) { _, id in
                 if let id { withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(id) } }
             }
@@ -88,12 +91,13 @@ struct CommitListView: View {
             maxGraphColumns: viewModel.maxGraphColumns,
             isHead: commit.id == viewModel.headSHA,
             syncState: viewModel.syncState(of: commit),
-            isSelected: commit.id == viewModel.selectedCommit?.id
+            isSelected: viewModel.isSelected(commit)
         )
         .id(commit.id)
         .onTapGesture {
             isListFocused = true
-            viewModel.select(commit)
+            let modifiers = NSEvent.modifierFlags
+            viewModel.click(commit, extend: modifiers.contains(.shift), toggle: modifiers.contains(.command))
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelectedTrait(commit) ? [.isButton, .isSelected] : .isButton)
@@ -105,7 +109,7 @@ struct CommitListView: View {
     }
 
     private func isSelectedTrait(_ commit: CommitInfo) -> Bool {
-        commit.id == viewModel.selectedCommit?.id
+        viewModel.isSelected(commit)
     }
 
     private var title: String {
