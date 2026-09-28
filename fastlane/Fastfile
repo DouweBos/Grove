@@ -11,7 +11,7 @@ DOWNLOADS = "https://houwert.dev/grove/updates/"
 ROOT     = File.expand_path("..", __dir__)
 DIST     = File.join(ROOT, "dist")
 CHANGESETS = File.join(ROOT, ".changeset")
-BUMPS = %w[patch minor major].freeze
+BUMPS = %w[patch minor].freeze
 
 platform :mac do
   desc "Install the Developer ID cert from the shared match repo."
@@ -79,12 +79,13 @@ platform :mac do
     )
   end
 
-  # `.changeset/*.md`: front matter `"grove": major|minor|patch`, then a user-facing note (a "- " list gives several).
+  # `.changeset/*.md`: front matter `"grove": minor|patch`, then a user-facing note (a "- " list gives several).
+  # There's no major: Grove stays 0.x until 1.0 is tagged deliberately.
   def changesets
     Dir[File.join(CHANGESETS, "*.md")].sort.map do |path|
       front, body = File.read(path).match(/\A---\s*\n(.*?)\n---\s*\n(.*)\z/m)&.captures
-      bump = front.to_s[/"?grove"?\s*:\s*(major|minor|patch)/, 1]
-      UI.user_error!("#{File.basename(path)} needs front matter like `\"grove\": minor`") unless bump
+      bump = front.to_s[/"?grove"?\s*:\s*(\w+)/, 1]
+      UI.user_error!("#{File.basename(path)} needs front matter `\"grove\": minor` or `\"grove\": patch`") unless BUMPS.include?(bump)
       lines = body.to_s.strip.lines.map(&:strip).reject(&:empty?)
       notes = lines.all? { |line| line.start_with?("- ") } ? lines.map { |line| line.delete_prefix("- ") } : [lines.join(" ")]
       { path: path, bump: bump, notes: notes.reject(&:empty?) }
@@ -110,14 +111,9 @@ platform :mac do
     stable.map { |tag| tag.delete_prefix("v") }.max_by { |version| Gem::Version.new(version) } || "0.1.0"
   end
 
-  # While Grove is 0.x a breaking change bumps the minor, as semver allows.
   def next_version(stable, bump)
     major, minor, patch = stable.split(".").map(&:to_i)
-    case bump
-    when "major" then major.zero? ? "0.#{minor + 1}.0" : "#{major + 1}.0.0"
-    when "minor" then "#{major}.#{minor + 1}.0"
-    else "#{major}.#{minor}.#{patch + 1}"
-    end
+    bump == "minor" ? "#{major}.#{minor + 1}.0" : "#{major}.#{minor}.#{patch + 1}"
   end
 
   # Prepends the release to CHANGELOG.md, deletes the changesets it used, and pushes that as the tagged commit.
