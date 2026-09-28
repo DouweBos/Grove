@@ -216,17 +216,17 @@ final class MockGitRepository: GitRepositoryProtocol {
         progress?(1.0)
     }
 
-    func pull(remote: String?, rebase: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
+    func pull(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
         await simulateLatency(300_000_000)
         progress?(1.0)
     }
 
-    func push(remote: String?, force: Bool, forceWithLease: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
+    func push(remote: String?, forceWithLease: Bool, setUpstream: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
         await simulateLatency(300_000_000)
         progress?(1.0)
     }
 
-    func sync(remote: String?, rebase: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
+    func sync(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
         await simulateLatency(200_000_000)
         progress?(0.33)
         await simulateLatency(200_000_000)

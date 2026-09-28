@@ -13,7 +13,7 @@ struct SyncDialogView: View {
     var onComplete: () -> Void = {}
 
     @State private var selectedRemote: String
-    @State private var useRebase = false
+    @State private var strategy: PullStrategy = .merge
     @State private var isSyncing = false
     @State private var progress: Double = 0
     @State private var errorMessage: String?
@@ -44,7 +44,7 @@ struct SyncDialogView: View {
             fraction: isSyncing ? progress : nil,
             errorMessage: errorMessage,
             primaryTitle: "Sync",
-            isPrimaryDisabled: remotes.isEmpty,
+            isPrimaryDisabled: remotes.isEmpty || repository.currentBranch == nil,
             onCancel: { dismiss() },
             onPrimary: performSync
         ) {
@@ -56,13 +56,20 @@ struct SyncDialogView: View {
                     .labelsHidden()
                     .disabled(remotes.isEmpty)
                 }
-                DialogOptionRow(
-                    isOn: $useRebase,
-                    label: "Rebase Instead of Merge",
-                    description: "Replays your local commits on top of the fetched ones."
-                )
+                PullStrategyField(strategy: $strategy)
+            }
+            if !tracksSelectedRemote {
+                Banner(symbol: "arrow.up.to.line",
+                       message: "'\(branchName)' doesn't track \(selectedRemote) yet. Sync pushes it to \(selectedRemote)/\(branchName) and sets that as its upstream.")
             }
         }
+        .task { strategy = await repository.defaultPullStrategy() }
+    }
+
+    private var branchName: String { repository.currentBranch?.name ?? "HEAD" }
+
+    private var tracksSelectedRemote: Bool {
+        repository.currentBranch?.upstream != nil && repository.currentBranch?.upstreamRemoteName == selectedRemote
     }
 
     private func performSync() {
@@ -71,7 +78,7 @@ struct SyncDialogView: View {
         progress = 0
         Task {
             do {
-                try await repository.sync(remote: selectedRemote, rebase: useRebase) { value in
+                try await repository.sync(remote: selectedRemote, strategy: strategy) { value in
                     Task { @MainActor in progress = value }
                 }
                 onComplete()

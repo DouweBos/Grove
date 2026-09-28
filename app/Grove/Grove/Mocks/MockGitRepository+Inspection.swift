@@ -22,6 +22,16 @@ extension MockGitRepository {
         return (info?.ahead ?? 0, info?.behind ?? 0)
     }
 
+    func compareBranches(base: String, compare: String) async throws -> BranchComparison {
+        BranchComparison(
+            onlyInBase: Array(MockData.commits.prefix(2)),
+            onlyInCompare: Array(MockData.commits.dropFirst(2).prefix(4)),
+            equivalentCount: 1,
+            files: [ChangedFileStat(path: "Sources/App/Feature.swift", additions: 42, deletions: 7),
+                    ChangedFileStat(path: "Assets/icon.png", additions: nil, deletions: nil)]
+        )
+    }
+
     func localConfigValue(_ key: String) async throws -> String? {
         MockLocalConfig.values[key]
     }

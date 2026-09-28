@@ -101,10 +101,13 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
 
     func remotes() async throws -> [RemoteInfo]
     func fetch(remote: String?, progress: (@Sendable (Double) -> Void)?) async throws
-    func pull(remote: String?, rebase: Bool, progress: (@Sendable (Double) -> Void)?) async throws
-    func push(remote: String?, force: Bool, forceWithLease: Bool, progress: (@Sendable (Double) -> Void)?) async throws
-    /// Fetch, pull, then push in sequence — a single "sync" round-trip.
-    func sync(remote: String?, rebase: Bool, progress: (@Sendable (Double) -> Void)?) async throws
+    func pull(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws
+    /// Pushes HEAD; `setUpstream` adds `-u` so a branch's first push starts tracking the remote branch.
+    func push(remote: String?, forceWithLease: Bool, setUpstream: Bool, progress: (@Sendable (Double) -> Void)?) async throws
+    /// Fetch, pull, then push in sequence; a branch without an upstream is pushed with `-u`.
+    func sync(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws
+    /// The strategy the effective `pull.rebase` / `pull.ff` config implies.
+    func defaultPullStrategy() async -> PullStrategy
 
     // MARK: Merge / Rebase
 
@@ -230,6 +233,8 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func mergedBranches(into base: String) async throws -> Set<String>
     /// Commits `branch` has that `base` lacks (ahead) and vice versa (behind).
     func aheadBehind(branch: String, base: String) async throws -> (ahead: Int, behind: Int)
+    /// Commits unique to each side of `base...compare` and the files `compare` changed since the merge base.
+    func compareBranches(base: String, compare: String) async throws -> BranchComparison
     /// Value from the repository's local `.git/config`, or nil when unset.
     func localConfigValue(_ key: String) async throws -> String?
     /// Writes a local config value; nil or empty unsets it.
@@ -307,6 +312,8 @@ extension GitRepositoryProtocol {
     func fileContents(path: String, revision: String?) async throws -> String { "" }
     func mergedBranches(into base: String) async throws -> Set<String> { [] }
     func aheadBehind(branch: String, base: String) async throws -> (ahead: Int, behind: Int) { (0, 0) }
+    func compareBranches(base: String, compare: String) async throws -> BranchComparison { BranchComparison() }
+    func defaultPullStrategy() async -> PullStrategy { .merge }
     func localConfigValue(_ key: String) async throws -> String? { nil }
     func setLocalConfigValue(_ key: String, to value: String?) async throws {}
     func setRemoteURL(_ url: String, forRemote name: String) async throws {}

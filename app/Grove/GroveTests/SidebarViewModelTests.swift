@@ -96,11 +96,11 @@ private final class FailingMockRepository: GitRepositoryProtocol {
     func deleteRemoteBranch(name: String, remote: String) async throws { try await backing.deleteRemoteBranch(name: name, remote: remote) }
     func renameBranch(oldName: String, newName: String) async throws { try await backing.renameBranch(oldName: oldName, newName: newName) }
     func fetch(remote: String?, progress: (@Sendable (Double) -> Void)?) async throws { try await backing.fetch(remote: remote, progress: progress) }
-    func pull(remote: String?, rebase: Bool, progress: (@Sendable (Double) -> Void)?) async throws { try await backing.pull(remote: remote, rebase: rebase, progress: progress) }
-    func push(remote: String?, force: Bool, forceWithLease: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
-        try await backing.push(remote: remote, force: force, forceWithLease: forceWithLease, progress: progress)
+    func pull(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws { try await backing.pull(remote: remote, strategy: strategy, progress: progress) }
+    func push(remote: String?, forceWithLease: Bool, setUpstream: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
+        try await backing.push(remote: remote, forceWithLease: forceWithLease, setUpstream: setUpstream, progress: progress)
     }
-    func sync(remote: String?, rebase: Bool, progress: (@Sendable (Double) -> Void)?) async throws { try await backing.sync(remote: remote, rebase: rebase, progress: progress) }
+    func sync(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws { try await backing.sync(remote: remote, strategy: strategy, progress: progress) }
     func merge(branch: String) async throws { try await backing.merge(branch: branch) }
     func abortMerge() async throws { try await backing.abortMerge() }
     func rebase(onto: String) async throws { try await backing.rebase(onto: onto) }

@@ -80,14 +80,30 @@ extension GitRepository {
         Logger.gitRepository.info("Fetch complete in \(self.displayName, privacy: .public)")
     }
 
-    func pull(remote: String?, rebase: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
-        let strategy = rebase ? "rebase" : "merge"
+    func pull(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
+        try await pull(remote: remote, branch: nil, strategy: strategy, progress: progress)
+    }
+
+    func defaultPullStrategy() async -> PullStrategy {
+        if let rebase = await configValue("pull.rebase")?.lowercased(), rebase != "false" { return .rebase }
+        return await configValue("pull.ff")?.lowercased() == "only" ? .fastForwardOnly : .merge
+    }
+
+    /// `branch` pulls a named remote branch, for syncing a branch that has no upstream yet.
+    private func pull(remote: String?, branch: String?, strategy: PullStrategy,
+                      progress: (@Sendable (Double) -> Void)?) async throws {
         Logger.gitRepository.info(
-            "Pulling (\(strategy, privacy: .public)) from \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
+            "Pulling (\(strategy.rawValue, privacy: .public)) from \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
         )
         var args = ["pull"]
-        if rebase { args.append("--rebase") }
+        switch strategy {
+        // `--ff` overrides `pull.ff=only` so a diverged branch still gets a merge commit.
+        case .merge: args += ["--no-rebase", "--ff"]
+        case .rebase: args.append("--rebase")
+        case .fastForwardOnly: args.append("--ff-only")
+        }
         if let remote { args.append(remote) }
+        if let branch { args.append(branch) }
         try await shell.run(args)
         progress?(1.0)
         currentBranch   = try? await Self.loadCurrentBranch(shell: shell)
@@ -101,33 +117,45 @@ extension GitRepository {
         }
     }
 
-    func push(remote: String?, force: Bool, forceWithLease: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
-        let forceDescription = forceWithLease ? " --force-with-lease" : (force ? " --force" : "")
+    func push(remote: String?, forceWithLease: Bool, setUpstream: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
+        let flags = (forceWithLease ? " --force-with-lease" : "") + (setUpstream ? " -u" : "")
         Logger.gitRepository.info(
-            "Pushing\(forceDescription, privacy: .public) to \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
+            "Pushing\(flags, privacy: .public) to \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
         )
         var args = ["push"]
-        if forceWithLease {
-            args.append("--force-with-lease")
-        } else if force {
-            args.append("--force")
+        if forceWithLease { args.append("--force-with-lease") }
+        let upstreamRemote = (try? await Self.loadCurrentBranch(shell: shell))?.upstreamRemoteName
+        if setUpstream {
+            args += ["-u", remote ?? upstreamRemote ?? "origin", "HEAD"]
+        } else if let remote, remote != upstreamRemote {
+            // An explicit refspec lets untracked branches and other remotes push without `push.default` guessing.
+            args += [remote, "HEAD"]
+        } else if let remote {
+            args.append(remote)
         }
-        if let remote { args.append(remote) }
         try await shell.run(args)
         progress?(1.0)
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
         Logger.gitRepository.info("Push complete in \(self.displayName, privacy: .public)")
     }
 
-    func sync(remote: String?, rebase: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
+    func sync(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
         Logger.gitRepository.info(
             "Syncing with \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
         )
         try await fetch(remote: remote, progress: nil)
         progress?(0.33)
-        try await pull(remote: remote, rebase: rebase, progress: nil)
+        let branch = try? await Self.loadCurrentBranch(shell: shell)
+        let target = remote ?? branch?.upstreamRemoteName ?? "origin"
+        let tracksTarget = branch?.upstream != nil && branch?.upstreamRemoteName == target
+        if tracksTarget {
+            try await pull(remote: nil, branch: nil, strategy: strategy, progress: nil)
+        } else if let name = branch?.name,
+                  try await shell.runAllowingFailure(["rev-parse", "--verify", "--quiet", "refs/remotes/\(target)/\(name)"]).isSuccess {
+            try await pull(remote: target, branch: name, strategy: strategy, progress: nil)
+        }
         progress?(0.66)
-        try await push(remote: remote, force: false, forceWithLease: false, progress: nil)
+        try await push(remote: target, forceWithLease: false, setUpstream: !tracksTarget, progress: nil)
         progress?(1.0)
         Logger.gitRepository.info("Sync complete in \(self.displayName, privacy: .public)")
     }
