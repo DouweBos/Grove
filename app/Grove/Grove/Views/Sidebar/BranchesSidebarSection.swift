@@ -71,8 +71,6 @@ struct BranchesSidebarSection: View {
         SidebarBranchRow(branch: branch, isPinned: isPinned, showsFullName: showsFullName,
                          worktree: viewModel.worktree(checkingOut: branch))
             .tag(SidebarItem.branch(branch))
-            // Simultaneous so a single click still selects the branch's history.
-            .simultaneousGesture(TapGesture(count: 2).onEnded { Task { await viewModel.activate(branch: branch) } })
             .draggable(branch.name)
             .contextMenu {
                 BranchContextMenu(

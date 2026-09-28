@@ -44,6 +44,12 @@ struct RepositorySidebar: View {
             SubmodulesSidebarSection()
         }
         .listStyle(.sidebar)
+        // Double-click / Return on a branch; a tap gesture on the row itself would eat the click that selects it.
+        .contextMenu(forSelectionType: SidebarItem.self) { _ in
+        } primaryAction: { items in
+            guard case .branch(let branch) = items.first else { return }
+            Task { await viewModel.activate(branch: branch) }
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let message = viewModel.errorMessage {
                 Banner(symbol: "xmark.octagon", message: message, tone: .negative) { viewModel.dismissError() }
