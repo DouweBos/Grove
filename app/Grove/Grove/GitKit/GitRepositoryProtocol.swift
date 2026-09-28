@@ -58,6 +58,8 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func diff(for entry: StatusEntry, staged: Bool, ignoreWhitespace: Bool) async throws -> DiffResult
     /// Return all file diffs that belong to a commit.
     func diffForCommit(_ sha: String) async throws -> [FileDiff]
+    /// Every file path in the commit's tree (`git ls-tree -r`).
+    func filesInCommit(_ sha: String) async throws -> [String]
 
     // MARK: Commits
 
@@ -278,4 +280,6 @@ extension GitRepositoryProtocol {
     func createTag(name: String, at sha: String?, message: String?) async throws -> TagInfo {
         try await createTag(name: name, at: sha, message: message, sign: false)
     }
+
+    func filesInCommit(_ sha: String) async throws -> [String] { [] }
 }

@@ -3,105 +3,87 @@
 
 import SwiftUI
 
-/// A file row in the commit changeset list.
-///
-/// Shows status icon, file name, and a proportional additions/deletions change bar.
+/// A changed file in a commit: disclosure chevron, status badge, path, and line stats.
 struct ChangesetFileRow: View {
-
     let fileDiff: FileDiff
-    var isSelected: Bool = false
+    var isExpanded = false
+    /// Stashes and pull requests drive expansion through List selection instead of `onToggle`.
+    var isSelected = false
+    var onToggle: (() -> Void)?
 
     var body: some View {
-        HStack(spacing: 6) {
-            statusIcon
-                .frame(width: 14)
+        if let onToggle {
+            Button(action: onToggle) { content }
+                .buttonStyle(.plain)
+                .accessibilityHint(isExpanded ? "Collapse diff" : "Expand diff")
+        } else {
+            content
+        }
+    }
 
-            Text(fileDiff.path.lastPathComponent)
-                .font(.subheadline)
+    private var content: some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            Image(systemName: "chevron.right")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Theme.textSecondary)
+                .rotationEffect(.degrees(isExpanded || isSelected ? 90 : 0))
+                .frame(width: 10)
+            CommitFileStatusBadge(status: fileDiff.status)
+            pathText
                 .lineLimit(1)
-                .truncationMode(.middle)
-
-            Spacer()
-
-            ChangeBar(additions: fileDiff.stats.additions, deletions: fileDiff.stats.deletions)
+                .truncationMode(.head)
+            Spacer(minLength: Theme.Spacing.sm)
+            DiffStatsLabel(stats: fileDiff.stats)
+            DiffStatsBar(stats: fileDiff.stats, width: 44)
         }
-        .padding(.vertical, 1)
+        .padding(.horizontal, onToggle == nil ? 0 : Theme.Spacing.lg)
+        .frame(height: 32)
+        .contentShape(Rectangle())
     }
 
-    @ViewBuilder
-    private var statusIcon: some View {
-        switch fileDiff.status {
-        case .modified:
-            Image(systemName: "pencil.circle.fill")
-                .foregroundStyle(.orange)
-        case .added:
-            Image(systemName: "plus.circle.fill")
-                .foregroundStyle(.green)
-        case .deleted:
-            Image(systemName: "minus.circle.fill")
-                .foregroundStyle(.red)
-        case .renamed:
-            Image(systemName: "arrow.right.circle.fill")
-                .foregroundStyle(.blue)
-        case .copied:
-            Image(systemName: "doc.on.doc.fill")
-                .foregroundStyle(.blue)
-        default:
-            Image(systemName: "circle.fill")
-                .foregroundStyle(.secondary)
-        }
+    /// Directory in secondary color so the file name stands out.
+    private var pathText: Text {
+        let path = fileDiff.path as NSString
+        let directory = path.deletingLastPathComponent
+        let name = Text(path.lastPathComponent).foregroundStyle(Theme.textPrimary)
+        let full = directory.isEmpty ? name : Text(directory + "/").foregroundStyle(Theme.textSecondary) + name
+        return full.font(.system(size: 13))
     }
 }
 
-// MARK: - ChangeBar
-
-/// Visual additions/deletions bar (green + red proportional segments).
-struct ChangeBar: View {
-
-    let additions: Int
-    let deletions: Int
-
-    private var total: Int { max(additions + deletions, 1) }
-    private var maxSegments: Int { 5 }
-
-    private var additionSegments: Int {
-        Int(round(Double(additions) / Double(total) * Double(maxSegments)))
-    }
-
-    private var deletionSegments: Int {
-        maxSegments - additionSegments
-    }
+/// Single-letter file status (A / M / D / R …) on a tinted square.
+struct CommitFileStatusBadge: View {
+    let status: FileStatus
 
     var body: some View {
-        HStack(spacing: 1) {
-            ForEach(0..<additionSegments, id: \.self) { _ in
-                Rectangle()
-                    .fill(Color.green)
-                    .frame(width: 6, height: 10)
-                    .clipShape(RoundedRectangle(cornerRadius: 1))
-            }
-            ForEach(0..<deletionSegments, id: \.self) { _ in
-                Rectangle()
-                    .fill(Color.red)
-                    .frame(width: 6, height: 10)
-                    .clipShape(RoundedRectangle(cornerRadius: 1))
-            }
-        }
+        Text(status == .unmodified ? "·" : status.rawValue)
+            .font(.system(size: 10, weight: .bold, design: .monospaced))
+            .foregroundStyle(color)
+            .frame(width: 17, height: 17)
+            .background(color.opacity(0.16), in: RoundedRectangle(cornerRadius: 4))
+            .accessibilityLabel(String(describing: status))
     }
-}
 
-private extension String {
-    var lastPathComponent: String {
-        (self as NSString).lastPathComponent
+    private var color: Color {
+        switch status {
+        case .added: Theme.added
+        case .deleted: Theme.deleted
+        case .modified, .typeChange: Theme.modified
+        case .renamed, .copied: Theme.renamed
+        case .conflicted: Theme.conflicted
+        case .untracked, .ignored, .unmodified: Theme.untracked
+        }
     }
 }
 
 #Preview {
-    List {
+    VStack(spacing: 0) {
         ForEach(MockData.commitFileDiffs, id: \.path) { diff in
-            ChangesetFileRow(fileDiff: diff)
+            ChangesetFileRow(fileDiff: diff, isExpanded: diff.path == MockData.commitFileDiffs.first?.path) {}
         }
     }
-    .listStyle(.plain)
-    .frame(width: 300, height: 200)
+    .frame(width: 520)
+    .panel()
+    .padding()
+    .background(Theme.background)
 }

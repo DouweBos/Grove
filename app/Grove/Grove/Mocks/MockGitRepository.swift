@@ -117,6 +117,11 @@ final class MockGitRepository: GitRepositoryProtocol {
         return MockData.commitFileDiffs
     }
 
+    func filesInCommit(_ sha: String) async throws -> [String] {
+        await simulateLatency()
+        return MockData.trackedFiles
+    }
+
     // MARK: Commits
 
     @discardableResult

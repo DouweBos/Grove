@@ -69,19 +69,21 @@ final class FileHistoryViewModel {
     /// Calls ``GitRepositoryProtocol/diffForCommit(_:)`` and filters for the
     /// entry whose path matches ``filePath``.
     func selectCommit(_ commit: CommitInfo) async {
+        guard selectedCommit?.id != commit.id else { return }
         selectedCommit = commit
         fileDiff = nil
         isLoadingDiff = true
-        defer { isLoadingDiff = false }
         do {
             let allDiffs = try await repository.diffForCommit(commit.id)
-            // Match on current path or the pre-rename original path.
-            fileDiff = allDiffs.first(where: {
-                $0.path == filePath || $0.diff?.oldPath == filePath
-            })?.diff ?? allDiffs.first?.diff
+            // A newer selection may have started while this diff was loading.
+            guard selectedCommit?.id == commit.id else { return }
+            let match = allDiffs.first { $0.path == filePath || $0.diff?.oldPath == filePath }
+                ?? (allDiffs.count == 1 ? allDiffs.first : nil)
+            fileDiff = match?.diff
         } catch {
             errorMessage = error.localizedDescription
         }
+        if selectedCommit?.id == commit.id { isLoadingDiff = false }
     }
 
     /// Export the file at the selected commit to a user-chosen disk location.

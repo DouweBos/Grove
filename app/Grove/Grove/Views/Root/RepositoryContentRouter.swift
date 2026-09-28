@@ -59,9 +59,6 @@ struct RepositoryContentRouter: View {
         case .history:
             HistoryView()
                 .environment(session.historyVM)
-                .task(id: "history-initial") {
-                    await session.historyVM.loadInitial()
-                }
 
         case .stashes:
             StashesView()
@@ -115,7 +112,7 @@ struct RepositoryContentRouter: View {
         return HistoryView()
             .environment(vm)
             .task(id: branch) {
-                await vm.loadInitial()
+                await vm.loadIfNeeded()
             }
     }
 }

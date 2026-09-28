@@ -58,6 +58,7 @@ final class RepositorySession {
         self.autoFetcher      = AutoFetchScheduler(repository: repository)
         sidebarVM.onRepositoryChanged = { [weak self] in await self?.refreshAll() }
         workingCopyVM.onRepositoryChanged = { [weak self] in await self?.refreshAll() }
+        historyVM.onRepositoryChanged = { [weak self] in await self?.refreshAll() }
     }
 
     // MARK: - Lifecycle
@@ -192,6 +193,7 @@ final class RepositorySession {
         }
         let vm = HistoryViewModel(repository: repository)
         vm.filterBranch = branch
+        vm.onRepositoryChanged = { [weak self] in await self?.refreshAll() }
         filteredHistoryVMs[branch] = vm
         return vm
     }
