@@ -63,13 +63,16 @@ struct CommitListView: View {
             .focusable()
             .focused($isListFocused)
             .focusEffectDisabled()
-            .onMoveCommand { direction in
-                switch direction {
-                case .up: viewModel.selectAdjacent(offset: -1)
-                case .down: viewModel.selectAdjacent(offset: 1)
-                default: break
-                }
+            // Arrow keys should move the selection as soon as History opens, without a click first;
+            // deferred a turn because the window assigns its first responder after the view appears.
+            .defaultFocus($isListFocused, true)
+            .task {
+                await Task.yield()
+                isListFocused = true
             }
+            // onKeyPress rather than onMoveCommand: the scroll view swallows move commands itself.
+            .onKeyPress(.downArrow) { viewModel.selectAdjacent(offset: 1); return .handled }
+            .onKeyPress(.upArrow) { viewModel.selectAdjacent(offset: -1); return .handled }
             .onChange(of: viewModel.selectedCommit?.id) { _, id in
                 if let id { withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(id) } }
             }
