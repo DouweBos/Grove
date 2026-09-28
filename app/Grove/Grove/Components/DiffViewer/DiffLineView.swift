@@ -26,34 +26,55 @@ struct DiffLineView: View {
     /// Whether this line is currently selected (e.g. for line-level staging).
     var isSelected: Bool = false
 
+    @Environment(\.diffViewportWidth) private var viewportWidth
+    @Environment(\.diffScrollOffset) private var scrollOffset
+
     // MARK: Layout constants
 
     private enum Layout {
         static let lineNumberWidth: CGFloat = 40
-        static let gutterWidth: CGFloat = 16
+        static let signWidth: CGFloat = 16
     }
+
+    /// Both line-number columns plus the +/- sign.
+    static let gutterWidth = 2 * (Layout.lineNumberWidth + Theme.Spacing.xs) + Layout.signWidth
 
     // MARK: Body
 
     var body: some View {
         HStack(spacing: 0) {
+            gutter
+                // Pinned while the line content scrolls sideways underneath.
+                .offset(x: scrollOffset)
+                .zIndex(1)
+            contentText
+                .fixedSize(horizontal: viewportWidth != nil, vertical: false)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.trailing, Theme.Spacing.lg)
+                .padding(.vertical, 1)
+        }
+        .font(.monoBody)
+        .background(lineBackground)
+        .background(isSelected ? Theme.selectionFill : .clear)
+        .contentShape(Rectangle())
+    }
+
+    private var gutter: some View {
+        HStack(spacing: 0) {
             lineNumber(line.oldLineNumber)
             lineNumber(line.newLineNumber)
             Text(gutterChar)
                 .foregroundStyle(gutterColor)
-                .frame(width: Layout.gutterWidth, alignment: .center)
-            contentText
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.trailing, Theme.Spacing.lg)
+                .frame(width: Layout.signWidth, alignment: .center)
         }
-        .font(.monoBody)
         .padding(.vertical, 1)
+        .frame(maxHeight: .infinity)
         .background(lineBackground)
+        .background(isSelected ? Theme.selectionFill : .clear)
+        .background(Theme.surface)
         .overlay(alignment: .leading) {
             if isSelected { Rectangle().fill(Theme.accent).frame(width: 3) }
         }
-        .background(isSelected ? Theme.selectionFill : .clear)
-        .contentShape(Rectangle())
     }
 
     // MARK: Sub-views

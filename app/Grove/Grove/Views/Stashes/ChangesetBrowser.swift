@@ -10,6 +10,8 @@ struct ChangesetBrowser: View {
     let selectedPath: String?
     var isLoading = false
     var emptyTitle = "No Changes"
+    /// Lets image files render as pictures; without it they show the binary placeholder.
+    var imageSource: ImageDiffSource?
     let onSelect: (FileDiff) -> Void
 
     var body: some View {
@@ -32,6 +34,7 @@ struct ChangesetBrowser: View {
                 Text("+\(totals.additions)  \u{2212}\(totals.deletions)")
                     .font(.monoCaption)
                     .foregroundStyle(Theme.textSecondary)
+                WrapLinesToggle()
             }
             .padding(.horizontal, Theme.Spacing.lg)
             .padding(.top, Theme.Spacing.md)
@@ -46,12 +49,11 @@ struct ChangesetBrowser: View {
     @ViewBuilder
     private var diffArea: some View {
         if let file = files.first(where: { $0.path == selectedPath }) {
-            if let diff = file.diff {
-                ScrollView {
-                    DiffView(diff: diff)
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
-                .id(file.path)
+            if let imageSource, ImageDiffView.supports(path: file.path) {
+                RepositoryImageDiffView(source: imageSource, path: file.path, oldPath: file.diff?.oldPath)
+            } else if let diff = file.diff {
+                DiffScrollView { DiffView(diff: diff) }
+                    .id(file.path)
             } else {
                 EmptyStateView(systemImage: "doc.zipper", title: "No Diff Available",
                                subtitle: "Binary or unchanged file.")

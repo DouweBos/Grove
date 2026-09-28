@@ -73,3 +73,15 @@ struct FileDiff: Sendable {
     let diff: DiffResult?
     let stats: DiffStats
 }
+
+// MARK: - FileRevision
+
+/// Where to read one version of a file from.
+enum FileRevision: Hashable, Sendable {
+    case workingTree
+    case index
+    /// Merge conflict stage: 1 base, 2 ours, 3 theirs.
+    case conflictStage(Int)
+    /// Any revision `git show <rev>:<path>` accepts, e.g. a SHA, `sha^` or `stash@{0}`.
+    case commit(String)
+}

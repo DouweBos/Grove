@@ -5,6 +5,7 @@
 // hunks with headers, colored lines, and word-level highlights.
 // Shared between WorkingCopy, History commit detail, Stashes, and Blame.
 
+import AppKit
 import SwiftUI
 
 // MARK: - DiffView
@@ -33,7 +34,12 @@ struct DiffView: View {
     /// `nil` hides the action buttons.
     var onHunkAction: ((HunkAction, HunkData, [DiffLine]) -> Void)?
 
+    @Environment(\.diffViewportWidth) private var viewportWidth
+
     // MARK: State
+
+    /// Estimated width of the longest line, so short lines paint their background across it too.
+    @State private var contentWidth: CGFloat = 0
 
     /// Lines selected for line-level staging. Keyed by line `id`.
     @State private var selectedLineIDs: Set<String> = []
@@ -52,13 +58,15 @@ struct DiffView: View {
                 subtitle: "This file has no differences to display."
             )
         } else {
-            LazyVStack(spacing: 0) {
+            LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(diff.hunks) { hunk in
                     hunkSection(hunk)
                 }
             }
+            .frame(width: viewportWidth.map { max($0, contentWidth) }, alignment: .leading)
             .task(id: diff.hunks) {
                 selectedLineIDs.removeAll()
+                contentWidth = Self.estimatedWidth(of: diff.hunks)
                 computeWordHighlights()
             }
         }
@@ -137,6 +145,19 @@ struct DiffView: View {
             onHunkAction?(action, hunk, selectedLines)
         }
         selectedLineIDs.removeAll()
+    }
+
+    // MARK: Width Estimate
+
+    private static let characterWidth = ("0" as NSString)
+        .size(withAttributes: [.font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)]).width
+
+    /// Monospaced, so character count is enough; tabs count as four columns.
+    static func estimatedWidth(of hunks: [HunkData]) -> CGFloat {
+        let longest = hunks.lazy.flatMap(\.lines).map { line in
+            line.content.count + line.content.reduce(0) { $1 == "\t" ? $0 + 3 : $0 }
+        }.max() ?? 0
+        return DiffLineView.gutterWidth + CGFloat(longest) * characterWidth + Theme.Spacing.xl
     }
 
     // MARK: Word Highlights Computation

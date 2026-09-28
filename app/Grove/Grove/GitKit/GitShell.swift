@@ -47,6 +47,8 @@ struct ShellResult: Sendable {
     let stderr: String
     /// Process exit code (0 = success).
     let exitCode: Int32
+    /// Raw standard output, for binary content such as images.
+    var stdoutData = Data()
 
     /// Whether the process completed successfully.
     var isSuccess: Bool { exitCode == 0 }
@@ -217,7 +219,8 @@ final class GitShell: Sendable {
         return ShellResult(
             stdout: stdout,
             stderr: stderr,
-            exitCode: process.terminationStatus
+            exitCode: process.terminationStatus,
+            stdoutData: outData
         )
     }
 

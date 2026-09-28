@@ -136,7 +136,8 @@ private struct StashDetailPanel: View {
                     header(stash)
                     Rectangle().fill(Theme.border).frame(height: 0.5)
                     ChangesetBrowser(files: viewModel.stashDiffs, selectedPath: viewModel.selectedFilePath,
-                                     isLoading: viewModel.isLoadingDiff, emptyTitle: "Empty Stash") {
+                                     isLoading: viewModel.isLoadingDiff, emptyTitle: "Empty Stash",
+                                     imageSource: .commit(stash.sha, in: viewModel.repository)) {
                         viewModel.selectFile($0)
                     }
                 }
