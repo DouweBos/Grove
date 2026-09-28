@@ -7,9 +7,9 @@ import Foundation
 extension HistoryViewModel {
 
     /// History rewrites run an interactive rebase from the commit to HEAD, so they
-    /// only make sense for non-merge commits on the checked-out branch.
+    /// only make sense for non-merge commits on the checked-out branch, not ones only its upstream has.
     func canRewrite(_ commit: CommitInfo) -> Bool {
-        filterBranch == nil && !commit.isMerge
+        filterBranch == nil && !commit.isMerge && firstParentLine(reaching: [commit.id]).contains(commit.id)
     }
 
     func canSquashWithParent(_ commit: CommitInfo) -> Bool {
