@@ -27,6 +27,7 @@ final class RepositorySession {
     let reflogVM: ReflogViewModel
     let branchesReviewVM: BranchesReviewViewModel
     let pullRequestsVM: PullRequestsViewModel
+    let repositorySettingsVM: RepositorySettingsViewModel
     let toolbarState = RepositoryToolbarState()
     let gitUndoManager = GitUndoManager()
     let autoFetcher: AutoFetchScheduler
@@ -56,6 +57,7 @@ final class RepositorySession {
         self.reflogVM         = ReflogViewModel(repository: repository)
         self.branchesReviewVM = BranchesReviewViewModel(repository: repository)
         self.pullRequestsVM   = PullRequestsViewModel(repository: repository)
+        self.repositorySettingsVM = RepositorySettingsViewModel(repository: repository)
         self.autoFetcher      = AutoFetchScheduler(repository: repository)
         self.blameVM          = BlameViewModel(repository: repository)
         wireFeatureViewModels()

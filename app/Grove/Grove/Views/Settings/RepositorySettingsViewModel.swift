@@ -47,6 +47,8 @@ final class RepositorySettingsViewModel {
     private(set) var draft = Snapshot()
     private(set) var remoteNames: [String] = []
     private(set) var isLoading = false
+    /// False until the first read, so the form is only disabled before any values exist.
+    private(set) var hasLoaded = false
     private(set) var isSaving = false
     private(set) var errorMessage: String?
     private(set) var didSave = false
@@ -59,23 +61,42 @@ final class RepositorySettingsViewModel {
         self.repository = repository
     }
 
+    /// Re-reads config while the last values stay on screen; fields the user is editing keep their draft.
     func load() async {
         isLoading = true
         defer { isLoading = false }
         do {
+            let repository = repository
+            async let name = repository.localConfigValue("user.name")
+            async let email = repository.localConfigValue("user.email")
+            async let rebase = repository.localConfigValue("pull.rebase")
+            async let remoteList = repository.remotes()
             var snapshot = Snapshot()
-            snapshot.userName = try await repository.localConfigValue("user.name") ?? ""
-            snapshot.userEmail = try await repository.localConfigValue("user.email") ?? ""
-            snapshot.pullStrategy = PullStrategy(configValue: try await repository.localConfigValue("pull.rebase"))
-            let remotes = try await repository.remotes()
+            snapshot.userName = try await name ?? ""
+            snapshot.userEmail = try await email ?? ""
+            snapshot.pullStrategy = PullStrategy(configValue: try await rebase)
+            let remotes = try await remoteList
+            snapshot.remoteURLs = Dictionary(remotes.map { ($0.name, $0.url) }) { first, _ in first }
             remoteNames = remotes.map(\.name)
-            snapshot.remoteURLs = Dictionary(uniqueKeysWithValues: remotes.map { ($0.name, $0.url) })
+            draft = Self.rebase(draft: draft, from: saved, onto: snapshot)
             saved = snapshot
-            draft = snapshot
+            hasLoaded = true
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Applies `new` to every field of `draft` the user hasn't changed from `old`.
+    static func rebase(draft: Snapshot, from old: Snapshot, onto new: Snapshot) -> Snapshot {
+        var result = new
+        if draft.userName != old.userName { result.userName = draft.userName }
+        if draft.userEmail != old.userEmail { result.userEmail = draft.userEmail }
+        if draft.pullStrategy != old.pullStrategy { result.pullStrategy = draft.pullStrategy }
+        for (remote, url) in draft.remoteURLs where new.remoteURLs[remote] != nil && url != old.remoteURLs[remote] {
+            result.remoteURLs[remote] = url
+        }
+        return result
     }
 
     // MARK: - Editing

@@ -28,6 +28,31 @@ struct ReviewedBranch: Identifiable, Hashable, Sendable {
     var isDeletable: Bool { !isCurrentBranch && !isPrimary }
 }
 
+/// Ahead/behind only change when either tip moves, so counts are cached by both SHAs.
+struct AheadBehindCache {
+    struct Key: Hashable {
+        let branchSHA: String
+        let baseSHA: String
+    }
+
+    private var entries: [Key: AheadBehind] = [:]
+
+    func missing(_ keyed: [(name: String, key: Key)]) -> [String] {
+        keyed.filter { entries[$0.key] == nil }.map(\.name)
+    }
+
+    /// Stores `fresh` counts and drops entries for tips that no longer exist.
+    mutating func update(_ keyed: [(name: String, key: Key)], fresh: [String: AheadBehind]) {
+        for (name, key) in keyed { if let value = fresh[name] { entries[key] = value } }
+        let live = Set(keyed.map(\.key))
+        entries = entries.filter { live.contains($0.key) }
+    }
+
+    func counts(_ keyed: [(name: String, key: Key)]) -> [String: AheadBehind] {
+        Dictionary(keyed.compactMap { name, key in entries[key].map { (name, $0) } }) { first, _ in first }
+    }
+}
+
 @MainActor
 @Observable
 final class BranchesReviewViewModel {
@@ -51,6 +76,7 @@ final class BranchesReviewViewModel {
     /// Set when the merged-branches check failed; deleting stays off so unmerged branches aren't force-deleted as merged.
     private(set) var mergeStatusError: String?
     var pendingDelete: PendingDelete?
+    private var aheadBehindCache = AheadBehindCache()
 
     var onRepositoryChanged: (() async -> Void)?
     var undoManager: GitUndoManager?
@@ -88,18 +114,9 @@ final class BranchesReviewViewModel {
         do {
             let local = try await repository.localBranches()
             let primary = Self.primaryBranchName(from: local)
-            let merged: Set<String>
-            do {
-                merged = try await repository.mergedBranches(into: primary)
-                mergeStatusError = nil
-            } catch {
-                merged = []
-                mergeStatusError = error.localizedDescription
-            }
-            var reviewed: [ReviewedBranch] = []
-            for branch in local {
-                reviewed.append(await review(branch, primary: primary, merged: merged))
-            }
+            let tips = Dictionary(try await repository.branchTips().map { ($0.name, $0) }) { first, _ in first }
+            let counts = await aheadBehindCounts(for: local, primary: primary, tips: tips)
+            let reviewed = local.map { review($0, primary: primary, tip: tips[$0.name], counts: counts[$0.name]) }
             primaryBranch = primary
             branches = reviewed.sorted(by: Self.displayOrder)
             selectedIDs.formIntersection(branches.filter(\.isDeletable).map(\.id))
@@ -108,16 +125,33 @@ final class BranchesReviewViewModel {
         }
     }
 
-    private func review(_ branch: BranchInfo, primary: String, merged: Set<String>) async -> ReviewedBranch {
-        let latest = (try? await repository.log(maxCount: 1, skip: 0, branch: branch.name))?.first
-        var counts: (ahead: Int, behind: Int) = (0, 0)
-        if branch.name != primary, let result = try? await repository.aheadBehind(branch: branch.name, base: primary) {
-            counts = result
+    /// Counts only branches whose tip or the primary's tip moved since the last refresh.
+    private func aheadBehindCounts(for local: [BranchInfo], primary: String,
+                                   tips: [String: BranchTip]) async -> [String: AheadBehind] {
+        let baseSHA = tips[primary]?.sha ?? local.first { $0.name == primary }?.targetSHA ?? ""
+        let keyed = local.filter { $0.name != primary }.map { branch in
+            (name: branch.name,
+             key: AheadBehindCache.Key(branchSHA: tips[branch.name]?.sha ?? branch.targetSHA, baseSHA: baseSHA))
         }
-        let days = latest.map { Calendar.current.dateComponents([.day], from: $0.authorDate, to: .now).day ?? 0 }
+        var fresh: [String: AheadBehind] = [:]
+        do {
+            fresh = try await repository.aheadBehind(branches: aheadBehindCache.missing(keyed), base: primary)
+            mergeStatusError = nil
+        } catch {
+            mergeStatusError = error.localizedDescription
+        }
+        aheadBehindCache.update(keyed, fresh: fresh)
+        return aheadBehindCache.counts(keyed)
+    }
+
+    private func review(_ branch: BranchInfo, primary: String, tip: BranchTip?, counts: AheadBehind?) -> ReviewedBranch {
+        let date = tip?.committerDate
+        let days = date.map { Calendar.current.dateComponents([.day], from: $0, to: .now).day ?? 0 }
         let isPrimary = branch.name == primary
+        // No commits missing from the primary is exactly what `branch --merged` reports.
+        let isMerged = mergeStatusError == nil && counts?.ahead == 0
         let category: BranchCategory
-        if !isPrimary && !branch.isHEAD && merged.contains(branch.name) {
+        if !isPrimary && !branch.isHEAD && isMerged {
             category = .merged
         } else if !isPrimary && !branch.isHEAD, let days, days >= staleDays {
             category = .stale
@@ -126,8 +160,8 @@ final class BranchesReviewViewModel {
         }
         return ReviewedBranch(
             id: branch.id, name: branch.name, sha: branch.targetSHA, isCurrentBranch: branch.isHEAD,
-            isPrimary: isPrimary, lastCommitDate: latest?.authorDate, lastCommitSummary: latest?.summary ?? "",
-            authorName: latest?.authorName ?? "", ahead: counts.ahead, behind: counts.behind,
+            isPrimary: isPrimary, lastCommitDate: date, lastCommitSummary: tip?.summary ?? "",
+            authorName: tip?.authorName ?? "", ahead: counts?.ahead ?? 0, behind: counts?.behind ?? 0,
             category: category, daysSinceLastCommit: days
         )
     }

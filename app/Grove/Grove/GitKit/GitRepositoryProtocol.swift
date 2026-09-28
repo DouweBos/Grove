@@ -246,6 +246,10 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func mergedBranches(into base: String) async throws -> Set<String>
     /// Commits `branch` has that `base` lacks (ahead) and vice versa (behind).
     func aheadBehind(branch: String, base: String) async throws -> (ahead: Int, behind: Int)
+    /// Tip SHA, committer date, author and subject of every local branch.
+    func branchTips() async throws -> [BranchTip]
+    /// Ahead/behind counts for each named local branch against `base`, keyed by branch name.
+    func aheadBehind(branches: [String], base: String) async throws -> [String: AheadBehind]
     /// Commits unique to each side of `base...compare` and the files `compare` changed since the merge base.
     func compareBranches(base: String, compare: String) async throws -> BranchComparison
     /// Value from the repository's local `.git/config`, or nil when unset.
@@ -332,6 +336,8 @@ extension GitRepositoryProtocol {
     func fileData(path: String, at revision: FileRevision) async throws -> Data { Data() }
     func mergedBranches(into base: String) async throws -> Set<String> { [] }
     func aheadBehind(branch: String, base: String) async throws -> (ahead: Int, behind: Int) { (0, 0) }
+    func branchTips() async throws -> [BranchTip] { [] }
+    func aheadBehind(branches: [String], base: String) async throws -> [String: AheadBehind] { [:] }
     func compareBranches(base: String, compare: String) async throws -> BranchComparison { BranchComparison() }
     func defaultPullStrategy() async -> PullStrategy { .merge }
     func localConfigValue(_ key: String) async throws -> String? { nil }

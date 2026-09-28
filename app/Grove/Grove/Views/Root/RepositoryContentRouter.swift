@@ -95,7 +95,7 @@ struct RepositoryContentRouter: View {
                 }
 
         case .settings:
-            RepositorySettingsView(repository: repository)
+            RepositorySettingsView(viewModel: session.repositorySettingsVM)
 
         case .branch(let info):
             filteredHistoryView(branch: info.name)

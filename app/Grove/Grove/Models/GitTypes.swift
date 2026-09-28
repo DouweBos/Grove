@@ -146,6 +146,21 @@ struct BranchComparison: Sendable {
     var files: [ChangedFileStat] = []
 }
 
+/// A local branch tip from one `git for-each-ref refs/heads` pass.
+struct BranchTip: Hashable, Sendable {
+    let name: String
+    let sha: String
+    let committerDate: Date?
+    let authorName: String
+    let summary: String
+}
+
+/// Commits a branch has that its base lacks (ahead) and vice versa (behind).
+struct AheadBehind: Hashable, Sendable {
+    let ahead: Int
+    let behind: Int
+}
+
 /// One `git diff --numstat` row; counts are nil for binary files.
 struct ChangedFileStat: Identifiable, Hashable, Sendable {
     var id: String { path }

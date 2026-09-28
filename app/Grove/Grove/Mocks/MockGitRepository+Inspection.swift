@@ -22,6 +22,22 @@ extension MockGitRepository {
         return (info?.ahead ?? 0, info?.behind ?? 0)
     }
 
+    func branchTips() async throws -> [BranchTip] {
+        MockData.branches.filter(\.isLocal).map { branch in
+            let commit = MockData.commits.first { $0.id == branch.targetSHA }
+            return BranchTip(name: branch.name, sha: branch.targetSHA, committerDate: commit?.authorDate,
+                             authorName: commit?.authorName ?? "", summary: commit?.summary ?? "")
+        }
+    }
+
+    func aheadBehind(branches: [String], base: String) async throws -> [String: AheadBehind] {
+        var counts: [String: AheadBehind] = [:]
+        for info in MockData.branches where info.isLocal && branches.contains(info.name) {
+            counts[info.name] = AheadBehind(ahead: info.ahead, behind: info.behind)
+        }
+        return counts
+    }
+
     func compareBranches(base: String, compare: String) async throws -> BranchComparison {
         BranchComparison(
             onlyInBase: Array(MockData.commits.prefix(2)),

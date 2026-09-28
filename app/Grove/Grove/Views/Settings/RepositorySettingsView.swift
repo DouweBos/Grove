@@ -7,17 +7,14 @@ import SwiftUI
 
 struct RepositorySettingsView: View {
 
-    let repository: any GitRepositoryProtocol
-    @State private var viewModel: RepositorySettingsViewModel
-
-    init(repository: any GitRepositoryProtocol) {
-        self.repository = repository
-        _viewModel = State(initialValue: RepositorySettingsViewModel(repository: repository))
-    }
+    /// Owned by the session so revisits show the last values and any unsaved draft.
+    let viewModel: RepositorySettingsViewModel
+    private var repository: any GitRepositoryProtocol { viewModel.repository }
 
     var body: some View {
         VStack(spacing: 0) {
             PanelHeader(title: "Repository Settings", detail: ".git/config") {
+                if viewModel.isLoading { ProgressView().controlSize(.small) }
                 if viewModel.didSave && !viewModel.hasChanges {
                     Label("Saved", systemImage: "checkmark.circle.fill")
                         .font(.system(size: 12, weight: .medium))
@@ -107,7 +104,7 @@ struct RepositorySettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .disabled(viewModel.isLoading)
+        .disabled(!viewModel.hasLoaded)
     }
 
     private var stateDescription: String {
@@ -123,7 +120,7 @@ struct RepositorySettingsView: View {
 }
 
 #Preview {
-    RepositorySettingsView(repository: MockGitRepository())
+    RepositorySettingsView(viewModel: RepositorySettingsViewModel(repository: MockGitRepository()))
         .frame(width: 800, height: 640)
         .padding()
         .background(Theme.background)
