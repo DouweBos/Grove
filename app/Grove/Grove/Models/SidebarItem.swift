@@ -24,6 +24,8 @@ enum SidebarItem: Hashable, Sendable {
     case pullRequests
     /// The Branches Review view — shows stale and merged branches.
     case branchesReview
+    /// The Stack view — the stacked branches HEAD or the sidebar's branch belongs to.
+    case stack
     /// The in-repository Settings / Preferences view.
     case settings
     /// History filtered to a specific local branch.
@@ -38,16 +40,17 @@ enum SidebarItem: Hashable, Sendable {
 
 /// Top-level destinations shown as pills in the window toolbar.
 enum RepositoryTab: CaseIterable, Hashable {
-    case changes, history, stashes, pullRequests, reflog, review, blame, settings
+    case changes, history, stack, stashes, pullRequests, reflog, review, blame, settings
 
     /// Always shown; the rest live in the toolbar's More menu and get a pill only while open.
-    static let primary: [RepositoryTab] = [.changes, .history, .stashes, .pullRequests]
+    static let primary: [RepositoryTab] = [.changes, .history, .stack, .stashes, .pullRequests]
     static let secondary: [RepositoryTab] = [.reflog, .review, .blame, .settings]
 
     var title: String {
         switch self {
         case .changes: "Changes"
         case .history: "History"
+        case .stack: "Stack"
         case .stashes: "Stashes"
         case .pullRequests: "Pull Requests"
         case .reflog: "Reflog"
@@ -61,6 +64,7 @@ enum RepositoryTab: CaseIterable, Hashable {
         switch self {
         case .changes: "tray"
         case .history: "clock"
+        case .stack: "square.stack.3d.up"
         case .stashes: "tray.2"
         case .pullRequests: "arrow.triangle.pull"
         case .reflog: "clock.arrow.circlepath"
@@ -74,6 +78,7 @@ enum RepositoryTab: CaseIterable, Hashable {
         switch self {
         case .changes: .workingCopy
         case .history: .history
+        case .stack: .stack
         case .stashes: .stashes
         case .pullRequests: .pullRequests
         case .reflog: .reflog
@@ -92,6 +97,7 @@ enum RepositoryTab: CaseIterable, Hashable {
         case .pullRequests: self = .pullRequests
         case .reflog: self = .reflog
         case .branchesReview: self = .review
+        case .stack: self = .stack
         case .blame: self = .blame
         case .settings: self = .settings
         }

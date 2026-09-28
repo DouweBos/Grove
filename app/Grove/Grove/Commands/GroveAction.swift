@@ -49,6 +49,8 @@ enum GroveAction: String, Sendable {
     case navigatePullRequests
     /// Navigate to the Branches Review view (Cmd+6).
     case navigateBranchesReview
+    /// Navigate to the Stack view (Cmd+9).
+    case navigateStack
     /// Navigate to Blame (Cmd+7).
     case navigateBlame
     /// Navigate to Repository Settings (Cmd+8).

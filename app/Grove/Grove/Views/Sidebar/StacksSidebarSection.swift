@@ -14,7 +14,9 @@ struct StacksSidebarSection: View {
         if !viewModel.stacks.isEmpty {
             Section {
                 ForEach(viewModel.stacks) { stack in
-                    StackDisclosure(stack: stack) { layer in row(layer, in: stack) }
+                    StackDisclosure(stack: stack, showStack: { viewModel.showStack(containing: $0.layers.first?.branch ?? "") }) { layer in
+                        row(layer, in: stack)
+                    }
                 }
             } header: {
                 SidebarSectionHeader(title: "Stacks", count: viewModel.stacks.count)
@@ -34,6 +36,8 @@ struct StacksSidebarSection: View {
                     return viewModel.handleDrop(payload, onBranch: branch, option: NSEvent.modifierFlags.contains(.option))
                 }
                 .contextMenu {
+                    Button("Show Stack", systemImage: "square.stack.3d.up") { viewModel.showStack(containing: branch.name) }
+                    Divider()
                     BranchContextMenu(
                         branch: branch,
                         isPinned: viewModel.pinnedBranchNames.contains(branch.name),
@@ -50,11 +54,13 @@ struct StacksSidebarSection: View {
 /// A stack's layers; it opens when it holds the checked-out branch or needs attention.
 private struct StackDisclosure<Row: View>: View {
     let stack: BranchStack
+    let showStack: (BranchStack) -> Void
     @ViewBuilder let row: (StackLayer) -> Row
     @State private var isExpanded: Bool
 
-    init(stack: BranchStack, @ViewBuilder row: @escaping (StackLayer) -> Row) {
+    init(stack: BranchStack, showStack: @escaping (BranchStack) -> Void, @ViewBuilder row: @escaping (StackLayer) -> Row) {
         self.stack = stack
+        self.showStack = showStack
         self.row = row
         _isExpanded = State(initialValue: stack.layers.contains(where: \.isHEAD) || stack.needsAttention)
     }
@@ -68,6 +74,9 @@ private struct StackDisclosure<Row: View>: View {
                 Text("\(stack.layers.count)").font(.system(size: 11, design: .monospaced))
             }
             .help(stack.needsAttention ? "\(stack.name): some layers need a restack or retarget" : "\(stack.name) on \(stack.trunk)")
+            .contextMenu {
+                Button("Show Stack", systemImage: "square.stack.3d.up") { showStack(stack) }
+            }
         }
         .onChange(of: stack.layers.contains(where: \.isHEAD)) { _, contains in
             if contains { isExpanded = true }

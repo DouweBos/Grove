@@ -153,6 +153,11 @@ private struct GroveNavigateCommands: Commands {
                 GroveAction.navigateSettings.post()
             }
             .keyboardShortcut("8", modifiers: .command)
+
+            Button("Stack") {
+                GroveAction.navigateStack.post()
+            }
+            .keyboardShortcut("9", modifiers: .command)
         }
     }
 }

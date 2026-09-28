@@ -71,4 +71,18 @@ extension GitRepository {
         let sha = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         return sha.isEmpty ? nil : sha
     }
+
+    func diffStats(from base: String, to revision: String) async throws -> DiffStats {
+        Self.parseShortStat(try await shell.run(["diff", "--shortstat", base, revision, "--"]).stdout)
+    }
+
+    /// ` 3 files changed, 140 insertions(+), 12 deletions(-)` → +140 −12.
+    nonisolated static func parseShortStat(_ output: String) -> DiffStats {
+        func count(_ word: String) -> Int {
+            guard let range = output.range(of: word) else { return 0 }
+            let digits = output[..<range.lowerBound].reversed().drop(while: { $0 == " " }).prefix(while: \.isNumber)
+            return Int(String(digits.reversed())) ?? 0
+        }
+        return DiffStats(additions: count("insertion"), deletions: count("deletion"))
+    }
 }

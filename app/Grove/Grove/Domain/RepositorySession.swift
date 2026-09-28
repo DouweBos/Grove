@@ -27,6 +27,7 @@ final class RepositorySession {
     let stashesVM: StashesViewModel
     let reflogVM: ReflogViewModel
     let branchesReviewVM: BranchesReviewViewModel
+    let stackVM: StackViewModel
     let pullRequestsVM: PullRequestsViewModel
     let repositorySettingsVM: RepositorySettingsViewModel
     let toolbarState: RepositoryToolbarState
@@ -78,6 +79,7 @@ final class RepositorySession {
         self.stashesVM        = StashesViewModel(repository: repository)
         self.reflogVM         = ReflogViewModel(repository: repository)
         self.branchesReviewVM = BranchesReviewViewModel(repository: repository, refs: refs)
+        self.stackVM          = StackViewModel(repository: repository, refs: refs)
         self.pullRequestsVM   = PullRequestsViewModel(repository: repository, refs: refs)
         let gitFlowVM = GitFlowViewModel(repository: repository, refs: refs)
         let svnVM = SVNViewModel(repository: repository)
@@ -109,6 +111,8 @@ final class RepositorySession {
         branchesReviewVM.onRepositoryChanged = refresh
         branchesReviewVM.undoManager = gitUndoManager
         pullRequestsVM.onRepositoryChanged = refresh
+        stackVM.onRepositoryChanged = refresh
+        sidebarVM.onShowStack = { [stackVM] branch in stackVM.focus(branch: branch) }
         gitFlowVM.onRepositoryChanged = refresh
         svnVM.onRepositoryChanged = refresh
         sidebarVM.gitFlow = gitFlowVM
@@ -204,6 +208,8 @@ final class RepositorySession {
             sidebarVM.select(.pullRequests)
         case .navigateBranchesReview:
             sidebarVM.select(.branchesReview)
+        case .navigateStack:
+            sidebarVM.select(.stack)
         case .navigateBlame:
             sidebarVM.select(.blame)
         case .navigateSettings:

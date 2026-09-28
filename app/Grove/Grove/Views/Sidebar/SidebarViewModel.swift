@@ -149,6 +149,13 @@ final class SidebarViewModel {
     // MARK: - Stacks
 
     var stacks: [BranchStack] { refs.stacks }
+    /// Opens the Stack tab on the stack holding a branch; the session wires it to the Stack view model.
+    var onShowStack: ((String) -> Void)?
+
+    func showStack(containing branch: String) {
+        onShowStack?(branch)
+        select(.stack)
+    }
 
     /// Layers of a stack, which the Stacks section lists instead of Branches.
     var stackedBranchNames: Set<String> {

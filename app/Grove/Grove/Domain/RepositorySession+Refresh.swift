@@ -7,7 +7,7 @@ import Foundation
 
 /// Tabs whose lists load on entry rather than with every refresh.
 enum RefreshedTab: Hashable {
-    case stashes, reflog, pullRequests, branchesReview
+    case stashes, reflog, pullRequests, branchesReview, stack
 
     init?(_ item: SidebarItem) {
         switch item {
@@ -15,6 +15,7 @@ enum RefreshedTab: Hashable {
         case .reflog: self = .reflog
         case .pullRequests: self = .pullRequests
         case .branchesReview: self = .branchesReview
+        case .stack: self = .stack
         default: return nil
         }
     }
@@ -94,6 +95,9 @@ extension RepositorySession {
         case .reflog: await reflogVM.refresh()
         case .pullRequests: await pullRequestsVM.refresh()
         case .branchesReview: await branchesReviewVM.refresh()
+        case .stack:
+            await refs.settled()
+            await stackVM.refresh()
         }
     }
 }

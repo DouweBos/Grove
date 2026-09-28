@@ -77,10 +77,12 @@ final class StackReader {
                 result = StackRecognizer.recognize(input)
             }
         }
-        let trunkRef = excluded.last ?? "refs/heads/\(trunk)"
+        // Local trunk and its remote twin can each be ahead; the stack is behind whichever is further on.
         for index in result.stacks.indices {
             guard let base = result.trunkBases[result.stacks[index].id], !base.isEmpty else { continue }
-            result.stacks[index].trunkAhead = await repository.commitCount(from: base, to: trunkRef)
+            var ahead = 0
+            for ref in excluded { ahead = max(ahead, await repository.commitCount(from: base, to: ref)) }
+            result.stacks[index].trunkAhead = ahead
         }
         return publish(result, key: key, trunk: trunk)
     }

@@ -17,6 +17,8 @@ protocol StackGitOperations: AnyObject {
     func commitCount(from base: String, to revision: String) async -> Int
     /// `git merge-base --fork-point <parent> <branch>`: where `branch` left `parent`, by `parent`'s reflog.
     func forkPoint(parent: String, branch: String) async -> String?
+    /// Lines added and removed between two commits.
+    func diffStats(from base: String, to revision: String) async throws -> DiffStats
 }
 
 extension StackGitOperations {
@@ -25,4 +27,5 @@ extension StackGitOperations {
     func formerTips(of branches: [String]) async -> [String: Set<String>] { [:] }
     func commitCount(from base: String, to revision: String) async -> Int { 0 }
     func forkPoint(parent: String, branch: String) async -> String? { nil }
+    func diffStats(from base: String, to revision: String) async throws -> DiffStats { DiffStats(additions: 0, deletions: 0) }
 }

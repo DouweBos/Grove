@@ -42,6 +42,7 @@ struct RepositoryContentRouter: View {
             }
             .onChange(of: session.sidebarVM.selection) { _, newItem in
                 // Back/forward restores both at once, so only user-driven changes differ here.
+                if case .branch(let branch) = newItem { session.stackVM.focus(branch: branch.name) }
                 if let item = newItem, item != session.selectedItem {
                     windowVM.recordNavigation(to: .repository(path: session.repository.path.path, item: item))
                     session.selectedItem = item
@@ -96,6 +97,13 @@ struct RepositoryContentRouter: View {
                 .environment(session.branchesReviewVM)
                 .task(id: "branchesreview-initial") {
                     await session.refreshOnEntry(.branchesReview)
+                }
+
+        case .stack:
+            StackView()
+                .environment(session.stackVM)
+                .task(id: "stack-initial") {
+                    await session.refreshOnEntry(.stack)
                 }
 
         case .settings:
