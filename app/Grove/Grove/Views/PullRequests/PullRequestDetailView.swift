@@ -37,7 +37,7 @@ struct PullRequestDetailView: View {
                         .textSelection(.enabled)
                     HStack(spacing: Theme.Spacing.sm) {
                         stateBadge(pr)
-                        Text("#\(pr.id) \u{00B7} \(pr.authorName) \u{00B7} opened \(pr.createdDate.formatted(.relative(presentation: .named)))")
+                        Text("#\(String(pr.id)) \u{00B7} \(pr.authorName) \u{00B7} opened \(pr.createdDate.formatted(.relative(presentation: .named)))")
                             .font(.monoCaption)
                             .foregroundStyle(Theme.textSecondary)
                             .lineLimit(1)

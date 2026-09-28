@@ -32,7 +32,7 @@ struct PullRequestsView: View {
         } message: { pending in
             Text(pending.operation == .merge
                  ? "Creates a merge commit of \(pending.pr.sourceBranch) into \(pending.pr.targetBranch) on GitHub."
-                 : "Closes #\(pending.pr.id) without merging. You can reopen it on GitHub.")
+                 : "Closes #\(String(pending.pr.id)) without merging. You can reopen it on GitHub.")
         }
         .alert("Pull Request Action Failed", isPresented: Binding(get: { viewModel.actionError != nil },
                                                                  set: { if !$0 { viewModel.clearActionError() } })) {
@@ -195,7 +195,7 @@ struct PullRequestRow: View {
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(2)
                 HStack(spacing: Theme.Spacing.sm) {
-                    Text("#\(pr.id)")
+                    Text(verbatim: "#\(pr.id)")
                     Text(pr.authorName).lineLimit(1)
                     Spacer(minLength: 0)
                     Text(pr.updatedDate, format: .relative(presentation: .named))
