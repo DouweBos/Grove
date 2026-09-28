@@ -55,6 +55,8 @@ final class WorkingCopyViewModel {
 
     private(set) var selectedPath: String?
     private(set) var selectedSide: DiffSide = .unstaged
+    /// Rows Space and the context menu act on; the diff shows its focus.
+    private(set) var fileSelection = FileSelection()
 
     var selectedEntry: StatusEntry? { statusEntries.first { $0.path == selectedPath } }
     var showingStaged: Bool { selectedSide == .staged }
@@ -166,6 +168,11 @@ final class WorkingCopyViewModel {
 
     /// Keep the selection pointed at something that still has changes after the status moved.
     private func reconcileSelection() async {
+        fileSelection.reconcile(placeRow)
+        if let focus = fileSelection.focus {
+            selectedPath = focus.path
+            selectedSide = focus.side
+        }
         guard let entry = selectedEntry else {
             selectedPath = nil
             currentDiff = nil
@@ -185,6 +192,25 @@ final class WorkingCopyViewModel {
     func select(_ entry: StatusEntry, side: DiffSide? = nil) async {
         selectedPath = entry.path
         selectedSide = side ?? (entry.workdirStatus != .unmodified ? .unstaged : .staged)
+        fileSelection.select(FileRow(path: entry.path, side: entry.isConflicted ? .unstaged : selectedSide))
+        await loadDiff()
+    }
+
+    /// A click in the Changes list; Shift extends the range and Cmd toggles, as in Finder.
+    func click(_ entry: StatusEntry, side: DiffSide, extend: Bool, toggle: Bool) async {
+        fileSelection.click(FileRow(path: entry.path, side: side), in: fileRowOrder, extend: extend, toggle: toggle)
+        await showSelectionFocus()
+    }
+
+    func moveSelection(by offset: Int, extend: Bool) async {
+        fileSelection.move(by: offset, in: fileRowOrder, extend: extend)
+        await showSelectionFocus()
+    }
+
+    private func showSelectionFocus() async {
+        guard let focus = fileSelection.focus, focus.path != selectedPath || focus.side != selectedSide else { return }
+        selectedPath = focus.path
+        selectedSide = focus.side
         await loadDiff()
     }
 
@@ -209,7 +235,7 @@ final class WorkingCopyViewModel {
     }
 
     func isSelected(_ entry: StatusEntry, side: DiffSide) -> Bool {
-        selectedPath == entry.path && (entry.isConflicted || selectedSide == side)
+        fileSelection.contains(FileRow(path: entry.path, side: entry.isConflicted ? .unstaged : side))
     }
 
     private func loadDiff() async {
@@ -247,38 +273,6 @@ final class WorkingCopyViewModel {
 
     private func isShowing(_ key: WorkingDiffCache.Key) -> Bool {
         selectedPath == key.path && selectedSide == key.side && ignoreWhitespace == key.ignoreWhitespace
-    }
-
-    // MARK: - Staging
-
-    func stageFile(_ entry: StatusEntry) async {
-        await mutate {
-            try await self.repository.stage(paths: [entry.path])
-            self.undoManager?.record(GitUndoManager.stageAction(paths: [entry.path], repository: self.repository))
-        }
-    }
-
-    func unstageFile(_ entry: StatusEntry) async {
-        await mutate {
-            try await self.repository.unstage(paths: [entry.path])
-            self.undoManager?.record(GitUndoManager.unstageAction(paths: [entry.path], repository: self.repository))
-        }
-    }
-
-    func stageAll() async {
-        let paths = unstagedFiles.map(\.path)
-        await mutate {
-            try await self.repository.stageAll()
-            self.undoManager?.record(GitUndoManager.stageAction(paths: paths, repository: self.repository))
-        }
-    }
-
-    func unstageAll() async {
-        let paths = stagedFiles.map(\.path)
-        await mutate {
-            try await self.repository.unstageAll()
-            self.undoManager?.record(GitUndoManager.unstageAction(paths: paths, repository: self.repository))
-        }
     }
 
     func performHunkAction(_ action: HunkAction, hunk: HunkData, lines: [DiffLine] = []) async {
@@ -437,7 +431,7 @@ final class WorkingCopyViewModel {
         errorMessage = nil
     }
 
-    private func mutate(_ work: () async throws -> Void) async {
+    func mutate(_ work: () async throws -> Void) async {
         do {
             try await work()
         } catch {

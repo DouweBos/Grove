@@ -9,6 +9,7 @@ import SwiftUI
 
 struct FileStatusListView: View {
     @Environment(WorkingCopyViewModel.self) private var viewModel
+    @FocusState private var isListFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -64,6 +65,18 @@ struct FileStatusListView: View {
                 }
                 .padding(Theme.Spacing.sm)
             }
+            .focusable()
+            .focused($isListFocused)
+            .focusEffectDisabled()
+            .onKeyPress(.space) {
+                Task { await viewModel.toggleStageOfSelection() }
+                return .handled
+            }
+            .onKeyPress(keys: [.upArrow, .downArrow]) { press in
+                let offset = press.key == .upArrow ? -1 : 1
+                Task { await viewModel.moveSelection(by: offset, extend: press.modifiers.contains(.shift)) }
+                return .handled
+            }
         }
     }
 
@@ -71,23 +84,26 @@ struct FileStatusListView: View {
     private var sections: some View {
         let conflicts = viewModel.conflictedFiles
         if !conflicts.isEmpty {
-            FileSection(title: "Conflicts", entries: conflicts, side: .unstaged, isStagedSection: nil)
+            FileSection(title: "Conflicts", entries: conflicts, side: .unstaged, isStagedSection: nil, focusList: focusList)
         }
         if !viewModel.showOnlyConflicts {
             let staged = viewModel.stagedFiles
             if !staged.isEmpty {
-                FileSection(title: "Staged", entries: staged, side: .staged, isStagedSection: true) {
+                FileSection(title: "Staged", entries: staged, side: .staged, isStagedSection: true, focusList: focusList) {
                     sectionButton("Unstage All") { await viewModel.unstageAll() }
                 }
             }
             let unstaged = viewModel.unstagedFiles
             if !unstaged.isEmpty {
-                FileSection(title: "Changes", entries: unstaged, side: .unstaged, isStagedSection: false) {
+                FileSection(title: "Changes", entries: unstaged, side: .unstaged, isStagedSection: false, focusList: focusList) {
                     sectionButton("Stage All") { await viewModel.stageAll() }
                 }
             }
         }
     }
+
+    /// A click focuses the list so Space and the arrow keys reach it.
+    private func focusList() { isListFocused = true }
 
     private func sectionButton(_ title: String, action: @escaping () async -> Void) -> some View {
         Button(title) { Task { await action() } }
@@ -110,6 +126,7 @@ private struct FileSection<Accessory: View>: View {
     let side: DiffSide
     /// `nil` for conflicts, which are resolved rather than staged.
     let isStagedSection: Bool?
+    let focusList: () -> Void
     @ViewBuilder var accessory: () -> Accessory
 
     var body: some View {
@@ -118,7 +135,7 @@ private struct FileSection<Accessory: View>: View {
                 .padding(.horizontal, Theme.Spacing.sm)
                 .padding(.bottom, Theme.Spacing.xs)
             if viewModel.fileViewMode == .treeModified {
-                ForEach(directoryGroups, id: \.directory) { group in
+                ForEach(viewModel.directoryGroups(entries), id: \.directory) { group in
                     if !group.directory.isEmpty {
                         directoryHeader(group.directory)
                     }
@@ -145,7 +162,13 @@ private struct FileSection<Accessory: View>: View {
                 { Task { staged ? await viewModel.unstageFile(entry) : await viewModel.stageFile(entry) } }
             }
         )
-        .onTapGesture { Task { await viewModel.select(entry, side: side) } }
+        .onTapGesture {
+            focusList()
+            let modifiers = NSEvent.modifierFlags
+            Task {
+                await viewModel.click(entry, side: side, extend: modifiers.contains(.shift), toggle: modifiers.contains(.command))
+            }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(entry.path)
         .accessibilityAddTraits(.isButton)
@@ -167,8 +190,11 @@ private struct FileSection<Accessory: View>: View {
     @ViewBuilder
     private func contextMenu(for entry: StatusEntry) -> some View {
         if let staged = isStagedSection {
-            Button(staged ? "Unstage" : "Stage") {
-                Task { staged ? await viewModel.unstageFile(entry) : await viewModel.stageFile(entry) }
+            let row = FileRow(path: entry.path, side: side)
+            // Right-clicking inside a multi-selection acts on this section's part of it.
+            let rows: Set<FileRow> = viewModel.fileSelection.contains(row) ? viewModel.fileSelection.rows.filter { $0.side == side } : [row]
+            Button(rows.count > 1 ? "\(staged ? "Unstage" : "Stage") \(rows.count) Files" : (staged ? "Unstage" : "Stage")) {
+                Task { await viewModel.toggleStage(rows) }
             }
             if !diffToolPath.isEmpty {
                 Button("Open in Diff Tool") { Task { await viewModel.openInDiffTool(entry, side: side) } }
@@ -191,21 +217,11 @@ private struct FileSection<Accessory: View>: View {
         Button("Discard Changes…", role: .destructive) { viewModel.requestDiscard(entry) }
     }
 
-    private struct DirectoryGroup {
-        let directory: String
-        let entries: [StatusEntry]
-    }
-
-    private var directoryGroups: [DirectoryGroup] {
-        Dictionary(grouping: entries, by: \.directory)
-            .sorted { $0.key < $1.key }
-            .map { DirectoryGroup(directory: $0.key, entries: $0.value) }
-    }
 }
 
 extension FileSection where Accessory == EmptyView {
-    init(title: String, entries: [StatusEntry], side: DiffSide, isStagedSection: Bool?) {
-        self.init(title: title, entries: entries, side: side, isStagedSection: isStagedSection) { EmptyView() }
+    init(title: String, entries: [StatusEntry], side: DiffSide, isStagedSection: Bool?, focusList: @escaping () -> Void) {
+        self.init(title: title, entries: entries, side: side, isStagedSection: isStagedSection, focusList: focusList) { EmptyView() }
     }
 }
 
