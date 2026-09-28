@@ -1,19 +1,25 @@
 // Models/RemoteRepositoryTypes.swift
 // Grove
 //
-// Repositories on a hosting account (GitHub via `gh`), for the cloud browser.
+// Repositories on the hosting accounts, for the cloud browser.
 
 import Foundation
 
 nonisolated struct RemoteRepositoryOwner: Identifiable, Hashable, Sendable {
-    var id: String { login }
+    var id: String { "\(accountID)/\(login)" }
     let login: String
     /// The signed-in account itself rather than an organization it belongs to.
     let isAccount: Bool
+    /// The `CatalogAccount` the owner was listed under.
+    var accountID = ""
+    /// Shown instead of `login` where the service has a friendlier name (Bitbucket workspaces, Azure projects).
+    var displayName: String?
+
+    var title: String { displayName ?? login }
 }
 
 nonisolated struct RemoteRepository: Identifiable, Hashable, Sendable {
-    var id: String { nameWithOwner }
+    var id: String { "\(service.rawValue):\(nameWithOwner)" }
     let nameWithOwner: String
     let name: String
     let owner: String
@@ -26,8 +32,11 @@ nonisolated struct RemoteRepository: Identifiable, Hashable, Sendable {
     let sshURL: String
     let defaultBranch: String?
     let language: String?
+    var service: HostingServiceKind = .github
+    /// Set where the HTTPS clone URL isn't the web URL plus `.git` (Azure DevOps, Bitbucket).
+    var cloneURL: String?
 
-    var httpsCloneURL: String { webURL.hasSuffix(".git") ? webURL : webURL + ".git" }
+    var httpsCloneURL: String { cloneURL ?? (webURL.hasSuffix(".git") ? webURL : webURL + ".git") }
 
     /// "github.com/owner/name", lowercased, for matching local clones by any of their remote URLs.
     var matchKey: String? { RemoteURLKey.make(webURL) }

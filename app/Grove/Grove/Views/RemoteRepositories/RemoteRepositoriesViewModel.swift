@@ -1,7 +1,7 @@
 // Views/RemoteRepositories/RemoteRepositoriesViewModel.swift
 // Grove
 //
-// Repositories on the signed-in GitHub account and its organizations, loaded per owner on demand.
+// Repositories on every signed-in account and its organizations, loaded per owner on demand.
 
 import Foundation
 import Observation
@@ -21,17 +21,32 @@ final class RemoteRepositoriesViewModel {
         case unknown
         case loading
         case signedIn
-        /// `gh` is missing or signed out; the message says which.
+        /// No account on any service; the message says what to set up.
         case unavailable(String)
     }
 
+    /// One account in the sidebar with the owners it lists.
+    struct Section: Identifiable {
+        let catalog: any RepositoryCatalog
+        var owners: [RemoteRepositoryOwner] = []
+        var failure: String?
+        var id: String { catalog.account.id }
+        var account: CatalogAccount { catalog.account }
+    }
+
     private(set) var account: AccountState = .unknown
-    private(set) var owners: [RemoteRepositoryOwner] = []
+    private(set) var sections: [Section] = []
+    /// Keyed by `RemoteRepositoryOwner.id`.
     private(set) var states: [String: OwnerState] = [:]
     private(set) var searchText = ""
     private(set) var selectedID: String?
     /// Hosted repository key → local bookmark path, from each bookmark's remotes.
     private(set) var localClones: [String: String] = [:]
+
+    /// Where the accounts come from; tests swap in fixed catalogs.
+    @ObservationIgnored var catalogSource: () async -> [any RepositoryCatalog] = { await RepositoryCatalogs.all() }
+
+    var owners: [RemoteRepositoryOwner] { sections.flatMap(\.owners) }
 
     var isSearching: Bool { !searchText.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -45,7 +60,7 @@ final class RemoteRepositoriesViewModel {
 
     // MARK: Loading
 
-    /// Loads the account's owners once, then the account's own repositories.
+    /// Loads the accounts' owners once, then the first account's own repositories.
     func loadIfNeeded() async {
         guard account == .unknown else { return }
         await reloadAccount()
@@ -53,32 +68,47 @@ final class RemoteRepositoriesViewModel {
 
     func reloadAccount() async {
         account = .loading
-        do {
-            owners = try await GitHubCLI.repositoryOwners()
-            account = .signedIn
-            states = [:]
-            if let first = owners.first { await load(first) }
-        } catch {
-            owners = []
-            account = .unavailable(error.localizedDescription)
+        states = [:]
+        let catalogs = await catalogSource()
+        guard !catalogs.isEmpty else {
+            sections = []
+            account = .unavailable("No accounts are set up.")
+            return
         }
+        sections = catalogs.map { Section(catalog: $0) }
+        account = .signedIn
+        await withTaskGroup(of: (Int, Result<[RemoteRepositoryOwner], Error>).self) { group in
+            for (index, catalog) in catalogs.enumerated() {
+                group.addTask {
+                    do { return (index, .success(try await catalog.owners())) } catch { return (index, .failure(error)) }
+                }
+            }
+            for await (index, result) in group {
+                switch result {
+                case .success(let owners): sections[index].owners = owners
+                case .failure(let error): sections[index].failure = error.localizedDescription
+                }
+            }
+        }
+        if let first = sections.first(where: { !$0.owners.isEmpty })?.owners.first { await load(first) }
     }
 
     func load(_ owner: RemoteRepositoryOwner) async {
-        switch states[owner.login] {
+        switch states[owner.id] {
         case .loading, .loaded: return
         default: break
         }
-        states[owner.login] = .loading
+        guard let catalog = sections.first(where: { $0.id == owner.accountID })?.catalog else { return }
+        states[owner.id] = .loading
         do {
-            states[owner.login] = .loaded(try await GitHubCLI.repositories(of: owner))
+            states[owner.id] = .loaded(try await catalog.repositories(of: owner))
         } catch {
-            states[owner.login] = .failed(error.localizedDescription)
+            states[owner.id] = .failed(error.localizedDescription)
         }
     }
 
     func refresh(_ owner: RemoteRepositoryOwner) async {
-        states[owner.login] = .idle
+        states[owner.id] = .idle
         await load(owner)
     }
 
@@ -88,7 +118,7 @@ final class RemoteRepositoriesViewModel {
         searchText = text
         // Searching covers every owner, so pull in the ones not expanded yet.
         guard isSearching else { return }
-        for owner in owners where states[owner.login] == nil || states[owner.login] == .idle {
+        for owner in owners where states[owner.id] == nil || states[owner.id] == .idle {
             Task { await load(owner) }
         }
     }
@@ -96,7 +126,7 @@ final class RemoteRepositoriesViewModel {
     func select(_ id: String?) { selectedID = id }
 
     func repositories(of owner: RemoteRepositoryOwner) -> [RemoteRepository] {
-        guard case .loaded(let repos) = states[owner.login] else { return [] }
+        guard case .loaded(let repos) = states[owner.id] else { return [] }
         let query = searchText.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return repos }
         return repos.filter {

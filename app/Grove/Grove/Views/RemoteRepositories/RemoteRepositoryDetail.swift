@@ -16,31 +16,38 @@ struct RemoteRepositoriesContent: View {
             case .unavailable(let message):
                 EmptyStateView(
                     systemImage: "person.crop.circle.badge.exclamationmark",
-                    title: "No GitHub Account",
-                    subtitle: "\(message) Sign in with \u{201C}gh auth login\u{201D} in Terminal, then try again.",
-                    actionTitle: "Try Again"
-                ) { Task { await viewModel.reloadAccount() } }
+                    title: "No Accounts",
+                    subtitle: "\(message) Sign in with \u{201C}gh auth login\u{201D} or \u{201C}glab auth login\u{201D}, "
+                        + "or add a Bitbucket or Azure DevOps account in Settings > Accounts.",
+                    actionTitle: "Add an Account\u{2026}"
+                ) { openAccounts() }
             case .unknown, .loading:
-                ProgressView("Reading your GitHub account…").frame(maxWidth: .infinity, maxHeight: .infinity)
+                ProgressView("Reading your accounts\u{2026}").frame(maxWidth: .infinity, maxHeight: .infinity)
             case .signedIn:
                 if let repository = viewModel.selected {
                     RemoteRepositoryDetail(repository: repository)
                 } else {
                     EmptyStateView(systemImage: "cloud", title: "Remote Repositories",
-                                   subtitle: "Repositories on your GitHub account and organizations. Select one to clone or open it.")
+                                   subtitle: "Repositories on your accounts and their organizations. Select one to clone or open it.")
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background)
+        .onChange(of: HostingAccountStore.shared.accounts) { Task { await viewModel.reloadAccount() } }
         .toolbar {
-            if case .unavailable = viewModel.account {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Accounts…", systemImage: "person.crop.circle") { openSettings() }
-                        .help("Open Settings to check your GitHub account")
-                }
+            ToolbarItem(placement: .primaryAction) {
+                Button("Accounts\u{2026}", systemImage: "person.crop.circle") { openAccounts() }
+                    .help("Open Settings to manage your accounts")
             }
         }
+    }
+}
+
+extension RemoteRepositoriesContent {
+    fileprivate func openAccounts() {
+        UserDefaults.standard.set(PreferencesTab.accounts.rawValue, forKey: GrovePreferences.Key.preferencesTab)
+        openSettings()
     }
 }
 
@@ -104,7 +111,7 @@ struct RemoteRepositoryDetail: View {
                     .controlSize(.large)
                     .keyboardShortcut(.defaultAction)
                 }
-                Button("Open on GitHub", systemImage: "safari") {
+                Button("Open on \(repository.service.displayName)", systemImage: "safari") {
                     if let url = URL(string: repository.webURL) { NSWorkspace.shared.open(url) }
                 }
                 .buttonStyle(.borderless)
