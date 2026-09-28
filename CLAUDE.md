@@ -1,8 +1,36 @@
 # Grove
 
-A macOS Git client built with SwiftUI.
+A macOS Git client built with SwiftUI. Its design language follows our disk analyzer Charon (`../Charon`).
 
 ## Development Guidelines
 
 - This is not a production app. Never plan or implement data migrations — just refactor directly.
 - Prefer functions on ViewModels over writing to properties directly. This makes adding analytics easier later.
+- ViewModels use `@Observable` and `@MainActor`. `RepositorySession` owns every per-repository ViewModel; call `refreshAll()` after a git mutation instead of refreshing individual lists.
+- Never move toolbar items out of `.toolbar {}` into the view hierarchy.
+
+## Design system
+
+1. All colors come from `Theme` (asset catalog tokens, light and dark). No `Color.red`, `Color(red:)`, hex, or `Color(nsColor:)` in views.
+2. Content sits in cards (`.card()`, or `.panel()` for edge-to-edge lists) on `Theme.background`.
+3. SF Symbols only, no emoji. Hashes, paths, counts and dates use `.monoCaption`.
+4. Reusable components live in `DesignSystem/`, each with a `#Preview`. Check there before building a one-off.
+5. Top-level navigation is the pill bar in the toolbar (`RepositoryTab`); the sidebar holds refs only.
+
+## Build and test
+
+```sh
+cd app/Grove
+xcodebuild -project Grove.xcodeproj -scheme Grove -derivedDataPath build -destination 'platform=macOS,arch=arm64' build
+xcodebuild -project Grove.xcodeproj -scheme Grove -derivedDataPath build -destination 'platform=macOS,arch=arm64' test -only-testing:GroveTests
+```
+
+Dev launch flags: `-GroveOpenRepository <path>` opens a repository on launch, `-GroveAction <GroveAction rawValue>` (e.g. `navigateHistory`) runs an action once it's open.
+
+Never perform git writes against real repositories while testing; use a scratch repo under `/tmp`.
+
+## Conventions
+
+- Files under 500 lines, views under 300; split when approaching that.
+- Commit messages: Conventional Commits, `type(scope): subject`, one short lowercase subject.
+- Comments explain why, in 1–2 lines, describing the code as it stands.
