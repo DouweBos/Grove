@@ -65,8 +65,11 @@ final class RepositorySession {
     private func wireFeatureViewModels() {
         let refresh: () async -> Void = { [weak self] in await self?.refreshAll() }
         sidebarVM.onRepositoryChanged = refresh
+        sidebarVM.undoManager = gitUndoManager
         workingCopyVM.onRepositoryChanged = refresh
+        workingCopyVM.undoManager = gitUndoManager
         historyVM.onRepositoryChanged = refresh
+        historyVM.undoManager = gitUndoManager
         stashesVM.onRepositoryChanged = refresh
         reflogVM.onRepositoryChanged = refresh
         reflogVM.undoManager = gitUndoManager
@@ -178,9 +181,9 @@ final class RepositorySession {
         case .commit:
             guard selectedItem == .workingCopy else { return }
             Task { await workingCopyVM.commit() }
-        case .quickActions:
+        case .quickActions, .quickOpen:
             break
-        case .quickOpen, .addRepository, .cloneRepository, .createRepository, .newGroup:
+        case .addRepository, .cloneRepository, .createRepository, .newGroup:
             break
         case .undo:
             Task {
@@ -188,7 +191,9 @@ final class RepositorySession {
                     try await gitUndoManager.undo()
                     await refreshAll()
                 } catch {
-                    gitUndoManager.errorMessage = error.localizedDescription
+                    // A grouped action may have partly applied before failing.
+                    gitUndoManager.reportError(error)
+                    await refreshAll()
                 }
             }
         case .redo:
@@ -197,7 +202,8 @@ final class RepositorySession {
                     try await gitUndoManager.redo()
                     await refreshAll()
                 } catch {
-                    gitUndoManager.errorMessage = error.localizedDescription
+                    gitUndoManager.reportError(error, redo: true)
+                    await refreshAll()
                 }
             }
         }

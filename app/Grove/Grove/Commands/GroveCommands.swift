@@ -9,26 +9,10 @@
 // dispatched through GroveAction.post(), which posts a Notification that
 // RootWindowHost observes and forwards to the active RepositorySession.
 //
-// The one exception is the Undo/Redo group, which reads undo state through
-// a FocusedValue so menu items can be correctly titled and enabled.
+// The one exception is the Undo/Redo group, which reads git and text undo
+// state through EditUndoState to title and enable its items.
 
 import SwiftUI
-
-// MARK: - FocusedValues: GitUndoManager
-
-/// FocusedValues extension exposing the active window's ``GitUndoManager``
-/// to Commands structs.
-struct GitUndoManagerKey: FocusedValueKey {
-    typealias Value = GitUndoManager
-}
-
-extension FocusedValues {
-    /// The ``GitUndoManager`` of the currently focused repository window.
-    var gitUndoManager: GitUndoManager? {
-        get { self[GitUndoManagerKey.self] }
-        set { self[GitUndoManagerKey.self] = newValue }
-    }
-}
 
 // MARK: - GroveCommands
 
@@ -68,27 +52,36 @@ private struct GroveFileCommands: Commands {
 
 // MARK: - GroveUndoRedoCommands
 
-/// Replaces the system Undo/Redo items in the **Edit** menu with Grove-aware
-/// versions that show the current git operation description.
-///
-/// Reads undo state from the focused window via ``FocusedValues/gitUndoManager``.
+/// Replaces Edit > Undo/Redo: text editing keeps the system behaviour, otherwise
+/// the focused repository's git stack is used ("Undo Commit 'fix: login'").
 private struct GroveUndoRedoCommands: Commands {
 
-    @FocusedValue(\.gitUndoManager) private var undoManager: GitUndoManager?
+    private let edit = EditUndoState.shared
+
+    /// A text field with its own history wins; the Preferences window has no git stack.
+    private var gitUndoTarget: GitUndoManager? {
+        edit.isEditingText && edit.canUndo ? nil : edit.gitUndo.flatMap { $0.canUndo ? $0 : nil }
+    }
+
+    private var gitRedoTarget: GitUndoManager? {
+        edit.isEditingText && edit.canRedo ? nil : edit.gitUndo.flatMap { $0.canRedo ? $0 : nil }
+    }
 
     var body: some Commands {
         CommandGroup(replacing: .undoRedo) {
-            Button("Undo \(undoManager?.undoDescription ?? "")") {
-                GroveAction.undo.post()
+            Button(gitUndoTarget?.undoDescription.map { "Undo \($0)" } ?? edit.undoTitle) {
+                edit.refresh()
+                if gitUndoTarget != nil { GroveAction.undo.post() } else { edit.forward(undo: true) }
             }
             .keyboardShortcut("z", modifiers: .command)
-            .disabled(!(undoManager?.canUndo ?? false))
+            .disabled(gitUndoTarget == nil && !edit.canUndo)
 
-            Button("Redo \(undoManager?.redoDescription ?? "")") {
-                GroveAction.redo.post()
+            Button(gitRedoTarget?.redoDescription.map { "Redo \($0)" } ?? edit.redoTitle) {
+                edit.refresh()
+                if gitRedoTarget != nil { GroveAction.redo.post() } else { edit.forward(undo: false) }
             }
             .keyboardShortcut("z", modifiers: [.command, .shift])
-            .disabled(!(undoManager?.canRedo ?? false))
+            .disabled(gitRedoTarget == nil && !edit.canRedo)
         }
     }
 }
@@ -129,6 +122,16 @@ private struct GroveNavigateCommands: Commands {
                 GroveAction.navigateBranchesReview.post()
             }
             .keyboardShortcut("6", modifiers: .command)
+
+            Button("Blame") {
+                GroveAction.navigateBlame.post()
+            }
+            .keyboardShortcut("7", modifiers: .command)
+
+            Button("Repository Settings") {
+                GroveAction.navigateSettings.post()
+            }
+            .keyboardShortcut("8", modifiers: .command)
         }
     }
 }

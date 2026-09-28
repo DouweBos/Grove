@@ -87,6 +87,20 @@ struct RootWindowHost: View {
             GroupNameSheet(editor: editor)
                 .environment(windowVM)
         }
+        .alert(undoManager?.errorTitle ?? "Couldn't Undo", isPresented: undoErrorPresented) {
+            Button("OK") { undoManager?.dismissError() }
+        } message: {
+            Text(undoManager?.errorMessage ?? "")
+        }
+    }
+
+    // MARK: Undo Errors
+
+    private var undoManager: GitUndoManager? { windowVM.currentSession?.session.gitUndoManager }
+
+    private var undoErrorPresented: Binding<Bool> {
+        Binding(get: { undoManager?.errorMessage != nil },
+                set: { if !$0 { undoManager?.dismissError() } })
     }
 
     // MARK: Detail Content
@@ -104,7 +118,7 @@ struct RootWindowHost: View {
                         onComplete: { Task { await loaded.session.refreshAll() } }
                     )
                     .environment(loaded.session.gitUndoManager)
-                    .focusedSceneValue(\.gitUndoManager, loaded.session.gitUndoManager)
+                    .onAppear { EditUndoState.shared.attach(loaded.session.gitUndoManager) }
                     .id(ref.path)
             } else if let error = windowVM.sessionErrors[ref.path] {
                 ContentUnavailableView(
@@ -118,6 +132,7 @@ struct RootWindowHost: View {
             }
         } else {
             RepositoryBrowserContent()
+                .onAppear { EditUndoState.shared.attach(nil) }
         }
     }
 

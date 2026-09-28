@@ -61,9 +61,9 @@ struct BranchesSidebarSection: View {
             }
         }
         .sheet(item: $branchToDelete) { branch in
-            DeleteBranchDialogView(repository: viewModel.repository, branch: branch) {
-                Task { await viewModel.didChangeRepository() }
-            }
+            DeleteBranchDialogView(repository: viewModel.repository, branch: branch,
+                                   onDeleted: { viewModel.recordBranchDeletion(branch) },
+                                   onComplete: { Task { await viewModel.didChangeRepository() } })
         }
     }
 

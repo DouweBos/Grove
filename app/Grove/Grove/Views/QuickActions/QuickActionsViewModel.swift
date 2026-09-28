@@ -67,6 +67,12 @@ final class QuickActionsViewModel {
         Task { await loadCandidates() }
     }
 
+    /// Quick Open (Cmd+Shift+O): the palette straight on its Files tab.
+    func openFiles() {
+        open()
+        selectTab(.files)
+    }
+
     func close() {
         isPresented = false
     }

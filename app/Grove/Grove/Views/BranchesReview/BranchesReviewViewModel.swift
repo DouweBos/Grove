@@ -158,15 +158,23 @@ final class BranchesReviewViewModel {
         isDeleting = true
         defer { isDeleting = false }
         var failures: [String] = []
+        var deleted: [GitUndoManager.GitAction] = []
         for branch in pending.branches {
             do {
                 try await repository.deleteBranch(name: branch.name, force: branch.category != .merged)
                 selectedIDs.remove(branch.id)
-                undoManager?.record(GitUndoManager.deleteBranchAction(branchName: branch.name, sha: branch.sha,
-                                                                       repository: repository))
+                deleted.append(GitUndoManager.deleteBranchAction(branchName: branch.name, sha: branch.sha,
+                                                                 repository: repository))
             } catch {
                 failures.append("\(branch.name): \(error.localizedDescription)")
             }
+        }
+        // One entry so a single Edit › Undo restores the whole batch.
+        if deleted.count == 1 {
+            undoManager?.record(deleted[0])
+        } else if !deleted.isEmpty {
+            undoManager?.record(GitUndoManager.groupedAction(description: "Delete \(deleted.count) Branches",
+                                                             actions: deleted))
         }
         if !failures.isEmpty { errorMessage = failures.joined(separator: "\n") }
         await refresh()

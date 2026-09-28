@@ -10,6 +10,8 @@ struct DeleteBranchDialogView: View {
 
     let repository: any GitRepositoryProtocol
     let branch: BranchInfo
+    /// Runs once the local branch is gone, so the caller can record an undo.
+    var onDeleted: () -> Void = {}
     var onComplete: () -> Void = {}
 
     @State private var forceDelete = false
@@ -63,6 +65,7 @@ struct DeleteBranchDialogView: View {
         Task {
             do {
                 try await repository.deleteBranch(name: branch.name, force: forceDelete)
+                onDeleted()
                 if deleteRemote, let upstreamParts {
                     try await repository.deleteRemoteBranch(name: upstreamParts.name, remote: upstreamParts.remote)
                 }

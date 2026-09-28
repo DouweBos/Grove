@@ -40,9 +40,9 @@ enum GroveAction: String, Sendable {
     case navigatePullRequests
     /// Navigate to the Branches Review view (Cmd+6).
     case navigateBranchesReview
-    /// Navigate to Blame (More menu).
+    /// Navigate to Blame (Cmd+7).
     case navigateBlame
-    /// Navigate to Repository Settings (More menu).
+    /// Navigate to Repository Settings (Cmd+8).
     case navigateSettings
 
     // MARK: Remote Operations
@@ -80,7 +80,7 @@ enum GroveAction: String, Sendable {
 
     /// Toggle the Quick Actions command palette (Cmd+Shift+A).
     case quickActions
-    /// Quick Open — focus the repository browser search (Cmd+Shift+O).
+    /// Quick Open — the Quick Actions palette on its Files tab (Cmd+Shift+O).
     case quickOpen
 
     // MARK: Undo / Redo
