@@ -67,6 +67,11 @@ struct BranchesSidebarSection: View {
                          pullRequest: viewModel.refs.openPullRequest(for: branch))
             .tag(SidebarItem.branch(branch))
             .draggable(branch.name)
+            // Another branch dropped here merges into this one (Option rebases this one onto it); a remote branch pulls.
+            .dropDestination(for: String.self) { items, _ in
+                guard let payload = items.first else { return false }
+                return viewModel.handleDrop(payload, onBranch: branch, option: NSEvent.modifierFlags.contains(.option))
+            }
             .contextMenu {
                 BranchContextMenu(
                     branch: branch,

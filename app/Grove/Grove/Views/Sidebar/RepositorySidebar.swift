@@ -62,6 +62,9 @@ struct RepositorySidebar: View {
         .sheet(isPresented: Binding(get: { viewModel.isAddingSubmodule }, set: { if !$0 { viewModel.dismissAddSubmodule() } })) {
             AddSubmoduleDialogView(viewModel: viewModel)
         }
+        .sheet(item: Binding(get: { viewModel.pendingDrop }, set: { if $0 == nil { viewModel.cancelDrop() } })) { action in
+            SidebarDropSheet(viewModel: viewModel, action: action)
+        }
         .task {
             await viewModel.loadIfNeeded()
         }

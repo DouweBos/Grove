@@ -320,6 +320,13 @@ final class SidebarViewModel {
     private(set) var activity: String?
     private(set) var isAddingSubmodule = false
 
+    // MARK: - Drops (SidebarViewModel+Drops.swift)
+
+    /// A drop waiting for confirmation, e.g. merging one branch into another.
+    var pendingDrop: SidebarDropAction?
+    var dropError: String?
+    var isRunningDrop = false
+
     func requestAddSubmodule() { isAddingSubmodule = true }
     func dismissAddSubmodule() { isAddingSubmodule = false }
 

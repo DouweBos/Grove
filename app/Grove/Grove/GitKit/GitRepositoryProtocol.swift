@@ -341,6 +341,13 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     /// `git svn rebase`, or `git svn fetch` when `rebase` is false.
     func svnFetch(rebase: Bool) async throws
     func svnDcommit() async throws
+
+    // MARK: Branch Sync (GitRepository+BranchSync.swift)
+
+    /// Moves a local branch that isn't checked out to a remote branch, fast-forward only.
+    func fastForward(branch: String, fromRemote remote: String, branch remoteBranch: String) async throws
+    /// Pushes any local branch, checked out or not, to `remoteBranch` on `remote`.
+    func push(branch: String, to remote: String, as remoteBranch: String, setUpstream: Bool) async throws
 }
 
 // MARK: - GitRepositoryProtocol Default Arguments
@@ -431,4 +438,6 @@ extension GitRepositoryProtocol {
     func svnStatus() async -> SVNStatus { SVNStatus() }
     func svnFetch(rebase: Bool) async throws {}
     func svnDcommit() async throws {}
+    func fastForward(branch: String, fromRemote remote: String, branch remoteBranch: String) async throws {}
+    func push(branch: String, to remote: String, as remoteBranch: String, setUpstream: Bool) async throws {}
 }
