@@ -12,36 +12,6 @@
 
 import SwiftUI
 
-// MARK: - AutoCompleteTrigger
-
-/// Identifies which trigger character caused the autocomplete list to appear.
-enum AutoCompleteTrigger: Equatable {
-    /// `#` — issue and pull-request references.
-    case issue
-    /// `c:` — recent commit SHAs / summaries.
-    case commit
-    /// `` ` `` — filenames from the current status entries.
-    case filename
-    /// `/` — commit message templates.
-    case template
-}
-
-// MARK: - AutoCompleteSuggestion
-
-/// A single row in the autocomplete dropdown.
-struct AutoCompleteSuggestion: Identifiable, Sendable, Equatable {
-    /// Stable unique identifier (typically the `insertText`).
-    let id: String
-    /// SF Symbol name shown on the leading edge.
-    let icon: String
-    /// Primary display text.
-    let title: String
-    /// Optional secondary information shown in a lighter style.
-    let subtitle: String?
-    /// The text that replaces the trigger sequence in the subject field.
-    let insertText: String
-}
-
 // MARK: - CommitAutoCompleteView
 
 /// A floating list of commit message suggestions anchored below the subject field.
@@ -241,84 +211,6 @@ private struct SuggestionRow: View {
                 title: "#42",
                 subtitle: "feature/dark-mode",
                 insertText: "#42"
-            )
-        ],
-        onSelect: { _ in },
-        onDismiss: {}
-    )
-    .padding()
-    .frame(width: 400)
-}
-
-#Preview("Commit Suggestions") {
-    CommitAutoCompleteView(
-        trigger: .commit,
-        suggestions: [
-            AutoCompleteSuggestion(
-                id: "a1b2c3d",
-                icon: "arrow.triangle.branch",
-                title: "feat: add OAuth2 authentication flow",
-                subtitle: "a1b2c3d",
-                insertText: "a1b2c3d"
-            ),
-            AutoCompleteSuggestion(
-                id: "b2c3d4e",
-                icon: "arrow.triangle.branch",
-                title: "refactor: split AuthManager into focused services",
-                subtitle: "b2c3d4e",
-                insertText: "b2c3d4e"
-            )
-        ],
-        onSelect: { _ in },
-        onDismiss: {}
-    )
-    .padding()
-    .frame(width: 400)
-}
-
-#Preview("Filename Suggestions") {
-    CommitAutoCompleteView(
-        trigger: .filename,
-        suggestions: [
-            AutoCompleteSuggestion(
-                id: "Sources/App/AuthManager.swift",
-                icon: "doc.text",
-                title: "AuthManager.swift",
-                subtitle: "Sources/App/",
-                insertText: "Sources/App/AuthManager.swift"
-            ),
-            AutoCompleteSuggestion(
-                id: "Sources/App/TokenStore.swift",
-                icon: "doc.text",
-                title: "TokenStore.swift",
-                subtitle: "Sources/App/",
-                insertText: "Sources/App/TokenStore.swift"
-            )
-        ],
-        onSelect: { _ in },
-        onDismiss: {}
-    )
-    .padding()
-    .frame(width: 400)
-}
-
-#Preview("Template Suggestions") {
-    CommitAutoCompleteView(
-        trigger: .template,
-        suggestions: [
-            AutoCompleteSuggestion(
-                id: "conventional",
-                icon: "text.badge.plus",
-                title: "Conventional Commit",
-                subtitle: "feat: ",
-                insertText: "feat: "
-            ),
-            AutoCompleteSuggestion(
-                id: "bugfix",
-                icon: "text.badge.plus",
-                title: "Bug Fix",
-                subtitle: "fix: ",
-                insertText: "fix: "
             )
         ],
         onSelect: { _ in },

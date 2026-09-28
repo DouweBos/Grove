@@ -44,8 +44,10 @@ struct WorkingCopyView: View {
     // MARK: Resizing
 
     private func clampedLeftWidth(total: CGFloat) -> CGFloat {
-        let maxLeft = max(minLeft, Double(total) - minRight - Double(Theme.Spacing.md))
-        return CGFloat(min(max(leftWidth, minLeft), maxLeft))
+        // In narrow windows both minimums can't fit; give the left column at most 45%.
+        let lower = min(minLeft, Double(total) * 0.45)
+        let upper = max(lower, Double(total) - minRight - Double(Theme.Spacing.md))
+        return CGFloat(min(max(leftWidth, lower), upper))
     }
 
     private func resizeHandle(total: CGFloat) -> some View {

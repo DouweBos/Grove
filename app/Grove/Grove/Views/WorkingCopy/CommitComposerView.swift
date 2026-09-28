@@ -127,6 +127,7 @@ struct CommitComposerView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+            .fixedSize()
             .disabled(!viewModel.canCommit)
             .help("Commit (⌘↩)")
         }

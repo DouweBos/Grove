@@ -6,6 +6,36 @@
 
 import Foundation
 
+// MARK: - AutoCompleteTrigger
+
+/// Identifies which trigger character caused the autocomplete list to appear.
+enum AutoCompleteTrigger: Equatable {
+    /// `#` — issue and pull-request references.
+    case issue
+    /// `c:` — recent commit SHAs / summaries.
+    case commit
+    /// `` ` `` — filenames from the current status entries.
+    case filename
+    /// `/` — commit message templates.
+    case template
+}
+
+// MARK: - AutoCompleteSuggestion
+
+/// A single row in the autocomplete dropdown.
+struct AutoCompleteSuggestion: Identifiable, Sendable, Equatable {
+    /// Stable unique identifier (typically the `insertText`).
+    let id: String
+    /// SF Symbol name shown on the leading edge.
+    let icon: String
+    /// Primary display text.
+    let title: String
+    /// Optional secondary information shown in a lighter style.
+    let subtitle: String?
+    /// The text that replaces the trigger sequence in the subject field.
+    let insertText: String
+}
+
 extension WorkingCopyViewModel {
 
 

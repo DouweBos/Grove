@@ -51,15 +51,29 @@ struct DiffPanelView: View {
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 0.5) }
     }
 
-    @ViewBuilder
+    /// Drops the side badge and stats before squeezing the file name in narrow windows.
     private var accessories: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Spacing.sm) { diffStats; sidePicker; whitespaceToggle }
+            HStack(spacing: Theme.Spacing.sm) { sidePicker; whitespaceToggle }
+            whitespaceToggle
+        }
+    }
+
+    @ViewBuilder
+    private var diffStats: some View {
         if let stats = viewModel.currentDiff?.stats, stats.additions + stats.deletions > 0 {
             HStack(spacing: Theme.Spacing.xs) {
                 Text("+\(stats.additions)").foregroundStyle(Theme.added)
                 Text("−\(stats.deletions)").foregroundStyle(Theme.deleted)
             }
             .font(.monoCaption)
+            .fixedSize()
         }
+    }
+
+    @ViewBuilder
+    private var sidePicker: some View {
         if viewModel.canSwitchDiffSide {
             Picker("Side", selection: Binding(get: { viewModel.selectedSide }, set: { side in Task { await viewModel.setDiffSide(side) } })) {
                 Text("Unstaged").tag(DiffSide.unstaged)
@@ -73,7 +87,11 @@ struct DiffPanelView: View {
             StatusBadge(title: viewModel.showingStaged ? "Staged" : "Unstaged",
                         symbol: viewModel.showingStaged ? "checkmark.circle" : "pencil",
                         tone: .neutral)
+                .fixedSize()
         }
+    }
+
+    private var whitespaceToggle: some View {
         Button {
             Task { await viewModel.setIgnoreWhitespace(!viewModel.ignoreWhitespace) }
         } label: {
