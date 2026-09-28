@@ -10,10 +10,7 @@ struct BranchesSidebarSection: View {
 
     @Environment(SidebarViewModel.self) private var viewModel
 
-    @State private var createFromRef: CreateBranchRequest?
-    @State private var branchToRename: BranchInfo?
-    @State private var branchToDelete: BranchInfo?
-    @State private var branchToTrack: BranchInfo?
+    @State private var sheets = BranchSheetState()
 
     var body: some View {
         Section {
@@ -34,33 +31,15 @@ struct BranchesSidebarSection: View {
                 }
             }
         } header: {
-            SidebarSectionHeader(title: "Branches", count: viewModel.localBranches.count - viewModel.archivedBranches.count)
+            SidebarSectionHeader(title: "Branches", count: viewModel.localBranches.count - viewModel.archivedBranches.count
+                                    - viewModel.stackedBranchNames.count)
                 .dropDestination(for: String.self) { items, _ in
                     guard let ref = items.first, !ref.isEmpty else { return false }
-                    createFromRef = CreateBranchRequest(ref: ref)
+                    sheets.createFromRef = CreateBranchRequest(ref: ref)
                     return true
                 }
         }
-        .sheet(item: $createFromRef) { request in
-            CreateBranchDialogView(
-                repository: viewModel.repository,
-                localBranches: viewModel.localBranches,
-                fromRef: request.ref
-            ) { _ in
-                Task { await viewModel.didChangeRepository() }
-            }
-        }
-        .sheet(item: $branchToRename) { branch in
-            RenameBranchDialogView(repository: viewModel.repository, branch: branch) {
-                Task { await viewModel.didChangeRepository() }
-            }
-        }
-        .sheet(item: $branchToDelete) { branch in
-            DeleteBranchDialogView(viewModel: viewModel, branch: branch)
-        }
-        .sheet(item: $branchToTrack) { branch in
-            TrackRemoteBranchDialogView(viewModel: viewModel, branch: branch)
-        }
+        .branchActionSheets($sheets)
     }
 
     private func branchRow(_ branch: BranchInfo, isPinned: Bool, showsFullName: Bool = false) -> some View {
@@ -78,10 +57,10 @@ struct BranchesSidebarSection: View {
                 BranchContextMenu(
                     branch: branch,
                     isPinned: isPinned,
-                    onCreateBranch: { createFromRef = CreateBranchRequest(ref: branch.name) },
-                    onRename: { branchToRename = branch },
-                    onTrack: { branchToTrack = branch },
-                    onDelete: { branchToDelete = branch }
+                    onCreateBranch: { sheets.createFromRef = CreateBranchRequest(ref: branch.name) },
+                    onRename: { sheets.branchToRename = branch },
+                    onTrack: { sheets.branchToTrack = branch },
+                    onDelete: { sheets.branchToDelete = branch }
                 )
             }
     }

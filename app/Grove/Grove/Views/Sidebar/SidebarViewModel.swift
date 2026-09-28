@@ -146,6 +146,15 @@ final class SidebarViewModel {
         savePinnedBranches()
     }
 
+    // MARK: - Stacks
+
+    var stacks: [BranchStack] { refs.stacks }
+
+    /// Layers of a stack, which the Stacks section lists instead of Branches.
+    var stackedBranchNames: Set<String> {
+        Set(refs.stacks.flatMap { $0.layers.map(\.branch) }).subtracting(archivedBranchNames)
+    }
+
     // MARK: - Archived Branches
 
     /// Branches the user archived: hidden from Branches, listed under Archived.
@@ -399,7 +408,8 @@ final class SidebarViewModel {
         var ungrouped: [BranchInfo] = []
         var groups: [String: [BranchInfo]] = [:]
 
-        for branch in localBranches where !archivedBranchNames.contains(branch.name) {
+        let stacked = stackedBranchNames
+        for branch in localBranches where !archivedBranchNames.contains(branch.name) && !stacked.contains(branch.name) {
             if let slashIndex = branch.name.firstIndex(of: "/") {
                 let prefix = String(branch.name[branch.name.startIndex..<slashIndex])
                 groups[prefix, default: []].append(branch)
