@@ -56,6 +56,8 @@ final class HistoryViewModel {
     private(set) var expandedPaths: Set<String> = []
     private(set) var isLoadingDiff = false
     private(set) var detailTab: DetailTab = .changeset
+    /// Shared by every window through the app preference.
+    private(set) var layout = GrovePreferences.historyLayout
     private(set) var treeFiles: [String] = []
     private(set) var isLoadingTree = false
 
@@ -368,6 +370,11 @@ final class HistoryViewModel {
     }
 
     // MARK: - Detail
+
+    func setLayout(_ layout: HistoryLayout) {
+        self.layout = layout
+        GrovePreferences.historyLayout = layout
+    }
 
     func selectDetailTab(_ tab: DetailTab) {
         detailTab = tab

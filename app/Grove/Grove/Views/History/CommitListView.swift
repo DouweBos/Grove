@@ -14,6 +14,7 @@ struct CommitListView: View {
             PanelHeader(title: title, detail: countLabel) {
                 HistoryFilterField(text: viewModel.searchText) { viewModel.setSearchText($0) }
                     .frame(maxWidth: 190)
+                layoutPicker
             }
             if let error = viewModel.errorMessage, viewModel.pendingAction == nil {
                 Banner(symbol: "exclamationmark.triangle", message: error, tone: .negative,
@@ -41,18 +42,39 @@ struct CommitListView: View {
         }
     }
 
+    private var layoutPicker: some View {
+        Picker("Layout", selection: Binding(get: { viewModel.layout }, set: { viewModel.setLayout($0) })) {
+            ForEach(HistoryLayout.allCases) { layout in
+                Image(systemName: layout.symbol).help(layout.title).accessibilityLabel(layout.title).tag(layout)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+    }
+
+    @ViewBuilder
     private func list(_ visible: [CommitInfo]) -> some View {
+        if viewModel.layout == .table { CommitTableHeader() }
+        scrollingList(visible)
+    }
+
+    private func scrollingList(_ visible: [CommitInfo]) -> some View {
         let showsGraph = !viewModel.isFiltering
         return ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(Self.groups(visible)) { group in
-                        DateGroupHeader(date: group.date,
-                                        lanes: viewModel.graphNodes[group.commits[0].id]?.lanesAbove ?? [],
-                                        maxGraphColumns: viewModel.maxGraphColumns,
-                                        showsGraph: showsGraph)
-                        ForEach(group.commits) { commit in
-                            row(commit, showsGraph: showsGraph)
+                    if viewModel.layout == .table {
+                        ForEach(visible) { row($0, showsGraph: false) }
+                    } else {
+                        ForEach(Self.groups(visible)) { group in
+                            DateGroupHeader(date: group.date,
+                                            lanes: viewModel.graphNodes[group.commits[0].id]?.lanesAbove ?? [],
+                                            maxGraphColumns: viewModel.maxGraphColumns,
+                                            showsGraph: showsGraph)
+                            ForEach(group.commits) { commit in
+                                row(commit, showsGraph: showsGraph)
+                            }
                         }
                     }
                     if viewModel.isLoading {
@@ -86,17 +108,27 @@ struct CommitListView: View {
         }
     }
 
+    @ViewBuilder
+    private func rowContent(_ commit: CommitInfo, showsGraph: Bool) -> some View {
+        if viewModel.layout == .table {
+            CommitTableRow(commit: commit, branches: viewModel.branches(at: commit), tags: viewModel.tags(at: commit),
+                           syncState: viewModel.syncState(of: commit), isSelected: viewModel.isSelected(commit))
+        } else {
+            CommitRow(
+                commit: commit,
+                branches: viewModel.branches(at: commit),
+                tags: viewModel.tags(at: commit),
+                graphNode: showsGraph ? viewModel.graphNodes[commit.id] : nil,
+                maxGraphColumns: viewModel.maxGraphColumns,
+                isHead: commit.id == viewModel.headSHA,
+                syncState: viewModel.syncState(of: commit),
+                isSelected: viewModel.isSelected(commit)
+            )
+        }
+    }
+
     private func row(_ commit: CommitInfo, showsGraph: Bool) -> some View {
-        CommitRow(
-            commit: commit,
-            branches: viewModel.branches(at: commit),
-            tags: viewModel.tags(at: commit),
-            graphNode: showsGraph ? viewModel.graphNodes[commit.id] : nil,
-            maxGraphColumns: viewModel.maxGraphColumns,
-            isHead: commit.id == viewModel.headSHA,
-            syncState: viewModel.syncState(of: commit),
-            isSelected: viewModel.isSelected(commit)
-        )
+        rowContent(commit, showsGraph: showsGraph)
         .id(commit.id)
         .onTapGesture {
             isListFocused = true
