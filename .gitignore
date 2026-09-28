@@ -29,3 +29,6 @@ fastlane/test_output
 # Playgrounds
 timeline.xctimeline
 playground.xcworkspace
+
+# Test coverage output
+*.profraw
