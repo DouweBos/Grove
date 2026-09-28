@@ -118,7 +118,7 @@ struct RepositoryInfoPanel: View {
     private var facts: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.xl) {
             fact("Last Opened") {
-                if let date = bookmark.lastOpenedDate {
+                if let date = bookmark.displayLastOpenedDate {
                     Text(date, format: .relative(presentation: .named))
                 } else {
                     Text("Never")

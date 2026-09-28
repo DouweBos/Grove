@@ -13,8 +13,8 @@ struct RepositoryDropZoneView: View {
 
     private var recent: [RepositoryBookmarkData] {
         viewModel.manager.bookmarks
-            .filter { $0.lastOpenedDate != nil }
-            .sorted { ($0.lastOpenedDate ?? .distantPast) > ($1.lastOpenedDate ?? .distantPast) }
+            .filter { $0.displayLastOpenedDate != nil }
+            .sorted { ($0.displayLastOpenedDate ?? .distantPast) > ($1.displayLastOpenedDate ?? .distantPast) }
             .prefix(5)
             .map { $0 }
     }
@@ -107,7 +107,7 @@ struct RepositoryDropZoneView: View {
                             .lineLimit(1)
                             .truncationMode(.head)
                         Spacer(minLength: Theme.Spacing.sm)
-                        if let date = bookmark.lastOpenedDate {
+                        if let date = bookmark.displayLastOpenedDate {
                             Text(date, format: .relative(presentation: .named))
                                 .font(.monoCaption)
                                 .foregroundStyle(Theme.textSecondary)
