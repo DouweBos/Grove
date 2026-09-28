@@ -3,7 +3,7 @@
 
 import SwiftUI
 
-/// Pull request list on the left, the selected PR on the right. Data comes from the `gh` CLI.
+/// Pull request list on the left, the selected PR on the right. Data comes from the remote's hosting service.
 struct PullRequestsView: View {
 
     @Environment(PullRequestsViewModel.self) private var viewModel
@@ -24,15 +24,15 @@ struct PullRequestsView: View {
         .confirmationDialog(dialogTitle, isPresented: Binding(get: { viewModel.pendingOperation != nil },
                                                               set: { if !$0 { viewModel.cancelPendingOperation() } }),
                             titleVisibility: .visible, presenting: viewModel.pendingOperation) { pending in
-            Button(pending.operation == .merge ? "Merge on GitHub" : "Close Pull Request",
+            Button(pending.operation == .merge ? "Merge on \(viewModel.serviceName)" : "Close Pull Request",
                    role: pending.operation == .close ? .destructive : nil) {
                 Task { await viewModel.confirm(pending) }
             }
             Button("Cancel", role: .cancel) { viewModel.cancelPendingOperation() }
         } message: { pending in
             Text(pending.operation == .merge
-                 ? "Creates a merge commit of \(pending.pr.sourceBranch) into \(pending.pr.targetBranch) on GitHub."
-                 : "Closes #\(String(pending.pr.id)) without merging. You can reopen it on GitHub.")
+                 ? "Creates a merge commit of \(pending.pr.sourceBranch) into \(pending.pr.targetBranch) on \(viewModel.serviceName)."
+                 : "Closes #\(String(pending.pr.id)) without merging.")
         }
         .alert("Pull Request Action Failed", isPresented: Binding(get: { viewModel.actionError != nil },
                                                                  set: { if !$0 { viewModel.clearActionError() } })) {
@@ -48,79 +48,6 @@ struct PullRequestsView: View {
     }
 }
 
-// MARK: - Unavailable
-
-private struct PRUnavailableView: View {
-    @Environment(PullRequestsViewModel.self) private var viewModel
-    let failure: PRLoadFailure
-
-    var body: some View {
-        VStack(spacing: Theme.Spacing.md) {
-            Image(systemName: "arrow.triangle.pull")
-                .font(.system(size: 28))
-                .foregroundStyle(Theme.textSecondary)
-                .frame(width: 56, height: 56)
-                .background(Theme.subtleFill, in: Circle())
-            Text(title)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Theme.textPrimary)
-            Text(subtitle)
-                .font(.system(size: 13))
-                .foregroundStyle(Theme.textSecondary)
-                .padding(.bottom, Theme.Spacing.sm)
-            Banner(symbol: "exclamationmark.triangle", message: bannerMessage,
-                   actionTitle: actionTitle, action: action)
-                .frame(maxWidth: 560)
-            Button("Try Again") { Task { await viewModel.refresh() } }
-                .disabled(viewModel.isLoading)
-        }
-        .padding(Theme.Spacing.xl)
-    }
-
-    private var title: String {
-        switch failure {
-        case .ghMissing: "GitHub CLI Needed"
-        case .notAuthenticated: "Sign In to GitHub"
-        case .noGitHubRemote: "No GitHub Remote"
-        case .other: "Couldn't Load Pull Requests"
-        }
-    }
-
-    private var subtitle: String {
-        switch failure {
-        case .ghMissing: "Grove reads pull requests through the gh command-line tool."
-        case .notAuthenticated: "gh is installed but not signed in to github.com."
-        case .noGitHubRemote: "None of this repository's remotes point at GitHub."
-        case .other: "gh returned an error."
-        }
-    }
-
-    private var bannerMessage: String {
-        switch failure {
-        case .ghMissing: "Install it with Homebrew: brew install gh"
-        case .notAuthenticated: "Run \u{201C}gh auth login\u{201D} in Terminal, then try again."
-        case .noGitHubRemote: "Add a GitHub remote in Repository Settings to see its pull requests."
-        case .other(let message): message
-        }
-    }
-
-    private var actionTitle: String? {
-        switch failure {
-        case .ghMissing: "Open cli.github.com"
-        case .notAuthenticated: "Open Terminal"
-        case .noGitHubRemote, .other: nil
-        }
-    }
-
-    private var action: (() -> Void)? {
-        switch failure {
-        case .ghMissing: { NSWorkspace.shared.open(URL(string: "https://cli.github.com")!) }
-        case .notAuthenticated: { try? ExternalToolLauncher.openInTerminal(viewModel.repository.path) }
-        case .noGitHubRemote, .other: nil
-        }
-    }
-}
-
 // MARK: - List Panel
 
 private struct PullRequestListPanel: View {
@@ -130,9 +57,12 @@ private struct PullRequestListPanel: View {
         VStack(spacing: 0) {
             PanelHeader(title: "Pull Requests", detail: "\(viewModel.filteredPullRequests.count)") {
                 if viewModel.isLoading { ProgressView().controlSize(.small) }
+                Button { viewModel.beginCreatePullRequest() } label: { Image(systemName: "plus") }
+                    .buttonStyle(.borderless)
+                    .help("Create Pull Request")
                 Button { Task { await viewModel.refresh() } } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(.borderless)
-                    .help("Reload from GitHub")
+                    .help("Reload from \(viewModel.serviceName)")
             }
             VStack(spacing: Theme.Spacing.sm) {
                 Picker("Filter", selection: Binding(get: { viewModel.filterState }, set: viewModel.setFilter)) {
@@ -160,13 +90,13 @@ private struct PullRequestListPanel: View {
             EmptyStateView(systemImage: "exclamationmark.triangle", title: "Not Available")
         } else if viewModel.filteredPullRequests.isEmpty {
             EmptyStateView(systemImage: "arrow.triangle.pull", title: emptyTitle,
-                           subtitle: viewModel.pullRequests.isEmpty ? "This repository has no pull requests on GitHub." : nil)
+                           subtitle: viewModel.pullRequests.isEmpty ? "This repository has no pull requests on \(viewModel.serviceName)." : nil)
         } else {
             SelectableList(items: viewModel.filteredPullRequests, selection: viewModel.selectedPR?.id,
                            onSelect: { pr in Task { await viewModel.select(pr) } }) { pr in
                 PullRequestRow(pr: pr)
                     .contextMenu {
-                        Button("Open on GitHub", systemImage: "safari") { viewModel.openInBrowser(pr) }
+                        Button("Open on \(viewModel.serviceName)", systemImage: "safari") { viewModel.openInBrowser(pr) }
                         Button("Check Out Branch", systemImage: "arrow.down.to.line") { Task { await viewModel.checkout(pr) } }
                         Button("Copy Branch Name", systemImage: "doc.on.doc") { GroveClipboard.copy(pr.sourceBranch) }
                     }

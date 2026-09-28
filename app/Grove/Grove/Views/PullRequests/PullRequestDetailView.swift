@@ -36,7 +36,7 @@ struct PullRequestDetailView: View {
                         .foregroundStyle(Theme.textPrimary)
                         .textSelection(.enabled)
                     HStack(spacing: Theme.Spacing.sm) {
-                        stateBadge(pr)
+                        stateBadge(pr).fixedSize()
                         Text("#\(String(pr.id)) \u{00B7} \(pr.authorName) \u{00B7} opened \(pr.createdDate.formatted(.relative(presentation: .named)))")
                             .font(.monoCaption)
                             .foregroundStyle(Theme.textSecondary)
@@ -53,7 +53,7 @@ struct PullRequestDetailView: View {
                 }
                 Spacer(minLength: Theme.Spacing.md)
                 if viewModel.isRevalidating {
-                    ProgressView().controlSize(.small).help("Checking GitHub for changes")
+                    ProgressView().controlSize(.small).help("Checking \(viewModel.serviceName) for changes")
                 }
                 actions(pr)
             }
@@ -81,11 +81,11 @@ struct PullRequestDetailView: View {
     private func actions(_ pr: PullRequestInfo) -> some View {
         HStack(spacing: Theme.Spacing.sm) {
             Button { viewModel.openInBrowser(pr) } label: { Image(systemName: "safari") }
-                .help("Open on GitHub")
+                .help("Open on \(viewModel.serviceName)")
             Button("Check Out") { Task { await viewModel.checkout(pr) } }
             if pr.state == .open {
                 Menu("More") {
-                    Button("Merge on GitHub\u{2026}") { viewModel.request(.merge, on: pr) }
+                    Button("Merge on \(viewModel.serviceName)\u{2026}") { viewModel.request(.merge, on: pr) }
                         .disabled(pr.isDraft)
                     Button("Close Pull Request\u{2026}", role: .destructive) { viewModel.request(.close, on: pr) }
                 }
@@ -147,16 +147,7 @@ struct PullRequestDetailView: View {
                     }
                 }
             }
-            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                SectionLabel(title: "Conversation", count: viewModel.comments.count)
-                if viewModel.isLoadingComments {
-                    ProgressView().controlSize(.small)
-                } else if viewModel.comments.isEmpty {
-                    Text("No comments yet.").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
-                } else {
-                    ForEach(viewModel.comments) { PRCommentView(comment: $0) }
-                }
-            }
+            PRConversationView()
         }
     }
 

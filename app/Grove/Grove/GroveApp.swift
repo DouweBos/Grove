@@ -22,6 +22,8 @@ struct GroveApp: App {
         let manager = RepositoryManager()
         _manager = State(initialValue: manager)
         _windows = State(initialValue: WindowStore(manager: manager))
+        // Loads the accounts now, so git's HTTPS prompts can use them from the first fetch.
+        _ = HostingAccountStore.shared
     }
 
     var body: some Scene {

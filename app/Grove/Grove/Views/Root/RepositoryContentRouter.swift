@@ -36,6 +36,10 @@ struct RepositoryContentRouter: View {
                     session.handleAction(action)
                 }
             }
+            .sheet(item: Binding(get: { session.pullRequestsVM.creation },
+                                 set: { if $0 == nil { session.pullRequestsVM.cancelCreatePullRequest() } })) { creation in
+                CreatePullRequestSheet(viewModel: creation) { session.pullRequestsVM.cancelCreatePullRequest() }
+            }
             .onChange(of: session.sidebarVM.selection) { _, newItem in
                 // Back/forward restores both at once, so only user-driven changes differ here.
                 if let item = newItem, item != session.selectedItem {

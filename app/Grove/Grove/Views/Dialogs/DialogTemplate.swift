@@ -20,6 +20,7 @@ struct DialogSheet<Content: View>: View {
     var fraction: Double?
     var errorMessage: String?
     let primaryTitle: String
+    var cancelTitle = "Cancel"
     var isDestructive = false
     var isPrimaryDisabled = false
     let onCancel: () -> Void
@@ -74,7 +75,7 @@ struct DialogSheet<Content: View>: View {
     private var footer: some View {
         HStack(spacing: Theme.Spacing.sm) {
             Spacer()
-            Button("Cancel", action: onCancel)
+            Button(cancelTitle, action: onCancel)
                 .keyboardShortcut(.cancelAction)
             Button(primaryTitle, action: onPrimary)
                 .buttonStyle(.borderedProminent)

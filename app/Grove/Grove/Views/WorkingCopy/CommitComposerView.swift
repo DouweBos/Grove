@@ -29,7 +29,6 @@ struct CommitComposerView: View {
             .overlay(alignment: .topLeading) { autoComplete }
             .zIndex(1)
 
-            CommitDraftNotice()
             options
             footer
         }

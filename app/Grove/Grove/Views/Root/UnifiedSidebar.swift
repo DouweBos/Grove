@@ -39,12 +39,20 @@ struct UnifiedSidebar: View {
             if !isCollapsed {
                 RepositoryHomeButtons(placement: .primaryAction)
             }
+            // In the browser the Cloning section shows progress; inside a repository this is the only sign.
+            if session != nil, viewModel.clones.runningCount > 0 {
+                ToolbarItem(placement: .primaryAction) { CloneActivityIndicator() }
+            }
             if session == nil {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button("Add Existing Repository…", systemImage: "folder.badge.plus") { viewModel.showAddDialog() }
                         Button("Clone Repository…", systemImage: "square.and.arrow.down") { viewModel.showCloneDialog() }
                         Button("New Repository…", systemImage: "plus.square.on.square") { viewModel.showCreateDialog() }
+                        Button("New Remote Repository\u{2026}", systemImage: "plus.rectangle.on.folder") {
+                            viewModel.showRemoteRepositories()
+                            viewModel.showCreateRemoteRepository()
+                        }
                         Divider()
                         Button("New Group…", systemImage: "folder.badge.plus") { viewModel.showNewGroupDialog() }
                     } label: {

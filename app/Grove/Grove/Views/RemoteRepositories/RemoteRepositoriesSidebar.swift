@@ -1,7 +1,7 @@
 // Views/RemoteRepositories/RemoteRepositoriesSidebar.swift
 // Grove
 //
-// Cloud browser sidebar: the signed-in account and its organizations, each listing its repositories.
+// Cloud browser sidebar: each signed-in account with its organizations, each listing its repositories.
 
 import SwiftUI
 
@@ -17,10 +17,15 @@ struct RemoteRepositoriesSidebar: View {
             case .unavailable:
                 EmptyView()
             case .signedIn:
-                Section {
-                    ForEach(viewModel.owners) { RemoteOwnerSection(owner: $0) }
-                } header: {
-                    SectionLabel(title: "GitHub")
+                ForEach(viewModel.sections) { section in
+                    Section {
+                        if let failure = section.failure {
+                            Text(failure).font(.system(size: 12)).foregroundStyle(Theme.danger).lineLimit(3).selectionDisabled()
+                        }
+                        ForEach(section.owners) { RemoteOwnerSection(owner: $0) }
+                    } header: {
+                        SectionLabel(title: "\(section.account.kind.displayName) \u{00B7} \(section.account.title)")
+                    }
                 }
             }
         }
@@ -70,7 +75,7 @@ private struct RemoteOwnerSection: View {
             get: { isExpanded || (viewModel.isSearching && !repositories.isEmpty) },
             set: { isExpanded = $0; if $0 { Task { await viewModel.load(owner) } } }
         )) {
-            switch viewModel.states[owner.login] ?? .idle {
+            switch viewModel.states[owner.id] ?? .idle {
             case .idle, .loading:
                 HStack(spacing: Theme.Spacing.sm) {
                     ProgressView().controlSize(.small)
@@ -81,19 +86,23 @@ private struct RemoteOwnerSection: View {
                 Text(message).font(.system(size: 12)).foregroundStyle(Theme.danger).lineLimit(3).selectionDisabled()
             case .loaded:
                 ForEach(repositories) { repo in
-                    RemoteRepositoryRow(repository: repo, isCloned: viewModel.localPath(of: repo) != nil)
+                    RemoteRepositoryRow(repository: repo, isCloned: viewModel.localPath(of: repo) != nil,
+                                        clone: windowVM.clones.job(matching: repo.matchKey))
                         .tag(repo.id)
                 }
             }
         } label: {
-            SidebarRow(title: owner.login, symbol: owner.isAccount ? "person.crop.circle" : "building.2", tint: Theme.accent,
+            SidebarRow(title: owner.title, symbol: owner.isAccount ? "person.crop.circle" : "building.2", tint: Theme.accent,
                        isEmphasized: true) {
-                if case .loaded(let all) = viewModel.states[owner.login] {
+                if case .loaded(let all) = viewModel.states[owner.id] {
                     Text("\(all.count)").font(.system(size: 11, weight: .semibold, design: .rounded))
                 }
             }
             .contextMenu {
                 Button("Reload", systemImage: "arrow.clockwise") { Task { await viewModel.refresh(owner) } }
+                Button("New Repository in \u{201C}\(owner.title)\u{201D}\u{2026}", systemImage: "plus.rectangle.on.folder") {
+                    windowVM.showCreateRemoteRepository(owner: owner)
+                }
             }
         }
     }
@@ -104,6 +113,8 @@ private struct RemoteOwnerSection: View {
 struct RemoteRepositoryRow: View {
     let repository: RemoteRepository
     let isCloned: Bool
+    /// A clone of this repository running or failed in the background.
+    var clone: CloneQueue.Job?
 
     var body: some View {
         SidebarRow(
@@ -112,6 +123,13 @@ struct RemoteRepositoryRow: View {
             tint: isCloned ? Theme.success : Theme.textSecondary
         ) {
             HStack(spacing: Theme.Spacing.xs) {
+                if let clone {
+                    if clone.isRunning {
+                        ProgressView(value: clone.progress?.overallFraction ?? 0).progressViewStyle(.circular).controlSize(.mini)
+                    } else {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.danger).accessibilityLabel("Clone failed")
+                    }
+                }
                 if repository.isArchived { Image(systemName: "archivebox").accessibilityLabel("Archived") }
                 if repository.isPrivate { Image(systemName: "lock.fill").accessibilityLabel("Private") }
             }
@@ -133,7 +151,8 @@ struct RemoteRepositoryActions: View {
             Button("Open Local Clone", systemImage: "arrow.up.forward.app") { windowVM.openLocalClone(atPath: path) }
         }
         Button("Clone…", systemImage: "square.and.arrow.down") { windowVM.showCloneDialog(url: repository.sshURL) }
-        Button("Open on GitHub", systemImage: "safari") {
+            .disabled(windowVM.clones.job(matching: repository.matchKey)?.isRunning == true)
+        Button("Open on \(repository.service.displayName)", systemImage: "safari") {
             if let url = URL(string: repository.webURL) { NSWorkspace.shared.open(url) }
         }
         Divider()

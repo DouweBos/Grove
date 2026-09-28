@@ -89,6 +89,14 @@ final class SidebarViewModel {
         selection = item
     }
 
+    /// Set by the session, which owns the Create Pull Request sheet.
+    var onCreatePullRequest: ((String) -> Void)?
+
+    /// Local branches open as themselves; remote ones by their name on the remote.
+    func createPullRequest(for branch: BranchInfo) {
+        onCreatePullRequest?(branch.isRemote ? Self.shortName(of: branch) : branch.name)
+    }
+
     /// Dropping on Changes: `stash@{N}` applies a stash, a SHA cherry-picks,
     /// a branch merges (or rebases when `rebase` is set, i.e. Option held).
     func handleWorkingCopyDrop(_ payload: String, rebase: Bool) -> Bool {

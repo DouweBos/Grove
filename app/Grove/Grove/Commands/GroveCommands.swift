@@ -203,6 +203,10 @@ private struct GroveGitCommands: Commands {
             }
             .keyboardShortcut("r", modifiers: [.command, .shift])
 
+            Button("Create Pull Request\u{2026}") {
+                GroveAction.createPullRequest.post()
+            }
+
             Divider()
 
             // MARK: Commit / Stash

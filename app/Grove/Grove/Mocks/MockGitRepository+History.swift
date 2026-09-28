@@ -67,4 +67,20 @@ extension MockGitRepository {
         await simulateLatency(200_000_000)
         currentBranch = MockData.branches.first(where: { $0.isHEAD })
     }
+
+    func createPullRequest(_ draft: PullRequestDraft) async throws -> String {
+        await simulateLatency(200_000_000)
+        return "https://github.com/example/app/pull/99"
+    }
+
+    func defaultBranch(of remote: String) async -> String? { "main" }
+
+    func commentOnPullRequest(number: Int, body: String) async throws {
+        await simulateLatency(120_000_000)
+    }
+
+    func pullRequestReviewComments(number: Int) async throws -> [PRReviewComment] {
+        await simulateLatency(60_000_000)
+        return MockData.prReviewComments
+    }
 }

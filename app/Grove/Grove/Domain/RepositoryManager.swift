@@ -99,10 +99,13 @@ final class RepositoryManager: RepositoryManagerProtocol {
         progress?(CloneProgress(phase: .fetching, receivedObjects: 0, totalObjects: 100, receivedBytes: 0))
 
         do {
-            try await shell.run(["clone", "--progress", url, destination.path])
-        } catch {
-            Logger.repositoryManager.error("Clone failed: \(error.localizedDescription, privacy: .public)")
-            throw error
+            try await shell.runStreaming(["clone", "--progress", url, destination.path]) { chunk in
+                if let parsed = CloneProgressParser.parse(chunk) { progress?(parsed) }
+            }
+        } catch GitShellError.nonZeroExit(_, _, let stderr) {
+            let message = CloneProgressParser.errorMessage(from: stderr)
+            Logger.repositoryManager.error("Clone failed: \(message, privacy: .public)")
+            throw CloneFailure(message: message)
         }
 
         progress?(CloneProgress(phase: .checkingOut, receivedObjects: 100, totalObjects: 100, receivedBytes: 0))

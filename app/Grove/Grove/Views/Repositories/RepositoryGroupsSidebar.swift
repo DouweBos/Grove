@@ -14,6 +14,13 @@ struct RepositoryGroupsSidebar: View {
 
     var body: some View {
         List(selection: Binding(get: { viewModel.selectedBookmarkID }, set: { viewModel.selectBookmark($0) })) {
+            if !viewModel.clones.jobs.isEmpty {
+                Section {
+                    ForEach(viewModel.clones.jobs) { CloneJobRow(job: $0).selectionDisabled() }
+                } header: {
+                    SectionLabel(title: "Cloning", count: viewModel.clones.jobs.count)
+                }
+            }
             let ungrouped = viewModel.ungroupedBookmarks
             if !ungrouped.isEmpty {
                 Section {

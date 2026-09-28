@@ -153,6 +153,8 @@ struct BranchContextMenu: View {
         }
         if let pullRequest = viewModel.refs.openPullRequest(for: branch) {
             OpenPullRequestButton(pullRequest: pullRequest)
+        } else {
+            Button("Create Pull Request\u{2026}", systemImage: "arrow.triangle.pull") { viewModel.createPullRequest(for: branch) }
         }
         Button("Reveal in History", systemImage: "clock.arrow.circlepath") { viewModel.revealInHistory(.branch(branch)) }
         ExportFilesButton(ref: branch.name)

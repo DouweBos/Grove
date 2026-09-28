@@ -90,6 +90,11 @@ enum GroveAction: String, Sendable {
     /// Show the Rebase dialog (Cmd+Shift+R).
     case rebase
 
+    // MARK: Pull Requests
+
+    /// Show the Create Pull Request sheet for the checked-out branch.
+    case createPullRequest
+
     // MARK: Quick Actions
 
     /// Toggle the Quick Actions command palette (Cmd+Shift+A).

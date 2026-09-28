@@ -4,7 +4,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Clones a remote repository into a new folder and opens it.
+/// Starts cloning a remote repository into a new folder; the clone runs in the background and its row shows progress.
 struct CloneDialogView: View {
 
     @Environment(WindowViewModel.self) private var viewModel
@@ -15,12 +15,11 @@ struct CloneDialogView: View {
     @State private var folderName = ""
     @State private var parentOverride: URL?
     @State private var isPickerPresented = false
-    @State private var isCloning = false
-    @State private var cloneProgress: CloneProgress?
     @State private var errorMessage: String?
     /// Clone from Subversion with git svn instead of from a git remote.
     @State private var isSubversion = false
     @State private var standardLayout = true
+    @State private var isImportingSVN = false
 
     init(initialURL: String? = nil) {
         _cloneURL = State(initialValue: initialURL ?? "")
@@ -49,13 +48,13 @@ struct CloneDialogView: View {
     var body: some View {
         DialogSheet(
             title: "Clone Repository",
-            message: "Downloads a copy of a remote repository, adds it to your list and opens it.",
+            message: "Downloads a copy of a remote repository in the background and adds it to your list.",
             symbol: "square.and.arrow.down",
-            progress: isCloning ? progressTitle : nil,
+            progress: isImportingSVN ? "Importing SVN revisions\u{2026}" : nil,
             progressDetail: destination.lastPathComponent,
             errorMessage: errorMessage,
             primaryTitle: "Clone",
-            isPrimaryDisabled: !canClone,
+            isPrimaryDisabled: !canClone || isImportingSVN,
             onCancel: { dismiss() },
             onPrimary: performClone
         ) {
@@ -70,7 +69,8 @@ struct CloneDialogView: View {
                     .fixedSize()
                 }
                 DialogField("URL") {
-                    TextField(isSubversion ? "https://svn.example.com/project" : "https://github.com/org/repo.git", text: $cloneURL)
+                    TextField(isSubversion ? "https://svn.example.com/project" : "https://github.com/org/repo.git",
+                              text: $cloneURL.onSet { errorMessage = nil })
                         .textFieldStyle(.roundedBorder)
                         .font(.monoCaption)
                 }
@@ -79,7 +79,7 @@ struct CloneDialogView: View {
                                     description: "Maps trunk, branches and tags to git branches and tags (git svn clone --stdlayout).")
                 }
                 DialogField("Name") {
-                    TextField(suggestedName.isEmpty ? "Folder name" : suggestedName, text: $folderName)
+                    TextField(suggestedName.isEmpty ? "Folder name" : suggestedName, text: $folderName.onSet { errorMessage = nil })
                         .textFieldStyle(.roundedBorder)
                 }
                 DialogField("Location") {
@@ -92,37 +92,30 @@ struct CloneDialogView: View {
         }
     }
 
-    private var progressTitle: String {
-        if isSubversion { return "Importing SVN revisions…" }
-        return switch cloneProgress?.phase {
-        case .indexing: "Indexing…"
-        case .checkingOut: "Checking out files…"
-        default: "Downloading objects…"
-        }
-    }
-
+    /// Git clones go to the window's queue and the sheet closes at once; git svn has no progress to report, so it runs here.
     private func performClone() {
         guard canClone else { return }
-        isCloning = true
+        if isSubversion { return cloneFromSubversion() }
+        if let problem = viewModel.clones.problem(cloning: trimmedURL, to: destination) {
+            errorMessage = problem
+            return
+        }
+        viewModel.clones.start(url: trimmedURL, destination: destination)
+        dismiss()
+    }
+
+    private func cloneFromSubversion() {
+        isImportingSVN = true
         errorMessage = nil
-        let url = trimmedURL
-        let target = destination
-        let fromSubversion = isSubversion
-        let layout = standardLayout
+        let (url, target, layout) = (trimmedURL, destination, standardLayout)
         Task {
             do {
-                // git svn replays every revision, so it has no object counts to report as it goes.
-                let repo = fromSubversion
-                    ? try await viewModel.manager.cloneSVNRepository(url: url, to: target, standardLayout: layout)
-                    : try await viewModel.manager.cloneRepository(url: url, to: target) { progress in
-                        Task { @MainActor in cloneProgress = progress }
-                    }
+                let repo = try await viewModel.manager.cloneSVNRepository(url: url, to: target, standardLayout: layout)
                 dismiss()
                 viewModel.openReference(RepositoryReference(path: repo.path.path))
             } catch {
                 errorMessage = error.localizedDescription
-                isCloning = false
-                cloneProgress = nil
+                isImportingSVN = false
             }
         }
     }
@@ -131,4 +124,11 @@ struct CloneDialogView: View {
 #Preview {
     CloneDialogView()
         .environment(WindowViewModel(manager: MockRepositoryManager()))
+}
+
+private extension Binding {
+    /// The same binding, also running `action` on every write.
+    func onSet(_ action: @escaping () -> Void) -> Binding {
+        Binding(get: { wrappedValue }, set: { wrappedValue = $0; action() })
+    }
 }

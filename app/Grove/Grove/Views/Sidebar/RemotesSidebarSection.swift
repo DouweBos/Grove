@@ -82,6 +82,9 @@ struct RemotesSidebarSection: View {
                     viewModel.revealInHistory(.remoteBranch(branch))
                 }
                 ExportFilesButton(ref: branch.name)
+                if pullRequest == nil {
+                    Button("Create Pull Request\u{2026}", systemImage: "arrow.triangle.pull") { viewModel.createPullRequest(for: branch) }
+                }
                 Divider()
                 Button("Delete on Remote…", systemImage: "trash", role: .destructive) {
                     branchToDelete = branch

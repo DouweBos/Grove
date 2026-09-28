@@ -184,6 +184,19 @@ extension GitRepository {
         Logger.gitRepository.info("Push complete in \(self.displayName, privacy: .public)")
     }
 
+    func publishBranch(_ name: String, to remote: String, as target: String) async throws {
+        Logger.gitRepository.info("Publishing \(name, privacy: .public) to \(remote, privacy: .public) in \(self.displayName, privacy: .public)")
+        try await shell.run(["push", "-u", remote, "refs/heads/\(name):refs/heads/\(target)"])
+        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+    }
+
+    func defaultBranch(of remote: String) async -> String? {
+        guard let result = try? await shell.runAllowingFailure(["symbolic-ref", "--quiet", "--short", "refs/remotes/\(remote)/HEAD"]),
+              result.isSuccess else { return nil }
+        let short = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        return short.hasPrefix(remote + "/") ? String(short.dropFirst(remote.count + 1)) : nil
+    }
+
     func sync(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
         Logger.gitRepository.info(
             "Syncing with \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"

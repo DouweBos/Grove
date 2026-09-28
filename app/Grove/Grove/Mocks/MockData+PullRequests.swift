@@ -160,4 +160,18 @@ extension MockData {
         }
         return entries
     }()
+
+    // MARK: PR Review Comments
+
+    static let prReviewComments: [PRReviewComment] = {
+        let now = Date()
+        let hunk = "@@ -10,6 +10,8 @@ struct PRActionBar: View {\n     var body: some View {\n"
+            + "-        HStack {\n+        HStack(spacing: 8) {\n+            Spacer()"
+        return [
+            PRReviewComment(id: 1, replyTo: nil, authorName: authorAlice.name, body: "Use `Theme.Spacing.sm` here.",
+                            path: "Views/PRActionBar.swift", line: 13, diffHunk: hunk, createdDate: now.addingTimeInterval(-9000)),
+            PRReviewComment(id: 2, replyTo: 1, authorName: authorJane.name, body: "Done.",
+                            path: "Views/PRActionBar.swift", line: 13, diffHunk: hunk, createdDate: now.addingTimeInterval(-7000))
+        ]
+    }()
 }

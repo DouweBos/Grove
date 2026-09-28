@@ -19,6 +19,10 @@ final class MockRepositoryManager: RepositoryManagerProtocol {
 
     var bookmarkGroups: [BookmarkGroupData]
     var bookmarks: [RepositoryBookmarkData]
+    /// Makes the next clones fail with this message, like git refusing a URL.
+    var cloneFailure: String?
+    /// Delay between simulated clone steps.
+    var cloneStepDelay: UInt64 = 150_000_000
 
     // MARK: Init
 
@@ -117,7 +121,8 @@ final class MockRepositoryManager: RepositoryManagerProtocol {
             (.checkingOut, 100, 100)
         ]
         for (phase, received, total) in steps {
-            try? await Task.sleep(nanoseconds: 150_000_000)
+            try await Task.sleep(nanoseconds: cloneStepDelay)
+            if let cloneFailure { throw CloneFailure(message: cloneFailure) }
             let report = CloneProgress(
                 phase: phase,
                 receivedObjects: received,
@@ -126,6 +131,7 @@ final class MockRepositoryManager: RepositoryManagerProtocol {
             )
             progress?(report)
         }
+        try addBookmark(path: destination.path, displayName: destination.lastPathComponent, groupID: nil)
         return MockGitRepository(path: destination, displayName: destination.lastPathComponent)
     }
 

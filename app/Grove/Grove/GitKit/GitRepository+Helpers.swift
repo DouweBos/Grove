@@ -10,53 +10,6 @@ extension GitRepository {
 
     // MARK: - Helpers
 
-    /// Run a `gh` CLI subcommand in the repository's working directory.
-    ///
-    /// Searches for `gh` in the same well-known locations used for `git`.
-    /// Throws ``GitShellError/nonZeroExit`` when the process exits non-zero.
-    @discardableResult
-    func ghRun(_ arguments: [String]) async throws -> ShellResult {
-        let process = Process()
-        process.executableURL       = URL(fileURLWithPath: GitRepository.resolveGhPath())
-        process.arguments           = arguments
-        process.currentDirectoryURL = path
-        var env = ProcessInfo.processInfo.environment
-        env["LANG"]    = "en_US.UTF-8"
-        env["LC_ALL"]  = "en_US.UTF-8"
-        process.environment = env
-        let output = try await ProcessRunner.run(process)
-        let result = ShellResult(
-            stdout: String(data: output.stdout, encoding: .utf8) ?? "",
-            stderr: String(data: output.stderr, encoding: .utf8) ?? "",
-            exitCode: output.status
-        )
-        guard result.isSuccess else {
-            let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-            Logger.gitRepository.warning(
-                "gh \(arguments.first ?? "", privacy: .public) exited \(result.exitCode, privacy: .public): \(stderr, privacy: .public)"
-            )
-            throw GitShellError.nonZeroExit(
-                command: "gh " + (arguments.first ?? ""),
-                exitCode: result.exitCode,
-                stderr: result.stderr
-            )
-        }
-        return result
-    }
-
-    /// Resolve the path to the `gh` CLI executable.
-    nonisolated static func resolveGhPath() -> String {
-        let candidates = [
-            "/usr/local/bin/gh",
-            "/opt/homebrew/bin/gh",
-            "/usr/bin/gh"
-        ]
-        for candidate in candidates where FileManager.default.fileExists(atPath: candidate) {
-            return candidate
-        }
-        return "/usr/local/bin/gh"
-    }
-
     /// Load the current branch from git, returning `nil` in detached-HEAD state.
     nonisolated static func loadCurrentBranch(shell: GitShell) async throws -> BranchInfo? {
         // Check for detached HEAD first.

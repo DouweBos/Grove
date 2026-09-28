@@ -1,102 +1,123 @@
 // Views/Settings/ServicesPreferencesTab.swift
 // Grove
 //
-// Accounts: Grove talks to GitHub through the `gh` CLI, so this shows its real sign-in state.
+// Accounts: Grove's own sign-ins to GitHub, GitLab, Bitbucket and Azure DevOps, with tokens in the Keychain.
 
 import SwiftUI
 
 struct ServicesPreferencesTab: View {
 
-    private enum Status: Equatable {
-        case checking
-        case missing
-        case signedOut
-        case signedIn([GitHubCLI.AuthStatus])
-        case failed(String)
-    }
-
-    @State private var status: Status = .checking
+    @State private var viewModel = AccountsViewModel()
 
     var body: some View {
         Form {
             Section {
-                LabeledContent("GitHub CLI") {
-                    Text(GitHubCLI.executablePath ?? "Not installed")
-                        .font(.monoCaption)
+                if viewModel.accounts.isEmpty {
+                    Text("No accounts yet. Add one to see pull requests and hosted repositories.")
                         .foregroundStyle(Theme.textSecondary)
                 }
-                statusRows
+                ForEach(viewModel.accounts) { AccountRow(account: $0, viewModel: viewModel) }
+                HStack {
+                    Spacer()
+                    Menu("Add Account\u{2026}") {
+                        ForEach(AccountProvider.allCases) { provider in
+                            Button("\(provider.title)\u{2026}") { viewModel.beginAdding(provider) }
+                        }
+                    }
+                    .fixedSize()
+                }
             } header: {
-                Text("GitHub")
+                Text("Accounts")
             } footer: {
-                Text("Pull requests are loaded with gh using its own sign-in. Grove never stores tokens.")
+                Text("Tokens are kept in your Keychain and only sent to the service they belong to.")
                     .font(.caption).foregroundStyle(Theme.textSecondary)
+            }
+            if !viewModel.importable.isEmpty || viewModel.importError != nil {
+                importSection
             }
             Section {
                 HStack {
-                    Button("Check Again") { Task { await check() } }
-                        .disabled(status == .checking)
+                    Button("Check Again") { Task { await viewModel.check() } }
                     Spacer()
-                    switch status {
-                    case .missing:
-                        Button("Get GitHub CLI") { NSWorkspace.shared.open(URL(string: "https://cli.github.com")!) }
-                    case .signedOut, .failed:
-                        Button("Copy \u{201C}gh auth login\u{201D}") { GroveClipboard.copy("gh auth login") }
-                        Button("Open Terminal") { try? ExternalToolLauncher.openInTerminal(FileManager.default.homeDirectoryForCurrentUser) }
-                    case .checking, .signedIn:
-                        EmptyView()
-                    }
                 }
             }
-            AnthropicKeySection()
         }
         .formStyle(.grouped)
-        .task { await check() }
+        .task { await viewModel.check() }
+        .sheet(isPresented: Binding(get: { viewModel.form != nil }, set: { if !$0 { viewModel.cancelForm() } })) {
+            AddHostingAccountSheet(viewModel: viewModel)
+        }
+    }
+
+    private var importSection: some View {
+        Section {
+            ForEach(viewModel.importable, id: \.host) { login in
+                LabeledContent {
+                    HStack(spacing: Theme.Spacing.sm) {
+                        if viewModel.importingHost == login.host { ProgressView().controlSize(.small) }
+                        Button("Import") { Task { await viewModel.importLogin(login) } }
+                            .disabled(viewModel.importingHost != nil)
+                    }
+                } label: {
+                    Label(login.host, systemImage: login.kind.symbol)
+                }
+            }
+            if let error = viewModel.importError {
+                Text(error).font(.caption).foregroundStyle(Theme.danger)
+            }
+        } header: {
+            Text("Import from GitHub CLI / GitLab CLI")
+        } footer: {
+            Text("Copies the CLI's existing sign-in into Grove. The CLI itself isn't changed.")
+                .font(.caption).foregroundStyle(Theme.textSecondary)
+        }
+    }
+}
+
+private struct AccountRow: View {
+    let account: HostingAccount
+    let viewModel: AccountsViewModel
+
+    var body: some View {
+        LabeledContent {
+            HStack(spacing: Theme.Spacing.sm) {
+                status
+                Menu {
+                    Button("Re-authenticate\u{2026}") { viewModel.beginReauthenticating(account) }
+                    Divider()
+                    Button("Remove", role: .destructive) { viewModel.remove(account) }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+            }
+        } label: {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(account.title).font(.system(size: 13, weight: .medium))
+                    Text(account.serviceTitle).font(.caption).foregroundStyle(Theme.textSecondary)
+                }
+            } icon: {
+                Image(systemName: account.kind.symbol).foregroundStyle(Theme.accent)
+            }
+        }
     }
 
     @ViewBuilder
-    private var statusRows: some View {
-        switch status {
-        case .checking:
-            LabeledContent("Status") { ProgressView().controlSize(.small) }
-        case .missing:
-            LabeledContent("Status") { StatusBadge(title: "Not installed", symbol: "xmark.octagon.fill", tone: .negative) }
-        case .signedOut:
-            LabeledContent("Status") { StatusBadge(title: "Signed out", symbol: "exclamationmark.triangle.fill", tone: .caution) }
+    private var status: some View {
+        switch viewModel.statuses[account.id] {
+        case .checking, nil:
+            ProgressView().controlSize(.small)
+        case .signedIn:
+            StatusBadge(title: "Signed in", symbol: "checkmark.circle.fill", tone: .positive)
         case .failed(let message):
-            LabeledContent("Status") { StatusBadge(title: "Error", symbol: "exclamationmark.triangle.fill", tone: .caution) }
-            Text(message).font(.caption).foregroundStyle(Theme.textSecondary)
-        case .signedIn(let accounts):
-            ForEach(accounts, id: \.host) { account in
-                LabeledContent(account.host) {
-                    HStack(spacing: Theme.Spacing.sm) {
-                        Text(account.account ?? "").font(.system(size: 13, weight: .medium))
-                        StatusBadge(title: "Signed in", symbol: "checkmark.circle.fill", tone: .positive)
-                    }
-                }
-                if let scopes = account.scopes {
-                    LabeledContent("Token scopes") {
-                        Text(scopes).font(.monoCaption).foregroundStyle(Theme.textSecondary)
-                    }
-                }
-            }
-        }
-    }
-
-    private func check() async {
-        guard GitHubCLI.isInstalled else { status = .missing; return }
-        status = .checking
-        do {
-            let accounts = try await GitHubCLI.authStatus()
-            status = accounts.isEmpty ? .signedOut : .signedIn(accounts)
-        } catch GitHubCLI.Failure.notAuthenticated {
-            status = .signedOut
-        } catch {
-            status = .failed(error.localizedDescription)
+            StatusBadge(title: "Sign in again", symbol: "exclamationmark.triangle.fill", tone: .caution)
+                .help(message)
         }
     }
 }
 
 #Preview {
-    ServicesPreferencesTab().frame(width: 520, height: 400)
+    ServicesPreferencesTab().frame(width: 560, height: 520)
 }

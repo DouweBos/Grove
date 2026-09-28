@@ -17,16 +17,16 @@ struct RemoteRepositoryTests {
         #expect(RemoteURLKey.make("/Users/me/local/path") == nil)
     }
 
-    @Test func ghRepoListParsesAndSortsByRecentUpdate() throws {
+    @Test func githubRepositoriesParse() throws {
         let json = """
-        [{"name":"old","nameWithOwner":"me/old","owner":{"login":"me"},"description":"","isPrivate":false,"isFork":true,
-          "isArchived":true,"updatedAt":"2024-01-01T00:00:00Z","url":"https://github.com/me/old","sshUrl":"git@github.com:me/old.git",
-          "defaultBranchRef":null,"primaryLanguage":null},
-         {"name":"new","nameWithOwner":"me/new","owner":{"login":"me"},"description":"Fresh","isPrivate":true,"isFork":false,
-          "isArchived":false,"updatedAt":"2026-09-28T10:45:51Z","url":"https://github.com/me/new","sshUrl":"git@github.com:me/new.git",
-          "defaultBranchRef":{"name":"main"},"primaryLanguage":{"name":"Swift"}}]
+        [{"name":"new","full_name":"me/new","owner":{"login":"me"},"description":"Fresh","private":true,"fork":false,
+          "archived":false,"pushed_at":"2026-09-28T10:45:51Z","html_url":"https://github.com/me/new","ssh_url":"git@github.com:me/new.git",
+          "clone_url":"https://github.com/me/new.git","default_branch":"main","language":"Swift"},
+         {"name":"old","full_name":"me/old","owner":{"login":"me"},"description":"","private":false,"fork":true,
+          "archived":true,"pushed_at":"2024-01-01T00:00:00Z","html_url":"https://github.com/me/old","ssh_url":"git@github.com:me/old.git",
+          "default_branch":null,"language":null}]
         """
-        let repos = try RemoteRepositoryParser.parse(Data(json.utf8))
+        let repos = HostingJSON.objects(json).compactMap { GitHubParser.repository($0, host: "github.com") }
         #expect(repos.map(\.name) == ["new", "old"])
         #expect(repos[0].defaultBranch == "main" && repos[0].language == "Swift" && repos[0].isPrivate)
         #expect(repos[1].description == nil && repos[1].isFork && repos[1].isArchived)

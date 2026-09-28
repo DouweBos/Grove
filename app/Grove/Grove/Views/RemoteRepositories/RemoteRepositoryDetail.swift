@@ -16,31 +16,47 @@ struct RemoteRepositoriesContent: View {
             case .unavailable(let message):
                 EmptyStateView(
                     systemImage: "person.crop.circle.badge.exclamationmark",
-                    title: "No GitHub Account",
-                    subtitle: "\(message) Sign in with \u{201C}gh auth login\u{201D} in Terminal, then try again.",
-                    actionTitle: "Try Again"
-                ) { Task { await viewModel.reloadAccount() } }
+                    title: "No Accounts",
+                    subtitle: "\(message) Add a GitHub, GitLab, Bitbucket or Azure DevOps account in Settings > Accounts.",
+                    actionTitle: "Add an Account\u{2026}"
+                ) { openAccounts() }
             case .unknown, .loading:
-                ProgressView("Reading your GitHub account…").frame(maxWidth: .infinity, maxHeight: .infinity)
+                ProgressView("Reading your accounts\u{2026}").frame(maxWidth: .infinity, maxHeight: .infinity)
             case .signedIn:
                 if let repository = viewModel.selected {
                     RemoteRepositoryDetail(repository: repository)
                 } else {
                     EmptyStateView(systemImage: "cloud", title: "Remote Repositories",
-                                   subtitle: "Repositories on your GitHub account and organizations. Select one to clone or open it.")
+                                   subtitle: "Repositories on your accounts and their organizations. Select one to clone or open it.")
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background)
+        .onChange(of: HostingAccountStore.shared.accounts) { Task { await viewModel.reloadAccount() } }
+        .sheet(item: Binding(get: { viewModel.creation }, set: { if $0 == nil { viewModel.endCreating() } })) { creation in
+            CreateRemoteRepositorySheet(viewModel: creation)
+        }
         .toolbar {
-            if case .unavailable = viewModel.account {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Accounts…", systemImage: "person.crop.circle") { openSettings() }
-                        .help("Open Settings to check your GitHub account")
+            ToolbarItem(placement: .primaryAction) {
+                Button("New Remote Repository\u{2026}", systemImage: "plus.rectangle.on.folder") {
+                    windowVM.showCreateRemoteRepository()
                 }
+                .help("Create a repository on one of your accounts")
+                .disabled(viewModel.account != .signedIn)
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button("Accounts\u{2026}", systemImage: "person.crop.circle") { openAccounts() }
+                    .help("Open Settings to manage your accounts")
             }
         }
+    }
+}
+
+extension RemoteRepositoriesContent {
+    fileprivate func openAccounts() {
+        UserDefaults.standard.set(PreferencesTab.accounts.rawValue, forKey: PreferencesTab.storageKey)
+        openSettings()
     }
 }
 
@@ -96,6 +112,10 @@ struct RemoteRepositoryDetail: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                     .keyboardShortcut(.defaultAction)
+                } else if let clone = windowVM.clones.job(matching: repository.matchKey), clone.isRunning {
+                    Label("Cloning \(Int((clone.progress?.overallFraction ?? 0) * 100))%", systemImage: "arrow.down.circle")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
                 } else {
                     Button { windowVM.showCloneDialog(url: repository.sshURL) } label: {
                         Label("Clone…", systemImage: "square.and.arrow.down").padding(.horizontal, Theme.Spacing.sm)
@@ -104,7 +124,7 @@ struct RemoteRepositoryDetail: View {
                     .controlSize(.large)
                     .keyboardShortcut(.defaultAction)
                 }
-                Button("Open on GitHub", systemImage: "safari") {
+                Button("Open on \(repository.service.displayName)", systemImage: "safari") {
                     if let url = URL(string: repository.webURL) { NSWorkspace.shared.open(url) }
                 }
                 .buttonStyle(.borderless)

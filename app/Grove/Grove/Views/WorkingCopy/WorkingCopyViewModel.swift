@@ -96,9 +96,6 @@ final class WorkingCopyViewModel {
     /// The repository's `commit.template`, offered first and prefilled into an empty composer once per commit.
     var gitTemplate: CommitTemplate?
     var didPrefillGitTemplate = false
-    var aiDraft = AIDraftState()
-    @ObservationIgnored var messageDrafter = CommitMessageDrafter()
-    @ObservationIgnored var loadAnthropicKey: () -> String? = { AnthropicKeyStore.key() }
 
     var hasSubject: Bool { !commitSubject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     var canCommit: Bool { hasSubject && (isAmend || !stagedFiles.isEmpty) && conflictedFiles.isEmpty && !isCommitting }
