@@ -163,6 +163,10 @@ private struct BranchReviewRow: View {
             if branch.isCurrentBranch {
                 StatusBadge(title: "Current", symbol: "checkmark", tone: .neutral)
             }
+            if let worktreePath = branch.worktreePath {
+                StatusBadge(title: "In Worktree", symbol: "tree", tone: .neutral)
+                    .help("Checked out in \(abbreviatingHome(worktreePath)); remove that worktree to delete it.")
+            }
             switch branch.category {
             case .merged: StatusBadge(title: "Merged", symbol: "checkmark.circle.fill", tone: .positive)
             case .stale: StatusBadge(title: "Stale \(branch.daysSinceLastCommit ?? staleDays)d", symbol: "moon.zzz.fill", tone: .caution)

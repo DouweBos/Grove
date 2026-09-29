@@ -24,8 +24,10 @@ struct ReviewedBranch: Identifiable, Hashable, Sendable {
     let behind: Int
     let category: BranchCategory
     let daysSinceLastCommit: Int?
+    /// Another worktree has it checked out, so git won't delete it.
+    let worktreePath: String?
 
-    var isDeletable: Bool { !isCurrentBranch && !isPrimary }
+    var isDeletable: Bool { !isCurrentBranch && !isPrimary && worktreePath == nil }
 }
 
 /// Ahead/behind only change when either tip moves, so counts are cached by both SHAs.
@@ -121,7 +123,11 @@ final class BranchesReviewViewModel {
             let primary = Self.primaryBranchName(from: local)
             let tips = Dictionary(try await repository.branchTips().map { ($0.name, $0) }) { first, _ in first }
             let counts = await aheadBehindCounts(for: local, primary: primary, tips: tips)
-            let reviewed = local.map { review($0, primary: primary, tip: tips[$0.name], counts: counts[$0.name]) }
+            let worktrees = await worktreePaths()
+            let reviewed = local.map {
+                review($0, primary: primary, tip: tips[$0.name], counts: counts[$0.name],
+                       worktreePath: $0.isHEAD ? nil : worktrees[$0.name])
+            }
             primaryBranch = primary
             branches = reviewed.sorted(by: Self.displayOrder)
             selectedIDs.formIntersection(branches.filter(\.isDeletable).map(\.id))
@@ -134,6 +140,13 @@ final class BranchesReviewViewModel {
         guard let refs else { return try await repository.localBranches() }
         await refs.settled()
         return refs.localBranches
+    }
+
+    /// Branch name to the worktree that has it checked out.
+    private func worktreePaths() async -> [String: String] {
+        let worktrees: [WorktreeInfo]
+        if let refs { worktrees = refs.worktrees } else { worktrees = (try? await repository.worktrees()) ?? [] }
+        return Dictionary(worktrees.compactMap { worktree in worktree.branch.map { ($0, worktree.path) } }) { first, _ in first }
     }
 
     /// Counts only branches whose tip or the primary's tip moved since the last refresh.
@@ -155,16 +168,19 @@ final class BranchesReviewViewModel {
         return aheadBehindCache.counts(keyed)
     }
 
-    private func review(_ branch: BranchInfo, primary: String, tip: BranchTip?, counts: AheadBehind?) -> ReviewedBranch {
+    private func review(_ branch: BranchInfo, primary: String, tip: BranchTip?, counts: AheadBehind?,
+                        worktreePath: String?) -> ReviewedBranch {
         let date = tip?.committerDate
         let days = date.map { Calendar.current.dateComponents([.day], from: $0, to: .now).day ?? 0 }
         let isPrimary = branch.name == primary
+        // Checked out somewhere, like HEAD, so it's never suggested for cleanup.
+        let isInUse = branch.isHEAD || worktreePath != nil
         // No commits missing from the primary is exactly what `branch --merged` reports.
         let isMerged = mergeStatusError == nil && counts?.ahead == 0
         let category: BranchCategory
-        if !isPrimary && !branch.isHEAD && isMerged {
+        if !isPrimary && !isInUse && isMerged {
             category = .merged
-        } else if !isPrimary && !branch.isHEAD, let days, days >= staleDays {
+        } else if !isPrimary && !isInUse, let days, days >= staleDays {
             category = .stale
         } else {
             category = .active
@@ -173,7 +189,7 @@ final class BranchesReviewViewModel {
             id: branch.id, name: branch.name, sha: branch.targetSHA, isCurrentBranch: branch.isHEAD,
             isPrimary: isPrimary, lastCommitDate: date, lastCommitSummary: tip?.summary ?? "",
             authorName: tip?.authorName ?? "", ahead: counts?.ahead ?? 0, behind: counts?.behind ?? 0,
-            category: category, daysSinceLastCommit: days
+            category: category, daysSinceLastCommit: days, worktreePath: worktreePath
         )
     }
 

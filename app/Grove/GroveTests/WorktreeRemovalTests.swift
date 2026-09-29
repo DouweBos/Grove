@@ -63,6 +63,19 @@ struct WorktreeRemovalTests {
         #expect(try git(["branch", "--list", "feature"], in: repo).isEmpty)
     }
 
+    // MARK: Branches Review
+
+    @Test func branchInAWorktreeIsNotSuggestedForCleanup() async throws {
+        let vm = BranchesReviewViewModel(repository: try await GitRepository(path: repo))
+        await vm.refresh()
+        let feature = try #require(vm.branches.first { $0.name == "feature" })
+        #expect(WorktreeResolver.isSameFolder(feature.worktreePath ?? "", worktree.path))
+        #expect(feature.category == .active, "Merged, but checked out in a worktree")
+        #expect(!feature.isDeletable)
+        vm.selectAllVisible()
+        #expect(vm.selectedBranches.isEmpty)
+    }
+
     // MARK: Windows
 
     @Test func tabShowingTheWorktreeClosesWhenAnotherShowsTheMainRepository() {
