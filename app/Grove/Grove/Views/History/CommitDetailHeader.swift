@@ -1,7 +1,6 @@
 // Views/History/CommitDetailHeader.swift
 // Grove
 
-import AppKit
 import SwiftUI
 
 /// Subject, body and metadata of the selected commit.
@@ -66,10 +65,7 @@ struct CommitDetailHeader: View {
             row("SHA") {
                 HStack(spacing: Theme.Spacing.xs) {
                     mono(commit.id).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
-                    Button { copy(commit.id) } label: { Image(systemName: "doc.on.doc") }
-                        .buttonStyle(.borderless)
-                        .foregroundStyle(Theme.textSecondary)
-                        .help("Copy SHA")
+                    CopyButton(value: commit.id, help: "Copy SHA", confirmation: "Copied SHA")
                 }
             }
             row(commit.parentIDs.count > 1 ? "Parents" : "Parent") {
@@ -108,11 +104,6 @@ struct CommitDetailHeader: View {
 
     private func mono(_ text: String) -> Text {
         Text(text).font(.monoCaption).foregroundStyle(Theme.textPrimary)
-    }
-
-    private func copy(_ string: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(string, forType: .string)
     }
 }
 

@@ -52,8 +52,7 @@ struct WorktreesSidebarSection: View {
             }
             .disabled(worktree.isPrunable)
             Button("Copy Path", systemImage: "doc.on.doc") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(worktree.path, forType: .string)
+                GroveClipboard.copy(worktree.path)
             }
             if !worktree.isMain {
                 Divider()

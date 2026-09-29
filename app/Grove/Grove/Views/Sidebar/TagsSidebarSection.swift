@@ -51,8 +51,7 @@ struct TagsSidebarSection: View {
                     createFromRef = CreateBranchRequest(ref: tag.name)
                 }
                 Button("Copy Name", systemImage: "doc.on.doc") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(tag.name, forType: .string)
+                    GroveClipboard.copy(tag.name)
                 }
                 Button("Reveal in History", systemImage: "clock.arrow.circlepath") { viewModel.revealInHistory(.tag(tag)) }
                 ExportFilesButton(ref: tag.name)

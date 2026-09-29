@@ -80,8 +80,7 @@ struct CommitTreeTab: View {
                 Button("Show File History\u{2026}") { viewModel.request(.fileHistory(row.path)) }
             }
             Button("Copy Path") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(row.path, forType: .string)
+                GroveClipboard.copy(row.path)
             }
         }
     }

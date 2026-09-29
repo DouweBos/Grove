@@ -76,7 +76,6 @@ struct CommitContextMenu: View {
     }
 
     private func copy(_ string: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(string, forType: .string)
+        GroveClipboard.copy(string)
     }
 }

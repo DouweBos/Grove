@@ -81,8 +81,7 @@ struct RemotesSidebarSection: View {
     @ViewBuilder
     private func remoteMenu(_ remote: RemoteInfo) -> some View {
         Button("Copy URL", systemImage: "doc.on.doc") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(remote.url, forType: .string)
+            GroveClipboard.copy(remote.url)
         }
         Divider()
         Button("Add Remote\u{2026}", systemImage: "plus") { viewModel.requestAddRemote() }
@@ -107,8 +106,7 @@ struct RemotesSidebarSection: View {
                     createFromRef = CreateBranchRequest(ref: branch.name)
                 }
                 Button("Copy Name", systemImage: "doc.on.doc") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(branch.name, forType: .string)
+                    GroveClipboard.copy(branch.name)
                 }
                 if let pullRequest { BranchPullRequestButton(pullRequest: pullRequest) }
                 Button("Reveal in History", systemImage: "clock.arrow.circlepath") {

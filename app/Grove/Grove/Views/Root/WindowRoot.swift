@@ -23,6 +23,7 @@ struct WindowRoot: View {
                 Theme.background
             }
         }
+        .toastOverlay()
         .background(WindowTabbingAccessor(store: store) { hostWindow.window = $0 })
         .onAppear {
             WindowStore.newTabHandler = { [store, openWindow] in

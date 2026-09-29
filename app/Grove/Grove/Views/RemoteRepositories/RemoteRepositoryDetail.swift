@@ -167,8 +167,7 @@ struct RemoteRepositoryDetail: View {
             Text(url).font(.monoCaption).foregroundStyle(Theme.textPrimary).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
             Spacer(minLength: 0)
             Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(url, forType: .string)
+                GroveClipboard.copy(url)
             } label: { Image(systemName: "doc.on.doc") }
             .buttonStyle(.borderless)
             .help("Copy \(label) URL")

@@ -79,8 +79,7 @@ struct SubmodulesSidebarSection: View {
         }
         .disabled(!isCloned)
         Button("Copy Path", systemImage: "doc.on.doc") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(submodule.path, forType: .string)
+            GroveClipboard.copy(submodule.path)
         }
         Divider()
         Button("Add Submodule…", systemImage: "plus") { viewModel.requestAddSubmodule() }

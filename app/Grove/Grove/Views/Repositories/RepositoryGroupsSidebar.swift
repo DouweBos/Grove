@@ -162,8 +162,7 @@ private struct FolderActions: View {
             NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
         }
         Button("Copy Path", systemImage: "doc.on.doc") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(path, forType: .string)
+            GroveClipboard.copy(path)
         }
     }
 }

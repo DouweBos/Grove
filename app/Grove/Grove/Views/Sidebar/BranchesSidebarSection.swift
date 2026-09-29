@@ -188,8 +188,7 @@ struct BranchContextMenu: View {
         Button("Archive", systemImage: "archivebox") { viewModel.archive(branch: branch) }
             .disabled(branch.isHEAD || worktree != nil)
         Button("Copy Name", systemImage: "doc.on.doc") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(branch.name, forType: .string)
+            GroveClipboard.copy(branch.name)
         }
         Divider()
         // The dialog offers to remove the worktree first.

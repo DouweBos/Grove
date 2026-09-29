@@ -75,8 +75,7 @@ struct CommitChangesetView: View {
     private func fileMenu(_ path: String) -> some View {
         Button("Show File History\u{2026}") { viewModel.request(.fileHistory(path)) }
         Button("Copy Path") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(path, forType: .string)
+            GroveClipboard.copy(path)
         }
     }
 }

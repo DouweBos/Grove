@@ -221,8 +221,7 @@ private struct FileSection<Accessory: View>: View {
         }
         Divider()
         Button("Copy Path") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(entry.path, forType: .string)
+            GroveClipboard.copy(entry.path)
         }
         Button("Reveal in Finder") {
             NSWorkspace.shared.activateFileViewerSelecting([viewModel.repository.path.appendingPathComponent(entry.path)])

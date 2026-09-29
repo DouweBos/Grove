@@ -84,8 +84,7 @@ struct FileHistoryView: View {
         .onTapGesture { Task { await viewModel.selectCommit(commit) } }
         .contextMenu {
             Button("Copy Commit SHA") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(commit.id, forType: .string)
+                GroveClipboard.copy(commit.id)
             }
             Button("Open Blame at This Revision") { openBlame(commit) }
             Button("Export File at This Revision\u{2026}") { Task { await export(commit) } }

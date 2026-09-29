@@ -119,9 +119,7 @@ struct ReflogDetailPanel: View {
                     Text("SHA").foregroundStyle(Theme.textSecondary)
                     HStack(spacing: Theme.Spacing.xs) {
                         Text(commit.id).font(.monoCaption).textSelection(.enabled).lineLimit(1)
-                        Button { GroveClipboard.copy(commit.id) } label: { Image(systemName: "doc.on.doc") }
-                            .buttonStyle(.borderless)
-                            .help("Copy SHA")
+                        CopyButton(value: commit.id, help: "Copy SHA", confirmation: "Copied SHA")
                     }
                 }
                 if commit.isSigned {

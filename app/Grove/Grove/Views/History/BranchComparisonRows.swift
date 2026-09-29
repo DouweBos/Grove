@@ -26,8 +26,7 @@ struct ComparisonCommitRow: View {
         .frame(height: 44)
         .contextMenu {
             Button("Copy Commit SHA") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(commit.id, forType: .string)
+                GroveClipboard.copy(commit.id)
             }
         }
     }
