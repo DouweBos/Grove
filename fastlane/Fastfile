@@ -55,14 +55,14 @@ platform :mac do
     )
     app = File.join(DIST, "Grove.app")
     sign_sparkle(app)
-    notarize(package: app, api_key: api_key, bundle_id: "com.houwert.Grove", print_log: true)
+    notarize(package: app, api_key: api_key, bundle_id: "dev.houwert.grove", print_log: true)
 
     feed = File.join(DIST, "appcast")
     archive = File.join(feed, "Grove-#{version}.zip")
     zip(path: app, output_path: archive, symlinks: true)
     appcast = update_appcast(feed, version, channel, notes)
     disk_image = make_disk_image(app, version)
-    notarize(package: disk_image, api_key: api_key, bundle_id: "com.houwert.Grove", print_log: true)
+    notarize(package: disk_image, api_key: api_key, bundle_id: "dev.houwert.grove", print_log: true)
 
     record_release(version, notes, pending) if channel == "production"
     tag = "v#{version}"

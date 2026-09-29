@@ -31,7 +31,7 @@ extension RepositoryState {
 
 extension Logger {
     /// Subsystem used for every Grove logger.
-    private static let subsystem = "com.houwert.Grove"
+    private static let subsystem = "dev.houwert.grove"
 
     /// Logs raw git CLI invocations and their results.
     static let gitShell = Logger(subsystem: subsystem, category: "GitShell")

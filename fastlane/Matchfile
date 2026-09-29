@@ -4,5 +4,5 @@ storage_mode "git"
 type "developer_id"
 platform "macos"
 skip_provisioning_profiles true
-app_identifier "com.houwert.Grove"
+app_identifier "dev.houwert.grove"
 team_id "CKZT75PN5T"
