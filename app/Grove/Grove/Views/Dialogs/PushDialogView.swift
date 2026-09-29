@@ -46,6 +46,14 @@ struct PushDialogView: View {
     private var trimmedTarget: String { targetBranch.trimmingCharacters(in: .whitespaces) }
     private var destination: String { "\(selectedRemote)/\(trimmedTarget)" }
 
+    /// The ahead count is only known relative to the upstream, so other targets get a count-less title.
+    private var title: String {
+        guard let ahead = branch?.ahead, ahead > 0, branch?.upstreamShortName == destination else {
+            return "Push \(branchName) to \(trimmedTarget.isEmpty ? selectedRemote : trimmedTarget)"
+        }
+        return "Push \(ahead) commit\(ahead == 1 ? "" : "s") to \(trimmedTarget)"
+    }
+
     private var upstreamDescription: String {
         guard let upstream = branch?.upstreamShortName else {
             return "'\(branchName)' doesn't track a remote branch yet; pull and sync will use \(destination)."
@@ -70,7 +78,7 @@ struct PushDialogView: View {
 
     var body: some View {
         DialogSheet(
-            title: "Push \(branchName)",
+            title: title,
             message: "Sends the commits on your local branch '\(branchName)' to the remote.",
             symbol: "arrow.up.to.line",
             progress: isPushing ? "Pushing to \(selectedRemote)…" : nil,
