@@ -19,6 +19,7 @@ struct WindowRoot: View {
             if let windowVM {
                 RootWindowHost(windowVM: windowVM, handlesLaunchArguments: handlesLaunchArguments)
                     .onChange(of: windowVM.openRepo) { _, repo in reference = repo }
+                    .onChange(of: windowVM.isKeyWindow) { _, isKey in if isKey { store.windowBecameKey(windowVM) } }
             } else {
                 Theme.background
             }
@@ -30,6 +31,7 @@ struct WindowRoot: View {
                 store.requestTab()
                 openWindow(id: GroveApp.mainWindowID)
             }
+            WindowStore.newWindowHandler = { [openWindow] in openWindow(id: GroveApp.mainWindowID) }
             WindowStore.openTabHandler = { [store, openWindow] reference in
                 store.requestTab()
                 openWindow(id: GroveApp.mainWindowID, value: reference)

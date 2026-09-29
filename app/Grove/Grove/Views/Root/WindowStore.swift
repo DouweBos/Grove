@@ -19,10 +19,15 @@ final class WindowStore {
     private var hasHandledLaunchArguments = false
     /// The window a requested tab should join, and when it was asked for; stale requests are dropped.
     private var pendingTab: (parent: NSWindow, requested: Date)?
+    /// Run by the next window to open, for dock menu actions with no window on screen.
+    private var pendingAction: GroveAction?
+    private weak var lastKeyWindow: WindowViewModel?
     /// Opens a Grove window; set by the first window, since only views can reach `openWindow`.
     static var newTabHandler: (() -> Void)?
     /// Opens a repository in a new tab of the key window; set alongside `newTabHandler`.
     static var openTabHandler: ((RepositoryReference) -> Void)?
+    /// Opens a standalone Grove window; set alongside `newTabHandler`.
+    static var newWindowHandler: (() -> Void)?
     static let closedWindowLimit = 3
 
     init(manager: any RepositoryManagerProtocol) {
@@ -38,6 +43,10 @@ final class WindowStore {
         openWindows.append(window)
         window.onWorktreeRemoved = { [weak self] path, main in self?.worktreeRemoved(at: path, mainRepositoryPath: main) }
         if let reference, window.openRepo != reference { window.openReference(reference) }
+        if let pendingAction {
+            self.pendingAction = nil
+            _ = window.handleBrowserAction(pendingAction)
+        }
         return window
     }
 
@@ -66,6 +75,21 @@ final class WindowStore {
         }
         for window in openWindows + closedWindows {
             window.forgetWorktree(at: path, mainRepositoryPath: main)
+        }
+    }
+
+    func windowBecameKey(_ window: WindowViewModel) {
+        lastKeyWindow = window
+    }
+
+    /// Runs a browser action from outside any window: in the last key window, else in a new one.
+    func perform(_ action: GroveAction) {
+        NSApp.activate()
+        if let window = lastKeyWindow.flatMap({ last in openWindows.first { $0 === last } }) ?? openWindows.last {
+            _ = window.handleBrowserAction(action)
+        } else {
+            pendingAction = action
+            Self.newWindowHandler?()
         }
     }
 

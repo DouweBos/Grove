@@ -31,7 +31,10 @@ struct GroveApp: App {
         WindowGroup("Grove", id: Self.mainWindowID, for: RepositoryReference.self) { $reference in
             WindowRoot(store: windows, reference: $reference)
                 .environment(windows)
-                .onAppear { AppAppearance.applyStored() }
+                .onAppear {
+                    AppAppearance.applyStored()
+                    appDelegate.windows = windows
+                }
         }
         .defaultSize(width: 1100, height: 700)
         // grove:// URLs go to the app delegate, which opens a tab; left to SwiftUI they'd each open a blank window too.
@@ -52,5 +55,8 @@ struct GroveApp: App {
 
 /// Keeps Grove running with no window open so open repositories keep fetching in the background.
 final class GroveAppDelegate: NSObject, NSApplicationDelegate {
+    /// Set by the first window; the dock menu reads recent repositories and opens windows through it.
+    weak var windows: WindowStore?
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }
