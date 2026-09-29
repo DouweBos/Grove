@@ -29,6 +29,8 @@ enum GroveAction: String, Sendable {
     case showLocalRepositories
     /// Leave the open repository and list the GitHub account's repositories (the cloud button).
     case showRemoteRepositories
+    /// Open the sidebar title's repository switcher (Cmd+Option+O).
+    case switchRepository
     /// Back / forward through the window's navigation history (Cmd-[ / Cmd-], mouse buttons 4 and 5).
     case navigateBack
     case navigateForward

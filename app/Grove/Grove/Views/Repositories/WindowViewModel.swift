@@ -129,6 +129,8 @@ final class WindowViewModel {
     var groupEditor: GroupEditor?
     /// The repository whose Delete confirmation is showing.
     var bookmarkPendingDelete: RepositoryBookmarkData?
+    /// The sidebar title's repository switcher, see +Switcher.
+    var isShowingRepositorySwitcher = false
     /// Routes menu commands and mouse navigation to the key window only.
     private(set) var isKeyWindow = false
 
@@ -279,6 +281,7 @@ final class WindowViewModel {
         case .newGroup: showNewGroupDialog()
         case .showLocalRepositories: showLocalRepositories()
         case .showRemoteRepositories: showRemoteRepositories()
+        case .switchRepository: showRepositorySwitcher()
         case .navigateBack: goBack()
         case .navigateForward: goForward()
         default: return false

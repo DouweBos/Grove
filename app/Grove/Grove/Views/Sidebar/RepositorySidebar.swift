@@ -113,6 +113,40 @@ private struct WorktreeSwitcher: View {
     }
 }
 
+// MARK: - RepositoryTitleButton
+
+/// The repository name; clicking it opens the repository switcher.
+private struct RepositoryTitleButton: View {
+    @Environment(WindowViewModel.self) private var windowVM
+    let title: String
+
+    var body: some View {
+        Button { windowVM.showRepositorySwitcher() } label: {
+            HStack(spacing: Theme.Spacing.xs) {
+                Text(title)
+                    .font(.pageTitle)
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Switch Repository (\u{2325}\u{2318}O)")
+        // Anchored to the sidebar's width, so the popover centres under it rather than hanging off the window edge.
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .popover(isPresented: Binding(get: { windowVM.isShowingRepositorySwitcher },
+                                      set: { if !$0 { windowVM.dismissRepositorySwitcher() } }),
+                 arrowEdge: .bottom) {
+            RepositorySwitcher()
+                .environment(windowVM)
+        }
+    }
+}
+
 // MARK: - RepositorySummaryHeader
 
 /// Repository name, checked-out branch and its sync state, like Charon's disk summary.
@@ -126,11 +160,8 @@ private struct RepositorySummaryHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             // A worktree's folder name is incidental; the repository it belongs to is what matters.
-            Text(mainRepositoryPath.map { URL(fileURLWithPath: $0).lastPathComponent } ?? viewModel.repository.path.lastPathComponent)
-                .font(.pageTitle)
-                .foregroundStyle(Theme.textPrimary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+            RepositoryTitleButton(title: mainRepositoryPath.map { URL(fileURLWithPath: $0).lastPathComponent }
+                                  ?? viewModel.repository.path.lastPathComponent)
             if viewModel.worktrees.count > 1 {
                 WorktreeSwitcher(isLinkedWorktree: mainRepositoryPath != nil)
             }
@@ -190,6 +221,7 @@ private struct RepositorySummaryHeader: View {
     return NavigationSplitView {
         RepositorySidebar()
             .environment(vm)
+            .environment(WindowViewModel(manager: MockRepositoryManager()))
     } detail: {
         Text("Detail")
     }

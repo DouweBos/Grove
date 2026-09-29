@@ -59,6 +59,8 @@ private struct GroveFileCommands: Commands {
                 .keyboardShortcut("l", modifiers: [.command, .shift])
             Button("Remote Repositories") { GroveAction.showRemoteRepositories.post() }
                 .keyboardShortcut("k", modifiers: [.command, .shift])
+            Button("Switch Repository\u{2026}") { GroveAction.switchRepository.post() }
+                .keyboardShortcut("o", modifiers: [.command, .option])
         }
     }
 }
