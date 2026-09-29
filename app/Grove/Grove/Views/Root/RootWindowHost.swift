@@ -40,7 +40,7 @@ struct RootWindowHost: View {
 
         NavigationSplitView(columnVisibility: $columnVisibility) {
             UnifiedSidebar(session: windowVM.currentSession?.session, isCollapsed: columnVisibility == .detailOnly)
-                .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 300)
+                .navigationSplitViewColumnWidth(min: 200, ideal: 300, max: 300)
         } detail: {
             detailContent
         }

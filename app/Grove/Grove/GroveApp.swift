@@ -22,6 +22,11 @@ struct GroveApp: App {
         let manager = RepositoryManager()
         _manager = State(initialValue: manager)
         _windows = State(initialValue: WindowStore(manager: manager))
+        // AppKit's restored sidebar width creeps narrower every launch, so each launch starts at the ideal width.
+        let defaults = UserDefaults.standard
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("NSSplitView Subview Frames") {
+            defaults.removeObject(forKey: key)
+        }
         // Loads the accounts now, so git's HTTPS prompts can use them from the first fetch.
         _ = HostingAccountStore.shared
     }
