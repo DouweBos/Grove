@@ -13,6 +13,7 @@ struct BranchesSidebarSection: View {
     @State private var createFromRef: CreateBranchRequest?
     @State private var branchToRename: BranchInfo?
     @State private var branchToDelete: BranchInfo?
+    @State private var branchToTrack: BranchInfo?
 
     var body: some View {
         Section {
@@ -57,6 +58,9 @@ struct BranchesSidebarSection: View {
         .sheet(item: $branchToDelete) { branch in
             DeleteBranchDialogView(viewModel: viewModel, branch: branch)
         }
+        .sheet(item: $branchToTrack) { branch in
+            TrackRemoteBranchDialogView(viewModel: viewModel, branch: branch)
+        }
     }
 
     private func branchRow(_ branch: BranchInfo, isPinned: Bool, showsFullName: Bool = false) -> some View {
@@ -76,6 +80,7 @@ struct BranchesSidebarSection: View {
                     isPinned: isPinned,
                     onCreateBranch: { createFromRef = CreateBranchRequest(ref: branch.name) },
                     onRename: { branchToRename = branch },
+                    onTrack: { branchToTrack = branch },
                     onDelete: { branchToDelete = branch }
                 )
             }
@@ -129,6 +134,7 @@ struct BranchContextMenu: View {
     let isPinned: Bool
     let onCreateBranch: () -> Void
     let onRename: () -> Void
+    let onTrack: () -> Void
     let onDelete: () -> Void
 
     /// Git refuses to check out, delete or archive a branch another worktree has checked out.
@@ -168,6 +174,14 @@ struct BranchContextMenu: View {
         .disabled(branch.isHEAD)
         Divider()
         Button("Rename…", systemImage: "pencil", action: onRename)
+        Button(branch.upstream == nil ? "Track Remote Branch\u{2026}" : "Change Tracked Branch\u{2026}",
+               systemImage: "arrow.left.arrow.right", action: onTrack)
+            .disabled(viewModel.trackableRemoteBranches.isEmpty)
+        if let upstream = branch.upstreamShortName {
+            Button("Stop Tracking \u{201C}\(upstream)\u{201D}", systemImage: "xmark.circle") {
+                Task { await viewModel.stopTracking(branch) }
+            }
+        }
         Button(isPinned ? "Unpin" : "Pin to Top", systemImage: isPinned ? "pin.slash" : "pin") {
             viewModel.togglePin(branch: branch)
         }

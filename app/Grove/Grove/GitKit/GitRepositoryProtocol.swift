@@ -113,6 +113,8 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func deleteBranch(name: String, force: Bool) async throws
     func deleteRemoteBranch(name: String, remote: String) async throws
     func renameBranch(oldName: String, newName: String) async throws
+    /// Makes `branch` track `remoteBranch` (e.g. `origin/main`); nil stops it tracking anything.
+    func setUpstream(of branch: String, to remoteBranch: String?) async throws
 
     // MARK: Remotes
 
@@ -475,6 +477,7 @@ extension GitRepositoryProtocol {
     func setLocalConfigValue(_ key: String, to value: String?) async throws {}
     func setRemoteURL(_ url: String, forRemote name: String) async throws {}
     func addRemote(name: String, url: String) async throws {}
+    func setUpstream(of branch: String, to remoteBranch: String?) async throws {}
     func removeRemote(name: String) async throws {}
     func pullRequestDiff(number: Int) async throws -> [FileDiff] { [] }
     func pullRequestCommits(number: Int) async throws -> [CommitInfo] { [] }

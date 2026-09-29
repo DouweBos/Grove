@@ -96,6 +96,46 @@ struct RemoteManagementTests {
         #expect(settings.errorMessage == nil)
     }
 
+    @Test func addingTracksSameNamedBranchesLikeAClone() async throws {
+        try git(["branch", "feature"], in: "app")
+        let vm = try await makeSidebar()
+
+        try await vm.addRemote(name: "origin", url: serverURL)
+
+        let upstreams = Dictionary(uniqueKeysWithValues: vm.localBranches.map { ($0.name, $0.upstreamShortName) })
+        #expect(upstreams["main"] == "origin/main")
+        #expect(upstreams["feature"] == .some(nil))
+    }
+
+    @Test func addingLeavesAnExistingUpstreamAlone() async throws {
+        try git(["remote", "add", "upstream", serverURL], in: "app")
+        try git(["fetch", "-q", "upstream"], in: "app")
+        try git(["branch", "--set-upstream-to=upstream/main", "main"], in: "app")
+        let vm = try await makeSidebar()
+
+        try await vm.addRemote(name: "origin", url: serverURL)
+
+        #expect(vm.localBranches.first { $0.name == "main" }?.upstreamShortName == "upstream/main")
+    }
+
+    @Test func trackAndStopTracking() async throws {
+        try git(["remote", "add", "origin", serverURL], in: "app")
+        try git(["fetch", "-q", "origin"], in: "app")
+        let vm = try await makeSidebar()
+        let main = try #require(vm.localBranches.first { $0.name == "main" })
+        #expect(main.upstream == nil)
+        #expect(vm.trackableRemoteBranches == ["origin/main"])
+        #expect(vm.suggestedUpstream(for: main) == "origin/main")
+
+        try await vm.track(main, remoteBranch: "origin/main")
+        let tracking = try #require(vm.localBranches.first { $0.name == "main" })
+        #expect(tracking.upstreamShortName == "origin/main")
+
+        await vm.stopTracking(tracking)
+        #expect(vm.localBranches.first { $0.name == "main" }?.upstream == nil)
+        #expect(vm.errorMessage == nil)
+    }
+
     private func commit(_ repo: String, file: String, message: String) throws {
         try Data(message.utf8).write(to: root.appendingPathComponent(repo).appendingPathComponent(file))
         try git(["add", "."], in: repo)

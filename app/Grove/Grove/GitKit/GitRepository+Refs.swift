@@ -86,6 +86,15 @@ extension GitRepository {
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
     }
 
+    func setUpstream(of branch: String, to remoteBranch: String?) async throws {
+        if let remoteBranch {
+            try await shell.run(["branch", "--set-upstream-to=\(remoteBranch)", branch])
+        } else {
+            try await shell.run(["branch", "--unset-upstream", branch])
+        }
+        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+    }
+
     // MARK: - Remotes
 
     func remotes() async throws -> [RemoteInfo] {
