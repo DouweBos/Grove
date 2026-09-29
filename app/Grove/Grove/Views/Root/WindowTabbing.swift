@@ -14,10 +14,14 @@ extension WindowStore {
 /// Hands the hosting NSWindow to the store once it exists, so it can join a tab group.
 struct WindowTabbingAccessor: NSViewRepresentable {
     let store: WindowStore
+    var onWindow: (NSWindow) -> Void = { _ in }
 
     func makeNSView(context: Context) -> NSView {
         let view = AccessorView()
-        view.onWindow = { store.attach($0) }
+        view.onWindow = { [onWindow] window in
+            store.attach(window)
+            onWindow(window)
+        }
         return view
     }
 
@@ -33,6 +37,12 @@ struct WindowTabbingAccessor: NSViewRepresentable {
             onWindow(window)
         }
     }
+}
+
+/// The hosting NSWindow, held weakly so a view model can close its own window.
+@MainActor
+final class HostWindow {
+    weak var window: NSWindow?
 }
 
 /// The tab bar's + button sends `newWindowForTab:` down the responder chain, ending at the app delegate.

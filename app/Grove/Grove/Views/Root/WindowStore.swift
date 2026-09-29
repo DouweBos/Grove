@@ -36,6 +36,7 @@ final class WindowStore {
             ? closedWindows.popLast() ?? WindowViewModel(manager: manager)
             : WindowViewModel(manager: manager)
         openWindows.append(window)
+        window.onWorktreeRemoved = { [weak self] path, main in self?.worktreeRemoved(at: path, mainRepositoryPath: main) }
         if let reference, window.openRepo != reference { window.openReference(reference) }
         return window
     }
@@ -52,6 +53,20 @@ final class WindowStore {
     func windowReappeared(_ window: WindowViewModel) {
         closedWindows.removeAll { $0 === window }
         if !openWindows.contains(where: { $0 === window }) { openWindows.append(window) }
+    }
+
+    /// Every window lets go of a removed worktree. A tab showing it closes when another already shows
+    /// the main repository, and otherwise moves there.
+    func worktreeRemoved(at path: String, mainRepositoryPath main: String?) {
+        if let main {
+            for window in openWindows where window.isShowing(path: path)
+                && openWindows.contains(where: { $0 !== window && $0.isShowing(path: main) }) {
+                window.closeWindow?()
+            }
+        }
+        for window in openWindows + closedWindows {
+            window.forgetWorktree(at: path, mainRepositoryPath: main)
+        }
     }
 
     /// The next Grove window to appear joins `parent` (the key window by default) as a tab.

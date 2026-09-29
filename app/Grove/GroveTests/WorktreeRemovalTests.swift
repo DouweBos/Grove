@@ -63,6 +63,38 @@ struct WorktreeRemovalTests {
         #expect(try git(["branch", "--list", "feature"], in: repo).isEmpty)
     }
 
+    // MARK: Windows
+
+    @Test func tabShowingTheWorktreeClosesWhenAnotherShowsTheMainRepository() {
+        let store = WindowStore(manager: MockRepositoryManager())
+        let onMain = store.claimWindow(opening: RepositoryReference(path: repo.path))
+        let onWorktree = store.claimWindow(opening: RepositoryReference(path: worktree.path))
+        var closed = false
+        onWorktree.closeWindow = { closed = true }
+        onMain.closeWindow = { Issue.record("The main repository's tab must stay") }
+
+        store.worktreeRemoved(at: worktree.path, mainRepositoryPath: repo.path)
+        #expect(closed)
+    }
+
+    @Test func onlyTabShowingTheWorktreeMovesToTheMainRepository() async throws {
+        let store = WindowStore(manager: MockRepositoryManager())
+        let window = store.claimWindow(opening: RepositoryReference(path: repo.path))
+        window.loadSessionIfNeeded(for: RepositoryReference(path: repo.path))
+        _ = try await session(in: window, at: repo.path)
+        window.openReference(RepositoryReference(path: worktree.path))
+        window.loadSessionIfNeeded(for: RepositoryReference(path: worktree.path))
+        let removedSession = try await session(in: window, at: worktree.path)
+        window.closeWindow = { Issue.record("The only tab must move, not close") }
+
+        store.worktreeRemoved(at: worktree.path, mainRepositoryPath: repo.path)
+        #expect(window.openRepo?.path == repo.path)
+        #expect(window.sessions[worktree.path] == nil)
+        #expect(!removedSession.isActive)
+        window.goBack()
+        #expect(window.isBrowsing, "Back skips the removed worktree and the repository already shown")
+    }
+
     // MARK: Helpers
 
     private func session(in window: WindowViewModel, at path: String) async throws -> RepositorySession {

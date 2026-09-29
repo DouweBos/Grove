@@ -11,6 +11,7 @@ struct WindowRoot: View {
 
     @State private var windowVM: WindowViewModel?
     @State private var handlesLaunchArguments = false
+    @State private var hostWindow = HostWindow()
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -22,7 +23,7 @@ struct WindowRoot: View {
                 Theme.background
             }
         }
-        .background(WindowTabbingAccessor(store: store))
+        .background(WindowTabbingAccessor(store: store) { hostWindow.window = $0 })
         .onAppear {
             WindowStore.newTabHandler = { [store, openWindow] in
                 store.requestTab()
@@ -42,6 +43,7 @@ struct WindowRoot: View {
             if let windowVM { return store.windowReappeared(windowVM) }
             handlesLaunchArguments = store.consumeLaunchArguments()
             let claimed = store.claimWindow(opening: reference)
+            claimed.closeWindow = { [hostWindow] in hostWindow.window?.close() }
             windowVM = claimed
             reference = claimed.openRepo
         }

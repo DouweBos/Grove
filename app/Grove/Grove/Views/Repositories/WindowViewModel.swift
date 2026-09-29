@@ -103,6 +103,10 @@ final class WindowViewModel {
     func pushForward(_ location: NavigationLocation) { forwardHistory.append(location) }
     func popForward() { forwardHistory.removeLast() }
     func clearForward() { forwardHistory.removeAll() }
+    func removeHistory(where shouldRemove: (NavigationLocation) -> Bool) {
+        backHistory.removeAll(where: shouldRemove)
+        forwardHistory.removeAll(where: shouldRemove)
+    }
 
     func withHistoryApplying(_ body: () -> Void) {
         isApplyingHistory = true
@@ -129,6 +133,10 @@ final class WindowViewModel {
     var groupEditor: GroupEditor?
     /// The repository whose Delete confirmation is showing.
     var bookmarkPendingDelete: RepositoryBookmarkData?
+    /// Set by the store: a worktree was removed, so every window can let go of it.
+    var onWorktreeRemoved: ((String, String?) -> Void)?
+    /// Set by the window's root view: closes this window or tab.
+    var closeWindow: (() -> Void)?
     /// The sidebar title's repository switcher, see +Switcher.
     var isShowingRepositorySwitcher = false
     /// Routes menu commands and mouse navigation to the key window only.

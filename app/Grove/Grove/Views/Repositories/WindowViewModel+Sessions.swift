@@ -58,6 +58,10 @@ extension WindowViewModel {
                 let session = RepositorySession(repository: repo)
                 session.sidebarVM.onSwitchWorktree = { [weak self] path in self?.switchWorktree(to: path) }
                 session.sidebarVM.onOpenWorktreeInNewTab = { path in WindowStore.openTabHandler?(RepositoryReference(path: path)) }
+                session.sidebarVM.onWorktreeRemoved = { [weak self] path, main in
+                    guard let self else { return }
+                    if let onWorktreeRemoved { onWorktreeRemoved(path, main) } else { forgetWorktree(at: path, mainRepositoryPath: main) }
+                }
                 if let pendingSelection {
                     session.restoreSelection(pendingSelection)
                     setPendingSelection(nil)
@@ -83,6 +87,28 @@ extension WindowViewModel {
             setSession(nil, for: path)
             excess -= 1
         }
+    }
+
+    /// A removed worktree: showing it moves this window to the main repository; its cached session and history go.
+    func forgetWorktree(at path: String, mainRepositoryPath main: String?) {
+        if let open = openRepo, WorktreeResolver.isSameFolder(open.path, path) {
+            if let main { switchWorktree(to: main) } else { closeRepository() }
+        }
+        for cached in sessions.keys where WorktreeResolver.isSameFolder(cached, path) {
+            sessions[cached]?.session.stop()
+            setSession(nil, for: cached)
+        }
+        removeHistory { location in
+            guard case .repository(let visited, _) = location else { return false }
+            return WorktreeResolver.isSameFolder(visited, path)
+        }
+        // Without the removed steps, the one before may be where the window already is.
+        while let last = backHistory.last, last.matches(currentLocation) { popBack() }
+    }
+
+    /// Whether this window has the repository at `path` open.
+    func isShowing(path: String) -> Bool {
+        openRepo.map { WorktreeResolver.isSameFolder($0.path, path) } ?? false
     }
 
     /// Stops watching and fetching for good, when a closed window is let go.
