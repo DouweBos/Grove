@@ -44,7 +44,7 @@ struct RemoteRepositoriesSidebar: View {
             if let path = viewModel.localPath(of: repo) {
                 windowVM.openLocalClone(atPath: path)
             } else {
-                windowVM.showCloneDialog(url: repo.sshURL)
+                windowVM.showCloneDialog(url: repo.defaultCloneURL)
             }
         }
     }
@@ -150,7 +150,7 @@ struct RemoteRepositoryActions: View {
         if let path = windowVM.remoteRepositories.localPath(of: repository) {
             Button("Open Local Clone", systemImage: "arrow.up.forward.app") { windowVM.openLocalClone(atPath: path) }
         }
-        Button("Clone…", systemImage: "square.and.arrow.down") { windowVM.showCloneDialog(url: repository.sshURL) }
+        Button("Clone…", systemImage: "square.and.arrow.down") { windowVM.showCloneDialog(url: repository.defaultCloneURL) }
             .disabled(windowVM.clones.job(matching: repository.matchKey)?.isRunning == true)
         Button("Open on \(repository.service.displayName)", systemImage: "safari") {
             if let url = URL(string: repository.webURL) { NSWorkspace.shared.open(url) }

@@ -112,7 +112,7 @@ struct CreateRemoteRepositoryTests {
         #expect(creation.errorMessage?.contains("already exists") == true)
     }
 
-    @Test func addsTheSSHURLAsARemoteOfTheChosenRepository() async throws {
+    @Test func addsTheHTTPSURLAsARemoteOfTheChosenRepository() async throws {
         let browser = await browser()
         var added: [String] = []
         browser.beginCreating(targets: [.init(path: "/tmp/a", name: "a"), .init(path: "/tmp/b", name: "b")],
@@ -123,7 +123,7 @@ struct CreateRemoteRepositoryTests {
         await creation.create()
         creation.setRemoteName("github")
         await creation.addAsRemote()
-        #expect(added == ["/tmp/b", "github", "git@github.com:me/tool.git"])
+        #expect(added == ["/tmp/b", "github", "https://github.com/me/tool.git"])
         #expect(creation.addedRemote == "github" && !creation.canAddRemote)
     }
 }

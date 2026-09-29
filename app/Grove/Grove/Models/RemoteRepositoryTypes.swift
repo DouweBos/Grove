@@ -54,6 +54,9 @@ nonisolated struct RemoteRepository: Identifiable, Hashable, Sendable {
 
     var httpsCloneURL: String { cloneURL ?? (webURL.hasSuffix(".git") ? webURL : webURL + ".git") }
 
+    /// HTTPS like Tower: Grove answers its prompts with the account token, so it works without an SSH key.
+    var defaultCloneURL: String { httpsCloneURL }
+
     /// "github.com/owner/name", lowercased, for matching local clones by any of their remote URLs.
     var matchKey: String? { RemoteURLKey.make(webURL) }
 }

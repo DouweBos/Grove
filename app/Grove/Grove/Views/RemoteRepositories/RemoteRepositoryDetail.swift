@@ -117,7 +117,7 @@ struct RemoteRepositoryDetail: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Theme.textSecondary)
                 } else {
-                    Button { windowVM.showCloneDialog(url: repository.sshURL) } label: {
+                    Button { windowVM.showCloneDialog(url: repository.defaultCloneURL) } label: {
                         Label("Clone…", systemImage: "square.and.arrow.down").padding(.horizontal, Theme.Spacing.sm)
                     }
                     .buttonStyle(.borderedProminent)

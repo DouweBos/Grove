@@ -91,7 +91,7 @@ struct CreateRemoteRepositorySheet: View {
             onCancel: windowVM.remoteRepositories.endCreating,
             onPrimary: {
                 windowVM.remoteRepositories.endCreating()
-                windowVM.showCloneDialog(url: repository.sshURL.isEmpty ? repository.httpsCloneURL : repository.sshURL)
+                windowVM.showCloneDialog(url: repository.defaultCloneURL)
             }
         ) {
             DialogCard {

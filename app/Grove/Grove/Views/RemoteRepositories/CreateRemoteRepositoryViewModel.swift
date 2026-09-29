@@ -118,14 +118,14 @@ final class CreateRemoteRepositoryViewModel: Identifiable {
         return targetPath != nil && !remoteName.trimmingCharacters(in: .whitespaces).isEmpty && !isAddingRemote && addedRemote == nil
     }
 
-    /// Adds the SSH URL, the one that works without a stored password.
+    /// Adds the HTTPS URL, which Grove authenticates with the account token.
     func addAsRemote() async {
         guard canAddRemote, case .created(let repository) = phase, let targetPath else { return }
         isAddingRemote = true
         defer { isAddingRemote = false }
         let name = remoteName.trimmingCharacters(in: .whitespaces)
         do {
-            try await addRemote?(targetPath, name, repository.sshURL.isEmpty ? repository.httpsCloneURL : repository.sshURL)
+            try await addRemote?(targetPath, name, repository.defaultCloneURL)
             addedRemote = name
         } catch {
             remoteError = error.localizedDescription
