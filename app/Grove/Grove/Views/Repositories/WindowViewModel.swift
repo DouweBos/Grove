@@ -174,7 +174,7 @@ final class WindowViewModel {
     }
 
     /// Worktrees whose main repository is bookmarked are listed under it, not on their own.
-    private var topLevelBookmarks: [RepositoryBookmarkData] {
+    var topLevelBookmarks: [RepositoryBookmarkData] {
         manager.bookmarks.filter { !worktreeIndex.isNested($0) }
     }
 

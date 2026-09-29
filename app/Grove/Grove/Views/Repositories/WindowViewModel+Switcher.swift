@@ -9,17 +9,18 @@ extension WindowViewModel {
 
     func showRepositorySwitcher() {
         guard !isBrowsing else { return }
+        refreshWorktrees()
         isShowingRepositorySwitcher = true
     }
 
     func dismissRepositorySwitcher() { isShowingRepositorySwitcher = false }
 
-    /// Bookmarks matching `query`: the open repository first, then the ones used most recently.
+    /// Bookmarks matching `query`, without worktrees nested in the browser: the open repository first, then the most recent.
     func repositorySwitcherItems(matching query: String) -> [RepositoryBookmarkData] {
         let current = currentBookmarkPath
         // Sessions cached in this window are fresher than the persisted "Last Opened" date.
         let sessionRank = Dictionary(uniqueKeysWithValues: sessionOrder.enumerated().map { ($1, $0) })
-        let sorted = manager.bookmarks.sorted { lhs, rhs in
+        let sorted = topLevelBookmarks.sorted { lhs, rhs in
             if (lhs.path == current) != (rhs.path == current) { return lhs.path == current }
             let lhsRank = sessionRank[lhs.path] ?? -1, rhsRank = sessionRank[rhs.path] ?? -1
             if lhsRank != rhsRank { return lhsRank > rhsRank }
@@ -35,11 +36,12 @@ extension WindowViewModel {
             + matches.filter { !$0.displayName.lowercased().hasPrefix(trimmed.lowercased()) }
     }
 
-    /// The bookmark for the open repository, resolving a linked worktree to the repository it belongs to.
+    /// The listed bookmark for the open repository: a linked worktree counts as its main repository when that's bookmarked.
     var currentBookmarkPath: String? {
         guard let path = openRepo?.path else { return nil }
-        if manager.bookmarks.contains(where: { $0.path == path }) { return path }
-        return WorktreeResolver.mainRepositoryPath(forWorktreeAt: path)
+        guard let main = WorktreeResolver.mainRepositoryPath(forWorktreeAt: path),
+              manager.bookmarks.contains(where: { $0.path == main }) else { return path }
+        return main
     }
 
     /// Opens another repository in this window on the same tab.
