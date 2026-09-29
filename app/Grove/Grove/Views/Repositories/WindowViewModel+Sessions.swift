@@ -57,6 +57,7 @@ extension WindowViewModel {
                 let repo = try await manager.openRepository(at: url)
                 let session = RepositorySession(repository: repo)
                 session.sidebarVM.onSwitchWorktree = { [weak self] path in self?.switchWorktree(to: path) }
+                session.sidebarVM.onOpenWorktreeInNewTab = { path in WindowStore.openTabHandler?(RepositoryReference(path: path)) }
                 if let pendingSelection {
                     session.restoreSelection(pendingSelection)
                     setPendingSelection(nil)

@@ -1,7 +1,7 @@
 // WorktreeSwitchingTests.swift
 // GroveTests
 //
-// A repository window runs git in one worktree at a time; branches and worktree rows switch it.
+// A repository window runs git in one worktree at a time; double-clicking another worktree opens it in a new tab.
 
 import Foundation
 import Testing
@@ -13,16 +13,28 @@ struct WorktreeSwitchingTests {
     private let mainPath = "/Users/dev/Projects/my-app"
     private var linkedPath: String { mainPath + "-feature-auth" }
 
-    @Test func branchCheckedOutElsewhereSwitchesInsteadOfCheckingOut() async throws {
+    @Test func branchCheckedOutElsewhereOpensItsWorktreeInANewTab() async throws {
         let vm = SidebarViewModel(repository: MockGitRepository(path: URL(fileURLWithPath: mainPath)))
         await vm.refresh()
-        var switchedTo: String?
-        vm.onSwitchWorktree = { switchedTo = $0 }
+        var openedInTab: String?
+        var switched = false
+        vm.onOpenWorktreeInNewTab = { openedInTab = $0 }
+        vm.onSwitchWorktree = { _ in switched = true }
         let branch = try #require(vm.localBranches.first { $0.name == "feature/auth" })
 
         #expect(vm.worktree(checkingOut: branch)?.path == linkedPath)
         await vm.activate(branch: branch)
-        #expect(switchedTo == linkedPath)
+        #expect(openedInTab == linkedPath)
+        #expect(!switched)
+    }
+
+    @Test func currentWorktreeIsNotOpenedInANewTab() async {
+        let vm = SidebarViewModel(repository: MockGitRepository(path: URL(fileURLWithPath: mainPath)))
+        await vm.refresh()
+        var opened = false
+        vm.onOpenWorktreeInNewTab = { _ in opened = true }
+        if let current = vm.worktrees.first(where: vm.isCurrent) { vm.openInNewTab(current) }
+        #expect(!opened)
     }
 
     @Test func currentWorktreeIsNotOfferedAsATarget() async {

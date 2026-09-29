@@ -5,7 +5,7 @@ import AppKit
 import SwiftUI
 
 /// The repository's other worktrees; from a linked worktree that includes the main one.
-/// Double-click switches this window to it, so git commands run there.
+/// Double-click opens it in a new tab; Switch to Worktree runs this window's git there instead.
 struct WorktreesSidebarSection: View {
 
     @Environment(SidebarViewModel.self) private var viewModel
@@ -50,12 +50,14 @@ struct WorktreesSidebarSection: View {
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) { open(worktree) }
+        .onTapGesture(count: 2) { viewModel.openInNewTab(worktree) }
         .help(worktree.isPrunable
               ? "\(abbreviatingHome(worktree.path)) no longer exists"
-              : "\(abbreviatingHome(worktree.path)) · \(worktree.shortSHA)\nDouble-click to switch to this worktree")
+              : "\(abbreviatingHome(worktree.path)) · \(worktree.shortSHA)\nDouble-click to open in a new tab")
         .contextMenu {
-            Button("Switch to Worktree", systemImage: "tree") { open(worktree) }
+            Button("Open in New Tab", systemImage: "plus.rectangle.on.rectangle") { viewModel.openInNewTab(worktree) }
+                .disabled(worktree.isPrunable)
+            Button("Switch to Worktree", systemImage: "tree") { viewModel.switchTo(worktree) }
                 .disabled(worktree.isPrunable)
             Button("Reveal in Finder", systemImage: "folder") {
                 NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: worktree.path)])
@@ -77,10 +79,6 @@ struct WorktreesSidebarSection: View {
                 }
             }
         }
-    }
-
-    private func open(_ worktree: WorktreeInfo) {
-        viewModel.switchTo(worktree)
     }
 }
 

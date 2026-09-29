@@ -50,7 +50,7 @@ struct SidebarBranchRow: View {
         if let pullRequest { name += "\n" + pullRequest.tooltip }
         guard let worktree else { return name }
         let place = worktree.isMain ? "the main worktree" : "worktree \(worktree.folderName)"
-        return "\(name)\nChecked out in \(place). Double-click to switch to it."
+        return "\(name)\nChecked out in \(place). Double-click to open it in a new tab."
     }
 }
 

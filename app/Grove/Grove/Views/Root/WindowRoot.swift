@@ -28,6 +28,10 @@ struct WindowRoot: View {
                 store.requestTab()
                 openWindow(id: GroveApp.mainWindowID)
             }
+            WindowStore.openTabHandler = { [store, openWindow] reference in
+                store.requestTab()
+                openWindow(id: GroveApp.mainWindowID, value: reference)
+            }
             RepositoryURLRouter.openHandler = { [store, openWindow] path in
                 // Opened from Terminal, Grove may not be active, so there's no key window to join.
                 store.requestTab(in: NSApp.keyWindow ?? NSApp.orderedWindows.first { $0.tabbingIdentifier == WindowStore.tabbingIdentifier })

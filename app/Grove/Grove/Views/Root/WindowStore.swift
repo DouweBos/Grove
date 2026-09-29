@@ -21,6 +21,8 @@ final class WindowStore {
     private var pendingTab: (parent: NSWindow, requested: Date)?
     /// Opens a Grove window; set by the first window, since only views can reach `openWindow`.
     static var newTabHandler: (() -> Void)?
+    /// Opens a repository in a new tab of the key window; set alongside `newTabHandler`.
+    static var openTabHandler: ((RepositoryReference) -> Void)?
     static let closedWindowLimit = 3
 
     init(manager: any RepositoryManagerProtocol) {

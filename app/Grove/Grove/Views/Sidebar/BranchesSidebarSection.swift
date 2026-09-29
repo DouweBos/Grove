@@ -138,6 +138,7 @@ struct BranchContextMenu: View {
 
     var body: some View {
         if let worktree {
+            Button("Open Worktree in New Tab", systemImage: "plus.rectangle.on.rectangle") { viewModel.openInNewTab(worktree) }
             Button("Switch to Worktree", systemImage: "tree") { viewModel.switchTo(worktree) }
         } else {
             Button("Check Out \u{201C}\(branch.name)\u{201D}", systemImage: "arrow.uturn.backward") {

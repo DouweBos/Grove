@@ -61,6 +61,14 @@ final class SidebarViewModel {
         onSwitchWorktree?(worktree.path)
     }
 
+    /// Set by the window: opens another worktree in a new tab, or focuses the tab already showing it.
+    var onOpenWorktreeInNewTab: ((String) -> Void)?
+
+    func openInNewTab(_ worktree: WorktreeInfo) {
+        guard !worktree.isPrunable, !isCurrent(worktree) else { return }
+        onOpenWorktreeInNewTab?(worktree.path)
+    }
+
     /// Set by the session: selects a SHA in History, or opens the given ref's own history when HEAD's lacks it.
     var onRevealInHistory: ((String, SidebarItem) -> Void)?
 
@@ -72,10 +80,10 @@ final class SidebarViewModel {
         }
     }
 
-    /// Double-click on a branch: go to the worktree that has it, otherwise check it out here.
+    /// Double-click on a branch: open the worktree that has it in a new tab, otherwise check it out here.
     func activate(branch: BranchInfo) async {
         if let worktree = worktree(checkingOut: branch) {
-            switchTo(worktree)
+            openInNewTab(worktree)
         } else if !branch.isHEAD {
             await checkout(branch: branch)
         }
