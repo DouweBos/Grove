@@ -34,9 +34,13 @@ nonisolated struct AzureDevOpsPullRequestHost: PullRequestHost {
         try await values("/pullrequests", query: "searchCriteria.status=all&$top=100").compactMap(AzureDevOpsParser.pullRequest)
     }
 
-    func openPullRequests() async throws -> [String: OpenPullRequest] {
-        let open = try await values("/pullrequests", query: "searchCriteria.status=active&$top=200").compactMap(AzureDevOpsParser.pullRequest)
-        return HostingJSON.openIndex(open) { webPage($0) }
+    func branchPullRequests() async throws -> [String: BranchPullRequest] {
+        async let open = values("/pullrequests", query: "searchCriteria.status=active&$top=200")
+        async let merged = values("/pullrequests", query: "searchCriteria.status=completed&$top=100")
+        return HostingJSON.branchPullRequests(
+            try await open + merged, parse: AzureDevOpsParser.pullRequest,
+            headSHA: { ($0["lastMergeSourceCommit"] as? HostingJSON.Object)?["commitId"] as? String },
+            url: { number, _ in webPage(number) })
     }
 
     func pullRequest(number: Int) async throws -> PullRequestInfo {

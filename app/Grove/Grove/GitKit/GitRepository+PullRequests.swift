@@ -28,8 +28,8 @@ extension GitRepository {
         return prs
     }
 
-    func openPullRequests() async throws -> [String: OpenPullRequest] {
-        try await host().openPullRequests()
+    func branchPullRequests() async throws -> [String: BranchPullRequest] {
+        try await host().branchPullRequests()
     }
 
     func pullRequestDetail(number: Int) async throws -> PullRequestInfo {

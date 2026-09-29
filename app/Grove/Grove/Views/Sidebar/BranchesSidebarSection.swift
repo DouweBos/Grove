@@ -64,7 +64,7 @@ struct BranchesSidebarSection: View {
     private func branchRow(_ branch: BranchInfo, isPinned: Bool, showsFullName: Bool = false) -> some View {
         SidebarBranchRow(branch: branch, isPinned: isPinned, showsFullName: showsFullName,
                          worktree: viewModel.worktree(checkingOut: branch), parent: viewModel.refs.parents[branch.name],
-                         pullRequest: viewModel.refs.openPullRequest(for: branch))
+                         pullRequest: viewModel.refs.pullRequest(for: branch))
             .tag(SidebarItem.branch(branch))
             .draggable(branch.name)
             // Another branch dropped here merges into this one (Option rebases this one onto it); a remote branch pulls.
@@ -152,8 +152,8 @@ struct BranchContextMenu: View {
                 gitFlow.present(.finish(flow.kind, name: flow.name))
             }
         }
-        if let pullRequest = viewModel.refs.openPullRequest(for: branch) {
-            OpenPullRequestButton(pullRequest: pullRequest)
+        if let pullRequest = viewModel.refs.pullRequest(for: branch) {
+            BranchPullRequestButton(pullRequest: pullRequest)
         } else {
             Button("Create Pull Request\u{2026}", systemImage: "arrow.triangle.pull") { viewModel.createPullRequest(for: branch) }
         }

@@ -14,7 +14,7 @@ struct SidebarBranchRow: View {
     var worktree: WorktreeInfo?
     /// Parent recorded when the branch was created.
     var parent: String?
-    var pullRequest: OpenPullRequest?
+    var pullRequest: BranchPullRequest?
 
     var displayName: String {
         guard !showsFullName, let slashIndex = branch.name.firstIndex(of: "/") else { return branch.name }
@@ -27,7 +27,10 @@ struct SidebarBranchRow: View {
             symbol: branch.isHEAD ? "checkmark.circle.fill" : "arrow.triangle.branch",
             tint: branch.isHEAD ? Theme.accent : Theme.textSecondary,
             detail: pullRequest?.label,
+            detailSymbol: pullRequest?.detailSymbol,
+            detailTint: Theme.renamed,
             isEmphasized: branch.isHEAD,
+            isDimmed: pullRequest?.isMerged == true,
             badgeSymbol: worktree == nil ? nil : "tree.circle.fill"
         ) {
             HStack(spacing: Theme.Spacing.xs) {

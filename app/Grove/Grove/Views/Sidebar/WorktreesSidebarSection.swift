@@ -39,7 +39,7 @@ struct WorktreesSidebarSection: View {
             title: worktree.branch ?? "Detached HEAD",
             symbol: worktree.isPrunable ? "questionmark.folder" : "tree",
             tint: worktree.isPrunable ? Theme.warning : Theme.info,
-            detail: worktree.branch.flatMap { viewModel.refs.openPullRequests[$0]?.label }
+            detail: worktree.branch.flatMap { viewModel.refs.branchPullRequests[$0].flatMap { $0.isMerged ? nil : $0.label } }
         ) {
             if worktree.isMain {
                 Text("main").font(.system(size: 11, weight: .medium))

@@ -60,8 +60,9 @@ struct RemotesSidebarSection: View {
     private func remoteBranchRow(_ branch: BranchInfo) -> some View {
         let shortName = SidebarViewModel.shortName(of: branch)
         let hasLocal = viewModel.localBranches.contains { $0.name == shortName }
-        let pullRequest = viewModel.refs.openPullRequest(for: branch)
-        return SidebarRow(title: shortName, symbol: "arrow.triangle.branch", tint: Theme.info, detail: pullRequest?.label)
+        let pullRequest = viewModel.refs.pullRequest(for: branch)
+        return SidebarRow(title: shortName, symbol: "arrow.triangle.branch", tint: Theme.info, detail: pullRequest?.label,
+                          detailSymbol: pullRequest?.detailSymbol, detailTint: Theme.renamed, isDimmed: pullRequest?.isMerged == true)
             .help(pullRequest.map { "\(branch.name)\n" + $0.tooltip } ?? branch.name)
             .tag(SidebarItem.remoteBranch(branch))
             .draggable(branch.name)
@@ -77,7 +78,7 @@ struct RemotesSidebarSection: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(branch.name, forType: .string)
                 }
-                if let pullRequest { OpenPullRequestButton(pullRequest: pullRequest) }
+                if let pullRequest { BranchPullRequestButton(pullRequest: pullRequest) }
                 Button("Reveal in History", systemImage: "clock.arrow.circlepath") {
                     viewModel.revealInHistory(.remoteBranch(branch))
                 }

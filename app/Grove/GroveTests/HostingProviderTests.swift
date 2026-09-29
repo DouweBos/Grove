@@ -37,7 +37,7 @@ struct HostingProviderTests {
         #expect(prs.map(\.id) == [7, 6])
         #expect(prs[0].isDraft && prs[0].sourceBranch == "feature/login" && prs[0].reviewers == ["Bob"])
         #expect(prs[1].state == .closed)
-        let open = try await host.openPullRequests()
+        let open = try await host.branchPullRequests()
         #expect(open["feature/login"]?.url == "https://bitbucket.org/ws/repo/pull-requests/7")
         #expect(open["old"] == nil)
     }

@@ -1,12 +1,12 @@
-// Views/Sidebar/OpenPullRequestButton.swift
+// Views/Sidebar/BranchPullRequestButton.swift
 // Grove
 
 import AppKit
 import SwiftUI
 
 /// "Open Pull Request #N in Browser", shared by local and remote branch menus.
-struct OpenPullRequestButton: View {
-    let pullRequest: OpenPullRequest
+struct BranchPullRequestButton: View {
+    let pullRequest: BranchPullRequest
 
     var body: some View {
         Button("Open Pull Request \(pullRequest.label) in Browser", systemImage: "arrow.triangle.pull") {

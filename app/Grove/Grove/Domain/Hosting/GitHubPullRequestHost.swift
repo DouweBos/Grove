@@ -39,20 +39,22 @@ nonisolated struct GitHubPullRequestHost: PullRequestHost {
     }
 
     /// Only what branch rows show, so it stays a small response even for busy repositories.
-    func openPullRequests() async throws -> [String: OpenPullRequest] {
+    /// Open and merged are separate lists so recent merges can't crowd out older open pull requests.
+    func branchPullRequests() async throws -> [String: BranchPullRequest] {
+        let fields = "nodes { number title headRefName headRefOid isDraft url }"
         let repository = try await query(
-            ", $count: Int!, $states: [PullRequestState!]",
-            "pullRequests(first: $count, states: $states, orderBy: {field: CREATED_AT, direction: DESC}) "
-                + "{ nodes { number title headRefName isDraft url } }",
-            ["count": 100, "states": ["OPEN"]])
-        var index: [String: OpenPullRequest] = [:]
-        for node in GitHubParser.nodes(repository["pullRequests"]) {
-            guard let number = node["number"] as? Int, let head = node["headRefName"] as? String,
-                  (index[head]?.number ?? 0) < number else { continue }
-            index[head] = OpenPullRequest(number: number, title: node["title"] as? String ?? "", headBranch: head,
-                                          isDraft: node["isDraft"] as? Bool ?? false, url: node["url"] as? String ?? "")
-        }
-        return index
+            ", $count: Int!",
+            "open: pullRequests(first: $count, states: [OPEN], orderBy: {field: CREATED_AT, direction: DESC}) { \(fields) } "
+                + "merged: pullRequests(first: $count, states: [MERGED], orderBy: {field: UPDATED_AT, direction: DESC}) { \(fields) }",
+            ["count": 100])
+        let open = GitHubParser.nodes(repository["open"]).map { ($0, false) }
+        let merged = GitHubParser.nodes(repository["merged"]).map { ($0, true) }
+        return BranchPullRequest.index((open + merged).compactMap { node, isMerged in
+            guard let number = node["number"] as? Int, let head = node["headRefName"] as? String else { return nil }
+            return BranchPullRequest(number: number, title: node["title"] as? String ?? "", headBranch: head,
+                                     isDraft: node["isDraft"] as? Bool ?? false, url: node["url"] as? String ?? "",
+                                     isMerged: isMerged, headSHA: node["headRefOid"] as? String)
+        })
     }
 
     func pullRequest(number: Int) async throws -> PullRequestInfo {

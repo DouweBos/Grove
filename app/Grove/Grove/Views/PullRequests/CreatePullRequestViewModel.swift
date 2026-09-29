@@ -93,7 +93,7 @@ final class CreatePullRequestViewModel: Identifiable {
         let remoteDefault = await repository.defaultBranch(of: remote)
         // Sitting on the default branch, the change to propose is on some other branch without a pull request.
         if !isHeadExplicit, head == remoteDefault,
-           let other = headCandidates.first(where: { $0 != head && refs.openPullRequests[$0] == nil }) {
+           let other = headCandidates.first(where: { $0 != head && !refs.hasOpenPullRequest(branch: $0) }) {
             head = other
         }
         let candidates = baseCandidates.filter { $0 != remoteHead }

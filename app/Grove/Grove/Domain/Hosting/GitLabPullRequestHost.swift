@@ -23,11 +23,11 @@ nonisolated struct GitLabPullRequestHost: PullRequestHost {
             .compactMap(GitLabParser.mergeRequest)
     }
 
-    func openPullRequests() async throws -> [String: OpenPullRequest] {
-        let requests = try await client.getPages(try url("/merge_requests?state=opened&per_page=100"))
-        let urls = Dictionary(requests.compactMap { raw in (raw["iid"] as? Int).map { ($0, raw["web_url"] as? String ?? "") } },
-                              uniquingKeysWith: { first, _ in first })
-        return HostingJSON.openIndex(requests.compactMap(GitLabParser.mergeRequest)) { urls[$0] ?? "" }
+    func branchPullRequests() async throws -> [String: BranchPullRequest] {
+        async let open = client.getPages(try url("/merge_requests?state=opened&per_page=100"))
+        async let merged = client.getPages(try url("/merge_requests?state=merged&order_by=updated_at&per_page=100"), maxPages: 1)
+        return HostingJSON.branchPullRequests(try await open + merged, parse: GitLabParser.mergeRequest,
+                                              headSHA: { $0["sha"] as? String }, url: { _, raw in raw["web_url"] as? String ?? "" })
     }
 
     func pullRequest(number: Int) async throws -> PullRequestInfo {

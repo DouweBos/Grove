@@ -9,7 +9,8 @@ import Foundation
 nonisolated protocol PullRequestHost: Sendable {
     var kind: HostingServiceKind { get }
     func pullRequests() async throws -> [PullRequestInfo]
-    func openPullRequests() async throws -> [String: OpenPullRequest]
+    /// Open and merged pull requests keyed by head branch, for branch rows.
+    func branchPullRequests() async throws -> [String: BranchPullRequest]
     func pullRequest(number: Int) async throws -> PullRequestInfo
     func comments(number: Int) async throws -> [PRComment]
     func reviewComments(number: Int) async throws -> [PRReviewComment]

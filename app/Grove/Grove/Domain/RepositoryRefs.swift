@@ -19,8 +19,8 @@ final class RepositoryRefs {
     private(set) var submodules: [SubmoduleInfo] = []
     /// Parent branch recorded when a branch was created, keyed by branch name.
     private(set) var parents: [String: String] = [:]
-    /// Open pull requests keyed by head branch; a network read, so refreshed at most once a minute.
-    private(set) var openPullRequests: [String: OpenPullRequest] = [:]
+    /// Open and merged pull requests keyed by head branch; a network read, so refreshed at most once a minute.
+    private(set) var branchPullRequests: [String: BranchPullRequest] = [:]
     private var pullRequestsFetchedAt: Date?
     private var pullRequestTask: Task<Void, Never>?
     /// Staged or unstaged entries, for the Changes badge.
@@ -73,10 +73,14 @@ final class RepositoryRefs {
 
     func dismissError() { errorMessage = nil }
 
-    /// The open pull request whose head is `branch`; remote branches match on the part after the remote name.
-    func openPullRequest(for branch: BranchInfo) -> OpenPullRequest? {
-        guard branch.isRemote else { return openPullRequests[branch.name] }
-        return branch.name.split(separator: "/", maxSplits: 1).last.flatMap { openPullRequests[String($0)] }
+    /// The pull request whose head is `branch`; remote branches match on the part after the remote name.
+    func pullRequest(for branch: BranchInfo) -> BranchPullRequest? {
+        let head = branch.isRemote ? branch.name.split(separator: "/", maxSplits: 1).last.map(String.init) : branch.name
+        return head.flatMap { branchPullRequests[$0] }.flatMap { $0.applies(toTip: branch.targetSHA) ? $0 : nil }
+    }
+
+    func hasOpenPullRequest(branch name: String) -> Bool {
+        branchPullRequests[name].map { !$0.isMerged } ?? false
     }
 
     /// Runs beside ref reads without holding them up; a failure (no account, no hosted remote) keeps the last result.
@@ -84,8 +88,8 @@ final class RepositoryRefs {
         guard pullRequestTask == nil else { return }
         if !force, let pullRequestsFetchedAt, Date().timeIntervalSince(pullRequestsFetchedAt) < 60 { return }
         pullRequestTask = Task {
-            if let fetched = try? await repository.openPullRequests(), fetched != openPullRequests {
-                openPullRequests = fetched
+            if let fetched = try? await repository.branchPullRequests(), fetched != branchPullRequests {
+                branchPullRequests = fetched
             }
             pullRequestsFetchedAt = Date()
             pullRequestTask = nil

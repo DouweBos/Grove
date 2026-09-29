@@ -20,7 +20,12 @@ struct SidebarRow<Accessory: View>: View {
     let symbol: String
     var tint: Color = Theme.textSecondary
     var detail: String?
+    /// Leads the detail, e.g. the merge symbol on a merged pull request's number.
+    var detailSymbol: String?
+    var detailTint: Color = Theme.textSecondary
     var isEmphasized = false
+    /// Recedes the title, for refs that are done with, like a merged branch.
+    var isDimmed = false
     /// Small symbol overlaid on the icon's corner, e.g. a branch that's also checked out in a worktree.
     var badgeSymbol: String?
     var badgeTint: Color = Theme.info
@@ -50,14 +55,22 @@ struct SidebarRow<Accessory: View>: View {
             Text(title)
                 .font(.system(size: 13, weight: isEmphasized ? .semibold : .regular))
                 .foregroundStyle(isOnSelection ? AnyShapeStyle(.primary) : AnyShapeStyle(Theme.textPrimary))
+                .opacity(isDimmed ? 0.55 : 1)
                 .lineLimit(1)
                 .truncationMode(.middle)
             if let detail {
-                Text(detail)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(isOnSelection ? AnyShapeStyle(.secondary) : AnyShapeStyle(Theme.textSecondary))
-                    .lineLimit(1)
-                    .truncationMode(.head)
+                HStack(spacing: 2) {
+                    if let detailSymbol {
+                        Image(systemName: detailSymbol)
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(isOnSelection ? AnyShapeStyle(.secondary) : AnyShapeStyle(detailTint))
+                    }
+                    Text(detail)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(isOnSelection ? AnyShapeStyle(.secondary) : AnyShapeStyle(Theme.textSecondary))
+                        .lineLimit(1)
+                        .truncationMode(.head)
+                }
             }
             Spacer(minLength: 4)
             accessory()
@@ -67,10 +80,10 @@ struct SidebarRow<Accessory: View>: View {
 }
 
 extension SidebarRow where Accessory == EmptyView {
-    init(title: String, symbol: String, tint: Color = Theme.textSecondary, detail: String? = nil, isEmphasized: Bool = false,
-         badgeSymbol: String? = nil) {
-        self.init(title: title, symbol: symbol, tint: tint, detail: detail, isEmphasized: isEmphasized,
-                  badgeSymbol: badgeSymbol) { EmptyView() }
+    init(title: String, symbol: String, tint: Color = Theme.textSecondary, detail: String? = nil, detailSymbol: String? = nil,
+         detailTint: Color = Theme.textSecondary, isEmphasized: Bool = false, isDimmed: Bool = false, badgeSymbol: String? = nil) {
+        self.init(title: title, symbol: symbol, tint: tint, detail: detail, detailSymbol: detailSymbol, detailTint: detailTint,
+                  isEmphasized: isEmphasized, isDimmed: isDimmed, badgeSymbol: badgeSymbol) { EmptyView() }
     }
 }
 
@@ -80,8 +93,10 @@ extension SidebarRow where Accessory == EmptyView {
             SidebarRow(title: "main", symbol: "checkmark.circle.fill", tint: Theme.accent, isEmphasized: true)
             SidebarRow(title: "v1.2.0", symbol: "tag", tint: Theme.warning)
             SidebarRow(title: "vendor/lib", symbol: "shippingbox", tint: Theme.info, detail: "a1b2c3d")
+            SidebarRow(title: "feature/done", symbol: "arrow.triangle.branch", detail: "#42", detailSymbol: "arrow.triangle.merge",
+                       detailTint: Theme.renamed, isDimmed: true)
         } header: {
-            SidebarSectionHeader(title: "Branches", count: 3)
+            SidebarSectionHeader(title: "Branches", count: 4)
         }
     }
     .listStyle(.sidebar)

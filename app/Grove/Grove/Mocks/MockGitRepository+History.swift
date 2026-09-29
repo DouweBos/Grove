@@ -21,9 +21,12 @@ extension MockGitRepository {
 
     // MARK: Pull Requests
 
-    func openPullRequests() async throws -> [String: OpenPullRequest] {
-        ["feature/auth": OpenPullRequest(number: 42, title: "Add sign in", headBranch: "feature/auth",
-                                         isDraft: false, url: "https://github.com/example/app/pull/42")]
+    func branchPullRequests() async throws -> [String: BranchPullRequest] {
+        ["feature/auth": BranchPullRequest(number: 42, title: "Add sign in", headBranch: "feature/auth",
+                                           isDraft: false, url: "https://github.com/example/app/pull/42"),
+         "feature/ui-overhaul": BranchPullRequest(number: 38, title: "Overhaul the UI", headBranch: "feature/ui-overhaul",
+                                                  isDraft: false, url: "https://github.com/example/app/pull/38",
+                                                  isMerged: true, headSHA: MockData.commits[5].id)]
     }
 
     func pullRequests() async throws -> [PullRequestInfo] {

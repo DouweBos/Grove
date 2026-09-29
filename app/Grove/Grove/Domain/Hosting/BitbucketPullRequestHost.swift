@@ -28,9 +28,13 @@ nonisolated struct BitbucketPullRequestHost: PullRequestHost {
             .compactMap(BitbucketParser.pullRequest)
     }
 
-    func openPullRequests() async throws -> [String: OpenPullRequest] {
-        let open = try await values("?state=OPEN&pagelen=50").compactMap(BitbucketParser.pullRequest)
-        return HostingJSON.openIndex(open) { "https://bitbucket.org/\(location.fullName)/pull-requests/\($0)" }
+    func branchPullRequests() async throws -> [String: BranchPullRequest] {
+        async let open = values("?state=OPEN&pagelen=50")
+        async let merged = values("?state=MERGED&sort=-updated_on&pagelen=50")
+        return HostingJSON.branchPullRequests(
+            try await open + merged, parse: BitbucketParser.pullRequest,
+            headSHA: { (($0["source"] as? HostingJSON.Object)?["commit"] as? HostingJSON.Object)?["hash"] as? String },
+            url: { number, _ in "https://bitbucket.org/\(location.fullName)/pull-requests/\(number)" })
     }
 
     func pullRequest(number: Int) async throws -> PullRequestInfo {
