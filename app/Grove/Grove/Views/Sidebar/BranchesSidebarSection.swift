@@ -55,9 +55,7 @@ struct BranchesSidebarSection: View {
             }
         }
         .sheet(item: $branchToDelete) { branch in
-            DeleteBranchDialogView(repository: viewModel.repository, branch: branch,
-                                   onDeleted: { viewModel.recordBranchDeletion(branch) },
-                                   onComplete: { Task { await viewModel.didChangeRepository() } })
+            DeleteBranchDialogView(viewModel: viewModel, branch: branch)
         }
     }
 
@@ -180,8 +178,9 @@ struct BranchContextMenu: View {
             NSPasteboard.general.setString(branch.name, forType: .string)
         }
         Divider()
+        // The dialog offers to remove the worktree first.
         Button("Delete…", systemImage: "trash", role: .destructive, action: onDelete)
-            .disabled(branch.isHEAD || worktree != nil)
+            .disabled(branch.isHEAD)
     }
 }
 

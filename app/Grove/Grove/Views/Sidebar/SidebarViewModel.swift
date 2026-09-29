@@ -45,7 +45,7 @@ final class SidebarViewModel {
     }
 
     func isCurrent(_ worktree: WorktreeInfo) -> Bool {
-        Self.canonicalPath(worktree.path) == Self.canonicalPath(repository.path.path)
+        WorktreeResolver.isSameFolder(worktree.path, repository.path.path)
     }
 
     /// The other worktree that has `branch` checked out; git won't check it out here too.
@@ -63,6 +63,9 @@ final class SidebarViewModel {
 
     /// Set by the window: opens another worktree in a new tab, or focuses the tab already showing it.
     var onOpenWorktreeInNewTab: ((String) -> Void)?
+
+    /// Set by the window: a removed worktree's path, then the main worktree's, so tabs showing it can move.
+    var onWorktreeRemoved: ((String, String?) -> Void)?
 
     func openInNewTab(_ worktree: WorktreeInfo) {
         guard !worktree.isPrunable, !isCurrent(worktree) else { return }
@@ -87,10 +90,6 @@ final class SidebarViewModel {
         } else if !branch.isHEAD {
             await checkout(branch: branch)
         }
-    }
-
-    private static func canonicalPath(_ path: String) -> String {
-        URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
     }
 
     func select(_ item: SidebarItem) {
@@ -355,6 +354,10 @@ final class SidebarViewModel {
     var isRunningDrop = false
 
     func requestAddSubmodule() { isAddingSubmodule = true }
+    /// The worktree the Remove Worktree sheet is for; the sidebar owns the sheet since the section can vanish.
+    private(set) var worktreePendingRemoval: WorktreeInfo?
+    func requestRemoval(of worktree: WorktreeInfo) { worktreePendingRemoval = worktree }
+    func dismissWorktreeRemoval() { worktreePendingRemoval = nil }
     func dismissAddSubmodule() { isAddingSubmodule = false }
 
     /// Runs a git mutation with `title` showing, then refreshes every view.
@@ -367,16 +370,6 @@ final class SidebarViewModel {
             errorMessage = error.localizedDescription
         }
         await didChangeRepository()
-    }
-
-    /// Removes a linked worktree.
-    func removeWorktree(path: String) async {
-        do {
-            try await repository.removeWorktree(path: path, force: false)
-            await didChangeRepository()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
     }
 
     func pruneWorktrees() async {

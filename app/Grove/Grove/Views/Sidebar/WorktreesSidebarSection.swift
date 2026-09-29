@@ -10,7 +10,6 @@ struct WorktreesSidebarSection: View {
 
     @Environment(SidebarViewModel.self) private var viewModel
     @State private var isExpanded = true
-    @State private var worktreeToRemove: WorktreeInfo?
 
     var body: some View {
         let worktrees = viewModel.otherWorktrees
@@ -19,17 +18,6 @@ struct WorktreesSidebarSection: View {
                 ForEach(worktrees) { row($0) }
             } header: {
                 SidebarSectionHeader(title: "Worktrees", count: worktrees.count)
-            }
-            .confirmationDialog(
-                "Remove the worktree \u{201C}\(worktreeToRemove?.branch ?? worktreeToRemove?.folderName ?? "")\u{201D}?",
-                isPresented: Binding(get: { worktreeToRemove != nil }, set: { if !$0 { worktreeToRemove = nil } }),
-                presenting: worktreeToRemove
-            ) { worktree in
-                Button("Remove Worktree", role: .destructive) {
-                    Task { await viewModel.removeWorktree(path: worktree.path) }
-                }
-            } message: { worktree in
-                Text("Deletes the folder \(abbreviatingHome(worktree.path)). Its branch is kept.")
             }
         }
     }
@@ -74,7 +62,7 @@ struct WorktreesSidebarSection: View {
                         Task { await viewModel.pruneWorktrees() }
                     }
                 } else {
-                    Button("Remove Worktree…", systemImage: "trash", role: .destructive) { worktreeToRemove = worktree }
+                    Button("Remove Worktree…", systemImage: "trash", role: .destructive) { viewModel.requestRemoval(of: worktree) }
                         .disabled(worktree.isLocked)
                 }
             }

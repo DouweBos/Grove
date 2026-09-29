@@ -20,6 +20,15 @@ nonisolated struct LinkedWorktree: Hashable, Sendable {
 
 nonisolated enum WorktreeResolver {
 
+    /// Whether two paths name the same folder; git reports `/private/tmp` where the user opened `/tmp`.
+    static func isSameFolder(_ lhs: String, _ rhs: String) -> Bool {
+        canonical(lhs) == canonical(rhs)
+    }
+
+    private static func canonical(_ path: String) -> String {
+        URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
+    }
+
     /// The main repository's working directory when `path` is a linked worktree, else nil.
     static func mainRepositoryPath(forWorktreeAt path: String) -> String? {
         let dotGit = URL(fileURLWithPath: path).appendingPathComponent(".git")
