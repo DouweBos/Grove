@@ -108,6 +108,9 @@ final class RepositorySession {
         svnVM.onRepositoryChanged = refresh
         sidebarVM.gitFlow = gitFlowVM
         toolbarState.onAddSubmodule = { [sidebarVM] in sidebarVM.requestAddSubmodule() }
+        toolbarState.onAddRemote = { [sidebarVM] in sidebarVM.requestAddRemote() }
+        repositorySettingsVM.onAddRemote = { [sidebarVM] in sidebarVM.requestAddRemote() }
+        repositorySettingsVM.onRepositoryChanged = refresh
         pullRequestsVM.onShowPullRequests = { [weak self] in self?.sidebarVM.select(.pullRequests) }
         sidebarVM.onCreatePullRequest = { [weak self] branch in self?.pullRequestsVM.beginCreatePullRequest(head: branch) }
     }

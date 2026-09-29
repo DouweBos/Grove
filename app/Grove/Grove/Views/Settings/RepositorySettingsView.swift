@@ -11,6 +11,7 @@ struct RepositorySettingsView: View {
     let viewModel: RepositorySettingsViewModel
     private var repository: any GitRepositoryProtocol { viewModel.repository }
     private var profiles: [UserProfile] { UserProfileStore.shared.profiles }
+    @State private var remoteToRemove: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -40,6 +41,15 @@ struct RepositorySettingsView: View {
         .frame(maxWidth: .infinity)
         .padding(.bottom, Theme.Spacing.md)
         .task { await viewModel.load() }
+        .confirmationDialog(
+            "Remove remote \u{201C}\(remoteToRemove ?? "")\u{201D}?",
+            isPresented: Binding(get: { remoteToRemove != nil }, set: { if !$0 { remoteToRemove = nil } }),
+            presenting: remoteToRemove
+        ) { name in
+            Button("Remove Remote", role: .destructive) { Task { await viewModel.removeRemote(name) } }
+        } message: { _ in
+            Text("Grove forgets the remote and its remote branches. Nothing on the server changes.")
+        }
     }
 
     private var form: some View {
@@ -87,10 +97,18 @@ struct RepositorySettingsView: View {
                     Text("This repository has no remotes.").foregroundStyle(Theme.textSecondary)
                 }
                 ForEach(viewModel.remoteNames, id: \.self) { name in
-                    TextField(name, text: Binding(get: { viewModel.draft.remoteURLs[name] ?? "" },
-                                                  set: { viewModel.setRemoteURL($0, for: name) }))
-                        .font(.monoCaption)
+                    HStack {
+                        TextField(name, text: Binding(get: { viewModel.draft.remoteURLs[name] ?? "" },
+                                                      set: { viewModel.setRemoteURL($0, for: name) }))
+                            .font(.monoCaption)
+                        Button("Remove \(name)", systemImage: "minus.circle") { remoteToRemove = name }
+                            .labelStyle(.iconOnly)
+                            .buttonStyle(.borderless)
+                            .help("Remove \u{201C}\(name)\u{201D}")
+                    }
                 }
+                Button("Add Remote\u{2026}", systemImage: "plus") { viewModel.requestAddRemote() }
+                    .disabled(!viewModel.hasLoaded)
             }
 
             Section("Repository") {

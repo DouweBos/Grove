@@ -33,6 +33,8 @@ final class RepositoryToolbarState {
     let svn: SVNViewModel
     /// Set by the session: the Add Submodule sheet lives with the sidebar's submodules.
     var onAddSubmodule: (() -> Void)?
+    /// Set by the session: the Add Remote sheet lives with the sidebar's remotes.
+    var onAddRemote: (() -> Void)?
 
     init(refs: RepositoryRefs, gitFlow: GitFlowViewModel, svn: SVNViewModel) {
         self.refs = refs

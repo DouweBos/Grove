@@ -289,6 +289,8 @@ protocol GitRepositoryProtocol: AnyObject, Observable {
     func setRemoteURL(_ url: String, forRemote name: String) async throws
     /// `git remote add <name> <url>`.
     func addRemote(name: String, url: String) async throws
+    /// `git remote remove <name>`, which also drops its remote-tracking branches.
+    func removeRemote(name: String) async throws
     /// Full diff of a pull request against its base.
     func pullRequestDiff(number: Int) async throws -> [FileDiff]
     /// Commits in a pull request.
@@ -473,6 +475,7 @@ extension GitRepositoryProtocol {
     func setLocalConfigValue(_ key: String, to value: String?) async throws {}
     func setRemoteURL(_ url: String, forRemote name: String) async throws {}
     func addRemote(name: String, url: String) async throws {}
+    func removeRemote(name: String) async throws {}
     func pullRequestDiff(number: Int) async throws -> [FileDiff] { [] }
     func pullRequestCommits(number: Int) async throws -> [CommitInfo] { [] }
     func lfsStatus() async -> LFSStatus { LFSStatus() }

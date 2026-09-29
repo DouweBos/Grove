@@ -81,6 +81,7 @@ extension RepositorySession {
 
     /// Part of `refreshAll()`: the tab on screen, plus stashes when any exist, since their count shows elsewhere.
     func refreshSelectedTab() async {
+        if selectedItem == .settings { await repositorySettingsVM.load() }
         if !stashesVM.stashes.isEmpty, selectedItem != .stashes { await refresh(.stashes) }
         guard let tab = RefreshedTab(selectedItem), tab != .pullRequests else { return }
         await refresh(tab)

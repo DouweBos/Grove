@@ -59,6 +59,9 @@ final class RepositorySettingsViewModel {
     var hasChanges: Bool { saved != draft }
 
     let repository: any GitRepositoryProtocol
+    /// Set by the session: the Add Remote sheet lives with the sidebar's remotes.
+    var onAddRemote: (() -> Void)?
+    var onRepositoryChanged: (() async -> Void)?
 
     init(repository: any GitRepositoryProtocol) {
         self.repository = repository
@@ -171,6 +174,23 @@ final class RepositorySettingsViewModel {
             }
             await load()
             didSave = errorMessage == nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Remotes
+
+    func requestAddRemote() {
+        onAddRemote?()
+    }
+
+    /// Takes effect at once rather than on Save, like adding one does.
+    func removeRemote(_ name: String) async {
+        do {
+            try await repository.removeRemote(name: name)
+            await onRepositoryChanged?()
+            await load()
         } catch {
             errorMessage = error.localizedDescription
         }

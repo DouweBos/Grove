@@ -345,6 +345,7 @@ final class SidebarViewModel {
     /// A running submodule action, e.g. "Cloning vendor/icons…", shown under the sidebar.
     private(set) var activity: String?
     private(set) var isAddingSubmodule = false
+    private(set) var isAddingRemote = false
 
     // MARK: - Drops (SidebarViewModel+Drops.swift)
 
@@ -359,6 +360,8 @@ final class SidebarViewModel {
     func requestRemoval(of worktree: WorktreeInfo) { worktreePendingRemoval = worktree }
     func dismissWorktreeRemoval() { worktreePendingRemoval = nil }
     func dismissAddSubmodule() { isAddingSubmodule = false }
+    func requestAddRemote() { isAddingRemote = true }
+    func dismissAddRemote() { isAddingRemote = false }
 
     /// Runs a git mutation with `title` showing, then refreshes every view.
     func perform(_ title: String, _ work: () async throws -> Void) async {

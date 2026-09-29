@@ -3,7 +3,7 @@
 
 import SwiftUI
 
-/// Remote-tracking branches grouped by remote. Hidden when the repository has no remotes.
+/// Remote-tracking branches grouped by remote. Without remotes it offers to add one, once refs have loaded.
 struct RemotesSidebarSection: View {
 
     @Environment(SidebarViewModel.self) private var viewModel
@@ -11,10 +11,18 @@ struct RemotesSidebarSection: View {
     @State private var isExpanded = true
     @State private var createFromRef: CreateBranchRequest?
     @State private var branchToDelete: BranchInfo?
+    @State private var remoteToRemove: RemoteInfo?
 
     var body: some View {
-        if !viewModel.remotes.isEmpty {
+        if !viewModel.remotes.isEmpty || viewModel.refs.hasLoaded {
             Section(isExpanded: $isExpanded) {
+                if viewModel.remotes.isEmpty {
+                    Button { viewModel.requestAddRemote() } label: {
+                        SidebarRow(title: "Add Remote\u{2026}", symbol: "plus.circle")
+                    }
+                    .buttonStyle(.plain)
+                    .help("Connect this repository to a copy on GitHub or another server")
+                }
                 ForEach(viewModel.remotes) { remote in
                     let branches = viewModel.remoteBranches.filter { $0.remoteName == remote.name && !$0.name.hasSuffix("/HEAD") }
                     DisclosureGroup {
@@ -29,10 +37,23 @@ struct RemotesSidebarSection: View {
                             guard let payload = items.first else { return false }
                             return viewModel.handleDrop(payload, onRemote: remote)
                         }
+                        .contextMenu { remoteMenu(remote) }
                     }
                 }
             } header: {
                 SidebarSectionHeader(title: "Remotes", count: viewModel.remotes.count)
+                    .contextMenu {
+                        Button("Add Remote\u{2026}", systemImage: "plus") { viewModel.requestAddRemote() }
+                    }
+            }
+            .confirmationDialog(
+                "Remove remote \u{201C}\(remoteToRemove?.name ?? "")\u{201D}?",
+                isPresented: Binding(get: { remoteToRemove != nil }, set: { if !$0 { remoteToRemove = nil } }),
+                presenting: remoteToRemove
+            ) { remote in
+                Button("Remove Remote", role: .destructive) { Task { await viewModel.removeRemote(remote) } }
+            } message: { remote in
+                Text("Grove forgets \(remote.url) and its remote branches. Nothing on the server changes.")
             }
             .sheet(item: $createFromRef) { request in
                 CreateBranchDialogView(
@@ -55,6 +76,17 @@ struct RemotesSidebarSection: View {
                 Text("The branch is removed from the server for everyone. This can't be undone from Grove.")
             }
         }
+    }
+
+    @ViewBuilder
+    private func remoteMenu(_ remote: RemoteInfo) -> some View {
+        Button("Copy URL", systemImage: "doc.on.doc") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(remote.url, forType: .string)
+        }
+        Divider()
+        Button("Add Remote\u{2026}", systemImage: "plus") { viewModel.requestAddRemote() }
+        Button("Remove Remote\u{2026}", systemImage: "trash", role: .destructive) { remoteToRemove = remote }
     }
 
     private func remoteBranchRow(_ branch: BranchInfo) -> some View {

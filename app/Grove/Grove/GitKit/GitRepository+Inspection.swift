@@ -114,6 +114,10 @@ extension GitRepository {
         try await inspectionShell.run(["remote", "add", name, url])
     }
 
+    func removeRemote(name: String) async throws {
+        try await inspectionShell.run(["remote", "remove", name])
+    }
+
     // MARK: Helpers
 
     nonisolated static func fileDiffs(patch: String, nameStatus: String) -> [FileDiff] {
