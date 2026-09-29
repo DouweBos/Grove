@@ -31,7 +31,7 @@ struct CloneQueueTests {
     @Test func errorsDropTheProgressNoise() {
         let stderr = "Cloning into 'x'...\nremote: Enumerating objects: 5\rReceiving objects:  20% (1/5)\r"
             + "fatal: repository 'https://example.com/x.git/' not found\n"
-        #expect(CloneProgressParser.errorMessage(from: stderr) == "fatal: repository 'https://example.com/x.git/' not found")
+        #expect(CloneProgressParser.errorMessage(from: stderr) == "The remote repository wasn't found, or you don't have access to it.")
         #expect(CloneProgressParser.errorMessage(from: "") == "git clone failed.")
     }
 

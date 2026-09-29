@@ -37,11 +37,8 @@ enum GitShellError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .nonZeroExit(let command, let code, let stderr):
-            let detail = stderr.isEmpty
-                ? "(no stderr)"
-                : stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-            return "git \(command) exited with code \(code): \(detail)"
+        case .nonZeroExit(let command, _, let stderr):
+            return GitErrorMessage.message(command: command, stderr: stderr)
         case .gitNotFound:
             return "Could not locate the git executable. Install Xcode Command Line Tools or Git."
         case .invalidWorkingDirectory(let url):

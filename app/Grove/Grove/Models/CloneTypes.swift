@@ -73,12 +73,9 @@ nonisolated enum CloneProgressParser {
         return nil
     }
 
-    /// What's left of stderr once progress lines are dropped, e.g. `fatal: repository '…' not found`.
+    /// A readable failure message, with the progress noise dropped.
     static func errorMessage(from stderr: String) -> String {
-        let lines = stderr.split(whereSeparator: { $0 == "\r" || $0 == "\n" }).map(String.init)
-            .filter { !$0.contains("% (") && !$0.hasPrefix("remote: ") && !$0.hasPrefix("Cloning into") }
-        let message = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-        return message.isEmpty ? "git clone failed." : message
+        GitErrorMessage.message(command: "clone", stderr: stderr)
     }
 }
 
