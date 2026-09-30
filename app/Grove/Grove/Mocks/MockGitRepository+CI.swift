@@ -13,6 +13,7 @@ struct MockCIState {
     /// Jobs per run id; runs without an entry get `MockData.ciJobs(for:)`.
     var jobs: [Int: [CIJob]] = [:]
     var jobRequests: [Int] = []
+    var runRequests: [Int] = []
 }
 
 extension MockGitRepository {
@@ -27,10 +28,17 @@ extension MockGitRepository {
         ci.queries.append(query)
         await simulateLatency(20_000_000)
         if let error = ci.error { throw error }
-        return ci.runs.filter { run in
+        return Array(ci.runs.filter { run in
             (query.workflowID == nil || run.workflowID == query.workflowID) && (query.branch == nil || run.branch == query.branch)
                 && (query.status == nil || run.status == query.status)
-        }
+        }.prefix(query.limit))
+    }
+
+    func ciRun(id: Int) async throws -> CIRun {
+        ci.runRequests.append(id)
+        if let error = ci.error { throw error }
+        guard let run = ci.runs.first(where: { $0.id == id }) else { throw HostingError.http(status: 404, message: "Not Found") }
+        return run
     }
 
     func ciJobs(runID: Int) async throws -> [CIJob] {

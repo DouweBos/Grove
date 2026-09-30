@@ -97,6 +97,7 @@ struct RepositoryContentRouter: View {
                 .environment(session.ciVM)
                 .task(id: "ci-initial") {
                     await session.refreshOnEntry(.ci)
+                    await session.ciVM.pollWhileVisible()
                 }
 
         case .branchesReview:

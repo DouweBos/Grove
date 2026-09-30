@@ -10,37 +10,39 @@ nonisolated struct GitHubCIHost: CIHost, GitHubRepositoryAPI {
     let client: RESTClient
     var kind: HostingServiceKind { .github }
 
-    /// Runs shown in the list; one page keeps a poll to a single request.
-    static let runPageSize = 50
+    // GitHub lets responses be cached for a minute, which a poll every few seconds would keep re-reading.
+    private static let fresh = URLRequest.CachePolicy.reloadIgnoringLocalCacheData
 
     func workflows() async throws -> [CIWorkflow] {
         try await client.getPages(try url("/actions/workflows?per_page=100"), key: "workflows").compactMap(GitHubCIParser.workflow)
     }
 
     func runs(_ query: CIRunQuery) async throws -> [CIRun] {
-        try await client.getPages(try url(Self.runsPath(query)), key: "workflow_runs", maxPages: 1).compactMap(GitHubCIParser.run)
+        try await client.getPages(try url(Self.runsPath(query)), key: "workflow_runs", maxPages: 1, cachePolicy: Self.fresh)
+            .compactMap(GitHubCIParser.run)
     }
 
     func run(id: Int) async throws -> CIRun {
-        guard let run = HostingJSON.object(try await client.get(try url("/actions/runs/\(id)"))).flatMap(GitHubCIParser.run) else {
+        let data = try await client.get(try url("/actions/runs/\(id)"), cachePolicy: Self.fresh)
+        guard let run = HostingJSON.object(data).flatMap(GitHubCIParser.run) else {
             throw HostingError.unsupported("GitHub returned no run \(id).")
         }
         return run
     }
 
     func jobs(runID: Int) async throws -> [CIJob] {
-        try await client.getPages(try url("/actions/runs/\(runID)/jobs?filter=latest&per_page=100"), key: "jobs")
+        try await client.getPages(try url("/actions/runs/\(runID)/jobs?filter=latest&per_page=100"), key: "jobs", cachePolicy: Self.fresh)
             .compactMap(GitHubCIParser.job)
     }
 
     func artifacts(runID: Int) async throws -> [CIArtifact] {
-        try await client.getPages(try url("/actions/runs/\(runID)/artifacts?per_page=100"), key: "artifacts")
+        try await client.getPages(try url("/actions/runs/\(runID)/artifacts?per_page=100"), key: "artifacts", cachePolicy: Self.fresh)
             .compactMap(GitHubCIParser.artifact)
     }
 
     /// A workflow filter is part of the path; branch and status are query items.
     static func runsPath(_ query: CIRunQuery) -> String {
-        var items = ["per_page=\(runPageSize)"]
+        var items = ["per_page=\(query.limit)"]
         if let branch = query.branch { items.append("branch=\(queryValue(branch))") }
         if let status = query.status { items.append("status=\(GitHubCIParser.statusParameter(status))") }
         return (query.workflowID.map { "/actions/workflows/\($0)/runs" } ?? "/actions/runs") + "?" + items.joined(separator: "&")

@@ -113,8 +113,18 @@ nonisolated struct CIRunQuery: Hashable, Sendable {
     var workflowID: Int?
     var branch: String?
     var status: CIRunStatus?
+    /// How many runs to read; polls ask for fewer than the list shows.
+    var limit = CIRunQuery.pageSize
+
+    static let pageSize = 50
 
     var isEmpty: Bool { workflowID == nil && branch == nil && status == nil }
+
+    func limited(to limit: Int) -> CIRunQuery {
+        var copy = self
+        copy.limit = limit
+        return copy
+    }
 }
 
 nonisolated enum CIDuration {

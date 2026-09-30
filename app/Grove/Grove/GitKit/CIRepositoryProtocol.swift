@@ -11,6 +11,7 @@ protocol CIRepositoryProtocol {
     func ciWorkflows() async throws -> [CIWorkflow]
     /// The newest runs matching `query`, newest first.
     func ciRuns(_ query: CIRunQuery) async throws -> [CIRun]
+    func ciRun(id: Int) async throws -> CIRun
     /// Jobs of the run's latest attempt, with their steps.
     func ciJobs(runID: Int) async throws -> [CIJob]
 }
@@ -19,5 +20,6 @@ protocol CIRepositoryProtocol {
 extension CIRepositoryProtocol {
     func ciWorkflows() async throws -> [CIWorkflow] { throw HostingError.noHostedRemote }
     func ciRuns(_ query: CIRunQuery) async throws -> [CIRun] { throw HostingError.noHostedRemote }
+    func ciRun(id: Int) async throws -> CIRun { throw HostingError.noHostedRemote }
     func ciJobs(runID: Int) async throws -> [CIJob] { throw HostingError.noHostedRemote }
 }

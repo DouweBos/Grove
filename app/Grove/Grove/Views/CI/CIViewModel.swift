@@ -25,6 +25,12 @@ final class CIViewModel {
 
     /// Bumped by every list read, so an answer to an outdated filter is dropped.
     @ObservationIgnored private var loadGeneration = 0
+    /// When the list first showed a queued or running run; nil while everything is finished.
+    @ObservationIgnored private(set) var activeSince: Date?
+    @ObservationIgnored private(set) var consecutiveFailures = 0
+    /// The poll loop's current wait, cancelled to poll at once.
+    @ObservationIgnored var pollWait: Task<Void, Error>?
+    @ObservationIgnored var isWakingPoll = false
 
     let repository: any GitRepositoryProtocol
     let refs: RepositoryRefs
@@ -61,22 +67,84 @@ final class CIViewModel {
         if let loadedWorkflows = await loadedWorkflows, loadedWorkflows != workflows { workflows = loadedWorkflows }
     }
 
-    private func loadRuns() async {
+    /// `quietly` leaves the header spinner alone, for polls.
+    private func loadRuns(quietly: Bool = false) async {
         loadGeneration += 1
         let generation = loadGeneration
-        isLoading = true
+        if !quietly { isLoading = true }
         defer { if generation == loadGeneration { isLoading = false; hasLoaded = true } }
         do {
             let loaded = try await repository.ciRuns(query)
             guard generation == loadGeneration else { return }
-            if loaded != runs { runs = loaded }
-            loadFailure = nil
-            if selectedRun == nil { selectedRunID = runs.first?.id }
-            await detail.show(selectedRun)
+            await apply(loaded)
         } catch {
             guard generation == loadGeneration else { return }
-            loadFailure = HostLoadFailure(error)
+            fail(error)
         }
+    }
+
+    private func apply(_ loaded: [CIRun]) async {
+        if loaded != runs { runs = loaded }
+        loadFailure = nil
+        consecutiveFailures = 0
+        if !runs.contains(where: \.status.isActive) {
+            activeSince = nil
+        } else if activeSince == nil {
+            activeSince = Date()
+        }
+        if selectedRun == nil { selectedRunID = runs.first?.id }
+        await detail.show(selectedRun)
+    }
+
+    private func fail(_ error: Error) {
+        loadFailure = HostLoadFailure(error)
+        consecutiveFailures += 1
+    }
+
+    // MARK: - Polling
+
+    /// Runs the poll reads: the newest few, plus each run that was still going when last seen.
+    static let pollPageSize = 10
+    static let pollFollowUpLimit = 5
+
+    /// One poll. With nothing active the whole list is read again; with active runs only what can have changed.
+    func poll() async {
+        guard hasLoaded, !isLoading else { return }
+        guard runs.contains(where: \.status.isActive) else { return await loadRuns(quietly: true) }
+        loadGeneration += 1
+        let generation = loadGeneration
+        do {
+            let newest = try await repository.ciRuns(query.limited(to: Self.pollPageSize))
+            let seen = Set(newest.map(\.id))
+            var updated = newest
+            var deleted: Set<Int> = []
+            for run in runs.filter({ $0.status.isActive && !seen.contains($0.id) }).prefix(Self.pollFollowUpLimit) {
+                do {
+                    updated.append(try await repository.ciRun(id: run.id))
+                } catch HostingError.http(status: 404, _) {
+                    deleted.insert(run.id)
+                }
+            }
+            guard generation == loadGeneration else { return }
+            await apply(Self.merge(updated, into: runs.filter { !deleted.contains($0.id) }, query: query))
+        } catch {
+            guard generation == loadGeneration else { return }
+            fail(error)
+        }
+    }
+
+    /// `updates` replace the runs they describe and add new ones, newest first; a run that left the status filter is dropped.
+    nonisolated static func merge(_ updates: [CIRun], into runs: [CIRun], query: CIRunQuery) -> [CIRun] {
+        var byID = Dictionary(runs.map { ($0.id, $0) }) { $1 }
+        for run in updates { byID[run.id] = run }
+        return byID.values.filter { query.status == nil || $0.status == query.status }
+            .sorted { ($0.createdDate, $0.id) > ($1.createdDate, $1.id) }
+            .prefix(query.limit).map { $0 }
+    }
+
+    /// Seconds until the next poll should run.
+    var pollInterval: TimeInterval {
+        CIPollSchedule.interval(activeFor: activeSince.map { Date().timeIntervalSince($0) }, consecutiveFailures: consecutiveFailures)
     }
 
     // MARK: - Filters

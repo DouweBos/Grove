@@ -45,16 +45,17 @@ struct CIHostTests {
         #expect(runs[1].updatedDate == runs[1].createdDate && runs[1].startedDate == nil)
         #expect(paths(http) == ["GET /repos/o/r/actions/runs?per_page=50"])
         #expect(http.requests[0].value(forHTTPHeaderField: "Authorization") == "Bearer tok")
+        #expect(http.requests[0].cachePolicy == .reloadIgnoringLocalCacheData, "A poll must not be answered from URLCache")
     }
 
     @Test func filtersBecomeThePathAndQuery() async throws {
         let http = FakeHTTPClient { _ in (200, #"{"workflow_runs":[]}"#) }
         let host = Self.github(http, host: "ghe.example.com")
         _ = try await host.runs(CIRunQuery(workflowID: 7, branch: "feature/a+b&c", status: .inProgress))
-        _ = try await host.runs(CIRunQuery(status: .failure))
+        _ = try await host.runs(CIRunQuery(status: .failure).limited(to: 10))
         #expect(http.requests.map { $0.url?.absoluteString ?? "" } == [
             "https://ghe.example.com/api/v3/repos/o/r/actions/workflows/7/runs?per_page=50&branch=feature/a%2Bb%26c&status=in_progress",
-            "https://ghe.example.com/api/v3/repos/o/r/actions/runs?per_page=50&status=failure"
+            "https://ghe.example.com/api/v3/repos/o/r/actions/runs?per_page=10&status=failure"
         ])
     }
 
