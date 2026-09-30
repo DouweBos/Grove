@@ -23,6 +23,7 @@ enum HostLoadFailure: Equatable {
             case .notSignedIn(let kind): self = .notSignedIn(kind)
             case .noAccount(let kind, let host): self = .noAccount(kind, host: host)
             case .noHostedRemote: self = .noHostedRemote
+            case .ciUnsupported(let kind): self = .unsupportedHost(kind)
             case .http(status: 403, let message): self = .forbidden(message)
             case .unsupported, .http: self = .other(hosting.localizedDescription)
             }

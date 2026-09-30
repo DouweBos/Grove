@@ -7,19 +7,33 @@ import Testing
 
 /// Answers requests from a closure and records them, so write paths are checked without a network.
 final class FakeHTTPClient: HTTPClient, @unchecked Sendable {
+    struct Response {
+        var status = 200
+        var headers: [String: String] = [:]
+        var body = Data()
+    }
+
     private let lock = NSLock()
     private var recorded: [URLRequest] = []
-    private let respond: @Sendable (URLRequest) -> (Int, String)
+    private let respond: @Sendable (URLRequest) -> Response
 
-    init(_ respond: @escaping @Sendable (URLRequest) -> (Int, String)) { self.respond = respond }
+    init(_ respond: @escaping @Sendable (URLRequest) -> (Int, String)) {
+        self.respond = { request in
+            let (status, body) = respond(request)
+            return Response(status: status, body: Data(body.utf8))
+        }
+    }
+
+    /// For responses that need headers (`Link`, `Location`) or a binary body.
+    init(responses respond: @escaping @Sendable (URLRequest) -> Response) { self.respond = respond }
 
     var requests: [URLRequest] { lock.withLock { recorded } }
 
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         lock.withLock { recorded.append(request) }
-        let (status, body) = respond(request)
-        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: nil)!
-        return (Data(body.utf8), response)
+        let answer = respond(request)
+        let response = HTTPURLResponse(url: request.url!, statusCode: answer.status, httpVersion: nil, headerFields: answer.headers)!
+        return (answer.body, response)
     }
 }
 

@@ -5,18 +5,25 @@
 
 import Foundation
 
-nonisolated struct GitHubPullRequestHost: PullRequestHost {
-    let location: RemoteLocation
-    let client: RESTClient
-    var kind: HostingServiceKind { .github }
+/// One repository's corner of the GitHub REST API, shared by the pull request and Actions hosts.
+nonisolated protocol GitHubRepositoryAPI: Sendable {
+    var location: RemoteLocation { get }
+    var client: RESTClient { get }
+}
 
-    private var api: String { client.credentials.account.apiBase }
-    private var repository: String { "\(api)/repos/\(location.owner)/\(location.name)" }
+extension GitHubRepositoryAPI {
+    var repository: String { "\(client.credentials.account.apiBase)/repos/\(location.owner)/\(location.name)" }
 
-    private func url(_ path: String) throws -> URL {
+    func url(_ path: String) throws -> URL {
         guard let url = URL(string: repository + path) else { throw HostingError.unsupported("Bad GitHub URL: \(path)") }
         return url
     }
+}
+
+nonisolated struct GitHubPullRequestHost: PullRequestHost, GitHubRepositoryAPI {
+    let location: RemoteLocation
+    let client: RESTClient
+    var kind: HostingServiceKind { .github }
 
     /// `declarations` lists only the variables `selection` uses; GitHub rejects unused ones.
     private func query(_ declarations: String, _ selection: String, _ variables: [String: Any]) async throws -> HostingJSON.Object {

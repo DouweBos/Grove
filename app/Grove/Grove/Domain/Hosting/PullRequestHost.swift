@@ -34,7 +34,7 @@ extension PullRequestHost {
     func headRef(number: Int) -> String? { nil }
 }
 
-/// Why a repository's pull requests can't be reached.
+/// Why a repository's hosting service can't be reached.
 nonisolated enum HostingError: LocalizedError, Equatable {
     /// No remote points at a service Grove knows.
     case noHostedRemote
@@ -43,6 +43,8 @@ nonisolated enum HostingError: LocalizedError, Equatable {
     /// The stored token was refused.
     case notSignedIn(HostingServiceKind)
     case unsupported(String)
+    /// The service is known, but Grove can't read its CI yet.
+    case ciUnsupported(HostingServiceKind)
     case http(status: Int, message: String)
 
     var errorDescription: String? {
@@ -51,6 +53,7 @@ nonisolated enum HostingError: LocalizedError, Equatable {
         case .noAccount(let kind, let host): "Add a \(kind.displayName) account for \(host) in Settings > Accounts."
         case .notSignedIn(let kind): "\(kind.displayName) refused the sign-in. Sign in again in Settings > Accounts."
         case .unsupported(let message): message
+        case .ciUnsupported(let kind): "Grove doesn't show CI runs from \(kind.displayName) yet."
         case .http(let status, let message): message.isEmpty ? "The server answered \(status)." : message
         }
     }
@@ -75,8 +78,9 @@ nonisolated struct RESTClient: Sendable {
     let credentials: RESTCredentials
     var http: any HTTPClient = URLSessionHTTPClient()
 
-    func get(_ url: URL, accept: String = "application/json") async throws -> Data {
-        try await send("GET", url, body: nil, accept: accept).data
+    func get(_ url: URL, accept: String = "application/json",
+             cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy) async throws -> Data {
+        try await send("GET", url, body: nil, accept: accept, cachePolicy: cachePolicy).data
     }
 
     /// Every page of a list, following `Link: <…>; rel="next"` (GitHub, GitLab) up to `maxPages`.
@@ -108,12 +112,10 @@ nonisolated struct RESTClient: Sendable {
         return object["data"] as? HostingJSON.Object ?? [:]
     }
 
-    private func send(_ method: String, _ url: URL, body: Data?, accept: String) async throws -> (data: Data, response: HTTPURLResponse) {
-        var request = URLRequest(url: url)
-        request.httpMethod = method
-        request.setValue(credentials.authorizationHeader, forHTTPHeaderField: "Authorization")
-        request.setValue(accept, forHTTPHeaderField: "Accept")
-        if credentials.account.kind == .github { request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version") }
+    func send(_ method: String, _ url: URL, body: Data?, accept: String,
+              cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy) async throws -> (data: Data, response: HTTPURLResponse) {
+        var request = authorized(method, url, accept: accept)
+        request.cachePolicy = cachePolicy
         if let body {
             request.httpBody = body
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -126,6 +128,15 @@ nonisolated struct RESTClient: Sendable {
         case 200..<300: return (data, response)
         default: throw HostingError.http(status: response.statusCode, message: Self.message(in: data))
         }
+    }
+
+    func authorized(_ method: String, _ url: URL, accept: String) -> URLRequest {
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue(credentials.authorizationHeader, forHTTPHeaderField: "Authorization")
+        request.setValue(accept, forHTTPHeaderField: "Accept")
+        if credentials.account.kind == .github { request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version") }
+        return request
     }
 
     /// `<https://…?page=2>; rel="next", <…>; rel="last"` → the next page.
@@ -155,30 +166,43 @@ nonisolated struct RESTClient: Sendable {
 
 // MARK: - Resolving
 
+/// The remote a repository's host features talk to, and an API client for it.
+@MainActor
+enum HostedRemoteResolver {
+
+    /// The first remote Grove recognizes, origin first.
+    static func location(of remotes: [RemoteInfo]) -> (remote: String, location: RemoteLocation)? {
+        let ordered = remotes.filter { $0.name == "origin" } + remotes.filter { $0.name != "origin" }
+        return ordered.lazy.compactMap { remote in RemoteLocation.parse(remote.url).map { (remote.name, $0) } }.first
+    }
+
+    /// A client signed in with the account that serves `location`.
+    static func client(for location: RemoteLocation, accounts: HostingAccountStore, http: any HTTPClient) throws -> RESTClient {
+        guard let credentials = accounts.credentials(for: location) else {
+            let host = location.kind == .azureDevOps ? "\(location.host)/\(location.owner)" : location.host
+            throw HostingError.noAccount(location.kind, host: host)
+        }
+        return RESTClient(credentials: credentials, http: http)
+    }
+}
+
 @MainActor
 enum PullRequestHostResolver {
 
     /// The host behind the first remote Grove recognizes (origin first), and that remote's name.
     static func resolve(remotes: [RemoteInfo], accounts: HostingAccountStore? = nil,
                         http: any HTTPClient = URLSessionHTTPClient()) throws -> (host: any PullRequestHost, remote: String) {
-        let ordered = remotes.filter { $0.name == "origin" } + remotes.filter { $0.name != "origin" }
-        guard let (remote, location) = ordered.lazy.compactMap({ remote in RemoteLocation.parse(remote.url).map { (remote.name, $0) } })
-            .first else { throw HostingError.noHostedRemote }
+        guard let (remote, location) = HostedRemoteResolver.location(of: remotes) else { throw HostingError.noHostedRemote }
         return (try host(for: location, accounts: accounts ?? .shared, http: http), remote)
     }
 
     /// The service of the remote `resolve` would use, without needing an account for it.
     static func service(of remotes: [RemoteInfo]) -> HostingServiceKind? {
-        let ordered = remotes.filter { $0.name == "origin" } + remotes.filter { $0.name != "origin" }
-        return ordered.lazy.compactMap { RemoteLocation.parse($0.url)?.kind }.first
+        HostedRemoteResolver.location(of: remotes)?.location.kind
     }
 
     static func host(for location: RemoteLocation, accounts: HostingAccountStore, http: any HTTPClient) throws -> any PullRequestHost {
-        guard let credentials = accounts.credentials(for: location) else {
-            let host = location.kind == .azureDevOps ? "\(location.host)/\(location.owner)" : location.host
-            throw HostingError.noAccount(location.kind, host: host)
-        }
-        let client = RESTClient(credentials: credentials, http: http)
+        let client = try HostedRemoteResolver.client(for: location, accounts: accounts, http: http)
         switch location.kind {
         case .github: return GitHubPullRequestHost(location: location, client: client)
         case .gitlab: return GitLabPullRequestHost(location: location, client: client)
