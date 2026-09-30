@@ -14,7 +14,7 @@ struct CIRunDetailView: View {
                 VStack(spacing: 0) {
                     header(run)
                     Rectangle().fill(Theme.border).frame(height: 0.5)
-                    Spacer(minLength: 0)
+                    CIJobsView()
                 }
             } else {
                 EmptyStateView(systemImage: "play.circle", title: "No Run Selected",
@@ -68,6 +68,7 @@ struct CIRunDetailView: View {
     let vm = CIViewModel(repository: MockGitRepository())
     return CIRunDetailView()
         .environment(vm)
+        .environment(vm.detail)
         .frame(width: 620, height: 480)
         .padding()
         .background(Theme.background)

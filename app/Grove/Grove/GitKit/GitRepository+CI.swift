@@ -20,4 +20,8 @@ extension GitRepository {
     func ciRuns(_ query: CIRunQuery) async throws -> [CIRun] {
         try await ciHost().runs(query)
     }
+
+    func ciJobs(runID: Int) async throws -> [CIJob] {
+        try await ciHost().jobs(runID: runID)
+    }
 }

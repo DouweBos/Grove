@@ -20,6 +20,7 @@ struct CIView: View {
                 .panel()
             } else {
                 CIRunDetailView()
+                    .environment(viewModel.detail)
             }
         }
         .padding(.bottom, Theme.Spacing.md)
@@ -71,7 +72,7 @@ private struct CIRunListPanel: View {
                                actionTitle: "Clear Filters") { Task { await viewModel.clearFilters() } }
             }
         } else {
-            SelectableList(items: viewModel.runs, selection: viewModel.selectedRunID, onSelect: viewModel.select) { run in
+            SelectableList(items: viewModel.runs, selection: viewModel.selectedRunID, onSelect: { run in Task { await viewModel.select(run) } }) { run in
                 CIRunRow(run: run)
                     .contextMenu {
                         Button("Open on \(viewModel.serviceName)", systemImage: "safari") { viewModel.openInBrowser(run) }

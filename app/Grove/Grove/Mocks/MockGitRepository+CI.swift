@@ -10,6 +10,9 @@ struct MockCIState {
     /// Thrown by every CI call while set.
     var error: HostingError?
     var queries: [CIRunQuery] = []
+    /// Jobs per run id; runs without an entry get `MockData.ciJobs(for:)`.
+    var jobs: [Int: [CIJob]] = [:]
+    var jobRequests: [Int] = []
 }
 
 extension MockGitRepository {
@@ -28,5 +31,13 @@ extension MockGitRepository {
             (query.workflowID == nil || run.workflowID == query.workflowID) && (query.branch == nil || run.branch == query.branch)
                 && (query.status == nil || run.status == query.status)
         }
+    }
+
+    func ciJobs(runID: Int) async throws -> [CIJob] {
+        ci.jobRequests.append(runID)
+        await simulateLatency(20_000_000)
+        if let error = ci.error { throw error }
+        if let jobs = ci.jobs[runID] { return jobs }
+        return ci.runs.first { $0.id == runID }.map(MockData.ciJobs(for:)) ?? []
     }
 }

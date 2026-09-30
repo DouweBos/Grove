@@ -48,7 +48,7 @@ struct CIViewModelTests {
         let repo = MockGitRepository()
         let vm = CIViewModel(repository: repo)
         await vm.refresh()
-        vm.select(MockData.ciRuns[2])
+        await vm.select(MockData.ciRuns[2])
 
         await vm.refresh()
 

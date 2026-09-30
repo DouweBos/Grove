@@ -37,4 +37,36 @@ extension MockData {
                 actor: authorAlice.name)
         ]
     }()
+
+    /// A lint, build and test job whose states add up to the run's status.
+    static func ciJobs(for run: CIRun) -> [CIJob] {
+        let start = run.startedDate ?? run.createdDate
+        func job(_ offset: Int, _ name: String, _ status: CIRunStatus, steps: [(String, CIRunStatus, Double)]) -> CIJob {
+            var clock = start.addingTimeInterval(Double(offset))
+            let built = steps.enumerated().map { index, step -> CIStep in
+                let (name, status, seconds) = step
+                let began = clock
+                clock = clock.addingTimeInterval(seconds)
+                let ran = status != .queued && status != .skipped
+                return CIStep(number: index + 1, name: name, status: status, startedDate: ran ? began : nil,
+                              completedDate: ran && status != .inProgress ? clock : nil)
+            }
+            return CIJob(id: run.id * 10 + offset, runID: run.id, name: name, status: status,
+                         startedDate: status == .queued ? nil : start.addingTimeInterval(Double(offset)),
+                         completedDate: status.isActive ? nil : clock, steps: built, webURL: "\(run.webURL)/job/\(run.id * 10 + offset)")
+        }
+        let last = run.status
+        let test: CIRunStatus = last == .success || last == .failure || last == .inProgress ? last : .skipped
+        return [
+            job(1, "lint", last == .queued ? .queued : last == .cancelled ? .cancelled : last == .skipped ? .skipped : .success, steps: [
+                ("Set up job", .success, 2), ("Run actions/checkout@v4", .success, 3), ("Run swiftlint", .success, 21),
+                ("Complete job", .success, 1)
+            ]),
+            job(2, "build (macos-15, arm64)", last == .queued ? .queued : test, steps: [
+                ("Set up job", .success, 3), ("Run actions/checkout@v4", .success, 4), ("Build", .success, 148),
+                ("Test", test, 96), ("Upload test results", test == .failure ? .skipped : test, 5),
+                ("Complete job", test == .inProgress ? .queued : .success, 1)
+            ])
+        ]
+    }
 }

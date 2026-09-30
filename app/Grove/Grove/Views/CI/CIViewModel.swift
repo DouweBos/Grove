@@ -28,10 +28,13 @@ final class CIViewModel {
 
     let repository: any GitRepositoryProtocol
     let refs: RepositoryRefs
+    /// Jobs of the selected run.
+    let detail: CIRunDetailViewModel
 
     init(repository: any GitRepositoryProtocol, refs: RepositoryRefs? = nil) {
         self.repository = repository
         self.refs = refs ?? RepositoryRefs(repository: repository)
+        detail = CIRunDetailViewModel(repository: repository)
     }
 
     // MARK: - Derived
@@ -69,6 +72,7 @@ final class CIViewModel {
             if loaded != runs { runs = loaded }
             loadFailure = nil
             if selectedRun == nil { selectedRunID = runs.first?.id }
+            await detail.show(selectedRun)
         } catch {
             guard generation == loadGeneration else { return }
             loadFailure = HostLoadFailure(error)
@@ -101,8 +105,9 @@ final class CIViewModel {
 
     // MARK: - Selection and actions
 
-    func select(_ run: CIRun) {
+    func select(_ run: CIRun) async {
         selectedRunID = run.id
+        await detail.show(run)
     }
 
     func openInBrowser(_ run: CIRun) {
