@@ -40,6 +40,7 @@ final class MockGitRepository: GitRepositoryProtocol {
 
     /// How often each git call ran, keyed by its signature, e.g. `"tags()"`; tests check for cache hits and duplicate reads.
     @ObservationIgnored private(set) var callCounts: [String: Int] = [:]
+    @ObservationIgnored var ci = MockCIState()
 
     func recordCall(_ name: String = #function) {
         callCounts[name, default: 0] += 1

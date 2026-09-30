@@ -29,6 +29,7 @@ final class RepositorySession {
     let branchesReviewVM: BranchesReviewViewModel
     let stackVM: StackViewModel
     let pullRequestsVM: PullRequestsViewModel
+    let ciVM: CIViewModel
     let repositorySettingsVM: RepositorySettingsViewModel
     let toolbarState: RepositoryToolbarState
     let gitUndoManager = GitUndoManager()
@@ -81,6 +82,7 @@ final class RepositorySession {
         self.branchesReviewVM = BranchesReviewViewModel(repository: repository, refs: refs)
         self.stackVM          = StackViewModel(repository: repository, refs: refs)
         self.pullRequestsVM   = PullRequestsViewModel(repository: repository, refs: refs)
+        self.ciVM             = CIViewModel(repository: repository, refs: refs)
         let gitFlowVM = GitFlowViewModel(repository: repository, refs: refs)
         let svnVM = SVNViewModel(repository: repository)
         self.gitFlowVM        = gitFlowVM
@@ -208,6 +210,8 @@ final class RepositorySession {
             sidebarVM.select(.reflog)
         case .navigatePullRequests:
             sidebarVM.select(.pullRequests)
+        case .navigateCI:
+            sidebarVM.select(.ci)
         case .navigateBranchesReview:
             sidebarVM.select(.branchesReview)
         case .navigateStack:

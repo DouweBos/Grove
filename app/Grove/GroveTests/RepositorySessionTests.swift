@@ -147,6 +147,23 @@ struct RepositorySessionTests {
         #expect(session.needsRefresh(.pullRequests))
     }
 
+    @Test func actionsReReadOnlyAfterTheirLifetime() async {
+        let repo = MockGitRepository()
+        let session = RepositorySession(repository: repo)
+        session.handleAction(.navigateCI)
+        #expect(session.sidebarVM.selection == .ci && RepositoryTab(item: .ci) == .ci)
+
+        await session.refreshOnEntry(.ci)
+        #expect(!session.needsRefresh(.ci) && repo.ci.queries.count == 1)
+
+        // A local change can't move what the host reports, so a refresh neither re-reads nor expires the list.
+        session.restoreSelection(.ci)
+        await session.refreshAll()
+        #expect(!session.needsRefresh(.ci) && repo.ci.queries.count == 1)
+        session.tabRefreshes[.ci] = TabRefresh(generation: 0, date: .distantPast)
+        #expect(session.needsRefresh(.ci))
+    }
+
     @Test func reloadDuringALoadRunsAfterIt() async throws {
         let repo = MockGitRepository()
         let vm = HistoryViewModel(repository: repo)

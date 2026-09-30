@@ -7,13 +7,17 @@ import Foundation
 
 /// Tabs whose lists load on entry rather than with every refresh.
 enum RefreshedTab: Hashable {
-    case stashes, reflog, pullRequests, branchesReview, stack
+    case stashes, reflog, pullRequests, ci, branchesReview, stack
+
+    /// Lives on the host, which the file watcher can't see, so it goes stale by time rather than by refresh.
+    var isRemote: Bool { self == .pullRequests || self == .ci }
 
     init?(_ item: SidebarItem) {
         switch item {
         case .stashes: self = .stashes
         case .reflog: self = .reflog
         case .pullRequests: self = .pullRequests
+        case .ci: self = .ci
         case .branchesReview: self = .branchesReview
         case .stack: self = .stack
         default: return nil
@@ -31,7 +35,7 @@ extension RepositorySession {
 
     /// Filtered history lists kept at once; older ones are dropped and reload if reopened.
     static let filteredHistoryLimit = 8
-    /// Pull requests live on the host, which the file watcher can't see, so they go stale by time.
+    /// How long a remote tab's list counts as current.
     static let remoteTabLifetime: TimeInterval = 30
 
     // MARK: - History
@@ -76,7 +80,7 @@ extension RepositorySession {
 
     func needsRefresh(_ tab: RefreshedTab) -> Bool {
         guard let last = tabRefreshes[tab] else { return true }
-        if tab == .pullRequests { return Date().timeIntervalSince(last.date) > Self.remoteTabLifetime }
+        if tab.isRemote { return Date().timeIntervalSince(last.date) > Self.remoteTabLifetime }
         return last.generation != refreshGeneration
     }
 
@@ -84,7 +88,7 @@ extension RepositorySession {
     func refreshSelectedTab() async {
         if selectedItem == .settings { await repositorySettingsVM.load() }
         if !stashesVM.stashes.isEmpty, selectedItem != .stashes { await refresh(.stashes) }
-        guard let tab = RefreshedTab(selectedItem), tab != .pullRequests else { return }
+        guard let tab = RefreshedTab(selectedItem), !tab.isRemote else { return }
         await refresh(tab)
     }
 
@@ -94,6 +98,7 @@ extension RepositorySession {
         case .stashes: await stashesVM.refresh()
         case .reflog: await reflogVM.refresh()
         case .pullRequests: await pullRequestsVM.refresh()
+        case .ci: await ciVM.refresh()
         case .branchesReview: await branchesReviewVM.refresh()
         case .stack:
             await refs.settled()

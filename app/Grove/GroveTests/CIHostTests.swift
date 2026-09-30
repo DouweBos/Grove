@@ -20,7 +20,7 @@ struct CIHostTests {
         http.requests.map { "\($0.httpMethod ?? "") \($0.url?.path ?? "")\($0.url?.query.map { "?" + $0 } ?? "")" }
     }
 
-    static let runsResponse = """
+    nonisolated static let runsResponse = """
     {"total_count":2,"workflow_runs":[
       {"id":30,"name":"CI","display_title":"Fix login","run_number":12,"run_attempt":2,"event":"push","status":"in_progress",
        "conclusion":null,"workflow_id":7,"head_branch":"feature/login","head_sha":"abcdef1234567890","html_url":"https://github.com/o/r/actions/runs/30",

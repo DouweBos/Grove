@@ -192,8 +192,8 @@ struct RepositoryToolbarSheets<Content: View>: View {
 
     var body: some View {
         content
-            // Titled pills plus the remote actions need ~760pt; below that the toolbar would overflow.
-            .onGeometryChange(for: Bool.self) { $0.size.width < 760 } action: { isNarrow = $0 }
+            // Titled pills plus the remote actions need ~860pt; below that the toolbar would overflow.
+            .onGeometryChange(for: Bool.self) { $0.size.width < 860 } action: { isNarrow = $0 }
             .toolbar {
                 RepositoryToolbar(
                     repository: repository,

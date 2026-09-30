@@ -22,6 +22,8 @@ enum SidebarItem: Hashable, Sendable {
     case blame
     /// The Pull Requests list view.
     case pullRequests
+    /// The Actions view — CI/CD runs on the hosting service.
+    case ci
     /// The Branches Review view — shows stale and merged branches.
     case branchesReview
     /// The Stack view — the stacked branches HEAD or the sidebar's branch belongs to.
@@ -40,10 +42,10 @@ enum SidebarItem: Hashable, Sendable {
 
 /// Top-level destinations shown as pills in the window toolbar.
 enum RepositoryTab: CaseIterable, Hashable {
-    case changes, history, stack, stashes, pullRequests, reflog, review, blame, settings
+    case changes, history, stack, stashes, pullRequests, ci, reflog, review, blame, settings
 
     /// Always shown; the rest live in the toolbar's More menu and get a pill only while open.
-    static let primary: [RepositoryTab] = [.changes, .history, .stack, .stashes, .pullRequests]
+    static let primary: [RepositoryTab] = [.changes, .history, .stack, .stashes, .pullRequests, .ci]
     static let secondary: [RepositoryTab] = [.reflog, .review, .blame, .settings]
 
     var title: String {
@@ -53,6 +55,7 @@ enum RepositoryTab: CaseIterable, Hashable {
         case .stack: "Stack"
         case .stashes: "Stashes"
         case .pullRequests: "Pull Requests"
+        case .ci: "Actions"
         case .reflog: "Reflog"
         case .review: "Branches Review"
         case .blame: "Blame"
@@ -67,6 +70,7 @@ enum RepositoryTab: CaseIterable, Hashable {
         case .stack: "square.stack.3d.up"
         case .stashes: "tray.2"
         case .pullRequests: "arrow.triangle.pull"
+        case .ci: "play.circle"
         case .reflog: "clock.arrow.circlepath"
         case .review: "checklist"
         case .blame: "text.line.first.and.arrowtriangle.forward"
@@ -81,6 +85,7 @@ enum RepositoryTab: CaseIterable, Hashable {
         case .stack: .stack
         case .stashes: .stashes
         case .pullRequests: .pullRequests
+        case .ci: .ci
         case .reflog: .reflog
         case .review: .branchesReview
         case .blame: .blame
@@ -95,6 +100,7 @@ enum RepositoryTab: CaseIterable, Hashable {
         case .history, .branch, .remoteBranch, .tag: self = .history
         case .stashes: self = .stashes
         case .pullRequests: self = .pullRequests
+        case .ci: self = .ci
         case .reflog: self = .reflog
         case .branchesReview: self = .review
         case .stack: self = .stack

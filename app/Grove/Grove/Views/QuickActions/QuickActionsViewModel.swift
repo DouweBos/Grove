@@ -222,6 +222,7 @@ final class QuickActionsViewModel {
             view("History", "clock", .history),
             view("Stashes", "tray.2", .stashes),
             view("Pull Requests", "arrow.triangle.pull", .pullRequests),
+            view("Actions", "play.circle", .ci),
             view("Reflog", "clock.arrow.circlepath", .reflog),
             view("Branches Review", "checklist", .branchesReview),
             view("Blame", "text.line.first.and.arrowtriangle.forward", .blame),

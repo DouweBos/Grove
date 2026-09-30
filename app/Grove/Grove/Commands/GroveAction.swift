@@ -55,6 +55,8 @@ enum GroveAction: String, Sendable {
     case navigateBlame
     /// Navigate to Repository Settings (Cmd+8).
     case navigateSettings
+    /// Navigate to the Actions view (Cmd+9).
+    case navigateCI
 
     // MARK: Remote Operations
 

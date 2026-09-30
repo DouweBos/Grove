@@ -92,6 +92,13 @@ struct RepositoryContentRouter: View {
                     await session.refreshOnEntry(.pullRequests)
                 }
 
+        case .ci:
+            CIView()
+                .environment(session.ciVM)
+                .task(id: "ci-initial") {
+                    await session.refreshOnEntry(.ci)
+                }
+
         case .branchesReview:
             BranchesReviewView()
                 .environment(session.branchesReviewVM)

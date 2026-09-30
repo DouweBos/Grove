@@ -17,7 +17,7 @@ import Foundation
 /// a `RepositoryActor` (or equivalent) to guarantee serial access to the
 /// underlying non-thread-safe libgit2 handle.
 @MainActor
-protocol GitRepositoryProtocol: AnyObject, Observable, StackGitOperations {
+protocol GitRepositoryProtocol: AnyObject, Observable, StackGitOperations, CIRepositoryProtocol {
     /// Absolute URL of the repository's working directory.
     var path: URL { get }
     /// Human-readable name shown in the UI (last path component by default).

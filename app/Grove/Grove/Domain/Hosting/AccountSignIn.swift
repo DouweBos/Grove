@@ -62,7 +62,7 @@ nonisolated enum AccountProvider: String, CaseIterable, Identifiable, Sendable {
 
     var scopes: String {
         switch self {
-        case .github, .githubEnterprise: "repo, read:org (and workflow to push workflow files)"
+        case .github, .githubEnterprise: "repo, read:org (and workflow to push workflow files); fine-grained tokens also need Actions and Contents"
         case .gitlab, .gitlabSelfHosted: "api, read_user"
         case .bitbucket: "Account: Read, Repositories: Read & Write, Pull requests: Read & Write"
         case .azureDevOps: "Code: Read & Write, Project and Team: Read"

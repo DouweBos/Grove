@@ -35,17 +35,19 @@ enum HostLoadFailure: Equatable {
 
 /// What a host-backed tab shows, for the wording of its unavailable state.
 enum HostFeature {
-    case pullRequests
+    case pullRequests, ci
 
     var title: String {
         switch self {
         case .pullRequests: "Pull Requests"
+        case .ci: "Workflow Runs"
         }
     }
 
     var symbol: String {
         switch self {
         case .pullRequests: "arrow.triangle.pull"
+        case .ci: "play.circle"
         }
     }
 
@@ -53,6 +55,7 @@ enum HostFeature {
     func noun(on kind: HostingServiceKind?) -> String {
         switch self {
         case .pullRequests: (kind?.pullRequestNoun ?? "Pull Request").lowercased() + "s"
+        case .ci: "workflow runs"
         }
     }
 
@@ -60,6 +63,8 @@ enum HostFeature {
     var permissionHint: String {
         switch self {
         case .pullRequests: "The token needs access to this repository and its pull requests."
+        case .ci: "Fine-grained tokens need Actions (read and write) and Contents (read) access to this repository; "
+            + "classic tokens need the repo scope."
         }
     }
 }
