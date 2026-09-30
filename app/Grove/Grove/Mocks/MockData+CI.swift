@@ -69,4 +69,42 @@ extension MockData {
             ])
         ]
     }
+
+    /// A log in GitHub's format whose timestamps line up with the job's steps.
+    static func ciLog(for job: CIJob) -> String {
+        let stamp = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
+        var lines: [String] = []
+        for step in job.steps {
+            guard let start = step.startedDate else { continue }
+            var offset = 0.05
+            func add(_ text: String) {
+                lines.append("\(start.addingTimeInterval(offset).formatted(stamp)) \(text)")
+                offset += 0.05
+            }
+            switch step.name {
+            case "Set up job":
+                add("Current runner version: '2.328.0'")
+                add("##[group]Runner Image")
+                add("Image: macos-15-arm64")
+                add("Version: 20260922.1")
+                add("##[endgroup]")
+                add("Complete job name: \(job.name)")
+            case "Complete job":
+                add("Cleaning up orphan processes")
+            default:
+                add("##[group]Run \(step.name.replacingOccurrences(of: "Run ", with: ""))")
+                add("\u{1B}[36;1mxcodebuild -scheme Grove \(step.name.lowercased())\u{1B}[0m")
+                add("shell: /bin/bash -e {0}")
+                add("##[endgroup]")
+                add("\u{1B}[1mCompiling\u{1B}[0m GroveApp.swift")
+                add("\u{1B}[32m✔\u{1B}[0m DiffParserTests passed (0.412 seconds)")
+                add("##[warning]Variable 'result' was never mutated; consider changing to 'let'")
+                if step.status == .failure {
+                    add("\u{1B}[31m✘\u{1B}[0m CIHostTests.runsMapStatus failed: expected 2, got 3")
+                    add("##[error]Process completed with exit code 65.")
+                }
+            }
+        }
+        return lines.joined(separator: "\n") + "\n"
+    }
 }

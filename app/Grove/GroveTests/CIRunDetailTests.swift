@@ -56,7 +56,7 @@ struct CIRunDetailTests {
         let detail = CIRunDetailViewModel(repository: repo)
         await detail.show(active)
         let second = detail.jobs[1]
-        detail.selectJob(second)
+        await detail.selectJob(second)
 
         await detail.show(active)
 

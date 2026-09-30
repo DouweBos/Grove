@@ -6,17 +6,24 @@
 import SwiftUI
 
 struct CopyButton: View {
-    let value: String
+    /// Read when pressed, so a large value isn't built for every render.
+    let value: () -> String
     var help = "Copy"
     /// Toast text; defaults to "Copied".
     var confirmation = "Copied"
+
+    init(value: @autoclosure @escaping () -> String, help: String = "Copy", confirmation: String = "Copied") {
+        self.value = value
+        self.help = help
+        self.confirmation = confirmation
+    }
 
     @State private var copied = false
     @State private var resetTask: Task<Void, Never>?
 
     var body: some View {
         Button {
-            GroveClipboard.copy(value, confirmation: confirmation)
+            GroveClipboard.copy(value(), confirmation: confirmation)
             copied = true
             resetTask?.cancel()
             resetTask = Task {

@@ -35,6 +35,10 @@ nonisolated struct GitHubCIHost: CIHost, GitHubRepositoryAPI {
             .compactMap(GitHubCIParser.job)
     }
 
+    func log(jobID: Int) async throws -> String {
+        String(decoding: try await client.getRedirected(try url("/actions/jobs/\(jobID)/logs")), as: UTF8.self)
+    }
+
     func artifacts(runID: Int) async throws -> [CIArtifact] {
         try await client.getPages(try url("/actions/runs/\(runID)/artifacts?per_page=100"), key: "artifacts", cachePolicy: Self.fresh)
             .compactMap(GitHubCIParser.artifact)

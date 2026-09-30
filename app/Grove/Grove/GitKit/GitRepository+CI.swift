@@ -28,4 +28,8 @@ extension GitRepository {
     func ciJobs(runID: Int) async throws -> [CIJob] {
         try await ciHost().jobs(runID: runID)
     }
+
+    func ciJobLog(jobID: Int) async throws -> String {
+        try await ciHost().log(jobID: jobID)
+    }
 }

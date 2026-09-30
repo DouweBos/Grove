@@ -19,9 +19,12 @@ final class CIRunDetailViewModel {
     @ObservationIgnored private var cache = LRUCache<CIRunDetailKey, CIRunDetails>(capacity: 30)
 
     let repository: any GitRepositoryProtocol
+    /// The selected job's log.
+    let log: CILogViewModel
 
     init(repository: any GitRepositoryProtocol) {
         self.repository = repository
+        log = CILogViewModel(repository: repository)
     }
 
     var selectedJob: CIJob? { jobs.first { $0.id == selectedJobID } }
@@ -38,11 +41,12 @@ final class CIRunDetailViewModel {
         self.run = run
         jobsError = nil
         if let cached = cache.value(for: key)?.jobs {
-            apply(cached)
+            await apply(cached)
             if !run.status.isActive { return }
         } else if previous?.id != run.id {
             jobs = []
             selectedJobID = nil
+            await log.show(nil)
         }
         await loadJobs(for: run)
     }
@@ -59,6 +63,7 @@ final class CIRunDetailViewModel {
         selectedJobID = nil
         isLoadingJobs = false
         jobsError = nil
+        Task { await log.show(nil) }
     }
 
     private func loadJobs(for run: CIRun) async {
@@ -69,8 +74,8 @@ final class CIRunDetailViewModel {
             let loaded = try await repository.ciJobs(runID: run.id)
             cache.update(key, default: CIRunDetails()) { $0.jobs = loaded }
             guard self.run.map(CIRunDetailKey.init) == key else { return }
-            apply(loaded)
             jobsError = nil
+            await apply(loaded)
         } catch {
             guard self.run?.id == run.id else { return }
             jobsError = error.localizedDescription
@@ -78,17 +83,19 @@ final class CIRunDetailViewModel {
     }
 
     /// Keeps the selected job when it's still there; otherwise the first failed job, else the first.
-    private func apply(_ loaded: [CIJob]) {
+    private func apply(_ loaded: [CIJob]) async {
         if loaded != jobs { jobs = loaded }
         if selectedJob == nil {
             selectedJobID = (loaded.first { $0.status == .failure } ?? loaded.first)?.id
         }
+        await log.show(selectedJob)
     }
 
     // MARK: - Selection
 
-    func selectJob(_ job: CIJob) {
+    func selectJob(_ job: CIJob) async {
         selectedJobID = job.id
+        await log.show(job)
     }
 }
 

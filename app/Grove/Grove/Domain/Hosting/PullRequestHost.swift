@@ -63,13 +63,36 @@ nonisolated enum HostingError: LocalizedError, Equatable {
 
 nonisolated protocol HTTPClient: Sendable {
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse)
+    /// Like `data(for:)`, but a redirect comes back as the 3xx response instead of being followed.
+    func dataWithoutRedirect(for request: URLRequest) async throws -> (Data, HTTPURLResponse)
+}
+
+extension HTTPClient {
+    func dataWithoutRedirect(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        try await data(for: request)
+    }
 }
 
 nonisolated struct URLSessionHTTPClient: HTTPClient {
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw HostingError.http(status: 0, message: "No HTTP response.") }
-        return (data, http)
+        try Self.http(try await URLSession.shared.data(for: request))
+    }
+
+    func dataWithoutRedirect(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        try Self.http(try await URLSession.shared.data(for: request, delegate: RedirectStopper()))
+    }
+
+    private static func http(_ result: (Data, URLResponse)) throws -> (Data, HTTPURLResponse) {
+        guard let http = result.1 as? HTTPURLResponse else { throw HostingError.http(status: 0, message: "No HTTP response.") }
+        return (result.0, http)
+    }
+}
+
+/// Answers a redirect with "don't", so the task finishes with the 3xx response.
+private nonisolated final class RedirectStopper: NSObject, URLSessionTaskDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void) {
+        completionHandler(nil)
     }
 }
 
@@ -121,11 +144,17 @@ nonisolated struct RESTClient: Sendable {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
         let (data, response) = try await http.data(for: request)
+        try check(response, data)
+        return (data, response)
+    }
+
+    /// Throws unless the response is a success.
+    func check(_ response: HTTPURLResponse, _ data: Data) throws {
         switch response.statusCode {
         // Azure DevOps answers a bad PAT with a 203 and its sign-in page.
         case 203 where credentials.account.kind == .azureDevOps, 401:
             throw HostingError.notSignedIn(credentials.account.kind)
-        case 200..<300: return (data, response)
+        case 200..<300: return
         default: throw HostingError.http(status: response.statusCode, message: Self.message(in: data))
         }
     }

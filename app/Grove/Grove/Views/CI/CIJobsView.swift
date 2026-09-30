@@ -3,7 +3,7 @@
 
 import SwiftUI
 
-/// A run's jobs on the left, the selected job's steps on the right.
+/// A run's jobs on the left, the selected job's steps and log on the right.
 struct CIJobsView: View {
 
     @Environment(CIRunDetailViewModel.self) private var viewModel
@@ -19,16 +19,14 @@ struct CIJobsView: View {
                            subtitle: "This run hasn't started any jobs.")
         } else {
             HStack(spacing: 0) {
-                SelectableList(items: viewModel.jobs, selection: viewModel.selectedJobID, onSelect: viewModel.selectJob) { job in
+                SelectableList(items: viewModel.jobs, selection: viewModel.selectedJobID,
+                               onSelect: { job in Task { await viewModel.selectJob(job) } }) { job in
                     CIJobRow(job: job)
                 }
-                .frame(width: 240)
+                .frame(width: 220)
                 Rectangle().fill(Theme.border).frame(width: 0.5)
-                if let job = viewModel.selectedJob {
-                    CIStepList(job: job)
-                } else {
-                    EmptyStateView(systemImage: "list.bullet", title: "No Job Selected")
-                }
+                CILogView()
+                    .environment(viewModel.log)
             }
         }
     }
@@ -49,26 +47,6 @@ struct CIJobRow: View {
             CIElapsedText(start: job.startedDate, end: job.completedDate, isActive: job.status.isActive)
         }
         .help(job.name)
-    }
-}
-
-/// A job's steps in order, each with its status and how long it took.
-struct CIStepList: View {
-    let job: CIJob
-
-    var body: some View {
-        if job.steps.isEmpty {
-            EmptyStateView(systemImage: "list.bullet", title: job.status == .queued ? "Waiting for a Runner" : "No Steps")
-        } else {
-            ScrollView {
-                LazyVStack(spacing: 2) {
-                    ForEach(job.steps) { step in
-                        CIStepRow(step: step).selectableRow(isSelected: false)
-                    }
-                }
-                .padding(Theme.Spacing.sm)
-            }
-        }
     }
 }
 

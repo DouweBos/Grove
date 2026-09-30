@@ -1,7 +1,7 @@
 // Domain/Hosting/RESTClient+Transfers.swift
 // Grove
 //
-// Requests beyond plain JSON lists: lists wrapped in an object, as the Actions API returns them.
+// Requests beyond plain JSON lists: lists wrapped in an object, and files the API hands out through a redirect.
 
 import Foundation
 
@@ -20,5 +20,25 @@ extension RESTClient {
             pages += 1
         }
         return objects
+    }
+
+    /// A file the API serves by redirecting to storage, e.g. a job log.
+    func getRedirected(_ url: URL) async throws -> Data {
+        let (data, response) = try await http.dataWithoutRedirect(for: authorized("GET", url, accept: "application/json"))
+        guard let location = Self.redirectTarget(of: response) else {
+            try check(response, data)
+            return data
+        }
+        // The storage URL is signed; sending the token along leaks it to another host and gets the request refused.
+        let (file, fileResponse) = try await http.data(for: URLRequest(url: location))
+        guard (200..<300).contains(fileResponse.statusCode) else {
+            throw HostingError.http(status: fileResponse.statusCode, message: Self.message(in: file))
+        }
+        return file
+    }
+
+    static func redirectTarget(of response: HTTPURLResponse) -> URL? {
+        guard (300..<400).contains(response.statusCode), let location = response.value(forHTTPHeaderField: "Location") else { return nil }
+        return URL(string: location, relativeTo: response.url)?.absoluteURL
     }
 }
