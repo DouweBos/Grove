@@ -108,6 +108,20 @@ struct WorktreeRemovalTests {
         #expect(window.isBrowsing, "Back skips the removed worktree and the repository already shown")
     }
 
+    @Test func worktreeDeletedOutsideGroveMovesItsTabToTheMainRepository() async throws {
+        let store = WindowStore(manager: MockRepositoryManager())
+        let window = store.claimWindow(opening: RepositoryReference(path: worktree.path))
+        window.loadSessionIfNeeded(for: RepositoryReference(path: worktree.path))
+        let session = try await session(in: window, at: worktree.path)
+        await session.start()
+
+        try git(["worktree", "remove", "--force", worktree.path], in: repo)
+        await session.folderChanged()
+        #expect(WorktreeResolver.isSameFolder(window.openRepo?.path ?? "", repo.path))
+        #expect(window.sessions[worktree.path] == nil)
+        #expect(!session.isActive)
+    }
+
     // MARK: Helpers
 
     private func session(in window: WindowViewModel, at path: String) async throws -> RepositorySession {

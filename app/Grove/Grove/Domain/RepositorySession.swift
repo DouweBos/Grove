@@ -60,11 +60,16 @@ final class RepositorySession {
     private var fileWatcher: FileWatcher?
     /// False while paused: nothing watches or fetches, but every loaded list stays.
     private(set) var isActive = false
+    /// Set by the window: the folder was deleted outside Grove. Passes its path and, for a worktree, its main repository.
+    var onFolderRemoved: ((String, String?) -> Void)?
+    /// Read up front: a deleted worktree can no longer say which repository it belonged to.
+    private let mainRepositoryPath: String?
 
     // MARK: - Init
 
     init(repository: any GitRepositoryProtocol) {
         self.repository = repository
+        self.mainRepositoryPath = WorktreeResolver.mainRepositoryPath(forWorktreeAt: repository.path.path)
         let refs = RepositoryRefs(repository: repository, readsStatus: false)
         self.refs = refs
         self.sidebarVM        = SidebarViewModel(repository: repository, refs: refs)
@@ -122,14 +127,23 @@ final class RepositorySession {
         guard !isActive else { return }
         isActive = true
         let watcher = FileWatcher(paths: [repository.path.path], latency: 1.0) { [weak self] in
-            Task { @MainActor in
-                guard let self, self.isActive else { return }
-                await self.refreshAll()
-            }
+            Task { @MainActor in await self?.folderChanged() }
         }
         watcher.start()
         fileWatcher = watcher
         autoFetcher.start()
+        await refreshAll()
+    }
+
+    /// A watched change: refreshes, or hands the session back when the folder itself is gone.
+    func folderChanged() async {
+        guard isActive else { return }
+        let path = repository.path.path
+        guard FileManager.default.fileExists(atPath: path) else {
+            stop()
+            onFolderRemoved?(path, mainRepositoryPath)
+            return
+        }
         await refreshAll()
     }
 

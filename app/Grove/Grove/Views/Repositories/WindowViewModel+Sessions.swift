@@ -58,10 +58,12 @@ extension WindowViewModel {
                 let session = RepositorySession(repository: repo)
                 session.sidebarVM.onSwitchWorktree = { [weak self] path in self?.switchWorktree(to: path) }
                 session.sidebarVM.onOpenWorktreeInNewTab = { path in WindowStore.openTabHandler?(RepositoryReference(path: path)) }
-                session.sidebarVM.onWorktreeRemoved = { [weak self] path, main in
+                let worktreeRemoved: (String, String?) -> Void = { [weak self] path, main in
                     guard let self else { return }
                     if let onWorktreeRemoved { onWorktreeRemoved(path, main) } else { forgetWorktree(at: path, mainRepositoryPath: main) }
                 }
+                session.sidebarVM.onWorktreeRemoved = worktreeRemoved
+                session.onFolderRemoved = worktreeRemoved
                 if let pendingSelection {
                     session.restoreSelection(pendingSelection)
                     setPendingSelection(nil)
