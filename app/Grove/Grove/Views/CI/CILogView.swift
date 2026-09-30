@@ -28,12 +28,31 @@ struct CILogView: View {
             }
             Spacer(minLength: Theme.Spacing.sm)
             if viewModel.isLoading { ProgressView().controlSize(.small) }
+            search
             WrapLinesToggle()
             CopyButton(value: viewModel.plainText, help: "Copy Log", confirmation: "Copied Log")
-                .disabled(viewModel.document?.lineCount ?? 0 == 0)
         }
+        .buttonStyle(.borderless)
+        .disabled(viewModel.document == nil)
         .padding(.horizontal, Theme.Spacing.md)
-        .frame(height: 36)
+        .frame(height: 40)
+    }
+
+    @ViewBuilder
+    private var search: some View {
+        PanelSearchField(placeholder: "Search log", text: viewModel.searchText) { text in Task { await viewModel.setSearchText(text) } }
+            .frame(minWidth: 110, maxWidth: 200)
+            .onSubmit { viewModel.nextMatch() }
+        if !viewModel.searchText.isEmpty {
+            Text(viewModel.currentMatchIndex.map { "\($0 + 1)/\(viewModel.matches.count)" } ?? "0/0")
+                .font(.monoCaption)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize()
+            Button { viewModel.previousMatch() } label: { Image(systemName: "chevron.up") }
+                .help("Previous Match")
+            Button { viewModel.nextMatch() } label: { Image(systemName: "chevron.down") }
+                .help("Next Match")
+        }
     }
 
     @ViewBuilder
@@ -65,8 +84,14 @@ struct CILogView: View {
     }
 
     private var rows: some View {
-        DiffScrollView {
-            CILogRows(rows: viewModel.rows, longestLine: viewModel.document?.longestLine ?? 0)
+        ScrollViewReader { proxy in
+            DiffScrollView {
+                CILogRows(rows: viewModel.rows, longestLine: viewModel.document?.longestLine ?? 0)
+            }
+            .onChange(of: viewModel.currentMatch) { _, match in
+                // Leading, so a long line's start stays in view when lines don't wrap.
+                if let match { proxy.scrollTo(match, anchor: UnitPoint(x: 0, y: 0.5)) }
+            }
         }
     }
 }
@@ -88,7 +113,10 @@ private struct CILogRows: View {
                 case .step(let section):
                     CILogStepHeader(section: section, isExpanded: viewModel.isExpanded(section)) { viewModel.toggleStep(section) }
                 case .line(let line):
-                    CILogRowView(line: line, isGroupExpanded: viewModel.expandedGroups.contains(line.id)) { viewModel.toggleGroup(line) }
+                    CILogRowView(line: line, isGroupExpanded: viewModel.expandedGroups.contains(line.id),
+                                 searchText: viewModel.searchText, isCurrentMatch: viewModel.currentMatch == line.id) {
+                        viewModel.toggleGroup(line)
+                    }
                 }
             }
         }

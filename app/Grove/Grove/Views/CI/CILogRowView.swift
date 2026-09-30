@@ -41,10 +41,12 @@ struct CILogStepHeader: View {
     }
 }
 
-/// One log line: its number, then the text, tinted for errors and warnings; group headers fold their lines.
+/// One log line: its number, then the text in its terminal colors, tinted for errors and warnings; group headers fold their lines.
 struct CILogRowView: View {
     let line: CILogLine
     var isGroupExpanded = false
+    var searchText = ""
+    var isCurrentMatch = false
     var onToggleGroup: () -> Void = {}
 
     @Environment(\.diffViewportWidth) private var viewportWidth
@@ -73,7 +75,7 @@ struct CILogRowView: View {
             .background(Theme.surface)
             .offset(x: scrollOffset)
             .zIndex(1)
-            Text(ANSIParser.strip(line.text))
+            Text(CILogText.attributed(line.text, searchText: searchText))
                 .foregroundStyle(textColor)
                 .fontWeight(line.kind == .group ? .semibold : .regular)
                 .textSelection(.enabled)
@@ -101,16 +103,60 @@ struct CILogRowView: View {
     }
 
     private var fill: Color {
+        if isCurrentMatch { return Theme.selectionFill }
         switch line.kind {
-        case .error: Theme.dangerFill
-        case .warning: Theme.bannerFill
-        default: .clear
+        case .error: return Theme.dangerFill
+        case .warning: return Theme.bannerFill
+        default: return .clear
+        }
+    }
+}
+
+/// A log line's text with its terminal styles, and search matches marked.
+enum CILogText {
+
+    static func attributed(_ text: String, searchText: String = "") -> AttributedString {
+        var result = AttributedString()
+        for span in ANSIParser.spans(text) {
+            var run = AttributedString(span.text)
+            if let color = span.color { run.foregroundColor = color.themeColor }
+            if span.isBold || span.isItalic {
+                let weighted = Font.monoBody.weight(span.isBold ? .bold : .regular)
+                run.font = span.isItalic ? weighted.italic() : weighted
+            }
+            if span.isUnderlined { run.underlineStyle = .single }
+            result += run
+        }
+        guard !searchText.isEmpty else { return result }
+        var searched = result.startIndex..<result.endIndex
+        while let match = result[searched].range(of: searchText, options: .caseInsensitive) {
+            result[match].backgroundColor = Theme.searchMatchFill
+            searched = match.upperBound..<result.endIndex
+        }
+        return result
+    }
+}
+
+extension ANSIColor {
+    /// Terminal colors in the app's palette; black and white follow the appearance so neither disappears.
+    var themeColor: Color {
+        switch self {
+        case .black: Theme.textSecondary
+        case .red: Theme.danger
+        case .green: Theme.success
+        case .yellow: Theme.warning
+        case .blue: Theme.info
+        case .magenta: Theme.ansiMagenta
+        case .cyan: Theme.ansiCyan
+        case .white: Theme.textPrimary
         }
     }
 }
 
 #Preview {
     VStack(alignment: .leading, spacing: 0) {
+        CILogRowView(line: CILogLine(id: 9, number: 0, text: "\u{1B}[32m✔\u{1B}[0m \u{1B}[1mDiffParserTests\u{1B}[0m \u{1B}[36mpassed\u{1B}[0m",
+                                     kind: .plain, group: nil), searchText: "parser")
         CILogRowView(line: CILogLine(id: 0, number: 1, text: "Run swift test", kind: .group, group: nil), isGroupExpanded: true)
         CILogRowView(line: CILogLine(id: 1, number: 2, text: "shell: /bin/bash -e {0}", kind: .plain, group: 0))
         CILogRowView(line: CILogLine(id: 2, number: 3, text: "Compiling GroveApp.swift", kind: .plain, group: nil))

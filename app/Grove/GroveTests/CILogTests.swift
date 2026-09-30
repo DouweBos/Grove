@@ -4,6 +4,7 @@
 // Job logs: fetched through GitHub's redirect without leaking the token, split by step, folded by group.
 
 import Foundation
+import SwiftUI
 import Testing
 @testable import Grove
 
@@ -229,5 +230,81 @@ struct CILogTests {
         repo.ci.error = nil
         await log.reload()
         #expect(log.errorMessage == nil && log.document?.lineCount ?? 0 > 0)
+    }
+}
+
+// MARK: - Colors and search
+
+@MainActor
+struct CILogStyleTests {
+
+    @Test func colorsAndWeightsBecomeSpans() {
+        let spans = ANSIParser.spans("\u{1B}[31;1merror:\u{1B}[0m plain \u{1B}[3;4;92mok\u{1B}[23m!\u{1B}[39;24m end")
+        #expect(spans.map(\.text) == ["error:", " plain ", "ok", "!", " end"])
+        #expect(spans[0].color == .red && spans[0].isBold && spans[1].isPlain)
+        #expect(spans[2].color == .green && spans[2].isItalic && spans[2].isUnderlined, "Bright colors fold into the base ones")
+        #expect(!spans[3].isItalic && spans[3].isUnderlined && spans[4].isPlain)
+        #expect(ANSIParser.spans("no escapes") == [ANSISpan(text: "no escapes")])
+    }
+
+    @Test func otherSequencesAndBackgroundsAreDropped() {
+        #expect(ANSIParser.spans("\u{1B}[2Kcleared\u{1B}[1Aup").map(\.text) == ["cleared", "up"])
+        let spans = ANSIParser.spans("\u{1B}[41mred background\u{1B}[0m \u{1B}[48;5;196;33myellow")
+        #expect(spans[0].isPlain && spans.last?.color == .yellow, "A background's extra codes aren't read as styles")
+        #expect(ANSIParser.spans("\u{1B}[mreset") == [ANSISpan(text: "reset")])
+    }
+
+    @Test func extendedColorsQuantiseToTheEight() {
+        #expect(ANSIParser.spans("\u{1B}[38;5;196mx")[0].color == .red)
+        #expect(ANSIParser.spans("\u{1B}[38;5;10mx")[0].color == .green)
+        #expect(ANSIParser.spans("\u{1B}[38;2;40;120;255mx")[0].color == .blue)
+        #expect(ANSIParser.spans("\u{1B}[38;2;255;0;255;1mx")[0] == ANSISpan(text: "x", color: .magenta, isBold: true))
+        #expect(ANSIParser.quantise(red: 0, green: 200, blue: 210) == .cyan && ANSIParser.quantise(red: 250, green: 210, blue: 0) == .yellow)
+        #expect(ANSIParser.quantise(palette: 240) == .black && ANSIParser.quantise(palette: 252) == .white)
+        #expect(ANSIParser.quantise(red: 128, green: 128, blue: 128) == .black)
+    }
+
+    @Test func searchMarksEveryOccurrenceAcrossStyles() {
+        let text = CILogText.attributed("\u{1B}[32mPass\u{1B}[0med: passing", searchText: "pass")
+        let marked = text.runs.filter { $0.backgroundColor != nil }.map { String(text[$0.range].characters) }
+        #expect(String(text.characters) == "Passed: passing" && marked == ["Pass", "pass"])
+    }
+
+    @Test func searchFindsLinesInClosedStepsAndFoldedGroups() async throws {
+        let log = CILogViewModel(repository: MockGitRepository())
+        let job = MockData.ciJobs(for: MockData.ciRuns[3])[1]
+        await log.show(job)
+        let rowsBefore = log.rows.count
+
+        await log.setSearchText("SHELL:")
+
+        let timedSteps = job.steps.filter { $0.startedDate != nil && !["Set up job", "Complete job"].contains($0.name) }
+        #expect(log.matches.count == timedSteps.count && log.currentMatchIndex == 0)
+        let first = try #require(log.currentMatch)
+        #expect(log.rows.contains { $0.id == first } && log.rows.count > rowsBefore, "The first match's step and group open")
+
+        log.nextMatch()
+        #expect(log.currentMatchIndex == 1 && log.rows.contains { $0.id == log.currentMatch })
+        log.previousMatch()
+        log.previousMatch()
+        #expect(log.currentMatchIndex == log.matches.count - 1, "Navigation wraps around")
+
+        await log.setSearchText("no such text")
+        #expect(log.matches.isEmpty && log.currentMatch == nil)
+        log.nextMatch()
+        await log.setSearchText("")
+        #expect(log.matches.isEmpty && log.currentMatchIndex == nil)
+    }
+
+    @Test func searchIgnoresEscapeSequences() async {
+        let repo = MockGitRepository()
+        let job = MockData.ciJobs(for: MockData.ciRuns[2])[0]
+        repo.ci.logs[job.id] = "2026-09-01T10:00:00.0000000Z \u{1B}[1mComp\u{1B}[0miling\n"
+        let log = CILogViewModel(repository: repo)
+        await log.show(job)
+
+        await log.setSearchText("compiling")
+
+        #expect(log.matches.count == 1)
     }
 }
