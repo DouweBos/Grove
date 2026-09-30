@@ -61,7 +61,8 @@ struct FileStatusListView: View {
             }
         } else {
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                // Lazy: a deleted folder can put tens of thousands of files here at once.
+                LazyVStack(alignment: .leading, spacing: 2) {
                     sections
                 }
                 .padding(Theme.Spacing.sm)
@@ -130,25 +131,25 @@ private struct FileSection<Accessory: View>: View {
     let focusList: () -> Void
     @ViewBuilder var accessory: () -> Accessory
 
+    /// Rows are direct children of the list's lazy stack, so only the visible ones are built.
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            SectionLabel(title: title, count: entries.count, accessory: accessory)
-                .padding(.horizontal, Theme.Spacing.sm)
-                .padding(.bottom, Theme.Spacing.xs)
-            if viewModel.fileViewMode == .treeModified {
-                ForEach(viewModel.directoryGroups(entries), id: \.directory) { group in
-                    if !group.directory.isEmpty {
-                        directoryHeader(group.directory)
-                    }
-                    ForEach(group.entries) { entry in
-                        row(entry, showsDirectory: false)
-                            .padding(.leading, group.directory.isEmpty ? 0 : Theme.Spacing.lg)
-                    }
+        SectionLabel(title: title, count: entries.count, accessory: accessory)
+            .padding(.horizontal, Theme.Spacing.sm)
+            .padding(.bottom, Theme.Spacing.xs)
+        if viewModel.fileViewMode == .treeModified {
+            ForEach(viewModel.directoryGroups(entries), id: \.directory) { group in
+                if !group.directory.isEmpty {
+                    directoryHeader(group.directory)
                 }
-            } else {
-                ForEach(entries) { row($0, showsDirectory: true) }
+                ForEach(group.entries) { entry in
+                    row(entry, showsDirectory: false)
+                        .padding(.leading, group.directory.isEmpty ? 0 : Theme.Spacing.lg)
+                }
             }
+        } else {
+            ForEach(entries) { row($0, showsDirectory: true) }
         }
+        Color.clear.frame(height: Theme.Spacing.md - 2)
     }
 
     private func row(_ entry: StatusEntry, showsDirectory: Bool) -> some View {
