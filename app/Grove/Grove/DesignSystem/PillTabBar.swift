@@ -10,6 +10,8 @@ struct PillTab<ID: Hashable>: Identifiable {
     var title: String
     var symbol: String
     var badge: Int?
+    /// A small red dot: something behind this tab needs attention.
+    var indicator = false
 }
 
 struct PillTabBar<ID: Hashable>: View {
@@ -33,6 +35,10 @@ struct PillTabBar<ID: Hashable>: View {
                             Image(systemName: tab.symbol)
                         } else {
                             Label(tab.title, systemImage: tab.symbol).labelStyle(.titleAndIcon)
+                        }
+                        if tab.indicator {
+                            Circle().fill(Theme.danger).frame(width: 6, height: 6)
+                                .accessibilityLabel("Needs attention")
                         }
                         if let badge = tab.badge, badge > 0 {
                             Text("\(badge)")
@@ -69,7 +75,8 @@ struct PillTabBar<ID: Hashable>: View {
         tabs: [
             PillTab(id: "changes", title: "Changes", symbol: "tray", badge: 4),
             PillTab(id: "history", title: "History", symbol: "clock"),
-            PillTab(id: "stashes", title: "Stashes", symbol: "tray.2")
+            PillTab(id: "stashes", title: "Stashes", symbol: "tray.2"),
+            PillTab(id: "actions", title: "Actions", symbol: "play.circle", indicator: true)
         ],
         selection: selection
     ) { selection = $0 }

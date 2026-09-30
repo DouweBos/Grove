@@ -83,7 +83,8 @@ struct RepositoryToolbar: ToolbarContent {
         ToolbarItem(placement: .principal) {
             PillTabBar(
                 tabs: visibleTabs.map {
-                    PillTab(id: $0, title: $0.title, symbol: $0.symbol, badge: $0 == .changes ? changeCount : nil)
+                    PillTab(id: $0, title: $0.title, symbol: $0.symbol, badge: $0 == .changes ? changeCount : nil,
+                            indicator: $0 == .ci && toolbarState.refs.isHeadFailingCI)
                 },
                 selection: currentTab,
                 compact: true,

@@ -25,6 +25,10 @@ final class RepositoryRefs {
     private(set) var mergedPullRequests: [BranchPullRequest] = []
     private var pullRequestsFetchedAt: Date?
     private var pullRequestTask: Task<Void, Never>?
+    /// CI status of each branch's newest commit on the host; a network read, throttled like pull requests.
+    private(set) var branchCIStatuses: [String: BranchCIStatus] = [:]
+    private var ciStatusesFetchedAt: Date?
+    private var ciStatusTask: Task<Void, Never>?
     /// Staged or unstaged entries, for the Changes badge.
     private(set) var changedCount = 0
     private(set) var hasLoaded = false
@@ -63,6 +67,7 @@ final class RepositoryRefs {
     @discardableResult
     func beginRefresh() -> Task<Void, Never> {
         refreshPullRequests()
+        refreshCIStatuses()
         if let inFlight { return inFlight }
         let task = Task {
             await read()
@@ -119,6 +124,28 @@ final class RepositoryRefs {
             pullRequestsFetchedAt = Date()
             pullRequestTask = nil
             if hasLoaded { await readStacks() }
+        }
+    }
+
+    /// CI's verdict on `branch`, while the branch still points at the commit CI ran on.
+    func ciStatus(for branch: BranchInfo) -> BranchCIStatus? {
+        let name = branch.isRemote ? branch.name.split(separator: "/", maxSplits: 1).last.map(String.init) : branch.name
+        return name.flatMap { branchCIStatuses[$0] }.flatMap { $0.applies(toTip: branch.targetSHA) ? $0 : nil }
+    }
+
+    /// The checked-out branch's newest commit failed CI.
+    var isHeadFailingCI: Bool { headBranch.flatMap(ciStatus(for:))?.status == .failure }
+
+    /// Runs beside ref reads without holding them up; a failure (no account, unsupported host) keeps the last result.
+    func refreshCIStatuses(force: Bool = false) {
+        guard ciStatusTask == nil else { return }
+        if !force, let ciStatusesFetchedAt, Date().timeIntervalSince(ciStatusesFetchedAt) < 60 { return }
+        ciStatusTask = Task {
+            if let fetched = try? await repository.branchCIStatuses(), fetched != branchCIStatuses {
+                branchCIStatuses = fetched
+            }
+            ciStatusesFetchedAt = Date()
+            ciStatusTask = nil
         }
     }
 

@@ -25,6 +25,10 @@ extension GitRepository {
         try await ciHost().run(id: id)
     }
 
+    func branchCIStatuses() async throws -> [String: BranchCIStatus] {
+        try await ciHost().branchStatuses()
+    }
+
     func ciJobs(runID: Int) async throws -> [CIJob] {
         try await ciHost().jobs(runID: runID)
     }

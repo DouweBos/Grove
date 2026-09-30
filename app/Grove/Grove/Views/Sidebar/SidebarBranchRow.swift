@@ -15,6 +15,7 @@ struct SidebarBranchRow: View {
     /// Parent recorded when the branch was created.
     var parent: String?
     var pullRequest: BranchPullRequest?
+    var ciStatus: BranchCIStatus?
 
     var displayName: String {
         guard !showsFullName, let slashIndex = branch.name.firstIndex(of: "/") else { return branch.name }
@@ -34,6 +35,7 @@ struct SidebarBranchRow: View {
             badgeSymbol: worktree == nil ? nil : "tree.circle.fill"
         ) {
             HStack(spacing: Theme.Spacing.xs) {
+                if let ciStatus { BranchCIStatusIcon(status: ciStatus) }
                 if isPinned {
                     Image(systemName: "pin.fill")
                         .font(.system(size: 9))
@@ -51,9 +53,23 @@ struct SidebarBranchRow: View {
         var name = branch.upstreamShortName.map { "\(branch.name) → \($0)" } ?? branch.name
         if let parent { name += "\nParent: \(parent)" }
         if let pullRequest { name += "\n" + pullRequest.tooltip }
+        if let ciStatus { name += "\n" + ciStatus.tooltip }
         guard let worktree else { return name }
         let place = worktree.isMain ? "the main worktree" : "worktree \(worktree.folderName)"
         return "\(name)\nChecked out in \(place). Double-click to open it in a new tab."
+    }
+}
+
+/// A branch row's CI verdict: the status symbol, small, in its color unless the row is selected.
+struct BranchCIStatusIcon: View {
+    let status: BranchCIStatus
+    @Environment(\.backgroundProminence) private var prominence
+
+    var body: some View {
+        Image(systemName: status.status.symbol)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(prominence == .increased ? AnyShapeStyle(.secondary) : AnyShapeStyle(status.status.color))
+            .accessibilityLabel(status.tooltip)
     }
 }
 

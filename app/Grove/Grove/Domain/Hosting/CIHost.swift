@@ -17,6 +17,8 @@ nonisolated protocol CIHost: Sendable {
     /// The job's whole log as plain text; only there once the job has finished.
     func log(jobID: Int) async throws -> String
     func artifacts(runID: Int) async throws -> [CIArtifact]
+    /// How CI went for each branch's newest commit, keyed by branch, for branch rows.
+    func branchStatuses() async throws -> [String: BranchCIStatus]
     /// Saves the artifact's zip at `destination`.
     func downloadArtifact(id: Int, to destination: URL) async throws
     /// Starts a new attempt of the run: every job, or only the failed ones and those depending on them.

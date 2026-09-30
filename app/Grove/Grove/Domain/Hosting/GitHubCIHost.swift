@@ -35,6 +35,11 @@ nonisolated struct GitHubCIHost: CIHost, GitHubRepositoryAPI {
             .compactMap(GitHubCIParser.job)
     }
 
+    /// One request: the hundred newest runs cover every branch that saw CI lately.
+    func branchStatuses() async throws -> [String: BranchCIStatus] {
+        BranchCIStatus.index(try await runs(CIRunQuery(limit: 100)))
+    }
+
     func log(jobID: Int) async throws -> String {
         String(decoding: try await client.getRedirected(try url("/actions/jobs/\(jobID)/logs")), as: UTF8.self)
     }

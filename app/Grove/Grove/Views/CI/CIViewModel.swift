@@ -102,6 +102,9 @@ final class CIViewModel {
     }
 
     private func apply(_ loaded: [CIRun]) async {
+        // A run that just finished changes its branch's status in the sidebar.
+        let finished = loaded.contains { run in !run.status.isActive && runs.contains { $0.id == run.id && $0.status.isActive } }
+        if finished { refs.refreshCIStatuses(force: true) }
         if loaded != runs { runs = loaded }
         loadFailure = nil
         consecutiveFailures = 0
@@ -186,6 +189,12 @@ final class CIViewModel {
 
     func clearFilters() async {
         await setQuery(CIRunQuery())
+    }
+
+    /// Lists only `branch`'s runs, e.g. from a branch's context menu; reads even when the filter was already set.
+    func showRuns(for branch: String) async {
+        query = CIRunQuery(branch: branch)
+        await refresh()
     }
 
     private func setQuery(_ new: CIRunQuery) async {

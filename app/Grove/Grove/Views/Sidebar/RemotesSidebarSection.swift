@@ -92,9 +92,12 @@ struct RemotesSidebarSection: View {
         let shortName = SidebarViewModel.shortName(of: branch)
         let hasLocal = viewModel.localBranches.contains { $0.name == shortName }
         let pullRequest = viewModel.refs.pullRequest(for: branch)
+        let ciStatus = viewModel.refs.ciStatus(for: branch)
         return SidebarRow(title: shortName, symbol: "arrow.triangle.branch", tint: Theme.info, detail: pullRequest?.label,
-                          detailSymbol: pullRequest?.detailSymbol, detailTint: Theme.renamed, isDimmed: pullRequest?.isMerged == true)
-            .help(pullRequest.map { "\(branch.name)\n" + $0.tooltip } ?? branch.name)
+                          detailSymbol: pullRequest?.detailSymbol, detailTint: Theme.renamed, isDimmed: pullRequest?.isMerged == true) {
+            if let ciStatus { BranchCIStatusIcon(status: ciStatus) }
+        }
+            .help(([branch.name] + [pullRequest?.tooltip, ciStatus?.tooltip].compactMap { $0 }).joined(separator: "\n"))
             .tag(SidebarItem.remoteBranch(branch))
             .draggable(branch.name)
             .contextMenu {
@@ -116,6 +119,7 @@ struct RemotesSidebarSection: View {
                 if pullRequest == nil {
                     Button("Create Pull Request\u{2026}", systemImage: "arrow.triangle.pull") { viewModel.createPullRequest(for: branch) }
                 }
+                Button("Show Runs for Branch", systemImage: "play.circle") { viewModel.showRuns(for: branch) }
                 Divider()
                 Button("Delete on Remote…", systemImage: "trash", role: .destructive) {
                     branchToDelete = branch

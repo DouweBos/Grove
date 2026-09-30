@@ -126,6 +126,10 @@ final class RepositorySession {
         repositorySettingsVM.onRepositoryChanged = refresh
         pullRequestsVM.onShowPullRequests = { [weak self] in self?.sidebarVM.select(.pullRequests) }
         ciVM.onShowCI = { [weak self] in self?.sidebarVM.select(.ci) }
+        sidebarVM.onShowRuns = { [weak self] branch in
+            self?.sidebarVM.select(.ci)
+            Task { await self?.ciVM.showRuns(for: branch) }
+        }
         sidebarVM.onCreatePullRequest = { [weak self] branch in self?.pullRequestsVM.beginCreatePullRequest(head: branch) }
     }
 

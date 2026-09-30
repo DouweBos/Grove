@@ -104,6 +104,14 @@ final class SidebarViewModel {
         onCreatePullRequest?(branch.isRemote ? Self.shortName(of: branch) : branch.name)
     }
 
+    /// Set by the session, which owns the Actions tab.
+    var onShowRuns: ((String) -> Void)?
+
+    /// Opens the Actions tab filtered to the branch, by its name on the remote.
+    func showRuns(for branch: BranchInfo) {
+        onShowRuns?(branch.isRemote ? Self.shortName(of: branch) : branch.name)
+    }
+
     /// Dropping on Changes: `stash@{N}` applies a stash, a SHA cherry-picks,
     /// a branch merges (or rebases when `rebase` is set, i.e. Option held).
     func handleWorkingCopyDrop(_ payload: String, rebase: Bool) -> Bool {

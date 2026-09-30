@@ -25,6 +25,7 @@ struct MockCIState {
     var workflowFiles = MockData.ciWorkflowFiles
     var workflowFileRequests: [String] = []
     var dispatches: [CIDispatch] = []
+    var branchStatusRequests = 0
 }
 
 extension MockGitRepository {
@@ -106,6 +107,12 @@ extension MockGitRepository {
                              event: "workflow_dispatch", branch: dispatch.ref, headSHA: MockData.commits[0].id, status: .queued,
                              actor: MockData.authorJane.name, createdDate: Date(), updatedDate: Date(), startedDate: nil,
                              webURL: "https://github.com/example/app/actions/runs/\(id)"), at: 0)
+    }
+
+    func branchCIStatuses() async throws -> [String: BranchCIStatus] {
+        ci.branchStatusRequests += 1
+        if let error = ci.error { throw error }
+        return BranchCIStatus.index(ci.runs)
     }
 
     func ciRun(id: Int) async throws -> CIRun {

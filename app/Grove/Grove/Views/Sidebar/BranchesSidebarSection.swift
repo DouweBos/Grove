@@ -50,7 +50,7 @@ struct BranchesSidebarSection: View {
         actions(for: branch, isPinned: isPinned, on: SidebarBranchRow(
             branch: branch, isPinned: isPinned, showsFullName: showsFullName,
             worktree: viewModel.worktree(checkingOut: branch), parent: viewModel.refs.parents[branch.name],
-            pullRequest: viewModel.refs.pullRequest(for: branch)))
+            pullRequest: viewModel.refs.pullRequest(for: branch), ciStatus: viewModel.refs.ciStatus(for: branch)))
     }
 
     @ViewBuilder
@@ -162,6 +162,7 @@ struct BranchContextMenu: View {
         } else {
             Button("Create Pull Request\u{2026}", systemImage: "arrow.triangle.pull") { viewModel.createPullRequest(for: branch) }
         }
+        Button("Show Runs for Branch", systemImage: "play.circle") { viewModel.showRuns(for: branch) }
         Button("Reveal in History", systemImage: "clock.arrow.circlepath") { viewModel.revealInHistory(.branch(branch)) }
         ExportFilesButton(ref: branch.name)
         Divider()

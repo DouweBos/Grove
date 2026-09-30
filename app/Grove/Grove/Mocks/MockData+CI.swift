@@ -57,12 +57,12 @@ extension MockData {
                          webURL: "https://github.com/example/app/actions/runs/\(id)")
         }
         return [
-            run(148, "feat: add pull request list and detail views", workflow: 1, branch: "feature/auth", sha: 0, .inProgress,
+            run(148, "feat: add pull request list and detail views", workflow: 1, branch: "feature/auth", sha: 2, .inProgress,
                 minutesAgo: 2, length: 2),
-            run(147, "Release 1.4.0", workflow: 2, event: "workflow_dispatch", branch: "main", sha: 1, .queued, minutesAgo: 3, length: nil),
-            run(146, "fix: keep the selection when a list reloads", workflow: 1, branch: "main", sha: 1, .success, minutesAgo: 42,
+            run(147, "Release 1.4.0", workflow: 2, event: "workflow_dispatch", branch: "develop", sha: 3, .queued, minutesAgo: 3, length: nil),
+            run(146, "fix: keep the selection when a list reloads", workflow: 1, branch: "main", sha: 0, .success, minutesAgo: 42,
                 length: 6.4),
-            run(145, "refactor: share the diff cache", workflow: 1, event: "pull_request", branch: "feature/ui-overhaul", sha: 2, .failure,
+            run(145, "refactor: share the diff cache", workflow: 1, event: "pull_request", branch: "feature/ui-overhaul", sha: 5, .failure,
                 minutesAgo: 95, length: 4.1, attempt: 2, actor: authorBob.name),
             run(144, "Nightly", workflow: 3, event: "schedule", branch: "main", sha: 3, .cancelled, minutesAgo: 600, length: 1.2),
             run(143, "docs: describe the release lane", workflow: 1, branch: "main", sha: 4, .skipped, minutesAgo: 1500, length: 0.1,
