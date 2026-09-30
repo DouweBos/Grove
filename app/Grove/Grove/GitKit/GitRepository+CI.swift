@@ -32,4 +32,13 @@ extension GitRepository {
     func ciJobLog(jobID: Int) async throws -> String {
         try await ciHost().log(jobID: jobID)
     }
+
+    func ciArtifacts(runID: Int) async throws -> [CIArtifact] {
+        try await ciHost().artifacts(runID: runID)
+    }
+
+    func downloadCIArtifact(id: Int, to destination: URL) async throws {
+        Logger.gitRepository.info("Downloading artifact \(id, privacy: .public) in \(self.displayName, privacy: .public)")
+        try await ciHost().downloadArtifact(id: id, to: destination)
+    }
 }

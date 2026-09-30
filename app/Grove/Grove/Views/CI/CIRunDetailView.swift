@@ -3,10 +3,11 @@
 
 import SwiftUI
 
-/// Detail card for the selected run: what ran, where, and how it went.
+/// Detail card for the selected run: what ran, where, how it went, and its Jobs / Artifacts tabs.
 struct CIRunDetailView: View {
 
     @Environment(CIViewModel.self) private var viewModel
+    @Environment(CIRunDetailViewModel.self) private var detail
 
     var body: some View {
         Group {
@@ -14,7 +15,10 @@ struct CIRunDetailView: View {
                 VStack(spacing: 0) {
                     header(run)
                     Rectangle().fill(Theme.border).frame(height: 0.5)
-                    CIJobsView()
+                    switch detail.activeTab {
+                    case .jobs: CIJobsView()
+                    case .artifacts: CIArtifactsView()
+                    }
                 }
             } else {
                 EmptyStateView(systemImage: "play.circle", title: "No Run Selected",
@@ -28,6 +32,21 @@ struct CIRunDetailView: View {
     // MARK: - Header
 
     private func header(_ run: CIRun) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            summaryRow(run)
+            Picker("Section", selection: Binding(get: { detail.activeTab }, set: { tab in Task { await detail.selectTab(tab) } })) {
+                ForEach(CIRunDetailTab.allCases, id: \.self) { tab in
+                    Text(tab == .artifacts && !detail.artifacts.isEmpty ? "\(tab.rawValue) \(detail.artifacts.count)" : tab.rawValue).tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+        }
+        .padding(Theme.Spacing.lg)
+    }
+
+    private func summaryRow(_ run: CIRun) -> some View {
         HStack(alignment: .top, spacing: Theme.Spacing.md) {
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 Text(run.title)
@@ -51,7 +70,6 @@ struct CIRunDetailView: View {
             Button { viewModel.openInBrowser(run) } label: { Image(systemName: "safari") }
                 .help("Open on \(viewModel.serviceName)")
         }
-        .padding(Theme.Spacing.lg)
     }
 
     /// `CI #12 · attempt 2 · push by jane · 3m 07s`

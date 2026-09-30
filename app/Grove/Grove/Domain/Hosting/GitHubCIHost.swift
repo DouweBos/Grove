@@ -44,6 +44,10 @@ nonisolated struct GitHubCIHost: CIHost, GitHubRepositoryAPI {
             .compactMap(GitHubCIParser.artifact)
     }
 
+    func downloadArtifact(id: Int, to destination: URL) async throws {
+        try await client.download(try url("/actions/artifacts/\(id)/zip"), to: destination)
+    }
+
     /// A workflow filter is part of the path; branch and status are query items.
     static func runsPath(_ query: CIRunQuery) -> String {
         var items = ["per_page=\(query.limit)"]

@@ -37,6 +37,19 @@ extension RESTClient {
         return file
     }
 
+    /// Like `getRedirected`, but streams the file to `destination`, e.g. an artifact's zip.
+    func download(_ url: URL, to destination: URL) async throws {
+        let (data, response) = try await http.dataWithoutRedirect(for: authorized("GET", url, accept: "application/json"))
+        guard let location = Self.redirectTarget(of: response) else {
+            try check(response, data)
+            return try data.write(to: destination, options: .atomic)
+        }
+        let fileResponse = try await http.download(for: URLRequest(url: location), to: destination)
+        guard (200..<300).contains(fileResponse.statusCode) else {
+            throw HostingError.http(status: fileResponse.statusCode, message: "")
+        }
+    }
+
     static func redirectTarget(of response: HTTPURLResponse) -> URL? {
         guard (300..<400).contains(response.statusCode), let location = response.value(forHTTPHeaderField: "Location") else { return nil }
         return URL(string: location, relativeTo: response.url)?.absoluteURL

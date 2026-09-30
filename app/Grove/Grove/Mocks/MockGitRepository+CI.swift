@@ -17,6 +17,9 @@ struct MockCIState {
     /// Log text per job id; jobs without an entry get `MockData.ciLog(for:)`.
     var logs: [Int: String] = [:]
     var logRequests: [Int] = []
+    var artifactRequests: [Int] = []
+    /// Artifact ids and where each was saved.
+    var downloads: [(id: Int, destination: URL)] = []
 }
 
 extension MockGitRepository {
@@ -44,6 +47,19 @@ extension MockGitRepository {
         if let log = ci.logs[jobID] { return log }
         let jobs = ci.jobs.values.joined() + ci.runs.flatMap(MockData.ciJobs(for:))
         return jobs.first { $0.id == jobID }.map(MockData.ciLog(for:)) ?? ""
+    }
+
+    func ciArtifacts(runID: Int) async throws -> [CIArtifact] {
+        ci.artifactRequests.append(runID)
+        await simulateLatency(20_000_000)
+        if let error = ci.error { throw error }
+        return ci.runs.first { $0.id == runID }.map(MockData.ciArtifacts(for:)) ?? []
+    }
+
+    func downloadCIArtifact(id: Int, to destination: URL) async throws {
+        await simulateLatency(20_000_000)
+        if let error = ci.error { throw error }
+        ci.downloads.append((id, destination))
     }
 
     func ciRun(id: Int) async throws -> CIRun {

@@ -70,6 +70,19 @@ extension MockData {
         ]
     }
 
+    /// Finished runs that got as far as testing uploaded results; the oldest have expired.
+    static func ciArtifacts(for run: CIRun) -> [CIArtifact] {
+        guard run.status == .success || run.status == .failure else { return [] }
+        let created = run.updatedDate
+        let isExpired = created < Date().addingTimeInterval(-3600)
+        return [
+            CIArtifact(id: run.id * 10 + 1, name: "Grove-\(run.shortSHA).app", sizeInBytes: 48_312_776, isExpired: isExpired,
+                       createdDate: created, expiresDate: created.addingTimeInterval(90 * 86_400)),
+            CIArtifact(id: run.id * 10 + 2, name: "test-results", sizeInBytes: 184_320, isExpired: isExpired, createdDate: created,
+                       expiresDate: created.addingTimeInterval(90 * 86_400))
+        ]
+    }
+
     /// A log in GitHub's format whose timestamps line up with the job's steps.
     static func ciLog(for job: CIJob) -> String {
         let stamp = Date.ISO8601FormatStyle(includingFractionalSeconds: true)

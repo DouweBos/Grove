@@ -99,3 +99,97 @@ struct CIRunDetailTests {
         #expect(detail.run == nil && detail.jobs.isEmpty && detail.selectedJob == nil)
     }
 }
+
+// MARK: - Artifacts
+
+@MainActor
+struct CIArtifactTests {
+
+    private let finished = MockData.ciRuns[2]
+    private let active = MockData.ciRuns[0]
+
+    @Test func theZipIsDownloadedFromTheRedirectWithoutTheToken() async throws {
+        let http = FakeHTTPClient(responses: { request in
+            request.url?.host == "api.github.com"
+                ? .init(status: 302, headers: ["Location": "https://blob.example.net/artifact.zip?sig=abc"])
+                : .init(body: Data([0x50, 0x4B, 0x03, 0x04]))
+        })
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent("grove-artifact-\(UUID().uuidString).zip")
+        defer { try? FileManager.default.removeItem(at: destination) }
+
+        try await CIHostTests.github(http).downloadArtifact(id: 9, to: destination)
+
+        #expect(try Data(contentsOf: destination) == Data([0x50, 0x4B, 0x03, 0x04]))
+        #expect(http.requests.map { $0.url?.absoluteString ?? "" } == [
+            "https://api.github.com/repos/o/r/actions/artifacts/9/zip", "https://blob.example.net/artifact.zip?sig=abc"
+        ])
+        #expect(http.requests[1].value(forHTTPHeaderField: "Authorization") == nil)
+    }
+
+    @Test func anExpiredArtifactFailsWithoutWritingAFile() async {
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent("grove-artifact-\(UUID().uuidString).zip")
+        let host = CIHostTests.github(FakeHTTPClient { _ in (410, #"{"message":"Artifact has expired"}"#) })
+        await #expect(throws: HostingError.http(status: 410, message: "Artifact has expired")) {
+            try await host.downloadArtifact(id: 9, to: destination)
+        }
+        #expect(!FileManager.default.fileExists(atPath: destination.path))
+    }
+
+    @Test func aFinishedRunsArtifactsLoadOnceWithItsJobs() async {
+        let repo = MockGitRepository()
+        let detail = CIRunDetailViewModel(repository: repo)
+
+        await detail.show(finished)
+        await detail.show(MockData.ciRuns[3])
+        await detail.show(finished)
+
+        #expect(detail.artifacts.map(\.name) == ["Grove-\(finished.shortSHA).app", "test-results"])
+        #expect(repo.ci.artifactRequests == [finished.id, MockData.ciRuns[3].id])
+    }
+
+    @Test func aRunningRunsArtifactsAreOnlyReadWhileTheirTabIsOpen() async {
+        let repo = MockGitRepository()
+        let detail = CIRunDetailViewModel(repository: repo)
+        await detail.show(active)
+        await detail.show(active)
+        #expect(repo.ci.artifactRequests.isEmpty)
+
+        await detail.selectTab(.artifacts)
+        await detail.show(active)
+        #expect(repo.ci.artifactRequests == [active.id, active.id] && detail.activeTab == .artifacts)
+    }
+
+    @Test func downloadingSavesWhereTheUserChose() async throws {
+        let repo = MockGitRepository()
+        let detail = CIRunDetailViewModel(repository: repo)
+        await detail.show(finished)
+        let artifact = try #require(detail.artifacts.first)
+        let destination = URL(fileURLWithPath: "/tmp/grove-tests/artifact.zip")
+
+        detail.chooseDestination = { _ in nil }
+        await detail.downloadArtifact(artifact)
+        #expect(repo.ci.downloads.isEmpty && detail.downloads[artifact.id] == nil, "Cancelling the save panel downloads nothing")
+
+        detail.chooseDestination = { _ in destination }
+        await detail.downloadArtifact(artifact)
+        #expect(repo.ci.downloads.map(\.id) == [artifact.id] && repo.ci.downloads.first?.destination == destination)
+        #expect(detail.downloads[artifact.id] == .saved(destination))
+    }
+
+    @Test func aFailedDownloadSaysWhyAndExpiredOnesAreNotTried() async throws {
+        let repo = MockGitRepository()
+        let detail = CIRunDetailViewModel(repository: repo)
+        detail.chooseDestination = { _ in URL(fileURLWithPath: "/tmp/grove-tests/artifact.zip") }
+        await detail.show(finished)
+        let artifact = try #require(detail.artifacts.first)
+
+        repo.ci.error = .http(status: 403, message: "Forbidden")
+        await detail.downloadArtifact(artifact)
+        #expect(detail.downloads[artifact.id] == .failed("Forbidden"))
+
+        repo.ci.error = nil
+        let expired = CIArtifact(id: 1, name: "old", sizeInBytes: 1, isExpired: true, createdDate: .distantPast, expiresDate: nil)
+        await detail.downloadArtifact(expired)
+        #expect(repo.ci.downloads.isEmpty && detail.downloads[expired.id] == nil)
+    }
+}

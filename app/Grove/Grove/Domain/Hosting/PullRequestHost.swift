@@ -65,11 +65,19 @@ nonisolated protocol HTTPClient: Sendable {
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse)
     /// Like `data(for:)`, but a redirect comes back as the 3xx response instead of being followed.
     func dataWithoutRedirect(for request: URLRequest) async throws -> (Data, HTTPURLResponse)
+    /// Saves a successful response's body at `destination`, replacing what's there, without holding it in memory.
+    func download(for request: URLRequest, to destination: URL) async throws -> HTTPURLResponse
 }
 
 extension HTTPClient {
     func dataWithoutRedirect(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         try await data(for: request)
+    }
+
+    func download(for request: URLRequest, to destination: URL) async throws -> HTTPURLResponse {
+        let (data, response) = try await data(for: request)
+        if (200..<300).contains(response.statusCode) { try data.write(to: destination, options: .atomic) }
+        return response
     }
 }
 
@@ -80,6 +88,16 @@ nonisolated struct URLSessionHTTPClient: HTTPClient {
 
     func dataWithoutRedirect(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         try Self.http(try await URLSession.shared.data(for: request, delegate: RedirectStopper()))
+    }
+
+    func download(for request: URLRequest, to destination: URL) async throws -> HTTPURLResponse {
+        let (file, response) = try await URLSession.shared.download(for: request)
+        defer { try? FileManager.default.removeItem(at: file) }
+        guard let http = response as? HTTPURLResponse else { throw HostingError.http(status: 0, message: "No HTTP response.") }
+        if (200..<300).contains(http.statusCode) {
+            _ = try FileManager.default.replaceItemAt(destination, withItemAt: file)
+        }
+        return http
     }
 
     private static func http(_ result: (Data, URLResponse)) throws -> (Data, HTTPURLResponse) {

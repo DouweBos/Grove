@@ -16,6 +16,10 @@ protocol CIRepositoryProtocol {
     func ciJobs(runID: Int) async throws -> [CIJob]
     /// A finished job's log as plain text.
     func ciJobLog(jobID: Int) async throws -> String
+    /// Files the run uploaded.
+    func ciArtifacts(runID: Int) async throws -> [CIArtifact]
+    /// Saves an artifact's zip at `destination`.
+    func downloadCIArtifact(id: Int, to destination: URL) async throws
 }
 
 // Repositories without CI support behave like ones without a hosted remote.
@@ -25,4 +29,6 @@ extension CIRepositoryProtocol {
     func ciRun(id: Int) async throws -> CIRun { throw HostingError.noHostedRemote }
     func ciJobs(runID: Int) async throws -> [CIJob] { throw HostingError.noHostedRemote }
     func ciJobLog(jobID: Int) async throws -> String { throw HostingError.noHostedRemote }
+    func ciArtifacts(runID: Int) async throws -> [CIArtifact] { throw HostingError.noHostedRemote }
+    func downloadCIArtifact(id: Int, to destination: URL) async throws { throw HostingError.noHostedRemote }
 }

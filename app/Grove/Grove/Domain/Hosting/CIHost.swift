@@ -17,6 +17,8 @@ nonisolated protocol CIHost: Sendable {
     /// The job's whole log as plain text; only there once the job has finished.
     func log(jobID: Int) async throws -> String
     func artifacts(runID: Int) async throws -> [CIArtifact]
+    /// Saves the artifact's zip at `destination`.
+    func downloadArtifact(id: Int, to destination: URL) async throws
 }
 
 @MainActor
