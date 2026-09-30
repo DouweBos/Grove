@@ -116,8 +116,9 @@ nonisolated enum CILogParser {
             if line.hasPrefix("\u{FEFF}") { line = line.dropFirst() }
             let (date, rest) = split(line)
             let (kind, body) = classify(rest)
-            // `Run …` groups open run and uses steps; post steps open with this line.
+            // `Run …` groups open run and uses steps; post steps and the closing step open with these lines.
             let startsStep = (kind == .group && body.hasPrefix("Run ")) || body.hasPrefix("Post job cleanup.")
+                || body.hasPrefix("Cleaning up orphan processes")
             return Entry(date: date, text: String(body), kind: kind, isStepStart: startsStep)
         }
     }

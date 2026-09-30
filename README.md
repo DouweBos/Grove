@@ -9,7 +9,7 @@ A native macOS Git client built with SwiftUI.
 - Working copy management (stage, unstage, commit)
 - Branch, tag, and remote management
 - Stash support
-- GitHub Actions: workflow runs with filters
+- GitHub Actions: workflow runs, jobs, logs and artifacts; run, re-run and cancel workflows
 - Git blame viewer
 - Merge conflict resolution wizard
 - Quick actions command palette
@@ -56,7 +56,7 @@ Grove/
 │   ├── History/     # Commit list, detail, branch comparison
 │   ├── WorkingCopy/ # Staging area, diff viewer
 │   ├── PullRequests/# PR list and detail
-│   ├── CI/          # Actions tab: workflow runs
+│   ├── CI/          # Actions tab: workflow runs, jobs, logs, artifacts
 │   ├── Sidebar/     # In-repository navigation sidebar
 │   ├── Toolbar/     # Repository toolbar and status bar
 │   ├── Settings/    # Preferences window tabs (@AppStorage-backed)

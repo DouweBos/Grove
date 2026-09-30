@@ -122,6 +122,35 @@ struct CILogTests {
         ])
     }
 
+    /// The shape of real logs: the API's step start is up to a second before the step's first line, and whole seconds are shared.
+    @Test func realWorldTimingsSplitAtEachStepsOpeningLine() {
+        let log = """
+        2026-09-29T16:34:26.9470800Z Complete job name: build
+        2026-09-29T16:34:27.0242420Z ##[group]Run actions/checkout@v4
+        2026-09-29T16:34:27.0300000Z ##[endgroup]
+        2026-09-29T16:35:11.9000000Z checked out
+        2026-09-29T16:35:12.0045960Z ##[group]Run go test ./...
+        2026-09-29T16:35:12.0100000Z ##[endgroup]
+        2026-09-29T16:41:51.1000000Z ok
+        2026-09-29T16:41:51.2231590Z Post job cleanup.
+        2026-09-29T16:41:51.8606830Z Post job cleanup.
+        2026-09-29T16:41:52.6000000Z Removing credentials
+        2026-09-29T16:41:52.7143300Z Cleaning up orphan processes
+        """
+        let document = CILogParser.parse(log, job: job([
+            step(1, "Set up job", "2026-09-29T16:34:25Z", "2026-09-29T16:34:26Z"),
+            step(2, "Check out code", "2026-09-29T16:34:26Z", "2026-09-29T16:35:11Z"),
+            step(5, "Run tests", "2026-09-29T16:35:11Z", "2026-09-29T16:41:51Z"),
+            step(11, "Post Set up Go", "2026-09-29T16:41:51Z", "2026-09-29T16:41:51Z"),
+            step(12, "Post Check out code", "2026-09-29T16:41:51Z", "2026-09-29T16:41:52Z"),
+            step(13, "Complete job", "2026-09-29T16:41:52Z", "2026-09-29T16:41:57Z")
+        ]))
+        #expect(document.sections.map { $0.lines.map(\.text) } == [
+            ["Complete job name: build"], ["Run actions/checkout@v4", "checked out"], ["Run go test ./...", "ok"],
+            ["Post job cleanup."], ["Post job cleanup.", "Removing credentials"], ["Cleaning up orphan processes"]
+        ])
+    }
+
     @Test func groupsFoldTheirLinesAndEndMarkersDisappear() {
         let log = """
         2026-09-01T10:00:00.1000000Z before

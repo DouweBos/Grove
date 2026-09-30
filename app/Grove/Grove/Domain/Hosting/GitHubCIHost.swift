@@ -17,6 +17,8 @@ nonisolated struct GitHubCIHost: CIHost, GitHubRepositoryAPI {
         try await client.getPages(try url("/actions/workflows?per_page=100"), key: "workflows").compactMap(GitHubCIParser.workflow)
     }
 
+    // A page of runs is megabytes of JSON, so it's read and parsed off the caller's actor.
+    @concurrent
     func runs(_ query: CIRunQuery) async throws -> [CIRun] {
         try await client.getPages(try url(Self.runsPath(query)), key: "workflow_runs", maxPages: 1, cachePolicy: Self.fresh)
             .compactMap(GitHubCIParser.run)
@@ -30,6 +32,7 @@ nonisolated struct GitHubCIHost: CIHost, GitHubRepositoryAPI {
         return run
     }
 
+    @concurrent
     func jobs(runID: Int) async throws -> [CIJob] {
         try await client.getPages(try url("/actions/runs/\(runID)/jobs?filter=latest&per_page=100"), key: "jobs", cachePolicy: Self.fresh)
             .compactMap(GitHubCIParser.job)
@@ -40,6 +43,7 @@ nonisolated struct GitHubCIHost: CIHost, GitHubRepositoryAPI {
         BranchCIStatus.index(try await runs(CIRunQuery(limit: 100)))
     }
 
+    @concurrent
     func log(jobID: Int) async throws -> String {
         String(decoding: try await client.getRedirected(try url("/actions/jobs/\(jobID)/logs")), as: UTF8.self)
     }
