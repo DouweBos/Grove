@@ -82,6 +82,7 @@ nonisolated struct GitHubCIHost: CIHost, GitHubRepositoryAPI {
         var items = ["per_page=\(query.limit)"]
         if let branch = query.branch { items.append("branch=\(queryValue(branch))") }
         if let status = query.status { items.append("status=\(GitHubCIParser.statusParameter(status))") }
+        if query.page > 1 { items.append("page=\(query.page)") }
         return (query.workflowID.map { "/actions/workflows/\($0)/runs" } ?? "/actions/runs") + "?" + items.joined(separator: "&")
     }
 

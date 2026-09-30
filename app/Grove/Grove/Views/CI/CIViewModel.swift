@@ -24,6 +24,9 @@ final class CIViewModel {
     private(set) var workflows: [CIWorkflow] = []
     private(set) var query = CIRunQuery()
     private(set) var isLoading = false
+    /// The host has runs past the ones listed, read page by page as the list scrolls to its end.
+    private(set) var hasMoreRuns = false
+    private(set) var isLoadingMore = false
     private(set) var hasLoaded = false
     private(set) var loadFailure: HostLoadFailure?
     /// The service the repository's remote points at, for labels like "Open on GitHub".
@@ -41,6 +44,7 @@ final class CIViewModel {
 
     /// Bumped by every list read, so an answer to an outdated filter is dropped.
     @ObservationIgnored private var loadGeneration = 0
+    @ObservationIgnored private var pagesLoaded = 1
     /// When the list first showed a queued or running run; nil while everything is finished.
     @ObservationIgnored private(set) var activeSince: Date?
     @ObservationIgnored private(set) var consecutiveFailures = 0
@@ -94,10 +98,32 @@ final class CIViewModel {
         do {
             let loaded = try await repository.ciRuns(query)
             guard generation == loadGeneration else { return }
+            pagesLoaded = 1
+            hasMoreRuns = loaded.count >= query.limit
             await apply(loaded)
         } catch {
             guard generation == loadGeneration else { return }
             fail(error)
+        }
+    }
+
+    /// Adds the next page of runs under the ones listed.
+    func loadMore() async {
+        guard hasMoreRuns, !isLoadingMore, !isLoading, hasLoaded else { return }
+        let generation = loadGeneration
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+        do {
+            let page = try await repository.ciRuns(query.page(pagesLoaded + 1))
+            // A filter change or reload while this was read makes it a page of something else.
+            guard generation == loadGeneration else { return }
+            pagesLoaded += 1
+            hasMoreRuns = page.count >= query.limit
+            let listed = Set(runs.map(\.id))
+            await apply(runs + page.filter { !listed.contains($0.id) })
+        } catch {
+            guard generation == loadGeneration else { return }
+            actionError = "Couldn\u{2019}t load more runs: \(error.localizedDescription)"
         }
     }
 
@@ -133,14 +159,16 @@ final class CIViewModel {
     static let pollPageSize = 10
     static let pollFollowUpLimit = 5
 
-    /// One poll. With nothing active the whole list is read again; with active runs only what can have changed.
+    /// One poll. With active runs only what can have changed is read; with nothing active the first page is read again,
+    /// replacing the list unless more pages were loaded, which stay under it.
     func poll() async {
-        guard hasLoaded, !isLoading else { return }
-        guard runs.contains(where: \.status.isActive) else { return await loadRuns(quietly: true) }
+        guard hasLoaded, !isLoading, !isLoadingMore else { return }
+        let isActive = runs.contains(where: \.status.isActive)
+        guard isActive || pagesLoaded > 1 else { return await loadRuns(quietly: true) }
         loadGeneration += 1
         let generation = loadGeneration
         do {
-            let newest = try await repository.ciRuns(query.limited(to: Self.pollPageSize))
+            let newest = try await repository.ciRuns(query.limited(to: isActive ? Self.pollPageSize : CIRunQuery.pageSize))
             let seen = Set(newest.map(\.id))
             var updated = newest
             var deleted: Set<Int> = []
@@ -160,12 +188,13 @@ final class CIViewModel {
     }
 
     /// `updates` replace the runs they describe and add new ones, newest first; a run that left the status filter is dropped.
+    /// The list keeps its length, so pages loaded by scrolling stay.
     nonisolated static func merge(_ updates: [CIRun], into runs: [CIRun], query: CIRunQuery) -> [CIRun] {
         var byID = Dictionary(runs.map { ($0.id, $0) }) { $1 }
         for run in updates { byID[run.id] = run }
         return byID.values.filter { query.status == nil || $0.status == query.status }
             .sorted { ($0.createdDate, $0.id) > ($1.createdDate, $1.id) }
-            .prefix(query.limit).map { $0 }
+            .prefix(max(runs.count, query.limit)).map { $0 }
     }
 
     /// Seconds until the next poll should run.

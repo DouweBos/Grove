@@ -143,3 +143,110 @@ private actor Waits {
         await change(intervals.count)
     }
 }
+
+// MARK: - Paging
+
+@MainActor
+struct CIPagingTests {
+
+    private nonisolated func runs(_ count: Int, from newest: Int = 1000, status: CIRunStatus = .success) -> [CIRun] {
+        (0..<count).map { offset in
+            let id = newest - offset
+            let date = Date(timeIntervalSince1970: 1_790_000_000 + Double(id))
+            return CIRun(id: id, number: id, attempt: 1, title: "Run \(id)", workflowID: 1, workflowName: "CI", event: "push",
+                         branch: "main", headSHA: "abc", status: status, actor: "jane", createdDate: date, updatedDate: date,
+                         startedDate: date, webURL: "")
+        }
+    }
+
+    @Test func theHostIsAskedForTheNextPage() async throws {
+        let http = FakeHTTPClient { _ in (200, #"{"workflow_runs":[]}"#) }
+        _ = try await CIHostTests.github(http).runs(CIRunQuery(branch: "main").page(3))
+        #expect(http.requests[0].url?.query == "per_page=50&branch=main&page=3")
+    }
+
+    @Test func scrollingToTheEndAddsTheNextPage() async {
+        let repo = MockGitRepository()
+        repo.ci.runs = runs(120)
+        let vm = CIViewModel(repository: repo)
+        await vm.refresh()
+        #expect(vm.runs.count == 50 && vm.hasMoreRuns)
+
+        await vm.loadMore()
+        #expect(vm.runs.count == 100 && vm.hasMoreRuns && repo.ci.queries.last?.page == 2)
+        await vm.loadMore()
+        #expect(vm.runs.count == 120 && !vm.hasMoreRuns)
+        #expect(vm.runs.map(\.id) == repo.ci.runs.map(\.id), "Pages line up without gaps or repeats")
+
+        await vm.loadMore()
+        #expect(repo.ci.queries.count == 3, "Nothing is read past the last page")
+    }
+
+    @Test func aShortFirstPageHasNoMore() async {
+        let repo = MockGitRepository()
+        repo.ci.runs = runs(12)
+        let vm = CIViewModel(repository: repo)
+        await vm.refresh()
+        #expect(!vm.hasMoreRuns)
+        await vm.loadMore()
+        #expect(repo.ci.queries.count == 1)
+    }
+
+    @Test func changingAFilterStartsAtTheFirstPageAgain() async {
+        let repo = MockGitRepository()
+        repo.ci.runs = runs(120)
+        let vm = CIViewModel(repository: repo)
+        await vm.refresh()
+        await vm.loadMore()
+
+        await vm.setStatusFilter(.success)
+
+        #expect(vm.runs.count == 50 && repo.ci.queries.last == CIRunQuery(status: .success))
+    }
+
+    @Test func pollsKeepTheLoadedPages() async {
+        let repo = MockGitRepository()
+        repo.ci.runs = runs(120)
+        let vm = CIViewModel(repository: repo)
+        await vm.refresh()
+        await vm.loadMore()
+
+        // Idle: the first page is read again and merged, not swapped in.
+        repo.ci.runs.insert(contentsOf: runs(1, from: 1001), at: 0)
+        await vm.poll()
+        #expect(vm.runs.count == 100 && vm.runs.first?.id == 1001 && repo.ci.queries.last?.page == 1)
+
+        // Active: the newest few and the running ones, still keeping the rest.
+        repo.ci.runs.insert(contentsOf: runs(1, from: 1002, status: .inProgress), at: 0)
+        await vm.poll()
+        await vm.poll()
+        #expect(vm.runs.count == 100 && vm.runs.first?.status == .inProgress)
+        #expect(repo.ci.queries.last?.limit == CIViewModel.pollPageSize)
+    }
+
+    @Test func aPageForAnOutdatedFilterIsDropped() async {
+        let repo = MockGitRepository()
+        repo.ci.runs = runs(120)
+        let vm = CIViewModel(repository: repo)
+        await vm.refresh()
+
+        async let more: Void = vm.loadMore()
+        async let filter: Void = vm.setStatusFilter(.success)
+        _ = await (more, filter)
+
+        #expect(vm.runs.count == 50 && vm.runs.map(\.id) == Array(repo.ci.runs.prefix(50)).map(\.id))
+    }
+
+    @Test func aFailedPageSaysSoAndKeepsTheList() async {
+        let repo = MockGitRepository()
+        repo.ci.runs = runs(120)
+        let vm = CIViewModel(repository: repo)
+        await vm.refresh()
+        repo.ci.error = .http(status: 502, message: "Bad Gateway")
+
+        await vm.loadMore()
+
+        #expect(vm.actionError == "Couldn\u{2019}t load more runs: Bad Gateway" && vm.runs.count == 50 && vm.hasMoreRuns)
+        #expect(!vm.isLoadingMore)
+    }
+}

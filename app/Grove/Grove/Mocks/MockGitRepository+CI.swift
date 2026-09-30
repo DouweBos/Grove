@@ -45,7 +45,7 @@ extension MockGitRepository {
         return Array(ci.runs.filter { run in
             (query.workflowID == nil || run.workflowID == query.workflowID) && (query.branch == nil || run.branch == query.branch)
                 && (query.status == nil || run.status == query.status)
-        }.prefix(query.limit))
+        }.dropFirst((query.page - 1) * query.limit).prefix(query.limit))
     }
 
     func ciJobLog(jobID: Int) async throws -> String {

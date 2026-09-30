@@ -115,6 +115,8 @@ nonisolated struct CIRunQuery: Hashable, Sendable {
     var status: CIRunStatus?
     /// How many runs to read; polls ask for fewer than the list shows.
     var limit = CIRunQuery.pageSize
+    /// Which page of `limit` runs, starting at 1.
+    var page = 1
 
     static let pageSize = 50
 
@@ -123,6 +125,12 @@ nonisolated struct CIRunQuery: Hashable, Sendable {
     func limited(to limit: Int) -> CIRunQuery {
         var copy = self
         copy.limit = limit
+        return copy
+    }
+
+    func page(_ page: Int) -> CIRunQuery {
+        var copy = self
+        copy.page = page
         return copy
     }
 }

@@ -75,8 +75,8 @@ private struct CIRunListPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: "Workflow Runs", detail: "\(viewModel.runs.count)") {
-                if viewModel.isLoading { ProgressView().controlSize(.small) }
+            PanelHeader(title: "Workflow Runs", detail: "\(viewModel.runs.count)\(viewModel.hasMoreRuns ? "+" : "")") {
+                if viewModel.isLoading || viewModel.isLoadingMore { ProgressView().controlSize(.small) }
                 Button { viewModel.beginDispatch() } label: { Image(systemName: "play") }
                     .buttonStyle(.borderless)
                     .help("Run Workflow")
@@ -113,6 +113,10 @@ private struct CIRunListPanel: View {
         } else {
             SelectableList(items: viewModel.runs, selection: viewModel.selectedRunID, onSelect: { run in Task { await viewModel.select(run) } }) { run in
                 CIRunRow(run: run)
+                    .onAppear {
+                        // The last row coming into view reads the next page.
+                        if run.id == viewModel.runs.last?.id { Task { await viewModel.loadMore() } }
+                    }
                     .contextMenu {
                         Button("Open on \(viewModel.serviceName)", systemImage: "safari") { viewModel.openInBrowser(run) }
                         CIRunActions(run: run)
