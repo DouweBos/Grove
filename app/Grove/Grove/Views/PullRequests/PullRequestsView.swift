@@ -13,7 +13,9 @@ struct PullRequestsView: View {
             PullRequestListPanel()
                 .frame(width: 360)
             if let failure = viewModel.loadFailure, viewModel.pullRequests.isEmpty {
-                PRUnavailableView(failure: failure)
+                HostUnavailableView(failure: failure, feature: .pullRequests, isLoading: viewModel.isLoading) {
+                    Task { await viewModel.refresh() }
+                }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .panel()
             } else {

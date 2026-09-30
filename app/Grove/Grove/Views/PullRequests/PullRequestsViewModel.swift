@@ -34,7 +34,7 @@ final class PullRequestsViewModel {
     private(set) var pullRequests: [PullRequestInfo] = []
     private(set) var isLoading = false
     private(set) var hasLoaded = false
-    private(set) var loadFailure: PRLoadFailure?
+    private(set) var loadFailure: HostLoadFailure?
     /// The service the repository's remote points at, for labels like "Open on GitLab".
     private(set) var service: HostingServiceKind?
     private(set) var filterState: PRFilterState = .open
@@ -122,7 +122,7 @@ final class PullRequestsViewModel {
                 await select(first)
             }
         } catch {
-            loadFailure = PRLoadFailure(error)
+            loadFailure = HostLoadFailure(error)
         }
     }
 

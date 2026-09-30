@@ -119,9 +119,16 @@ struct HostingServiceTests {
     // MARK: Failures
 
     @Test func loadFailuresNameTheFix() {
-        #expect(PRLoadFailure(HostingError.noAccount(.bitbucket, host: "bitbucket.org")) == .noAccount(.bitbucket, host: "bitbucket.org"))
-        #expect(PRLoadFailure(HostingError.notSignedIn(.gitlab)) == .notSignedIn(.gitlab))
-        #expect(PRLoadFailure(HostingError.noHostedRemote) == .noHostedRemote)
+        #expect(HostLoadFailure(HostingError.noAccount(.bitbucket, host: "bitbucket.org")) == .noAccount(.bitbucket, host: "bitbucket.org"))
+        #expect(HostLoadFailure(HostingError.notSignedIn(.gitlab)) == .notSignedIn(.gitlab))
+        #expect(HostLoadFailure(HostingError.noHostedRemote) == .noHostedRemote)
+        #expect(HostLoadFailure(HostingError.http(status: 403, message: "Resource not accessible")) == .forbidden("Resource not accessible"))
+        #expect(HostLoadFailure(HostingError.http(status: 404, message: "")) == .other("The server answered 404."))
+    }
+
+    @Test func featuresUseTheServicesOwnNoun() {
+        #expect(HostFeature.pullRequests.noun(on: .gitlab) == "merge requests")
+        #expect(HostFeature.pullRequests.noun(on: nil) == "pull requests")
     }
 
     @Test func concatenatedPagesAndLinesAllParse() {
