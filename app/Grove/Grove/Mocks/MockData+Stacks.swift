@@ -1,7 +1,7 @@
 // Mocks/MockData+Stacks.swift
 // Grove
 //
-// A linear stack and a split one, for previews of the sidebar Stacks section and the Stack tab.
+// A linear stack and a split one, for previews of stacks in the sidebar and the Stack tab.
 
 import Foundation
 

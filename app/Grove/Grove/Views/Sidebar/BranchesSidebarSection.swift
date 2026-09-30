@@ -1,7 +1,7 @@
 // Views/Sidebar/BranchesSidebarSection.swift
 // Grove
 //
-// Local branches: pinned first, then flat names, then "prefix/" groups.
+// Local branches: pinned first, then flat names, then stacks, then "prefix/" groups.
 // Rows are draggable; dropping a ref on the header starts a new branch from it.
 
 import SwiftUI
@@ -28,11 +28,15 @@ struct BranchesSidebarSection: View {
                     ForEach(group.branches) { branch in
                         branchRow(branch, isPinned: viewModel.pinnedBranchNames.contains(branch.name))
                     }
+                    ForEach(viewModel.stacks) { stack in
+                        StackSidebarFolder(stack: stack, showStack: { viewModel.showStack(containing: stack.layers.first?.branch ?? "") }) {
+                            stackRow($0)
+                        }
+                    }
                 }
             }
         } header: {
-            SidebarSectionHeader(title: "Branches", count: viewModel.localBranches.count - viewModel.archivedBranches.count
-                                    - viewModel.stackedBranchNames.count)
+            SidebarSectionHeader(title: "Branches", count: viewModel.localBranches.count - viewModel.archivedBranches.count)
                 .dropDestination(for: String.self) { items, _ in
                     guard let ref = items.first, !ref.isEmpty else { return false }
                     sheets.createFromRef = CreateBranchRequest(ref: ref)
@@ -43,9 +47,23 @@ struct BranchesSidebarSection: View {
     }
 
     private func branchRow(_ branch: BranchInfo, isPinned: Bool, showsFullName: Bool = false) -> some View {
-        SidebarBranchRow(branch: branch, isPinned: isPinned, showsFullName: showsFullName,
-                         worktree: viewModel.worktree(checkingOut: branch), parent: viewModel.refs.parents[branch.name],
-                         pullRequest: viewModel.refs.pullRequest(for: branch))
+        actions(for: branch, isPinned: isPinned, on: SidebarBranchRow(
+            branch: branch, isPinned: isPinned, showsFullName: showsFullName,
+            worktree: viewModel.worktree(checkingOut: branch), parent: viewModel.refs.parents[branch.name],
+            pullRequest: viewModel.refs.pullRequest(for: branch)))
+    }
+
+    @ViewBuilder
+    private func stackRow(_ layer: StackLayer) -> some View {
+        if let branch = viewModel.localBranches.first(where: { $0.name == layer.branch }) {
+            actions(for: branch, isPinned: viewModel.pinnedBranchNames.contains(branch.name), inStack: true,
+                    on: StackSidebarRow(layer: layer, branch: branch, worktree: viewModel.worktree(checkingOut: branch)))
+        }
+    }
+
+    /// Selection, drag and drop and the context menu, the same for a plain row and a stack layer.
+    private func actions(for branch: BranchInfo, isPinned: Bool, inStack: Bool = false, on row: some View) -> some View {
+        row
             .tag(SidebarItem.branch(branch))
             .draggable(branch.name)
             // Another branch dropped here merges into this one (Option rebases this one onto it); a remote branch pulls.
@@ -54,6 +72,10 @@ struct BranchesSidebarSection: View {
                 return viewModel.handleDrop(payload, onBranch: branch, option: NSEvent.modifierFlags.contains(.option))
             }
             .contextMenu {
+                if inStack {
+                    Button("Show Stack", systemImage: "square.stack.3d.up") { viewModel.showStack(containing: branch.name) }
+                    Divider()
+                }
                 BranchContextMenu(
                     branch: branch,
                     isPinned: isPinned,
@@ -178,11 +200,12 @@ struct BranchContextMenu: View {
 
 #Preview {
     let vm = SidebarViewModel(repository: MockGitRepository())
-    vm.refs.replace(localBranches: MockData.branches.filter(\.isLocal))
+    vm.refs.replace(localBranches: MockData.branches.filter(\.isLocal) + MockData.stackBranches,
+                    stacks: [MockData.linearStack, MockData.splitStack])
     return List(selection: Binding<SidebarItem?>.constant(.history)) {
         BranchesSidebarSection()
     }
     .listStyle(.sidebar)
     .environment(vm)
-    .frame(width: 240, height: 300)
+    .frame(width: 280, height: 480)
 }

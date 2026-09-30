@@ -157,7 +157,7 @@ final class SidebarViewModel {
         select(.stack)
     }
 
-    /// Layers of a stack, which the Stacks section lists instead of Branches.
+    /// Layers of a stack, which Branches lists under their stack instead of by name.
     var stackedBranchNames: Set<String> {
         Set(refs.stacks.flatMap { $0.layers.map(\.branch) }).subtracting(archivedBranchNames)
     }

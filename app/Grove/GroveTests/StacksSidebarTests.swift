@@ -8,7 +8,7 @@ import Testing
 @MainActor
 struct StacksSidebarTests {
 
-    @Test func stackedBranchesLeaveTheBranchesList() {
+    @Test func stackedBranchesAreListedUnderTheirStack() {
         let vm = SidebarViewModel(repository: MockGitRepository())
         let other = BranchInfo(id: "refs/heads/solo", name: "solo", isLocal: true, isRemote: false, isHEAD: false,
                                targetSHA: "s", remoteName: nil, upstream: nil, ahead: 0, behind: 0)

@@ -19,10 +19,6 @@ struct RepositorySidebar: View {
                     .selectionDisabled()
             }
 
-            // MARK: Stacks
-
-            StacksSidebarSection()
-
             // MARK: Branches
 
             BranchesSidebarSection()
