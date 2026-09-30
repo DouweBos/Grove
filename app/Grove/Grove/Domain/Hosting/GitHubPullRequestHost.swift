@@ -39,10 +39,22 @@ nonisolated struct GitHubPullRequestHost: PullRequestHost, GitHubRepositoryAPI {
     }
 
     func pullRequests() async throws -> [PullRequestInfo] {
-        let repository = try await query(
-            ", $count: Int!", "pullRequests(first: $count, orderBy: {field: UPDATED_AT, direction: DESC}) { nodes { \(GitHubParser.fields) } }",
-            ["count": 100])
+        let repository = try await withTeamFallback { fields in
+            try await query(", $count: Int!",
+                            "pullRequests(first: $count, orderBy: {field: UPDATED_AT, direction: DESC}) { nodes { \(fields) } }",
+                            ["count": 100])
+        }
         return GitHubParser.nodes(repository["pullRequests"]).compactMap(GitHubParser.pullRequest)
+    }
+
+    /// Team reviewers' names need `read:org`. A token without it still reads everything else,
+    /// so the query is sent again without them rather than failing the whole list.
+    private func withTeamFallback(_ run: (String) async throws -> HostingJSON.Object) async throws -> HostingJSON.Object {
+        do {
+            return try await run(GitHubParser.fields(teamReviewers: true))
+        } catch HostingError.http(status: 403, _) {
+            return try await run(GitHubParser.fields(teamReviewers: false))
+        }
     }
 
     /// Only what branch rows and stacks show, so it stays a small response even for busy repositories.
@@ -60,7 +72,9 @@ nonisolated struct GitHubPullRequestHost: PullRequestHost, GitHubRepositoryAPI {
     }
 
     func pullRequest(number: Int) async throws -> PullRequestInfo {
-        let repository = try await query(", $number: Int!", "pullRequest(number: $number) { \(GitHubParser.fields) }", ["number": number])
+        let repository = try await withTeamFallback { fields in
+            try await query(", $number: Int!", "pullRequest(number: $number) { \(fields) }", ["number": number])
+        }
         guard let pr = (repository["pullRequest"] as? HostingJSON.Object).flatMap(GitHubParser.pullRequest) else {
             throw HostingError.unsupported("GitHub returned no pull request #\(number).")
         }
@@ -123,10 +137,13 @@ nonisolated struct GitHubPullRequestHost: PullRequestHost, GitHubRepositoryAPI {
 
 nonisolated enum GitHubParser {
 
-    static let fields = "number title body url state isDraft headRefName baseRefName headRefOid createdAt updatedAt "
-        + "author { login avatarUrl } labels(first: 20) { nodes { name color } } "
-        + "reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } ... on Team { name } ... on Bot { login } } } } "
-        + "commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }"
+    static func fields(teamReviewers: Bool) -> String {
+        "number title body url state isDraft headRefName baseRefName headRefOid createdAt updatedAt "
+            + "author { login avatarUrl } labels(first: 20) { nodes { name color } } "
+            + "reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } "
+            + (teamReviewers ? "... on Team { name } " : "") + "... on Bot { login } } } } "
+            + "commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }"
+    }
 
     static func nodes(_ connection: Any?) -> [HostingJSON.Object] {
         (connection as? HostingJSON.Object)?["nodes"] as? [HostingJSON.Object] ?? []

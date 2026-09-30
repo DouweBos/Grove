@@ -148,6 +148,8 @@ nonisolated struct RESTClient: Sendable {
         let data = try await send("POST", url, json: ["query": query, "variables": variables])
         let object = HostingJSON.object(data) ?? [:]
         if let errors = object["errors"] as? [HostingJSON.Object], let first = errors.first?["message"] as? String {
+            // A token without a scope the query needs is a 403 in REST terms; GraphQL says so in the body.
+            if errors.first?["type"] as? String == "INSUFFICIENT_SCOPES" { throw HostingError.http(status: 403, message: first) }
             throw HostingError.unsupported(first)
         }
         return object["data"] as? HostingJSON.Object ?? [:]

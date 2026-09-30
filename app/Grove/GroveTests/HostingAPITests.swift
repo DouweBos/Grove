@@ -64,6 +64,23 @@ struct HostingAPITests {
         await #expect(throws: HostingError.unsupported("Could not resolve to a Repository")) { _ = try await host.pullRequests() }
     }
 
+    @Test func githubListsWithoutTeamNamesWhenTheTokenLacksReadOrg() async throws {
+        let refusal = #"{"errors":[{"type":"INSUFFICIENT_SCOPES","message":"The 'name' field requires one of the following scopes: ['read:org']"}]}"#
+        let http = FakeHTTPClient { [listResponse] request in
+            let query = String(decoding: request.httpBody ?? Data(), as: UTF8.self)
+            return (200, query.contains("on Team") ? refusal : listResponse)
+        }
+        let prs = try await github(http).pullRequests()
+        #expect(prs.map(\.id) == [12, 9] && http.requests.count == 2)
+        #expect(prs[0].reviewers == ["bob", "core"], "Reviewers the token may see are still listed")
+
+        // A token refused for everything still fails, as a permission problem.
+        let refused = github(FakeHTTPClient { _ in (200, refusal) })
+        await #expect(throws: HostingError.http(status: 403, message: "The 'name' field requires one of the following scopes: ['read:org']")) {
+            _ = try await refused.pullRequests()
+        }
+    }
+
     @Test func githubWritesHitTheRESTEndpoints() async throws {
         let http = FakeHTTPClient { request in
             request.url?.path.hasSuffix("/pulls") == true
