@@ -23,6 +23,10 @@ protocol CIRepositoryProtocol {
     /// Starts a new attempt of a finished run; `failedOnly` skips the jobs that passed.
     func rerunCIRun(id: Int, failedOnly: Bool) async throws
     func cancelCIRun(id: Int) async throws
+    /// A workflow's definition file as it is on `ref`.
+    func ciWorkflowFile(path: String, ref: String) async throws -> String
+    /// Starts a workflow by hand on a branch or tag.
+    func dispatchCIWorkflow(_ dispatch: CIDispatch) async throws
 }
 
 // Repositories without CI support behave like ones without a hosted remote.
@@ -36,4 +40,6 @@ extension CIRepositoryProtocol {
     func downloadCIArtifact(id: Int, to destination: URL) async throws { throw HostingError.noHostedRemote }
     func rerunCIRun(id: Int, failedOnly: Bool) async throws { throw HostingError.noHostedRemote }
     func cancelCIRun(id: Int) async throws { throw HostingError.noHostedRemote }
+    func ciWorkflowFile(path: String, ref: String) async throws -> String { throw HostingError.noHostedRemote }
+    func dispatchCIWorkflow(_ dispatch: CIDispatch) async throws { throw HostingError.noHostedRemote }
 }

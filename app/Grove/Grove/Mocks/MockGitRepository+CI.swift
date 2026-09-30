@@ -22,6 +22,9 @@ struct MockCIState {
     var downloads: [(id: Int, destination: URL)] = []
     /// Writes in order, e.g. `"rerun 145"`, `"rerun-failed 145"`, `"cancel 148"`.
     var operations: [String] = []
+    var workflowFiles = MockData.ciWorkflowFiles
+    var workflowFileRequests: [String] = []
+    var dispatches: [CIDispatch] = []
 }
 
 extension MockGitRepository {
@@ -82,6 +85,27 @@ extension MockGitRepository {
     private func replaceRun(_ id: Int, _ change: (CIRun) -> CIRun) {
         guard let index = ci.runs.firstIndex(where: { $0.id == id }) else { return }
         ci.runs[index] = change(ci.runs[index])
+    }
+
+    func ciWorkflowFile(path: String, ref: String) async throws -> String {
+        ci.workflowFileRequests.append("\(path)@\(ref)")
+        await simulateLatency(20_000_000)
+        if let error = ci.error { throw error }
+        guard let file = ci.workflowFiles[path] else { throw HostingError.http(status: 404, message: "Not Found") }
+        return file
+    }
+
+    /// Like the host: answers at once, and the run shows up in the list afterwards.
+    func dispatchCIWorkflow(_ dispatch: CIDispatch) async throws {
+        await simulateLatency(20_000_000)
+        if let error = ci.error { throw error }
+        ci.dispatches.append(dispatch)
+        let id = (ci.runs.map(\.id).max() ?? 0) + 1
+        let name = ci.workflows.first { $0.id == dispatch.workflowID }?.name ?? ""
+        ci.runs.insert(CIRun(id: id, number: id - 100, attempt: 1, title: name, workflowID: dispatch.workflowID, workflowName: name,
+                             event: "workflow_dispatch", branch: dispatch.ref, headSHA: MockData.commits[0].id, status: .queued,
+                             actor: MockData.authorJane.name, createdDate: Date(), updatedDate: Date(), startedDate: nil,
+                             webURL: "https://github.com/example/app/actions/runs/\(id)"), at: 0)
     }
 
     func ciRun(id: Int) async throws -> CIRun {

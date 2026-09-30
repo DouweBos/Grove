@@ -77,6 +77,10 @@ private struct CIRunListPanel: View {
         VStack(spacing: 0) {
             PanelHeader(title: "Workflow Runs", detail: "\(viewModel.runs.count)") {
                 if viewModel.isLoading { ProgressView().controlSize(.small) }
+                Button { viewModel.beginDispatch() } label: { Image(systemName: "play") }
+                    .buttonStyle(.borderless)
+                    .help("Run Workflow")
+                    .disabled(isUnavailable)
                 Button { Task { await viewModel.refresh() } } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(.borderless)
                     .help("Reload from \(viewModel.serviceName)")

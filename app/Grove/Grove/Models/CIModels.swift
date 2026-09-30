@@ -136,3 +136,27 @@ nonisolated enum CIDuration {
         return "\(seconds / 3600)h \(String(format: "%02d", seconds % 3600 / 60))m"
     }
 }
+
+/// One input a manually started workflow asks for.
+nonisolated struct CIDispatchInput: Identifiable, Hashable, Sendable {
+    enum Kind: Hashable, Sendable {
+        case string, boolean, number, environment
+        case choice([String])
+    }
+
+    let name: String
+    var description = ""
+    var isRequired = false
+    /// As the host wants it sent: booleans are `"true"` and `"false"`.
+    var defaultValue = ""
+    var kind = Kind.string
+
+    var id: String { name }
+}
+
+/// A request to start a workflow on a branch or tag.
+nonisolated struct CIDispatch: Hashable, Sendable {
+    let workflowID: Int
+    let ref: String
+    var inputs: [String: String] = [:]
+}

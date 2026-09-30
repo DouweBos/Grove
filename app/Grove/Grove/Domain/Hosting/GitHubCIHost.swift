@@ -56,6 +56,18 @@ nonisolated struct GitHubCIHost: CIHost, GitHubRepositoryAPI {
         try await client.send("POST", try url("/actions/runs/\(runID)/cancel"), json: nil)
     }
 
+    func workflowFile(path: String, ref: String) async throws -> String {
+        let encoded = path.split(separator: "/").map { Self.queryValue(String($0)) }.joined(separator: "/")
+        let data = try await client.get(try url("/contents/\(encoded)?ref=\(Self.queryValue(ref))"), accept: "application/vnd.github.raw+json",
+                                        cachePolicy: Self.fresh)
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    func dispatch(_ dispatch: CIDispatch) async throws {
+        try await client.send("POST", try url("/actions/workflows/\(dispatch.workflowID)/dispatches"),
+                              json: ["ref": dispatch.ref, "inputs": dispatch.inputs])
+    }
+
     /// A workflow filter is part of the path; branch and status are query items.
     static func runsPath(_ query: CIRunQuery) -> String {
         var items = ["per_page=\(query.limit)"]

@@ -219,6 +219,10 @@ private struct GroveGitCommands: Commands {
                 GroveAction.createPullRequest.post()
             }
 
+            Button("Run Workflow\u{2026}") {
+                GroveAction.runWorkflow.post()
+            }
+
             Divider()
 
             // MARK: Commit / Stash

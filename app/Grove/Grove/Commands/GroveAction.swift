@@ -101,6 +101,11 @@ enum GroveAction: String, Sendable {
     /// Show the Create Pull Request sheet for the checked-out branch.
     case createPullRequest
 
+    // MARK: Actions
+
+    /// Show the Run Workflow sheet.
+    case runWorkflow
+
     // MARK: Quick Actions
 
     /// Toggle the Quick Actions command palette (Cmd+Shift+A).

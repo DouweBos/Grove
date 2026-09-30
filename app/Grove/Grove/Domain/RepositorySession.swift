@@ -125,6 +125,7 @@ final class RepositorySession {
         repositorySettingsVM.onAddRemote = { [sidebarVM] in sidebarVM.requestAddRemote() }
         repositorySettingsVM.onRepositoryChanged = refresh
         pullRequestsVM.onShowPullRequests = { [weak self] in self?.sidebarVM.select(.pullRequests) }
+        ciVM.onShowCI = { [weak self] in self?.sidebarVM.select(.ci) }
         sidebarVM.onCreatePullRequest = { [weak self] branch in self?.pullRequestsVM.beginCreatePullRequest(head: branch) }
     }
 
@@ -241,6 +242,8 @@ final class RepositorySession {
             toolbarState.present(.rebase)
         case .createPullRequest:
             pullRequestsVM.beginCreatePullRequest()
+        case .runWorkflow:
+            ciVM.beginDispatch()
         case .commit:
             guard selectedItem == .workingCopy else { return }
             Task { await workingCopyVM.commit() }

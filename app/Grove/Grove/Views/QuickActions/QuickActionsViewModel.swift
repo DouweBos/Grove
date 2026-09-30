@@ -218,6 +218,7 @@ final class QuickActionsViewModel {
             command("Stash Changes\u{2026}", "tray.and.arrow.down", .stash),
             command("Merge\u{2026}", "arrow.triangle.merge", .merge),
             command("Rebase\u{2026}", "arrow.triangle.2.circlepath", .rebase),
+            command("Run Workflow\u{2026}", "play.circle", .runWorkflow),
             view("Changes", "tray", .workingCopy),
             view("History", "clock", .history),
             view("Stashes", "tray.2", .stashes),

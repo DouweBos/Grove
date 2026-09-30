@@ -22,6 +22,29 @@ extension MockData {
         CIWorkflow(id: 3, name: "Nightly", path: ".github/workflows/nightly.yml", isEnabled: false)
     ]
 
+    /// Workflow definitions by path; CI has no manual trigger.
+    static let ciWorkflowFiles: [String: String] = [
+        ".github/workflows/ci.yml": "name: CI\non: [push, pull_request]\n",
+        ".github/workflows/release.yml": """
+        name: Release
+        on:
+          workflow_dispatch:
+            inputs:
+              channel:
+                description: Release channel
+                type: choice
+                options: [beta, production]
+              version:
+                description: Version to release, e.g. 1.4.0
+                required: true
+              notarize:
+                description: Notarize the build with Apple
+                type: boolean
+                default: true
+        """,
+        ".github/workflows/nightly.yml": "on:\n  schedule:\n    - cron: '0 3 * * *'\n  workflow_dispatch:\n"
+    ]
+
     static let ciRuns: [CIRun] = {
         let now = Date()
         func run(_ id: Int, _ title: String, workflow: Int, event: String = "push", branch: String?, sha: Int, _ status: CIRunStatus,

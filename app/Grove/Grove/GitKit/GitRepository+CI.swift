@@ -47,6 +47,15 @@ extension GitRepository {
         try await ciHost().rerun(runID: id, failedOnly: failedOnly)
     }
 
+    func ciWorkflowFile(path: String, ref: String) async throws -> String {
+        try await ciHost().workflowFile(path: path, ref: ref)
+    }
+
+    func dispatchCIWorkflow(_ dispatch: CIDispatch) async throws {
+        Logger.gitRepository.info("Running workflow \(dispatch.workflowID, privacy: .public) on \(dispatch.ref, privacy: .public)")
+        try await ciHost().dispatch(dispatch)
+    }
+
     func cancelCIRun(id: Int) async throws {
         Logger.gitRepository.info("Cancelling run \(id, privacy: .public) in \(self.displayName, privacy: .public)")
         try await ciHost().cancel(runID: id)

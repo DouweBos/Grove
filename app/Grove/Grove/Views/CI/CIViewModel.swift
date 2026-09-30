@@ -32,6 +32,12 @@ final class CIViewModel {
     private(set) var actionError: String?
     private(set) var pendingOperation: PendingOperation?
     private(set) var isPerforming = false
+    /// The open "Run Workflow" sheet.
+    private(set) var dispatch: DispatchWorkflowViewModel?
+    /// Set by the session: brings the Actions tab up, e.g. after running a workflow from the menu.
+    @ObservationIgnored var onShowCI: (() -> Void)?
+    /// A workflow just started by hand, and the runs known then; its run is selected once the host lists it.
+    @ObservationIgnored private var awaitedDispatch: (workflowID: Int, known: Set<Int>)?
 
     /// Bumped by every list read, so an answer to an outdated filter is dropped.
     @ObservationIgnored private var loadGeneration = 0
@@ -103,6 +109,11 @@ final class CIViewModel {
             if expectsActivityUntil.map({ $0 < Date() }) ?? true { activeSince = nil }
         } else if activeSince == nil {
             activeSince = Date()
+        }
+        if let awaited = awaitedDispatch,
+           let started = runs.first(where: { $0.workflowID == awaited.workflowID && $0.event == "workflow_dispatch" && !awaited.known.contains($0.id) }) {
+            selectedRunID = started.id
+            awaitedDispatch = nil
         }
         if selectedRun == nil { selectedRunID = runs.first?.id }
         await detail.show(selectedRun)
@@ -235,5 +246,30 @@ final class CIViewModel {
         expectsActivityUntil = Date().addingTimeInterval(30)
         await loadRuns(quietly: true)
         pollNow()
+    }
+
+    // MARK: - Running a workflow
+
+    /// Opens the sheet on the filtered workflow, else the selected run's.
+    func beginDispatch() {
+        let sheet = DispatchWorkflowViewModel(repository: repository, refs: refs, workflows: workflows,
+                                              workflowID: query.workflowID ?? selectedRun?.workflowID)
+        sheet.onDispatched = { [weak self] dispatch in await self?.didDispatch(dispatch) }
+        dispatch = sheet
+    }
+
+    func cancelDispatch() {
+        dispatch = nil
+    }
+
+    /// The host doesn't say which run a dispatch became, so the next new run of that workflow is taken to be it.
+    private func didDispatch(_ started: CIDispatch) async {
+        dispatch = nil
+        onShowCI?()
+        awaitedDispatch = (started.workflowID, Set(runs.map(\.id)))
+        let hidesIt = query.status != nil || (query.workflowID ?? started.workflowID) != started.workflowID
+            || (query.branch ?? started.ref) != started.ref
+        if hidesIt { query = CIRunQuery() }
+        await followUp()
     }
 }

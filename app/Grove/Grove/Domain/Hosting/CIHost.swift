@@ -22,6 +22,10 @@ nonisolated protocol CIHost: Sendable {
     /// Starts a new attempt of the run: every job, or only the failed ones and those depending on them.
     func rerun(runID: Int, failedOnly: Bool) async throws
     func cancel(runID: Int) async throws
+    /// The workflow's definition as it is on `ref`, to read the inputs it asks for.
+    func workflowFile(path: String, ref: String) async throws -> String
+    /// Starts a workflow by hand. The host answers without saying which run that became.
+    func dispatch(_ dispatch: CIDispatch) async throws
 }
 
 @MainActor

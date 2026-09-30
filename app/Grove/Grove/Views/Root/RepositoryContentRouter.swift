@@ -40,6 +40,9 @@ struct RepositoryContentRouter: View {
                                  set: { if $0 == nil { session.pullRequestsVM.cancelCreatePullRequest() } })) { creation in
                 CreatePullRequestSheet(viewModel: creation) { session.pullRequestsVM.cancelCreatePullRequest() }
             }
+            .sheet(item: Binding(get: { session.ciVM.dispatch }, set: { if $0 == nil { session.ciVM.cancelDispatch() } })) { dispatch in
+                DispatchWorkflowSheet(viewModel: dispatch) { session.ciVM.cancelDispatch() }
+            }
             .onChange(of: session.sidebarVM.selection) { _, newItem in
                 // Back/forward restores both at once, so only user-driven changes differ here.
                 if case .branch(let branch) = newItem { session.stackVM.focus(branch: branch.name) }
