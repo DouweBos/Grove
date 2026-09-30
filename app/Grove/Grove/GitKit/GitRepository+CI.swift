@@ -41,4 +41,14 @@ extension GitRepository {
         Logger.gitRepository.info("Downloading artifact \(id, privacy: .public) in \(self.displayName, privacy: .public)")
         try await ciHost().downloadArtifact(id: id, to: destination)
     }
+
+    func rerunCIRun(id: Int, failedOnly: Bool) async throws {
+        Logger.gitRepository.info("Re-running run \(id, privacy: .public) in \(self.displayName, privacy: .public)")
+        try await ciHost().rerun(runID: id, failedOnly: failedOnly)
+    }
+
+    func cancelCIRun(id: Int) async throws {
+        Logger.gitRepository.info("Cancelling run \(id, privacy: .public) in \(self.displayName, privacy: .public)")
+        try await ciHost().cancel(runID: id)
+    }
 }

@@ -10,6 +10,14 @@ import Observation
 @Observable
 final class CIViewModel {
 
+    enum Operation: String { case rerun, rerunFailed, cancel }
+
+    struct PendingOperation: Identifiable {
+        let operation: Operation
+        let run: CIRun
+        var id: String { "\(operation.rawValue)-\(run.id)" }
+    }
+
     // MARK: - List State
 
     private(set) var runs: [CIRun] = []
@@ -22,12 +30,16 @@ final class CIViewModel {
     private(set) var service: HostingServiceKind?
     private(set) var selectedRunID: Int?
     private(set) var actionError: String?
+    private(set) var pendingOperation: PendingOperation?
+    private(set) var isPerforming = false
 
     /// Bumped by every list read, so an answer to an outdated filter is dropped.
     @ObservationIgnored private var loadGeneration = 0
     /// When the list first showed a queued or running run; nil while everything is finished.
     @ObservationIgnored private(set) var activeSince: Date?
     @ObservationIgnored private(set) var consecutiveFailures = 0
+    /// After starting something on the host, polls stay fast until then even if no run shows as active yet.
+    @ObservationIgnored private var expectsActivityUntil: Date?
     /// The poll loop's current wait, cancelled to poll at once.
     @ObservationIgnored var pollWait: Task<Void, Error>?
     @ObservationIgnored var isWakingPoll = false
@@ -88,7 +100,7 @@ final class CIViewModel {
         loadFailure = nil
         consecutiveFailures = 0
         if !runs.contains(where: \.status.isActive) {
-            activeSince = nil
+            if expectsActivityUntil.map({ $0 < Date() }) ?? true { activeSince = nil }
         } else if activeSince == nil {
             activeSince = Date()
         }
@@ -185,5 +197,43 @@ final class CIViewModel {
 
     func clearActionError() {
         actionError = nil
+    }
+
+    // MARK: - Re-running and cancelling
+
+    func canRerunFailed(_ run: CIRun) -> Bool { run.status == .failure || run.status == .cancelled }
+
+    func request(_ operation: Operation, on run: CIRun) {
+        pendingOperation = PendingOperation(operation: operation, run: run)
+    }
+
+    func cancelPendingOperation() {
+        pendingOperation = nil
+    }
+
+    /// Takes the dialog item because the dialog clears `pendingOperation` before running its action.
+    func confirm(_ pending: PendingOperation) async {
+        pendingOperation = nil
+        isPerforming = true
+        defer { isPerforming = false }
+        do {
+            switch pending.operation {
+            case .rerun: try await repository.rerunCIRun(id: pending.run.id, failedOnly: false)
+            case .rerunFailed: try await repository.rerunCIRun(id: pending.run.id, failedOnly: true)
+            case .cancel: try await repository.cancelCIRun(id: pending.run.id)
+            }
+        } catch {
+            actionError = error.localizedDescription
+            return
+        }
+        await followUp()
+    }
+
+    /// The host takes a moment to show what was just started, so the list is re-read now and polled fast for a while.
+    func followUp() async {
+        activeSince = Date()
+        expectsActivityUntil = Date().addingTimeInterval(30)
+        await loadRuns(quietly: true)
+        pollNow()
     }
 }

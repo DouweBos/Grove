@@ -18,11 +18,6 @@ struct CILogView: View {
 
     private var header: some View {
         HStack(spacing: Theme.Spacing.sm) {
-            Text(viewModel.job?.name ?? "")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Theme.textPrimary)
-                .lineLimit(1)
-                .truncationMode(.middle)
             if let count = viewModel.document?.lineCount, count > 0 {
                 Text("\(count) lines").font(.monoCaption).foregroundStyle(Theme.textSecondary).fixedSize()
             }

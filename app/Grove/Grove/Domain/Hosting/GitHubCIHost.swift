@@ -48,6 +48,14 @@ nonisolated struct GitHubCIHost: CIHost, GitHubRepositoryAPI {
         try await client.download(try url("/actions/artifacts/\(id)/zip"), to: destination)
     }
 
+    func rerun(runID: Int, failedOnly: Bool) async throws {
+        try await client.send("POST", try url("/actions/runs/\(runID)/\(failedOnly ? "rerun-failed-jobs" : "rerun")"), json: nil)
+    }
+
+    func cancel(runID: Int) async throws {
+        try await client.send("POST", try url("/actions/runs/\(runID)/cancel"), json: nil)
+    }
+
     /// A workflow filter is part of the path; branch and status are query items.
     static func runsPath(_ query: CIRunQuery) -> String {
         var items = ["per_page=\(query.limit)"]

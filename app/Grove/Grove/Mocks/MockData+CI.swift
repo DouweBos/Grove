@@ -5,6 +5,15 @@
 
 import Foundation
 
+extension CIRun {
+    /// The same run as the host reports it after a re-run or cancel.
+    func with(status: CIRunStatus, attempt: Int) -> CIRun {
+        CIRun(id: id, number: number, attempt: attempt, title: title, workflowID: workflowID, workflowName: workflowName, event: event,
+              branch: branch, headSHA: headSHA, status: status, actor: actor, createdDate: createdDate, updatedDate: Date(),
+              startedDate: status == .queued ? nil : startedDate, webURL: webURL)
+    }
+}
+
 extension MockData {
 
     static let ciWorkflows: [CIWorkflow] = [

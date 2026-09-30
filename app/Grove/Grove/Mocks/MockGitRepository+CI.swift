@@ -20,6 +20,8 @@ struct MockCIState {
     var artifactRequests: [Int] = []
     /// Artifact ids and where each was saved.
     var downloads: [(id: Int, destination: URL)] = []
+    /// Writes in order, e.g. `"rerun 145"`, `"rerun-failed 145"`, `"cancel 148"`.
+    var operations: [String] = []
 }
 
 extension MockGitRepository {
@@ -60,6 +62,26 @@ extension MockGitRepository {
         await simulateLatency(20_000_000)
         if let error = ci.error { throw error }
         ci.downloads.append((id, destination))
+    }
+
+    /// Like the host: the run goes back to queued as its next attempt.
+    func rerunCIRun(id: Int, failedOnly: Bool) async throws {
+        await simulateLatency(20_000_000)
+        if let error = ci.error { throw error }
+        ci.operations.append("\(failedOnly ? "rerun-failed" : "rerun") \(id)")
+        replaceRun(id) { $0.with(status: .queued, attempt: $0.attempt + 1) }
+    }
+
+    func cancelCIRun(id: Int) async throws {
+        await simulateLatency(20_000_000)
+        if let error = ci.error { throw error }
+        ci.operations.append("cancel \(id)")
+        replaceRun(id) { $0.with(status: .cancelled, attempt: $0.attempt) }
+    }
+
+    private func replaceRun(_ id: Int, _ change: (CIRun) -> CIRun) {
+        guard let index = ci.runs.firstIndex(where: { $0.id == id }) else { return }
+        ci.runs[index] = change(ci.runs[index])
     }
 
     func ciRun(id: Int) async throws -> CIRun {

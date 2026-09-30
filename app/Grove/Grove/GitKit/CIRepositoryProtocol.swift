@@ -20,6 +20,9 @@ protocol CIRepositoryProtocol {
     func ciArtifacts(runID: Int) async throws -> [CIArtifact]
     /// Saves an artifact's zip at `destination`.
     func downloadCIArtifact(id: Int, to destination: URL) async throws
+    /// Starts a new attempt of a finished run; `failedOnly` skips the jobs that passed.
+    func rerunCIRun(id: Int, failedOnly: Bool) async throws
+    func cancelCIRun(id: Int) async throws
 }
 
 // Repositories without CI support behave like ones without a hosted remote.
@@ -31,4 +34,6 @@ extension CIRepositoryProtocol {
     func ciJobLog(jobID: Int) async throws -> String { throw HostingError.noHostedRemote }
     func ciArtifacts(runID: Int) async throws -> [CIArtifact] { throw HostingError.noHostedRemote }
     func downloadCIArtifact(id: Int, to destination: URL) async throws { throw HostingError.noHostedRemote }
+    func rerunCIRun(id: Int, failedOnly: Bool) async throws { throw HostingError.noHostedRemote }
+    func cancelCIRun(id: Int) async throws { throw HostingError.noHostedRemote }
 }

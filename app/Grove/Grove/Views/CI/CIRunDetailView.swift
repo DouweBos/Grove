@@ -67,8 +67,17 @@ struct CIRunDetailView: View {
                 }
             }
             Spacer(minLength: Theme.Spacing.md)
-            Button { viewModel.openInBrowser(run) } label: { Image(systemName: "safari") }
-                .help("Open on \(viewModel.serviceName)")
+            HStack(spacing: Theme.Spacing.sm) {
+                Button { viewModel.openInBrowser(run) } label: { Image(systemName: "safari") }
+                    .help("Open on \(viewModel.serviceName)")
+                if run.status.isActive {
+                    Button("Cancel Run\u{2026}", role: .destructive) { viewModel.request(.cancel, on: run) }
+                } else {
+                    Menu("Re-run") { CIRunActions(run: run) }
+                        .fixedSize()
+                }
+            }
+            .disabled(viewModel.isPerforming)
         }
     }
 
@@ -79,6 +88,22 @@ struct CIRunDetailView: View {
         parts.append(run.actor.isEmpty ? run.event : "\(run.event) by \(run.actor)")
         if let duration = run.duration() { parts.append(CIDuration.text(duration)) }
         return parts.joined(separator: " \u{00B7} ")
+    }
+}
+
+/// Re-run and cancel items for a run, shared by the detail header and the list's context menu.
+struct CIRunActions: View {
+    @Environment(CIViewModel.self) private var viewModel
+    let run: CIRun
+
+    var body: some View {
+        if run.status.isActive {
+            Button("Cancel Run\u{2026}", systemImage: "xmark.circle", role: .destructive) { viewModel.request(.cancel, on: run) }
+        } else {
+            Button("Re-run All Jobs\u{2026}", systemImage: "arrow.clockwise") { viewModel.request(.rerun, on: run) }
+            Button("Re-run Failed Jobs\u{2026}", systemImage: "arrow.clockwise.circle") { viewModel.request(.rerunFailed, on: run) }
+                .disabled(!viewModel.canRerunFailed(run))
+        }
     }
 }
 

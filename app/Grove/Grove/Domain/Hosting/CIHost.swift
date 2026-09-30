@@ -19,6 +19,9 @@ nonisolated protocol CIHost: Sendable {
     func artifacts(runID: Int) async throws -> [CIArtifact]
     /// Saves the artifact's zip at `destination`.
     func downloadArtifact(id: Int, to destination: URL) async throws
+    /// Starts a new attempt of the run: every job, or only the failed ones and those depending on them.
+    func rerun(runID: Int, failedOnly: Bool) async throws
+    func cancel(runID: Int) async throws
 }
 
 @MainActor

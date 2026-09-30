@@ -24,11 +24,46 @@ struct CIView: View {
             }
         }
         .padding(.bottom, Theme.Spacing.md)
+        .confirmationDialog(dialogTitle, isPresented: Binding(get: { viewModel.pendingOperation != nil },
+                                                              set: { if !$0 { viewModel.cancelPendingOperation() } }),
+                            titleVisibility: .visible, presenting: viewModel.pendingOperation) { pending in
+            Button(confirmTitle(pending.operation), role: pending.operation == .cancel ? .destructive : nil) {
+                Task { await viewModel.confirm(pending) }
+            }
+            Button(pending.operation == .cancel ? "Keep Running" : "Cancel", role: .cancel) { viewModel.cancelPendingOperation() }
+        } message: { pending in
+            Text(message(pending))
+        }
         .alert("Action Failed", isPresented: Binding(get: { viewModel.actionError != nil },
                                                     set: { if !$0 { viewModel.clearActionError() } })) {
             Button("OK") { viewModel.clearActionError() }
         } message: {
             Text(viewModel.actionError ?? "")
+        }
+    }
+}
+
+extension CIView {
+    private var dialogTitle: String {
+        guard let pending = viewModel.pendingOperation else { return "" }
+        let name = "\(pending.run.workflowName) #\(pending.run.number)"
+        return pending.operation == .cancel ? "Cancel \(name)?" : "Re-run \(name)?"
+    }
+
+    private func confirmTitle(_ operation: CIViewModel.Operation) -> String {
+        switch operation {
+        case .rerun: "Re-run All Jobs"
+        case .rerunFailed: "Re-run Failed Jobs"
+        case .cancel: "Cancel Run"
+        }
+    }
+
+    private func message(_ pending: CIViewModel.PendingOperation) -> String {
+        let target = pending.run.branch.map { "\($0) at \(pending.run.shortSHA)" } ?? pending.run.shortSHA
+        switch pending.operation {
+        case .rerun: return "Runs every job again on \(target), as attempt \(pending.run.attempt + 1)."
+        case .rerunFailed: return "Runs the failed jobs, and the jobs that depend on them, again on \(target)."
+        case .cancel: return "Stops the run on \(viewModel.serviceName). Jobs that already finished keep their results."
         }
     }
 }
@@ -76,6 +111,8 @@ private struct CIRunListPanel: View {
                 CIRunRow(run: run)
                     .contextMenu {
                         Button("Open on \(viewModel.serviceName)", systemImage: "safari") { viewModel.openInBrowser(run) }
+                        CIRunActions(run: run)
+                        Divider()
                         Button("Copy SHA", systemImage: "doc.on.doc") { GroveClipboard.copy(run.headSHA) }
                         if let branch = run.branch {
                             Button("Copy Branch Name", systemImage: "doc.on.doc") { GroveClipboard.copy(branch) }
