@@ -56,6 +56,8 @@ nonisolated struct CIRun: Identifiable, Hashable, Sendable {
     /// When this attempt began; nil while queued.
     let startedDate: Date?
     let webURL: String
+    /// The workflow's definition file, e.g. `.github/workflows/ci.yml`.
+    var workflowPath = ""
 
     var shortSHA: String { String(headSHA.prefix(7)) }
 

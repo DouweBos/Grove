@@ -53,7 +53,9 @@ nonisolated enum GitHubCIParser {
             status: status(raw["status"] as? String, conclusion: raw["conclusion"] as? String),
             actor: ((raw["triggering_actor"] ?? raw["actor"]) as? HostingJSON.Object)?["login"] as? String ?? "",
             createdDate: created, updatedDate: date(raw["updated_at"]) ?? created, startedDate: date(raw["run_started_at"]),
-            webURL: raw["html_url"] as? String ?? ""
+            webURL: raw["html_url"] as? String ?? "",
+            // Runs of reusable workflows report `path@ref`.
+            workflowPath: (raw["path"] as? String)?.split(separator: "@").first.map(String.init) ?? ""
         )
     }
 

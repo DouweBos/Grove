@@ -8,6 +8,7 @@ import UniformTypeIdentifiers
 
 enum CIRunDetailTab: String, CaseIterable, Hashable {
     case jobs = "Jobs"
+    case graph = "Graph"
     case artifacts = "Artifacts"
 }
 
@@ -34,6 +35,11 @@ final class CIRunDetailViewModel {
     private(set) var artifacts: [CIArtifact] = []
     private(set) var artifactsError: String?
     private(set) var downloads: [Int: Download] = [:]
+    /// The workflow's jobs and their `needs`, read from the file at the run's commit.
+    private var graphDefinitions: (source: String, jobs: [WorkflowJobDefinition])?
+    private var loadingGraphSource: String?
+    private(set) var graphError: String?
+    @ObservationIgnored private var definitionCache: [String: [WorkflowJobDefinition]] = [:]
 
     // Keyed by attempt and update date too, so a re-run or a finished run misses instead of showing its old jobs.
     @ObservationIgnored private var cache = LRUCache<CIRunDetailKey, CIRunDetails>(capacity: 30)
@@ -56,6 +62,20 @@ final class CIRunDetailViewModel {
     /// The shown run's jobs are being read for the first time.
     var isLoadingJobs: Bool { run != nil && loadingJobsRunID == run?.id }
     var isLoadingArtifacts: Bool { run != nil && loadingArtifactsRunID == run?.id }
+
+    /// The run's jobs as the workflow wires them; each job in a column of its own until the file has been read.
+    var graph: CIGraph {
+        let definitions = graphDefinitions.flatMap { $0.source == graphSource ? $0.jobs : nil } ?? []
+        return CIGraph.build(definitions: definitions, jobs: jobs)
+    }
+
+    var isLoadingGraph: Bool { loadingGraphSource != nil && loadingGraphSource == graphSource }
+
+    /// The workflow file at the commit the run ran on, since the file may have changed since.
+    private var graphSource: String? {
+        guard let run, !run.workflowPath.isEmpty else { return nil }
+        return "\(run.workflowPath)@\(run.headSHA)"
+    }
 
     // MARK: - Loading
 
@@ -81,7 +101,8 @@ final class CIRunDetailViewModel {
         if let cachedJobs = cached?.jobs { await apply(cachedJobs) }
         async let jobsRead: Void = (cached?.jobs == nil || run.status.isActive) ? loadJobs(for: run) : ()
         async let artifactsRead: Void = needsArtifacts(run, cached: cached) ? loadArtifacts(for: run) : ()
-        _ = await (jobsRead, artifactsRead)
+        async let graphRead: Void = activeTab == .graph ? loadGraph() : ()
+        _ = await (jobsRead, artifactsRead, graphRead)
     }
 
     /// A finished run's artifacts are read once; a running one's only while their tab is open, since they're still arriving.
@@ -100,6 +121,33 @@ final class CIRunDetailViewModel {
     func selectTab(_ tab: CIRunDetailTab) async {
         activeTab = tab
         if tab == .artifacts, let run, run.status.isActive { await loadArtifacts(for: run) }
+        if tab == .graph { await loadGraph() }
+    }
+
+    /// Reads the workflow's job definitions once per file and commit.
+    private func loadGraph() async {
+        guard let source = graphSource, let run, graphDefinitions?.source != source else { return }
+        if let cached = definitionCache[source] { return graphDefinitions = (source, cached) }
+        guard loadingGraphSource != source else { return }
+        loadingGraphSource = source
+        defer { if loadingGraphSource == source { loadingGraphSource = nil } }
+        do {
+            let definitions = WorkflowJobsParser.parse(try await repository.ciWorkflowFile(path: run.workflowPath, ref: run.headSHA))
+            definitionCache[source] = definitions
+            guard graphSource == source else { return }
+            graphDefinitions = (source, definitions)
+            graphError = nil
+        } catch {
+            guard graphSource == source else { return }
+            graphError = error.localizedDescription
+        }
+    }
+
+    /// From the graph: shows the node's job on the Jobs tab.
+    func open(_ node: CIGraph.Node) async {
+        guard let job = node.jobs.first(where: { $0.status == .failure }) ?? node.jobs.first else { return }
+        activeTab = .jobs
+        await selectJob(job)
     }
 
     private func clear() {

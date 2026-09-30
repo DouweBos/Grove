@@ -44,7 +44,10 @@ struct CIJobRow: View {
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(2)
             Spacer(minLength: Theme.Spacing.xs)
-            CIElapsedText(start: job.startedDate, end: job.completedDate, isActive: job.status.isActive)
+            // A skipped job "ran" for no time; the status says enough.
+            if job.status != .skipped {
+                CIElapsedText(start: job.startedDate, end: job.completedDate, isActive: job.status.isActive)
+            }
         }
         .help(job.name)
     }

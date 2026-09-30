@@ -101,9 +101,15 @@ nonisolated enum YAMLOutline {
         lines.firstIndex { $0.indent == 0 && key(of: $0.text)?.name == name }
     }
 
-    /// A key's list value: `[a, b]`, a block sequence under it, or a single scalar.
+    /// A key's list value: `[a, b]` (also spread over the following lines), a block sequence under it, or a single scalar.
     static func list(_ value: Substring, at index: Int, in lines: [Line]) -> [String] {
-        if !value.isEmpty { return value.hasPrefix("[") ? flowSequence(value) : [scalar(value)] }
+        let deeper = lines[(index + 1)...].prefix { $0.indent > lines[index].indent }
+        if value.hasPrefix("[") || (value.isEmpty && deeper.first?.text.hasPrefix("[") == true) {
+            var flow = String(value)
+            for line in deeper where !flow.hasSuffix("]") { flow += " " + line.text }
+            return flowSequence(Substring(flow.trimmingCharacters(in: .whitespaces)))
+        }
+        if !value.isEmpty { return [scalar(value)] }
         return children(of: index, in: lines, includingSequenceItems: true)
             .filter { lines[$0].text.hasPrefix("-") }
             .map { scalar(lines[$0].text.dropFirst()) }

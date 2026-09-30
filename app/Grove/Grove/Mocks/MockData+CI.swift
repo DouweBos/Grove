@@ -10,7 +10,7 @@ extension CIRun {
     func with(status: CIRunStatus, attempt: Int) -> CIRun {
         CIRun(id: id, number: number, attempt: attempt, title: title, workflowID: workflowID, workflowName: workflowName, event: event,
               branch: branch, headSHA: headSHA, status: status, actor: actor, createdDate: createdDate, updatedDate: Date(),
-              startedDate: status == .queued ? nil : startedDate, webURL: webURL)
+              startedDate: status == .queued ? nil : startedDate, webURL: webURL, workflowPath: workflowPath)
     }
 }
 
@@ -24,7 +24,19 @@ extension MockData {
 
     /// Workflow definitions by path; CI has no manual trigger.
     static let ciWorkflowFiles: [String: String] = [
-        ".github/workflows/ci.yml": "name: CI\non: [push, pull_request]\n",
+        ".github/workflows/ci.yml": """
+        name: CI
+        on: [push, pull_request]
+        jobs:
+          lint:
+            runs-on: macos-15
+          build:
+            name: build (macos-15, arm64)
+            needs: lint
+          notify:
+            name: Notify
+            needs: [lint, build]
+        """,
         ".github/workflows/release.yml": """
         name: Release
         on:
@@ -54,7 +66,8 @@ extension MockData {
                          workflowName: ciWorkflows.first { $0.id == workflow }?.name ?? "", event: event, branch: branch,
                          headSHA: commits[sha].id, status: status, actor: actor, createdDate: started.addingTimeInterval(-20),
                          updatedDate: started.addingTimeInterval((length ?? 1) * 60), startedDate: length == nil ? nil : started,
-                         webURL: "https://github.com/example/app/actions/runs/\(id)")
+                         webURL: "https://github.com/example/app/actions/runs/\(id)",
+                         workflowPath: ciWorkflows.first { $0.id == workflow }?.path ?? "")
         }
         return [
             run(148, "feat: add pull request list and detail views", workflow: 1, branch: "feature/auth", sha: 2, .inProgress,
