@@ -191,6 +191,8 @@ private struct FileSection<Accessory: View>: View {
 
     @ViewBuilder
     private func contextMenu(for entry: StatusEntry) -> some View {
+        // Right-clicking inside a multi-selection acts on all of it.
+        let entries = viewModel.actionEntries(for: entry, side: side)
         if let staged = isStagedSection {
             let row = FileRow(path: entry.path, side: side)
             // Right-clicking inside a multi-selection acts on this section's part of it.
@@ -198,38 +200,43 @@ private struct FileSection<Accessory: View>: View {
             Button(rows.count > 1 ? "\(staged ? "Unstage" : "Stage") \(rows.count) Files" : (staged ? "Unstage" : "Stage")) {
                 Task { await viewModel.toggleStage(rows) }
             }
-            if !diffToolPath.isEmpty {
+            if !diffToolPath.isEmpty, entries.count == 1 {
                 Button("Open in Diff Tool") { Task { await viewModel.openInDiffTool(entry, side: side) } }
             }
             let patchEntries = viewModel.patchEntries(for: entry, side: side)
             Button(patchEntries.count > 1 ? "Create Patch from \(patchEntries.count) Files\u{2026}" : "Create Patch\u{2026}") {
                 Task { await savePatch(patchEntries, side: side, viewModel: viewModel) }
             }
-        } else {
+        } else if entries.count == 1 {
             Button("Resolve…") { Task { await viewModel.select(entry) } }
             if !mergeToolPath.isEmpty {
                 Button("Open in Merge Tool") { Task { await viewModel.openInMergeTool(entry) } }
             }
         }
-        if !viewModel.isLFS(entry), entry.workdirStatus != .deleted {
+        let lfsCandidates = viewModel.lfsCandidates(entries)
+        if !lfsCandidates.isEmpty {
             Menu("Track with Git LFS") {
-                Button("This File") { Task { await viewModel.trackWithLFS(entry, byExtension: false) } }
-                if let pattern = WorkingCopyViewModel.lfsExtensionPattern(for: entry.path) {
-                    Button("All \(pattern) Files") { Task { await viewModel.trackWithLFS(entry, byExtension: true) } }
+                Button(lfsCandidates.count > 1 ? "These \(lfsCandidates.count) Files" : "This File") {
+                    Task { await viewModel.trackWithLFS(lfsCandidates, byExtension: false) }
+                }
+                if let pattern = WorkingCopyViewModel.lfsExtensionPattern(for: lfsCandidates) {
+                    Button("All \(pattern) Files") { Task { await viewModel.trackWithLFS(lfsCandidates, byExtension: true) } }
                 }
             }
         }
         Divider()
-        Button("Copy Path") {
-            GroveClipboard.copy(entry.path)
+        Button(entries.count > 1 ? "Copy \(entries.count) Paths" : "Copy Path") {
+            GroveClipboard.copy(entries.map(\.path).joined(separator: "\n"))
         }
         Button("Reveal in Finder") {
-            NSWorkspace.shared.activateFileViewerSelecting([viewModel.repository.path.appendingPathComponent(entry.path)])
+            NSWorkspace.shared.activateFileViewerSelecting(entries.map { viewModel.repository.path.appendingPathComponent($0.path) })
         }
         Divider()
-        FileActionsMenu(entries: viewModel.actionEntries(for: entry, side: side))
+        FileActionsMenu(entries: entries)
         Divider()
-        Button("Discard Changes…", role: .destructive) { viewModel.requestDiscard(entry) }
+        Button(entries.count > 1 ? "Discard Changes in \(entries.count) Files…" : "Discard Changes…", role: .destructive) {
+            viewModel.requestDiscard(entries)
+        }
     }
 
 }

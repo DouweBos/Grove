@@ -27,12 +27,25 @@ extension WorkingCopyViewModel {
         return ext.isEmpty ? nil : "*.\(ext)"
     }
 
-    /// Tracks the file, or every file with its extension, with Git LFS.
-    func trackWithLFS(_ entry: StatusEntry, byExtension: Bool) async {
-        let pattern = byExtension ? Self.lfsExtensionPattern(for: entry.path) : entry.path
-        guard let pattern else { return }
+    /// The files of `entries` Git LFS can start tracking.
+    func lfsCandidates(_ entries: [StatusEntry]) -> [StatusEntry] {
+        entries.filter { !isLFS($0) && $0.workdirStatus != .deleted }
+    }
+
+    /// The one `*.ext` pattern every file shares, if any.
+    static func lfsExtensionPattern(for entries: [StatusEntry]) -> String? {
+        let patterns = Set(entries.map { lfsExtensionPattern(for: $0.path) })
+        return patterns.count == 1 ? patterns.first ?? nil : nil
+    }
+
+    /// Tracks the files, or every file with their shared extension, with Git LFS.
+    func trackWithLFS(_ entries: [StatusEntry], byExtension: Bool) async {
+        let patterns = byExtension ? [Self.lfsExtensionPattern(for: entries)].compactMap { $0 } : entries.map(\.path)
+        guard !patterns.isEmpty else { return }
         await mutate {
-            try await self.repository.trackWithLFS(pattern: pattern, literal: !byExtension)
+            for pattern in patterns {
+                try await self.repository.trackWithLFS(pattern: pattern, literal: !byExtension)
+            }
         }
     }
 }

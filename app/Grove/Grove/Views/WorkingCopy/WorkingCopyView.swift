@@ -38,11 +38,13 @@ struct WorkingCopyView: View {
         }
         .padding(.bottom, Theme.Spacing.lg)
         .environment(viewModel)
-        .confirmationDialog(discardTitle, isPresented: discardBinding, presenting: viewModel.pendingDiscard) { entry in
-            Button("Discard", role: .destructive) { Task { await viewModel.discard(entry) } }
+        .confirmationDialog(discardTitle, isPresented: discardBinding, presenting: viewModel.pendingDiscard) { entries in
+            Button("Discard", role: .destructive) { Task { await viewModel.discard(entries) } }
             Button("Cancel", role: .cancel) { viewModel.cancelDiscard() }
-        } message: { _ in
-            Text("This can't be undone.")
+        } message: { entries in
+            Text(entries.count > 1 && entries.contains { $0.workdirStatus == .untracked }
+                 ? "Untracked files are deleted. This can't be undone."
+                 : "This can't be undone.")
         }
         .confirmationDialog(viewModel.pendingHunkDiscard?.title ?? "Discard changes?", isPresented: hunkDiscardBinding,
                             presenting: viewModel.pendingHunkDiscard) { pending in
@@ -95,7 +97,8 @@ struct WorkingCopyView: View {
     // MARK: Dialog bindings
 
     private var discardTitle: String {
-        guard let entry = viewModel.pendingDiscard else { return "Discard changes?" }
+        guard let entries = viewModel.pendingDiscard, let entry = entries.first else { return "Discard changes?" }
+        if entries.count > 1 { return "Discard all changes to \(entries.count) files?" }
         return entry.workdirStatus == .untracked
             ? "Delete untracked file \(entry.fileName)?"
             : "Discard all changes to \(entry.fileName)?"

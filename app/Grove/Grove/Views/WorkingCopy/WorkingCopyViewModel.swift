@@ -132,7 +132,7 @@ final class WorkingCopyViewModel {
 
     private(set) var hasLoadedStatus = false
     private(set) var lfs = WorkingCopyLFS()
-    private(set) var pendingDiscard: StatusEntry?
+    private(set) var pendingDiscard: [StatusEntry]?
     private(set) var pendingHunkDiscard: PendingHunkDiscard?
     var pendingFileAction: PendingFileAction?
     var patchApply: PatchApplyRequest?
@@ -327,18 +327,18 @@ final class WorkingCopyViewModel {
 
     // MARK: - Discard
 
-    func requestDiscard(_ entry: StatusEntry) {
-        pendingDiscard = entry
+    func requestDiscard(_ entries: [StatusEntry]) {
+        pendingDiscard = entries.isEmpty ? nil : entries
     }
 
     func cancelDiscard() {
         pendingDiscard = nil
     }
 
-    /// Takes the entry explicitly: the dialog clears `pendingDiscard` before this task runs.
-    func discard(_ entry: StatusEntry) async {
+    /// Takes the entries explicitly: the dialog clears `pendingDiscard` before this task runs.
+    func discard(_ entries: [StatusEntry]) async {
         pendingDiscard = nil
-        await mutate { try await self.repository.discardChanges(paths: [entry.path]) }
+        await mutate { try await self.repository.discardChanges(paths: entries.map(\.path)) }
     }
 
     // MARK: - Helpers

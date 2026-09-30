@@ -94,6 +94,25 @@ struct FileActionsTests {
         #expect(vm.statusEntries.map(\.path) == [".gitignore"])
     }
 
+    @Test func discardCoversTheMultiSelection() async throws {
+        try write("tracked.txt", "edited\n")
+        try write("new.txt", "new\n")
+        try write("kept.txt", "kept\n")
+        let repo = try await GitRepository(path: root)
+        let vm = WorkingCopyViewModel(repository: repo)
+        await vm.refresh()
+        let tracked = try #require(vm.unstagedFiles.first { $0.path == "tracked.txt" })
+        let new = try #require(vm.unstagedFiles.first { $0.path == "new.txt" })
+        await vm.click(tracked, side: .unstaged, extend: false, toggle: false)
+        await vm.click(new, side: .unstaged, extend: false, toggle: true)
+        let acting = vm.actionEntries(for: tracked, side: .unstaged)
+        vm.requestDiscard(acting)
+        #expect(vm.pendingDiscard?.count == 2)
+        await vm.discard(acting)
+        #expect(vm.statusEntries.map(\.path) == ["kept.txt"])
+        #expect(try read("tracked.txt") == "tracked\n")
+    }
+
     @Test func restoreAsksFirstWhenTheFileHasLocalChanges() async throws {
         try write("tracked.txt", "second\n")
         try git(["commit", "-qam", "second"])
