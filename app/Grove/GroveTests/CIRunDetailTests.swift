@@ -92,6 +92,64 @@ struct CIRunDetailTests {
         #expect(detail.jobsError == nil && !detail.jobs.isEmpty)
     }
 
+    @Test func leavingARunMidLoadForACachedOneDoesNotLeaveTheSpinnerUp() async {
+        let repo = MockGitRepository()
+        let detail = CIRunDetailViewModel(repository: repo)
+        await detail.show(finished)
+        repo.ci.held = [failed.id]
+
+        let slow = Task { await detail.show(failed) }
+        await waitUntil { repo.ci.jobRequests.contains(failed.id) }
+        #expect(detail.isLoadingJobs)
+        await detail.show(finished)
+        #expect(!detail.isLoadingJobs && !detail.jobs.isEmpty, "The cached run shows at once")
+
+        repo.ci.held = []
+        await slow.value
+        #expect(!detail.isLoadingJobs && detail.run?.id == finished.id && detail.jobs.allSatisfy { $0.runID == finished.id })
+        #expect(!detail.log.isLoading)
+    }
+
+    @Test func jobsShowWhileTheLogIsStillDownloading() async {
+        let repo = MockGitRepository()
+        let detail = CIRunDetailViewModel(repository: repo)
+        let failedJob = MockData.ciJobs(for: failed)[1]
+        repo.ci.held = [failedJob.id]
+
+        let loading = Task { await detail.show(failed) }
+        await waitUntil { repo.ci.logRequests.contains(failedJob.id) }
+        #expect(!detail.isLoadingJobs && detail.jobs.count == 2, "A slow log doesn't hold back the job list")
+        #expect(detail.log.isLoading && detail.log.rows.count == failedJob.steps.count, "Steps show while the log loads")
+
+        repo.ci.held = []
+        await loading.value
+        #expect(!detail.log.isLoading && detail.log.document?.lineCount ?? 0 > 0)
+    }
+
+    @Test func leavingAJobMidLoadForACachedOneDoesNotLeaveTheLogSpinnerUp() async {
+        let repo = MockGitRepository()
+        let log = CILogViewModel(repository: repo)
+        let jobs = MockData.ciJobs(for: failed)
+        await log.show(jobs[0])
+        repo.ci.held = [jobs[1].id]
+
+        let slow = Task { await log.show(jobs[1]) }
+        await waitUntil { repo.ci.logRequests.contains(jobs[1].id) }
+        #expect(log.isLoading)
+        await log.show(jobs[0])
+        #expect(!log.isLoading && log.job?.id == jobs[0].id)
+
+        repo.ci.held = []
+        await slow.value
+        #expect(!log.isLoading && log.job?.id == jobs[0].id)
+        await log.show(jobs[1])
+        #expect(log.expandedSteps.count == 1, "A cached log opens its failed step too")
+    }
+
+    private func waitUntil(_ condition: () -> Bool) async {
+        for _ in 0..<2000 where !condition() { try? await Task.sleep(for: .milliseconds(10)) }
+    }
+
     @Test func noSelectionClearsTheDetail() async {
         let detail = CIRunDetailViewModel(repository: MockGitRepository())
         await detail.show(finished)

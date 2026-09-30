@@ -26,11 +26,12 @@ final class CIRunDetailViewModel {
     private(set) var run: CIRun?
     private(set) var activeTab: CIRunDetailTab = .jobs
     private(set) var jobs: [CIJob] = []
-    private(set) var isLoadingJobs = false
+    // Loads are tracked by the run they're for: a flag would stay set when the selection moves on mid-load.
+    private var loadingJobsRunID: Int?
+    private var loadingArtifactsRunID: Int?
     private(set) var jobsError: String?
     private(set) var selectedJobID: Int?
     private(set) var artifacts: [CIArtifact] = []
-    private(set) var isLoadingArtifacts = false
     private(set) var artifactsError: String?
     private(set) var downloads: [Int: Download] = [:]
 
@@ -51,6 +52,10 @@ final class CIRunDetailViewModel {
     }
 
     var selectedJob: CIJob? { jobs.first { $0.id == selectedJobID } }
+
+    /// The shown run's jobs are being read for the first time.
+    var isLoadingJobs: Bool { run != nil && loadingJobsRunID == run?.id }
+    var isLoadingArtifacts: Bool { run != nil && loadingArtifactsRunID == run?.id }
 
     // MARK: - Loading
 
@@ -102,8 +107,6 @@ final class CIRunDetailViewModel {
         jobs = []
         artifacts = []
         selectedJobID = nil
-        isLoadingJobs = false
-        isLoadingArtifacts = false
         jobsError = nil
         artifactsError = nil
         Task { await log.show(nil) }
@@ -111,15 +114,22 @@ final class CIRunDetailViewModel {
 
     private func loadJobs(for run: CIRun) async {
         let key = CIRunDetailKey(run)
-        if jobs.isEmpty { isLoadingJobs = true }
-        defer { if self.run?.id == run.id { isLoadingJobs = false } }
+        if jobs.isEmpty { loadingJobsRunID = run.id }
+        let result: Result<[CIJob], Error>
         do {
-            let loaded = try await repository.ciJobs(runID: run.id)
+            result = .success(try await repository.ciJobs(runID: run.id))
+        } catch {
+            result = .failure(error)
+        }
+        // Cleared before the jobs are applied: applying also reads the selected job's log, which the jobs shouldn't wait for.
+        if loadingJobsRunID == run.id { loadingJobsRunID = nil }
+        switch result {
+        case .success(let loaded):
             cache.update(key, default: CIRunDetails()) { $0.jobs = loaded }
             guard self.run.map(CIRunDetailKey.init) == key else { return }
             jobsError = nil
             await apply(loaded)
-        } catch {
+        case .failure(let error):
             guard self.run?.id == run.id else { return }
             jobsError = error.localizedDescription
         }
@@ -127,8 +137,8 @@ final class CIRunDetailViewModel {
 
     private func loadArtifacts(for run: CIRun) async {
         let key = CIRunDetailKey(run)
-        if artifacts.isEmpty { isLoadingArtifacts = true }
-        defer { if self.run?.id == run.id { isLoadingArtifacts = false } }
+        if artifacts.isEmpty { loadingArtifactsRunID = run.id }
+        defer { if loadingArtifactsRunID == run.id { loadingArtifactsRunID = nil } }
         do {
             let loaded = try await repository.ciArtifacts(runID: run.id)
             cache.update(key, default: CIRunDetails()) { $0.artifacts = loaded }

@@ -25,7 +25,8 @@ final class CILogViewModel {
     private(set) var job: CIJob?
     private(set) var document: CILogDocument?
     private(set) var rows: [CILogRow] = []
-    private(set) var isLoading = false
+    // Tracked by job: a flag would stay set when the selection moves to a cached or running job mid-load.
+    private var loadingJobID: Int?
     private(set) var errorMessage: String?
     private(set) var expandedSteps: Set<Int> = []
     private(set) var expandedGroups: Set<Int> = []
@@ -42,6 +43,8 @@ final class CILogViewModel {
     init(repository: any GitRepositoryProtocol) {
         self.repository = repository
     }
+
+    var isLoading: Bool { job != nil && loadingJobID == job?.id }
 
     /// GitHub only serves a job's log once the job is done.
     var isWaitingForJob: Bool { job?.status.isActive == true }
@@ -62,7 +65,10 @@ final class CILogViewModel {
         if job.status.isActive || job.steps.isEmpty && job.status == .skipped {
             return apply(CILogDocument(steps: job), for: job)
         }
-        if let cached = cache.value(for: job.id) { return apply(cached, for: job) }
+        if let cached = cache.value(for: job.id) {
+            apply(cached, for: job)
+            return openFailedSteps(of: job)
+        }
         if previous?.id != job.id { apply(CILogDocument(steps: job), for: job) }
         await load(job)
     }
@@ -73,8 +79,8 @@ final class CILogViewModel {
     }
 
     private func load(_ job: CIJob) async {
-        isLoading = true
-        defer { if self.job?.id == job.id { isLoading = false } }
+        loadingJobID = job.id
+        defer { if loadingJobID == job.id { loadingJobID = nil } }
         do {
             let text = try await repository.ciJobLog(jobID: job.id)
             let parsed = await Self.parse(text, job: job)
@@ -82,13 +88,18 @@ final class CILogViewModel {
             guard self.job?.id == job.id else { return }
             errorMessage = nil
             apply(parsed, for: job)
-            // Open what went wrong; a log that isn't split by steps has nothing to open.
-            if expandedSteps.isEmpty { expandedSteps = Set(job.steps.filter { $0.status == .failure }.map(\.number)) }
-            rebuildRows()
+            openFailedSteps(of: job)
         } catch {
             guard self.job?.id == job.id else { return }
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Opens what went wrong, unless the user already opened something.
+    private func openFailedSteps(of job: CIJob) {
+        guard expandedSteps.isEmpty else { return }
+        expandedSteps = Set(job.steps.filter { $0.status == .failure }.map(\.number))
+        rebuildRows()
     }
 
     /// Logs run to tens of megabytes, so they're parsed off the main actor.
@@ -107,7 +118,6 @@ final class CILogViewModel {
         job = nil
         document = nil
         rows = []
-        isLoading = false
         errorMessage = nil
         matches = []
         currentMatchIndex = nil

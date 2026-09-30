@@ -26,6 +26,8 @@ struct MockCIState {
     var workflowFileRequests: [String] = []
     var dispatches: [CIDispatch] = []
     var branchStatusRequests = 0
+    /// Run and job ids whose jobs or log read doesn't answer until they're removed, to test slow reads.
+    var held: Set<Int> = []
 }
 
 extension MockGitRepository {
@@ -49,6 +51,7 @@ extension MockGitRepository {
     func ciJobLog(jobID: Int) async throws -> String {
         ci.logRequests.append(jobID)
         await simulateLatency(20_000_000)
+        await waitWhileHeld(jobID)
         if let error = ci.error { throw error }
         if let log = ci.logs[jobID] { return log }
         let jobs = ci.jobs.values.joined() + ci.runs.flatMap(MockData.ciJobs(for:))
@@ -81,6 +84,10 @@ extension MockGitRepository {
         if let error = ci.error { throw error }
         ci.operations.append("cancel \(id)")
         replaceRun(id) { $0.with(status: .cancelled, attempt: $0.attempt) }
+    }
+
+    private func waitWhileHeld(_ id: Int) async {
+        while ci.held.contains(id) { try? await Task.sleep(nanoseconds: 5_000_000) }
     }
 
     private func replaceRun(_ id: Int, _ change: (CIRun) -> CIRun) {
@@ -125,6 +132,7 @@ extension MockGitRepository {
     func ciJobs(runID: Int) async throws -> [CIJob] {
         ci.jobRequests.append(runID)
         await simulateLatency(20_000_000)
+        await waitWhileHeld(runID)
         if let error = ci.error { throw error }
         if let jobs = ci.jobs[runID] { return jobs }
         return ci.runs.first { $0.id == runID }.map(MockData.ciJobs(for:)) ?? []
