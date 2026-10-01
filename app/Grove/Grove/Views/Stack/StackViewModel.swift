@@ -16,6 +16,8 @@ final class StackViewModel {
     /// A layer conflicted mid-cascade; the session switches to Changes, where the banner continues it.
     var onRestackStopped: (() -> Void)?
     var onCreatePullRequest: ((String) -> Void)?
+    /// Selects a stack by id in the sidebar, which in turn focuses it here.
+    var onShowStack: ((String) -> Void)?
     var activity: String?
     /// A merged parent whose children were just retargeted, offered for deletion.
     var retargetedParent: String?
@@ -46,8 +48,19 @@ final class StackViewModel {
         focusedBranch = branch
     }
 
+    /// Stacks whose name or a layer's branch contains the query.
+    func stacks(matching query: String) -> [BranchStack] {
+        let query = query.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return stacks }
+        return stacks.filter { stack in
+            stack.name.localizedCaseInsensitiveContains(query)
+                || stack.layers.contains { $0.branch.localizedCaseInsensitiveContains(query) }
+        }
+    }
+
     func show(_ stack: BranchStack) {
-        focusedBranch = stack.layers.first?.branch
+        focus(branch: stack.id)
+        onShowStack?(stack.id)
     }
 
     func toggleExpanded(_ layer: StackLayer) {

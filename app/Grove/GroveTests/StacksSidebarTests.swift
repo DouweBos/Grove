@@ -26,4 +26,23 @@ struct StacksSidebarTests {
         #expect(stack.subtree(from: "auth-ui").map(\.branch) == ["auth-ui", "auth-ui-tests", "auth-docs"])
         #expect(stack.needsAttention)
     }
+
+    @Test func showingAStackSelectsItsFolder() {
+        let vm = SidebarViewModel(repository: MockGitRepository())
+        vm.refs.replace(localBranches: MockData.stackBranches, stacks: [MockData.linearStack, MockData.splitStack])
+
+        vm.showStack(containing: "auth-ui-tests")
+        #expect(vm.selection == .branchStack(MockData.splitStack.id))
+        #expect(RepositoryTab(item: .branchStack(MockData.splitStack.id)) == .stack)
+    }
+
+    @Test func switcherMatchesStackAndLayerNames() {
+        let refs = RepositoryRefs(repository: MockGitRepository())
+        refs.replace(localBranches: MockData.stackBranches, stacks: [MockData.linearStack, MockData.splitStack])
+        let vm = StackViewModel(repository: MockGitRepository(), refs: refs)
+
+        #expect(vm.stacks(matching: "").count == 2)
+        #expect(vm.stacks(matching: "AUTH").map(\.name) == ["auth"])
+        #expect(vm.stacks(matching: "ui-tests").map(\.name) == ["auth"])
+    }
 }

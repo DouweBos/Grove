@@ -29,7 +29,7 @@ struct BranchesSidebarSection: View {
                         branchRow(branch, isPinned: viewModel.pinnedBranchNames.contains(branch.name))
                     }
                     ForEach(viewModel.stacks) { stack in
-                        StackSidebarFolder(stack: stack, showStack: { viewModel.showStack(containing: stack.layers.first?.branch ?? "") }) {
+                        StackSidebarFolder(stack: stack, showStack: { viewModel.showStack(stack) }) {
                             stackRow($0)
                         }
                     }

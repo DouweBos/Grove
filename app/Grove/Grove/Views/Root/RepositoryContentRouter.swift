@@ -43,9 +43,20 @@ struct RepositoryContentRouter: View {
             .sheet(item: Binding(get: { session.ciVM.dispatch }, set: { if $0 == nil { session.ciVM.cancelDispatch() } })) { dispatch in
                 DispatchWorkflowSheet(viewModel: dispatch) { session.ciVM.cancelDispatch() }
             }
+            // Stacks load after the tab opens, and a stack can vanish under it, so selection follows the shown stack.
+            .onChange(of: session.stackVM.stack?.id) { _, id in
+                guard let id, RepositoryTab(item: session.sidebarVM.selection ?? .workingCopy) == .stack else { return }
+                session.sidebarVM.select(.branchStack(id))
+            }
             .onChange(of: session.sidebarVM.selection) { _, newItem in
                 // Back/forward restores both at once, so only user-driven changes differ here.
+                // The Stack tab always selects the stack it shows, so that stack's sidebar folder stays lit.
+                if newItem == .stack, let id = session.stackVM.stack?.id {
+                    session.sidebarVM.select(.branchStack(id))
+                    return
+                }
                 if case .branch(let branch) = newItem { session.stackVM.focus(branch: branch.name) }
+                if case .branchStack(let id) = newItem { session.stackVM.focus(branch: id) }
                 if let item = newItem, item != session.selectedItem {
                     windowVM.recordNavigation(to: .repository(path: session.repository.path.path, item: item))
                     session.selectedItem = item
@@ -110,7 +121,7 @@ struct RepositoryContentRouter: View {
                     await session.refreshOnEntry(.branchesReview)
                 }
 
-        case .stack:
+        case .stack, .branchStack:
             StackView()
                 .environment(session.stackVM)
                 .task(id: "stack-initial") {

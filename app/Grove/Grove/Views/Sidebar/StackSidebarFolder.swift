@@ -3,8 +3,8 @@
 
 import SwiftUI
 
-/// A stack in the Branches section, with each layer indented under its parent;
-/// it opens when it holds the checked-out branch or needs attention.
+/// A stack in the Branches section, with each layer indented under its parent; selecting it opens the Stack tab.
+/// It opens when it holds the checked-out branch or needs attention.
 struct StackSidebarFolder<Row: View>: View {
     let stack: BranchStack
     let showStack: () -> Void
@@ -26,6 +26,7 @@ struct StackSidebarFolder<Row: View>: View {
                        tint: stack.needsAttention ? Theme.warning : Theme.textSecondary) {
                 Text("\(stack.layers.count)").font(.system(size: 11, design: .monospaced))
             }
+            .tag(SidebarItem.branchStack(stack.id))
             .help(stack.needsAttention ? "\(stack.name): some layers need a restack or retarget" : "\(stack.name) on \(stack.trunk)")
             .contextMenu {
                 Button("Show Stack", systemImage: "square.stack.3d.up", action: showStack)

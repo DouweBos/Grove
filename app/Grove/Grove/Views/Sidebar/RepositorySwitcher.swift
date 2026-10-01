@@ -121,17 +121,6 @@ struct RepositorySwitcher: View {
     }
 }
 
-private struct SwitcherRowStyle: ButtonStyle {
-    let isHighlighted: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(isHighlighted || configuration.isPressed ? Theme.selectionFill : .clear,
-                        in: RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
-            .padding(.horizontal, Theme.Spacing.xs)
-    }
-}
-
 #Preview {
     let vm = WindowViewModel(manager: MockRepositoryManager())
     vm.openReference(RepositoryReference(path: "/Users/dev/Projects/my-app"))

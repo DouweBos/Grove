@@ -28,6 +28,8 @@ enum SidebarItem: Hashable, Sendable {
     case branchesReview
     /// The Stack view — the stacked branches HEAD or the sidebar's branch belongs to.
     case stack
+    /// The Stack tab on one stack, by its id; its sidebar folder shows as selected.
+    case branchStack(String)
     /// The in-repository Settings / Preferences view.
     case settings
     /// History filtered to a specific local branch.
@@ -103,7 +105,7 @@ enum RepositoryTab: CaseIterable, Hashable {
         case .ci: self = .ci
         case .reflog: self = .reflog
         case .branchesReview: self = .review
-        case .stack: self = .stack
+        case .stack, .branchStack: self = .stack
         case .blame: self = .blame
         case .settings: self = .settings
         }

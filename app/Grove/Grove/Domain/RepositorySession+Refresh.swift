@@ -19,7 +19,7 @@ enum RefreshedTab: Hashable {
         case .pullRequests: self = .pullRequests
         case .ci: self = .ci
         case .branchesReview: self = .branchesReview
-        case .stack: self = .stack
+        case .stack, .branchStack: self = .stack
         default: return nil
         }
     }

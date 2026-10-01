@@ -54,16 +54,7 @@ struct StackView: View {
             Image(systemName: "square.stack.3d.up")
                 .foregroundStyle(stack.needsAttention ? Theme.warning : Theme.textSecondary)
             if viewModel.stacks.count > 1 {
-                Menu {
-                    ForEach(viewModel.stacks) { other in
-                        Button(other.name) { viewModel.show(other) }
-                    }
-                } label: {
-                    Text(stack.name).font(.pageTitle)
-                }
-                .menuStyle(.button)
-                .buttonStyle(.plain)
-                .fixedSize()
+                StackTitleButton(title: stack.name)
             } else {
                 Text(stack.name).font(.pageTitle)
             }
@@ -96,6 +87,35 @@ struct StackView: View {
         let layers = "\(stack.layers.count) layer\(stack.layers.count == 1 ? "" : "s")"
         let behind = stack.trunkAhead > 0 ? ", \(stack.trunkAhead) behind" : ""
         return "\(layers) \u{00B7} trunk \(stack.trunk)\(behind)"
+    }
+}
+
+/// The stack's name; clicking it opens the stack switcher, like the sidebar's repository title.
+private struct StackTitleButton: View {
+    @Environment(StackViewModel.self) private var viewModel
+    let title: String
+    @State private var isShowingSwitcher = false
+
+    var body: some View {
+        Button { isShowingSwitcher = true } label: {
+            HStack(spacing: Theme.Spacing.xs) {
+                Text(title)
+                    .font(.pageTitle)
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .fixedSize()
+        .help("Switch Stack")
+        .popover(isPresented: $isShowingSwitcher, arrowEdge: .bottom) {
+            StackSwitcher { isShowingSwitcher = false }
+                .environment(viewModel)
+        }
     }
 }
 
