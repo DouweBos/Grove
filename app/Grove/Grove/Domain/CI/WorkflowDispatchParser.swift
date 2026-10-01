@@ -72,6 +72,8 @@ nonisolated enum WorkflowDispatchParser {
             guard let (key, value) = YAMLOutline.key(of: lines[property].text) else { throw Unreadable() }
             switch key {
             case "description": input.description = try text(value, at: property, in: lines)
+            // An unquoted YAML null means no default, not the text "null".
+            case "default" where ["null", "Null", "NULL", "~"].contains(String(value)): input.defaultValue = ""
             case "default": input.defaultValue = try text(value, at: property, in: lines)
             case "required": input.isRequired = ["true", "yes", "on"].contains(YAMLOutline.scalar(value).lowercased())
             case "type": type = YAMLOutline.scalar(value)

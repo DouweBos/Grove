@@ -88,6 +88,26 @@ struct WorkflowDispatchParserTests {
         ]))
     }
 
+    @Test func aNullDefaultLeavesTheFieldEmpty() {
+        let yaml = """
+        on:
+          workflow_dispatch:
+            inputs:
+              version:
+                default: null
+              build:
+                type: number
+                default: ~   # none
+              literal:
+                default: 'null'
+        """
+        #expect(WorkflowDispatchParser.parse(yaml) == .inputs([
+            CIDispatchInput(name: "version"),
+            CIDispatchInput(name: "build", kind: .number),
+            CIDispatchInput(name: "literal", defaultValue: "null")
+        ]))
+    }
+
     @Test func theTriggerIsFoundHoweverOnIsWritten() {
         #expect(WorkflowDispatchParser.parse("on: workflow_dispatch\njobs: {}") == .inputs([]))
         #expect(WorkflowDispatchParser.parse("on: [push, workflow_dispatch]") == .inputs([]))
