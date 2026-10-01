@@ -40,6 +40,24 @@ struct NavigationHistoryTests {
         #expect(window.isBrowsing)
     }
 
+    @Test func backFromARunsJobReturnsToItsSummaryFirst() async throws {
+        let window = WindowViewModel(manager: MockRepositoryManager())
+        let session = try await open(repoA, in: window)
+        selectTab(.ci, in: session, window: window)
+        let detail = session.ciVM.detail
+        await detail.show(MockData.ciRuns[3])
+        let node = try #require(detail.graph.nodes.first)
+        await detail.open(node)
+        #expect(detail.selectedJob != nil && window.canGoBack)
+
+        window.goBack()
+        await waitUntil { detail.selectedJob == nil }
+        #expect(session.selectedItem == .ci, "Back left the job, not the tab")
+
+        window.goBack()
+        #expect(session.selectedItem == .workingCopy)
+    }
+
     @Test func backFromALocalCloneReturnsToTheRemoteBrowser() async throws {
         let window = WindowViewModel(manager: MockRepositoryManager())
         window.showRemoteRepositories()
@@ -77,6 +95,10 @@ struct NavigationHistoryTests {
             try await Task.sleep(nanoseconds: 50_000_000)
         }
         throw CancellationError()
+    }
+
+    private func waitUntil(_ condition: () -> Bool) async {
+        for _ in 0..<2000 where !condition() { try? await Task.sleep(for: .milliseconds(10)) }
     }
 
     /// What RepositoryContentRouter does when the sidebar selection changes.

@@ -7,6 +7,8 @@ import SwiftUI
 struct CILogView: View {
 
     @Environment(CILogViewModel.self) private var viewModel
+    /// Shows a back button to the run's summary when set.
+    var onBack: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,17 +20,23 @@ struct CILogView: View {
 
     private var header: some View {
         HStack(spacing: Theme.Spacing.sm) {
-            if let count = viewModel.document?.lineCount, count > 0 {
-                Text("\(count) lines").font(.monoCaption).foregroundStyle(Theme.textSecondary).fixedSize()
+            if let onBack {
+                Button(action: onBack) { Label("Summary", systemImage: "chevron.left") }
+                    .help("Back to the Run\u{2019}s Summary (\u{2318}[)")
             }
-            Spacer(minLength: Theme.Spacing.sm)
-            if viewModel.isLoading { ProgressView().controlSize(.small) }
-            search
-            WrapLinesToggle()
-            CopyButton(value: viewModel.plainText, help: "Copy Log", confirmation: "Copied Log")
+            HStack(spacing: Theme.Spacing.sm) {
+                if let count = viewModel.document?.lineCount, count > 0 {
+                    Text("\(count) lines").font(.monoCaption).foregroundStyle(Theme.textSecondary).fixedSize()
+                }
+                Spacer(minLength: Theme.Spacing.sm)
+                if viewModel.isLoading { ProgressView().controlSize(.small) }
+                search
+                WrapLinesToggle()
+                CopyButton(value: viewModel.plainText, help: "Copy Log", confirmation: "Copied Log")
+            }
+            .disabled(viewModel.document == nil)
         }
         .buttonStyle(.borderless)
-        .disabled(viewModel.document == nil)
         .padding(.horizontal, Theme.Spacing.md)
         .frame(height: 40)
     }

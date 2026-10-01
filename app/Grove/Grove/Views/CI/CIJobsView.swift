@@ -31,7 +31,7 @@ struct CIJobsView: View {
                 if viewModel.selectedJob == nil {
                     CIRunSummaryView()
                 } else {
-                    CILogView()
+                    CILogView { Task { await viewModel.showSummary() } }
                         .environment(viewModel.log)
                 }
             }

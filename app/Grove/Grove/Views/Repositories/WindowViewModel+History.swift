@@ -29,10 +29,11 @@ extension WindowViewModel {
         return .repository(path: openRepo.path, item: currentSession?.session.selectedItem)
     }
 
-    var canGoBack: Bool { !backHistory.isEmpty }
+    var canGoBack: Bool { !backHistory.isEmpty || currentSession?.session.canGoBackWithinTab == true }
     var canGoForward: Bool { !forwardHistory.isEmpty }
 
     func goBack() {
+        if let session = currentSession?.session, session.canGoBackWithinTab { return session.goBackWithinTab() }
         guard let target = backHistory.last else { return }
         popBack()
         pushForward(currentLocation)

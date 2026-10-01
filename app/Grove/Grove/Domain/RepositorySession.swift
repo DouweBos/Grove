@@ -283,6 +283,14 @@ final class RepositorySession {
         await refreshAll()
     }
 
+    /// Back within the shown tab, taken before the window's own history: from a run's job to its summary.
+    var canGoBackWithinTab: Bool { selectedItem == .ci && ciVM.detail.canReturnToSummary }
+
+    func goBackWithinTab() {
+        guard canGoBackWithinTab else { return }
+        Task { await ciVM.detail.showSummary() }
+    }
+
     /// Opens on `item` instead of Changes, e.g. to keep the tab when switching worktrees.
     func restoreSelection(_ item: SidebarItem) {
         sidebarVM.select(item)

@@ -7,6 +7,8 @@ import SwiftUI
 struct CIGraphView: View {
 
     @Environment(CIRunDetailViewModel.self) private var viewModel
+    /// The pan where the current drag began; nil while not dragging.
+    @State private var dragOrigin: CGSize?
 
     var body: some View {
         let graph = viewModel.graph
@@ -25,33 +27,55 @@ struct CIGraphView: View {
         }
     }
 
-    /// The workflow file and its trigger above the graph, pinned top-leading, zoom bottom-right.
+    /// The workflow file and its trigger above a viewport the graph is dragged around in, zoom bottom-right.
     private func canvas(_ graph: CIGraph) -> some View {
-        let zoom = viewModel.graphZoom
         let layout = CIGraphLayout(graph)
-        let contentWidth = layout.size.width * zoom + 2 * Theme.Spacing.xl
-        return GeometryReader { geo in
-            ScrollView(.horizontal) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-                    header
-                    CIGraphCanvas(graph: graph, layout: layout) { node in Task { await viewModel.open(node) } }
-                        .scaleEffect(zoom, anchor: .topLeading)
-                        .frame(width: layout.size.width * zoom, height: layout.size.height * zoom, alignment: .topLeading)
-                }
+        return VStack(alignment: .leading, spacing: 0) {
+            header
                 .padding(Theme.Spacing.xl)
-                .frame(minWidth: geo.size.width, alignment: .topLeading)
+            GeometryReader { geo in
+                viewport(graph, layout: layout, size: geo.size)
             }
-            // "Always show scroll bars" would otherwise draw one under a graph that fits.
-            .scrollIndicators(contentWidth <= geo.size.width ? .never : .automatic)
         }
-        // The summary scrolls vertically, so the card is as tall as its graph, with room below for the zoom controls.
-        .frame(height: layout.size.height * zoom + Self.chromeHeight)
+        // Sized for the graph at actual size, so zooming changes the graph, not the card.
+        .frame(height: layout.size.height + Self.chromeHeight)
         .overlay(alignment: .bottomTrailing) { zoomControls.padding(Theme.Spacing.md) }
         .summarySection()
     }
 
-    /// The header, padding and a strip for the zoom controls around the graph itself.
-    private static let chromeHeight: CGFloat = 150
+    private func viewport(_ graph: CIGraph, layout: CIGraphLayout, size: CGSize) -> some View {
+        let zoom = viewModel.graphZoom
+        // Room below the graph so its last row can be dragged clear of the zoom controls.
+        let limit = CGSize(width: max(0, layout.size.width * zoom + 2 * Theme.Spacing.xl - size.width),
+                           height: max(0, layout.size.height * zoom + Self.controlsHeight - size.height))
+        func clamped(_ pan: CGSize) -> CGSize {
+            CGSize(width: min(max(pan.width, 0), limit.width), height: min(max(pan.height, 0), limit.height))
+        }
+        let pan = clamped(viewModel.graphPan)
+        let canPan = limit.width > 0 || limit.height > 0
+        return CIGraphCanvas(graph: graph, layout: layout) { node in Task { await viewModel.open(node) } }
+            .scaleEffect(zoom, anchor: .topLeading)
+            .frame(width: layout.size.width * zoom, height: layout.size.height * zoom, alignment: .topLeading)
+            .offset(x: Theme.Spacing.xl - pan.width, y: -pan.height)
+            .frame(width: size.width, height: size.height, alignment: .topLeading)
+            .clipped()
+            .contentShape(Rectangle())
+            .pointerStyle(canPan ? (dragOrigin == nil ? .grabIdle : .grabActive) : nil)
+            // High priority so a drag that starts on a job pans instead of being swallowed by its button; a click still opens it.
+            .highPriorityGesture(DragGesture(minimumDistance: 3).onChanged { drag in
+                guard canPan else { return }
+                let origin = dragOrigin ?? pan
+                dragOrigin = origin
+                viewModel.panGraph(to: clamped(CGSize(width: origin.width - drag.translation.width,
+                                                      height: origin.height - drag.translation.height)))
+            }.onEnded { _ in
+                dragOrigin = nil
+            })
+    }
+
+    /// The header above the graph and the strip below it for the zoom controls.
+    private static let chromeHeight: CGFloat = 78 + controlsHeight
+    private static let controlsHeight: CGFloat = 64
 
     @ViewBuilder private var header: some View {
         if let run = viewModel.run {
@@ -62,8 +86,14 @@ struct CIGraphView: View {
 
     private var zoomControls: some View {
         HStack(spacing: Theme.Spacing.xs) {
-            Button { viewModel.resetGraphZoom() } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
-                .help("Actual Size")
+            // The zoom level doubles as the reset, like a design tool's, since no symbol reads as "actual size".
+            Button { viewModel.resetGraphZoom() } label: {
+                Text("\(Int((viewModel.graphZoom * 100).rounded()))%")
+                    .font(.monoCaption)
+                    .frame(minWidth: 36)
+            }
+            .help("Reset to Actual Size")
+            .disabled(viewModel.graphZoom == 1 && viewModel.graphPan == .zero)
             ControlGroup {
                 Button { viewModel.zoomGraph(by: -0.25) } label: { Image(systemName: "minus") }
                     .disabled(viewModel.graphZoom <= CIRunDetailViewModel.graphZoomRange.lowerBound)

@@ -34,6 +34,8 @@ final class CIRunDetailViewModel {
     private var loadingGraphSource: String?
     private(set) var graphError: String?
     private(set) var graphZoom: CGFloat = 1
+    /// How far the graph is dragged from its top-left; the view clamps it to what the graph's size allows.
+    private(set) var graphPan: CGSize = .zero
     /// Per finished job, which leaves them as they are; a job missing hasn't been read yet.
     private(set) var annotationsByJob: [Int: [CIAnnotation]] = [:]
     @ObservationIgnored private var loadingAnnotationJobs: Set<Int> = []
@@ -96,6 +98,7 @@ final class CIRunDetailViewModel {
         artifactsError = nil
         let cached = cache.value(for: key)
         if previous?.id != run.id {
+            graphPan = .zero
             artifacts = cached?.artifacts ?? []
             if cached?.jobs == nil {
                 jobs = []
@@ -156,7 +159,15 @@ final class CIRunDetailViewModel {
 
     func resetGraphZoom() {
         graphZoom = 1
+        graphPan = .zero
     }
+
+    func panGraph(to offset: CGSize) {
+        graphPan = offset
+    }
+
+    /// A job's log is shown, which going back leaves for the summary.
+    var canReturnToSummary: Bool { selectedJobID != nil }
 
     private func clear() {
         run = nil
