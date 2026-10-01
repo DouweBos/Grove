@@ -17,7 +17,6 @@ struct CIRunDetailView: View {
                     Rectangle().fill(Theme.border).frame(height: 0.5)
                     switch detail.activeTab {
                     case .jobs: CIJobsView()
-                    case .graph: CIGraphView()
                     case .artifacts: CIArtifactsView()
                     }
                 }

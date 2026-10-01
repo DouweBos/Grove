@@ -8,7 +8,6 @@ import UniformTypeIdentifiers
 
 enum CIRunDetailTab: String, CaseIterable, Hashable {
     case jobs = "Jobs"
-    case graph = "Graph"
     case artifacts = "Artifacts"
 }
 
@@ -31,6 +30,7 @@ final class CIRunDetailViewModel {
     private var loadingJobsRunID: Int?
     private var loadingArtifactsRunID: Int?
     private(set) var jobsError: String?
+    /// The job whose steps and log are shown; nil shows the graph.
     private(set) var selectedJobID: Int?
     private(set) var artifacts: [CIArtifact] = []
     private(set) var artifactsError: String?
@@ -101,7 +101,7 @@ final class CIRunDetailViewModel {
         if let cachedJobs = cached?.jobs { await apply(cachedJobs) }
         async let jobsRead: Void = (cached?.jobs == nil || run.status.isActive) ? loadJobs(for: run) : ()
         async let artifactsRead: Void = needsArtifacts(run, cached: cached) ? loadArtifacts(for: run) : ()
-        async let graphRead: Void = activeTab == .graph ? loadGraph() : ()
+        async let graphRead: Void = activeTab == .jobs ? loadGraph() : ()
         _ = await (jobsRead, artifactsRead, graphRead)
     }
 
@@ -121,7 +121,7 @@ final class CIRunDetailViewModel {
     func selectTab(_ tab: CIRunDetailTab) async {
         activeTab = tab
         if tab == .artifacts, let run, run.status.isActive { await loadArtifacts(for: run) }
-        if tab == .graph { await loadGraph() }
+        if tab == .jobs { await loadGraph() }
     }
 
     /// Reads the workflow's job definitions once per file and commit.
@@ -143,10 +143,9 @@ final class CIRunDetailViewModel {
         }
     }
 
-    /// From the graph: shows the node's job on the Jobs tab.
+    /// From the graph: shows the node's job's steps and log.
     func open(_ node: CIGraph.Node) async {
         guard let job = node.jobs.first(where: { $0.status == .failure }) ?? node.jobs.first else { return }
-        activeTab = .jobs
         await selectJob(job)
     }
 
@@ -199,12 +198,10 @@ final class CIRunDetailViewModel {
         }
     }
 
-    /// Keeps the selected job when it's still there; otherwise the first failed job, else the first.
+    /// Keeps the selected job when it's still there; otherwise back to the graph.
     private func apply(_ loaded: [CIJob]) async {
         if loaded != jobs { jobs = loaded }
-        if selectedJob == nil {
-            selectedJobID = (loaded.first { $0.status == .failure } ?? loaded.first)?.id
-        }
+        if selectedJob == nil { selectedJobID = nil }
         await log.show(selectedJob)
     }
 
@@ -213,6 +210,11 @@ final class CIRunDetailViewModel {
     func selectJob(_ job: CIJob) async {
         selectedJobID = job.id
         await log.show(job)
+    }
+
+    func showGraph() async {
+        selectedJobID = nil
+        await log.show(nil)
     }
 
     // MARK: - Artifacts

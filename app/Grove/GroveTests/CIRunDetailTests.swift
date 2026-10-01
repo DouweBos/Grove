@@ -27,15 +27,22 @@ struct CIRunDetailTests {
         #expect(!vm.detail.isLoadingJobs && vm.detail.jobsError == nil)
     }
 
-    @Test func theFirstFailedJobIsSelected() async {
+    @Test func theGraphShowsUntilAJobIsPicked() async {
         let repo = MockGitRepository()
         let detail = CIRunDetailViewModel(repository: repo)
 
         await detail.show(failed)
-        #expect(detail.selectedJob?.status == .failure && detail.selectedJob?.id != detail.jobs.first?.id)
+        #expect(detail.selectedJob == nil && repo.ci.logRequests.isEmpty)
 
+        await detail.selectJob(detail.jobs[1])
+        #expect(detail.selectedJob?.id == detail.jobs[1].id && detail.log.job?.id == detail.jobs[1].id)
+
+        await detail.showGraph()
+        #expect(detail.selectedJob == nil && detail.log.job == nil)
+
+        await detail.selectJob(detail.jobs[1])
         await detail.show(finished)
-        #expect(detail.selectedJob?.id == detail.jobs.first?.id)
+        #expect(detail.selectedJob == nil, "Another run opens on its graph")
     }
 
     @Test func finishedRunsComeFromTheCache() async {
@@ -110,15 +117,15 @@ struct CIRunDetailTests {
         #expect(!detail.log.isLoading)
     }
 
-    @Test func jobsShowWhileTheLogIsStillDownloading() async {
+    @Test func stepsShowWhileTheLogIsStillDownloading() async {
         let repo = MockGitRepository()
         let detail = CIRunDetailViewModel(repository: repo)
         let failedJob = MockData.ciJobs(for: failed)[1]
         repo.ci.held = [failedJob.id]
 
-        let loading = Task { await detail.show(failed) }
+        await detail.show(failed)
+        let loading = Task { await detail.selectJob(failedJob) }
         await waitUntil { repo.ci.logRequests.contains(failedJob.id) }
-        #expect(!detail.isLoadingJobs && detail.jobs.count == 2, "A slow log doesn't hold back the job list")
         #expect(detail.log.isLoading && detail.log.rows.count == failedJob.steps.count, "Steps show while the log loads")
 
         repo.ci.held = []

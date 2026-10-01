@@ -191,6 +191,7 @@ struct CILogTests {
         let detail = CIRunDetailViewModel(repository: repo)
 
         await detail.show(failedRun)
+        await detail.selectJob(detail.jobs[1])
 
         let log = detail.log
         let failedStep = try? #require(log.job?.steps.first { $0.status == .failure })

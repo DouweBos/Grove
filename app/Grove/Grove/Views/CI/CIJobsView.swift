@@ -3,7 +3,7 @@
 
 import SwiftUI
 
-/// A run's jobs on the left, the selected job's steps and log on the right.
+/// A run's jobs on the left; on the right, their graph or the selected job's steps and log.
 struct CIJobsView: View {
 
     @Environment(CIRunDetailViewModel.self) private var viewModel
@@ -19,15 +19,66 @@ struct CIJobsView: View {
                            subtitle: "This run hasn't started any jobs.")
         } else {
             HStack(spacing: 0) {
-                SelectableList(items: viewModel.jobs, selection: viewModel.selectedJobID,
-                               onSelect: { job in Task { await viewModel.selectJob(job) } }) { job in
-                    CIJobRow(job: job)
+                SelectableList(items: entries, selection: viewModel.selectedJobID.map(Entry.ID.job) ?? .graph,
+                               onSelect: select) { entry in
+                    switch entry {
+                    case .graph: CIGraphRow()
+                    case .job(let job): CIJobRow(job: job)
+                    }
                 }
                 .frame(width: 220)
                 Rectangle().fill(Theme.border).frame(width: 0.5)
-                CILogView()
-                    .environment(viewModel.log)
+                if viewModel.selectedJob == nil {
+                    CIGraphView()
+                } else {
+                    CILogView()
+                        .environment(viewModel.log)
+                }
             }
+        }
+    }
+
+    private var entries: [Entry] { [.graph] + viewModel.jobs.map(Entry.job) }
+
+    private func select(_ entry: Entry) {
+        Task {
+            switch entry {
+            case .graph: await viewModel.showGraph()
+            case .job(let job): await viewModel.selectJob(job)
+            }
+        }
+    }
+
+    /// The graph sits first in the list, so it can be returned to like any job.
+    private enum Entry: Identifiable {
+        case graph
+        case job(CIJob)
+
+        enum ID: Hashable {
+            case graph
+            case job(Int)
+        }
+
+        var id: ID {
+            switch self {
+            case .graph: .graph
+            case .job(let job): .job(job.id)
+            }
+        }
+    }
+}
+
+private struct CIGraphRow: View {
+    var body: some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            Image(systemName: "point.3.connected.trianglepath.dotted")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textSecondary)
+                .frame(width: 16)
+            Text("Graph")
+                .font(.rowTitle)
+                .foregroundStyle(Theme.textPrimary)
+            Spacer(minLength: 0)
         }
     }
 }

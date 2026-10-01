@@ -123,11 +123,9 @@ struct CIGraphTests {
         let detail = CIRunDetailViewModel(repository: repo)
         let run = MockData.ciRuns[3]
         await detail.show(run)
-        #expect(repo.ci.workflowFileRequests.isEmpty, "Nothing is read until the tab is opened")
-
-        await detail.selectTab(.graph)
+        await detail.selectTab(.artifacts)
         await detail.selectTab(.jobs)
-        await detail.selectTab(.graph)
+        await detail.show(run)
 
         #expect(repo.ci.workflowFileRequests == ["\(run.workflowPath)@\(run.headSHA)"])
         #expect(detail.graph.columns.map { $0.map(\.id) } == [["lint"], ["build"], ["notify"]])
@@ -135,7 +133,7 @@ struct CIGraphTests {
 
         let node = try #require(detail.graph.nodes.first { $0.id == "build" })
         await detail.open(node)
-        #expect(detail.activeTab == .jobs && detail.selectedJob?.id == node.jobs.first?.id)
+        #expect(detail.selectedJob?.id == node.jobs.first?.id)
     }
 
     @Test func anUnreadableFileStillShowsTheJobs() async {
@@ -143,8 +141,6 @@ struct CIGraphTests {
         repo.ci.workflowFiles = [:]
         let detail = CIRunDetailViewModel(repository: repo)
         await detail.show(MockData.ciRuns[3])
-
-        await detail.selectTab(.graph)
 
         #expect(detail.graphError == "Not Found" && detail.graph.nodes.count == 2 && detail.graph.columns.count == 1)
     }

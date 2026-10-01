@@ -3,7 +3,7 @@
 
 import SwiftUI
 
-/// The run's jobs in columns by `needs`, linked like GitHub's workflow graph; a job opens on the Jobs tab.
+/// The run's jobs in columns by `needs`, linked like GitHub's workflow graph; a job opens its steps and log.
 struct CIGraphView: View {
 
     @Environment(CIRunDetailViewModel.self) private var viewModel
@@ -186,8 +186,5 @@ private struct CIGraphNodeView: View {
         .panel()
         .padding()
         .background(Theme.background)
-        .task {
-            await vm.selectTab(.graph)
-            await vm.show(MockData.ciRuns[0])
-        }
+        .task { await vm.show(MockData.ciRuns[0]) }
 }
