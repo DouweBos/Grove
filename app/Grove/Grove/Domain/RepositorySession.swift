@@ -126,6 +126,10 @@ final class RepositorySession {
         repositorySettingsVM.onRepositoryChanged = refresh
         pullRequestsVM.onShowPullRequests = { [weak self] in self?.sidebarVM.select(.pullRequests) }
         ciVM.onShowCI = { [weak self] in self?.sidebarVM.select(.ci) }
+        ciVM.watcher.setRevealHandler(for: ciVM.repositoryPath) { [weak self] runID in
+            self?.sidebarVM.select(.ci)
+            Task { await self?.ciVM.reveal(runID: runID) }
+        }
         sidebarVM.onShowRuns = { [weak self] branch in
             self?.sidebarVM.select(.ci)
             Task { await self?.ciVM.showRuns(for: branch) }

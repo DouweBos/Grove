@@ -34,6 +34,9 @@ final class DispatchWorkflowViewModel: Identifiable {
     private(set) var freeFormRows: [FreeFormRow] = []
     private(set) var progressTitle: String?
     private(set) var errorMessage: String?
+    /// Remembered between runs, since whoever wants to hear about one usually wants it for the next.
+    private(set) var notifiesWhenFinished = UserDefaults.standard.bool(forKey: DispatchWorkflowViewModel.notifiesKey)
+    static let notifiesKey = "CINotifyWhenDispatchedRunFinishes"
 
     let repository: any GitRepositoryProtocol
     let refs: RepositoryRefs
@@ -172,6 +175,11 @@ final class DispatchWorkflowViewModel: Identifiable {
     }
 
     // MARK: Submitting
+
+    func setNotifiesWhenFinished(_ isOn: Bool) {
+        notifiesWhenFinished = isOn
+        UserDefaults.standard.set(isOn, forKey: Self.notifiesKey)
+    }
 
     func submit() async {
         guard canSubmit, let dispatch else { return }

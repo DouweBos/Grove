@@ -58,10 +58,13 @@ final class CIViewModel {
     let refs: RepositoryRefs
     /// Jobs of the selected run.
     let detail: CIRunDetailViewModel
+    /// Announces watched runs when they finish.
+    let watcher: CIRunWatcher
 
-    init(repository: any GitRepositoryProtocol, refs: RepositoryRefs? = nil) {
+    init(repository: any GitRepositoryProtocol, refs: RepositoryRefs? = nil, watcher: CIRunWatcher = .shared) {
         self.repository = repository
         self.refs = refs ?? RepositoryRefs(repository: repository)
+        self.watcher = watcher
         detail = CIRunDetailViewModel(repository: repository)
     }
 
@@ -127,10 +130,16 @@ final class CIViewModel {
         }
     }
 
+    /// Lists a run read on its own, e.g. one older than the pages loaded.
+    func insert(_ run: CIRun) async {
+        await apply(Self.merge([run], into: runs, query: query))
+    }
+
     private func apply(_ loaded: [CIRun]) async {
         // A run that just finished changes its branch's status in the sidebar.
         let finished = loaded.contains { run in !run.status.isActive && runs.contains { $0.id == run.id && $0.status.isActive } }
         if finished { refs.refreshCIStatuses(force: true) }
+        watcher.observe(loaded, in: repositoryPath)
         if loaded != runs { runs = loaded }
         loadFailure = nil
         consecutiveFailures = 0
@@ -302,6 +311,9 @@ final class CIViewModel {
 
     /// The host doesn't say which run a dispatch became, so the next new run of that workflow is taken to be it.
     private func didDispatch(_ started: CIDispatch) async {
+        if dispatch?.notifiesWhenFinished == true {
+            watcher.watchDispatch(started, known: Set(runs.map(\.id)), in: repositoryPath, repository: repository)
+        }
         dispatch = nil
         onShowCI?()
         awaitedDispatch = (started.workflowID, Set(runs.map(\.id)))

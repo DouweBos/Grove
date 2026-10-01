@@ -58,6 +58,9 @@ struct CIRunDetailView: View {
                 Button { viewModel.openInBrowser(run) } label: { Image(systemName: "safari") }
                     .help("Open on \(viewModel.serviceName)")
                 if run.status.isActive {
+                    let isWatching = viewModel.isWatching(run)
+                    Button { viewModel.toggleNotification(for: run) } label: { Image(systemName: isWatching ? "bell.fill" : "bell") }
+                        .help(isWatching ? "Stop Notifying" : "Notify When Finished")
                     Button("Cancel Run\u{2026}", role: .destructive) { viewModel.request(.cancel, on: run) }
                 } else {
                     Menu("Re-run") { CIRunActions(run: run) }
@@ -85,6 +88,11 @@ struct CIRunActions: View {
 
     var body: some View {
         if run.status.isActive {
+            if viewModel.isWatching(run) {
+                Button("Stop Notifying", systemImage: "bell.slash") { viewModel.toggleNotification(for: run) }
+            } else {
+                Button("Notify When Finished", systemImage: "bell") { viewModel.toggleNotification(for: run) }
+            }
             Button("Cancel Run\u{2026}", systemImage: "xmark.circle", role: .destructive) { viewModel.request(.cancel, on: run) }
         } else {
             Button("Re-run All Jobs\u{2026}", systemImage: "arrow.clockwise") { viewModel.request(.rerun, on: run) }

@@ -112,7 +112,7 @@ private struct CIRunListPanel: View {
             }
         } else {
             SelectableList(items: viewModel.runs, selection: viewModel.selectedRunID, onSelect: { run in Task { await viewModel.select(run) } }) { run in
-                CIRunRow(run: run)
+                CIRunRow(run: run, isWatched: viewModel.isWatching(run))
                     .onAppear {
                         // The last row coming into view reads the next page.
                         if run.id == viewModel.runs.last?.id { Task { await viewModel.loadMore() } }

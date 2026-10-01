@@ -36,6 +36,11 @@ struct DispatchWorkflowSheet: View {
                 }
             }
             form
+            DialogCard {
+                DialogOptionRow(isOn: Binding(get: { viewModel.notifiesWhenFinished }, set: { viewModel.setNotifiesWhenFinished($0) }),
+                                label: "Notify me when it finishes",
+                                description: "Sends a notification when the run passes, fails or is cancelled.")
+            }
         }
         .task { await viewModel.load() }
     }

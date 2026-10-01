@@ -6,6 +6,8 @@ import SwiftUI
 /// One workflow run in the list: status, title, then workflow, branch and age.
 struct CIRunRow: View {
     let run: CIRun
+    /// A notification is due when it finishes.
+    var isWatched = false
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.sm) {
@@ -23,6 +25,9 @@ struct CIRunRow: View {
                         Text(branch).lineLimit(1).truncationMode(.middle)
                     }
                     Spacer(minLength: 0)
+                    if isWatched {
+                        Image(systemName: "bell.fill").help("Notifies when finished")
+                    }
                     Text(run.createdDate, format: .relative(presentation: .named)).lineLimit(1).fixedSize()
                 }
                 .font(.monoCaption)
