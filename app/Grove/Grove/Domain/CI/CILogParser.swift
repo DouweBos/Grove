@@ -97,10 +97,11 @@ nonisolated enum CILogParser {
         var longest = 0
         var nextID = 0
         let sections = job.steps.map { step -> CILogSection in
-            let (lines, width) = ranges[step.number].map { lines(entries[$0], firstID: nextID) } ?? ([], 0)
+            // Not named `lines`: Xcode 26's compiler then reads the call below as the tuple, not the function.
+            let (stepLines, width) = ranges[step.number].map { lines(entries[$0], firstID: nextID) } ?? ([], 0)
             nextID += ranges[step.number]?.count ?? 0
             longest = max(longest, width)
-            return CILogSection(id: step.number, title: step.name, step: step, lines: lines)
+            return CILogSection(id: step.number, title: step.name, step: step, lines: stepLines)
         }
         return CILogDocument(sections: sections, isSplitBySteps: true, longestLine: longest)
     }
