@@ -40,6 +40,9 @@ final class CIRunDetailViewModel {
     private var loadingGraphSource: String?
     private(set) var graphError: String?
     private(set) var graphZoom: CGFloat = 1
+    /// Per finished job, which leaves them as they are; a job missing hasn't been read yet.
+    private(set) var annotationsByJob: [Int: [CIAnnotation]] = [:]
+    @ObservationIgnored private var loadingAnnotationJobs: Set<Int> = []
     @ObservationIgnored private var definitionCache: [String: [WorkflowJobDefinition]] = [:]
 
     // Keyed by attempt and update date too, so a re-run or a finished run misses instead of showing its old jobs.
@@ -68,6 +71,13 @@ final class CIRunDetailViewModel {
     var graph: CIGraph {
         let definitions = graphDefinitions.flatMap { $0.source == graphSource ? $0.jobs : nil } ?? []
         return CIGraph.build(definitions: definitions, jobs: jobs)
+    }
+
+    /// The shown jobs' annotations, failures first, then in job order.
+    var annotations: [(job: CIJob, annotation: CIAnnotation)] {
+        jobs.flatMap { job in (annotationsByJob[job.id] ?? []).map { (job, $0) } }
+            .enumerated().sorted { ($0.element.annotation.level, $0.offset) < ($1.element.annotation.level, $1.offset) }
+            .map(\.element)
     }
 
     var isLoadingGraph: Bool { loadingGraphSource != nil && loadingGraphSource == graphSource }
@@ -213,7 +223,26 @@ final class CIRunDetailViewModel {
     private func apply(_ loaded: [CIJob]) async {
         if loaded != jobs { jobs = loaded }
         if selectedJob == nil { selectedJobID = nil }
-        await log.show(selectedJob)
+        async let logRead: Void = log.show(selectedJob)
+        async let annotationsRead: Void = loadAnnotations(for: loaded)
+        _ = await (logRead, annotationsRead)
+    }
+
+    /// Reads each finished job's annotations once; a failed read is left for the next refresh, since they're only extra detail.
+    private func loadAnnotations(for jobs: [CIJob]) async {
+        let pending = jobs.filter { !$0.status.isActive && $0.status != .skipped && annotationsByJob[$0.id] == nil }
+            .map(\.id).filter { !loadingAnnotationJobs.contains($0) }
+        guard !pending.isEmpty else { return }
+        loadingAnnotationJobs.formUnion(pending)
+        defer { loadingAnnotationJobs.subtract(pending) }
+        await withTaskGroup(of: (Int, [CIAnnotation]?).self) { group in
+            for id in pending {
+                group.addTask { @MainActor in (id, try? await self.repository.ciAnnotations(jobID: id)) }
+            }
+            for await (id, loaded) in group {
+                if let loaded { annotationsByJob[id] = loaded }
+            }
+        }
     }
 
     // MARK: - Selection

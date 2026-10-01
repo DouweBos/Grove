@@ -22,9 +22,13 @@ struct CIGraphView: View {
                     EmptyStateView(systemImage: "point.3.connected.trianglepath.dotted", title: "No Jobs")
                 }
             } else {
-                canvas(graph)
-                    .padding(Theme.Spacing.md)
-                Spacer(minLength: 0)
+                VStack(spacing: Theme.Spacing.md) {
+                    canvas(graph)
+                        .layoutPriority(1)
+                    if !viewModel.annotations.isEmpty { CIAnnotationsView() }
+                    Spacer(minLength: 0)
+                }
+                .padding(Theme.Spacing.md)
             }
         }
     }

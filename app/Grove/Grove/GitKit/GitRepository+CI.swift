@@ -33,6 +33,10 @@ extension GitRepository {
         try await ciHost().jobs(runID: runID)
     }
 
+    func ciAnnotations(jobID: Int) async throws -> [CIAnnotation] {
+        try await ciHost().annotations(jobID: jobID)
+    }
+
     func ciJobLog(jobID: Int) async throws -> String {
         try await ciHost().log(jobID: jobID)
     }

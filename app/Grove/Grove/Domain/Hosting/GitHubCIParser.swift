@@ -75,6 +75,20 @@ nonisolated enum GitHubCIParser {
                       startedDate: date(raw["started_at"]), completedDate: date(raw["completed_at"]))
     }
 
+    static func annotation(_ raw: HostingJSON.Object, jobID: Int, index: Int) -> CIAnnotation? {
+        guard let message = raw["message"] as? String else { return nil }
+        let level: CIAnnotation.Level = switch raw["annotation_level"] as? String {
+        case "failure": .failure
+        case "warning": .warning
+        default: .notice
+        }
+        // Notes about the job itself point at `.github`, which isn't a file worth showing.
+        let path = (raw["path"] as? String).flatMap { $0.isEmpty || $0 == ".github" ? nil : $0 }
+        return CIAnnotation(jobID: jobID, index: index, level: level,
+                            title: (raw["title"] as? String).flatMap { $0.isEmpty ? nil : $0 }, message: message,
+                            path: path, line: path == nil ? nil : raw["start_line"] as? Int)
+    }
+
     static func artifact(_ raw: HostingJSON.Object) -> CIArtifact? {
         guard let id = raw["id"] as? Int, let name = raw["name"] as? String else { return nil }
         return CIArtifact(id: id, name: name, sizeInBytes: raw["size_in_bytes"] as? Int ?? 0, isExpired: raw["expired"] as? Bool ?? false,

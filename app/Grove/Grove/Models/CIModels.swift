@@ -100,6 +100,27 @@ nonisolated struct CIStep: Identifiable, Hashable, Sendable {
     }
 }
 
+/// A note a job left on the run, e.g. a deprecation warning or a test failure with its file and line.
+nonisolated struct CIAnnotation: Identifiable, Hashable, Sendable {
+    enum Level: Int, Comparable, Sendable {
+        case failure, warning, notice
+
+        static func < (lhs: Level, rhs: Level) -> Bool { lhs.rawValue < rhs.rawValue }
+    }
+
+    let jobID: Int
+    /// Position among the job's annotations.
+    let index: Int
+    let level: Level
+    let title: String?
+    let message: String
+    /// The file and line it points at; nil for notes about the job itself.
+    let path: String?
+    let line: Int?
+
+    var id: String { "\(jobID)-\(index)" }
+}
+
 /// A file a run uploaded, downloadable as a zip until it expires.
 nonisolated struct CIArtifact: Identifiable, Hashable, Sendable {
     let id: Int

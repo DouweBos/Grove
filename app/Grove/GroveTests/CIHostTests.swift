@@ -48,6 +48,20 @@ struct CIHostTests {
         #expect(http.requests[0].cachePolicy == .reloadIgnoringLocalCacheData, "A poll must not be answered from URLCache")
     }
 
+    @Test func annotationsComeFromTheJobsCheckRun() async throws {
+        let http = FakeHTTPClient { _ in (200, """
+        [{"path":".github","start_line":1,"annotation_level":"warning","title":"","message":"Node.js 20 is deprecated."},
+         {"path":"Sources/App.swift","start_line":42,"annotation_level":"failure","title":"testLogin","message":"Expected 2"},
+         {"path":".github","annotation_level":"notice","message":"Queues are long."}]
+        """) }
+        let annotations = try await Self.github(http).annotations(jobID: 77)
+        #expect(paths(http) == ["GET /repos/o/r/check-runs/77/annotations?per_page=100"])
+        #expect(annotations.map(\.level) == [.warning, .failure, .notice])
+        #expect(annotations[0].path == nil && annotations[0].line == nil && annotations[0].title == nil)
+        #expect(annotations[1].path == "Sources/App.swift" && annotations[1].line == 42 && annotations[1].title == "testLogin")
+        #expect(Set(annotations.map(\.id)).count == 3 && annotations.allSatisfy { $0.jobID == 77 })
+    }
+
     @Test func filtersBecomeThePathAndQuery() async throws {
         let http = FakeHTTPClient { _ in (200, #"{"workflow_runs":[]}"#) }
         let host = Self.github(http, host: "ghe.example.com")

@@ -16,6 +16,8 @@ protocol CIRepositoryProtocol {
     func branchCIStatuses() async throws -> [String: BranchCIStatus]
     /// Jobs of the run's latest attempt, with their steps.
     func ciJobs(runID: Int) async throws -> [CIJob]
+    /// Notes a finished job left, such as warnings and test failures.
+    func ciAnnotations(jobID: Int) async throws -> [CIAnnotation]
     /// A finished job's log as plain text.
     func ciJobLog(jobID: Int) async throws -> String
     /// Files the run uploaded.
@@ -38,6 +40,7 @@ extension CIRepositoryProtocol {
     func ciRun(id: Int) async throws -> CIRun { throw HostingError.noHostedRemote }
     func branchCIStatuses() async throws -> [String: BranchCIStatus] { throw HostingError.noHostedRemote }
     func ciJobs(runID: Int) async throws -> [CIJob] { throw HostingError.noHostedRemote }
+    func ciAnnotations(jobID: Int) async throws -> [CIAnnotation] { throw HostingError.noHostedRemote }
     func ciJobLog(jobID: Int) async throws -> String { throw HostingError.noHostedRemote }
     func ciArtifacts(runID: Int) async throws -> [CIArtifact] { throw HostingError.noHostedRemote }
     func downloadCIArtifact(id: Int, to destination: URL) async throws { throw HostingError.noHostedRemote }

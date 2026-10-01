@@ -38,6 +38,12 @@ nonisolated struct GitHubCIHost: CIHost, GitHubRepositoryAPI {
             .compactMap(GitHubCIParser.job)
     }
 
+    /// An Actions job is a check run under the same id.
+    func annotations(jobID: Int) async throws -> [CIAnnotation] {
+        try await client.getPages(try url("/check-runs/\(jobID)/annotations?per_page=100")).enumerated()
+            .compactMap { GitHubCIParser.annotation($1, jobID: jobID, index: $0) }
+    }
+
     /// One request: the hundred newest runs cover every branch that saw CI lately.
     func branchStatuses() async throws -> [String: BranchCIStatus] {
         BranchCIStatus.index(try await runs(CIRunQuery(limit: 100)))

@@ -115,6 +115,20 @@ extension MockData {
         ]
     }
 
+    /// Every finished job warns about Node 20; a failed one also points at the failing test.
+    static func ciAnnotations(for job: CIJob) -> [CIAnnotation] {
+        guard !job.status.isActive, job.status != .skipped else { return [] }
+        var annotations = [CIAnnotation(jobID: job.id, index: 0, level: .warning, title: nil, message:
+            "Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4.",
+            path: nil, line: nil)]
+        if job.status == .failure {
+            annotations.append(CIAnnotation(jobID: job.id, index: 1, level: .failure, title: "testFetchUpdatesRemoteBranches",
+                                            message: "XCTAssertEqual failed: (\"2\") is not equal to (\"3\")",
+                                            path: "app/Grove/GroveTests/FetchTests.swift", line: 42))
+        }
+        return annotations
+    }
+
     /// Finished runs that got as far as testing uploaded results; the oldest have expired.
     static func ciArtifacts(for run: CIRun) -> [CIArtifact] {
         guard run.status == .success || run.status == .failure else { return [] }

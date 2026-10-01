@@ -17,6 +17,9 @@ struct MockCIState {
     /// Log text per job id; jobs without an entry get `MockData.ciLog(for:)`.
     var logs: [Int: String] = [:]
     var logRequests: [Int] = []
+    /// Annotations per job id; jobs without an entry get `MockData.ciAnnotations(for:)`.
+    var annotations: [Int: [CIAnnotation]] = [:]
+    var annotationRequests: [Int] = []
     var artifactRequests: [Int] = []
     /// Artifact ids and where each was saved.
     var downloads: [(id: Int, destination: URL)] = []
@@ -46,6 +49,15 @@ extension MockGitRepository {
             (query.workflowID == nil || run.workflowID == query.workflowID) && (query.branch == nil || run.branch == query.branch)
                 && (query.status == nil || run.status == query.status)
         }.dropFirst((query.page - 1) * query.limit).prefix(query.limit))
+    }
+
+    func ciAnnotations(jobID: Int) async throws -> [CIAnnotation] {
+        ci.annotationRequests.append(jobID)
+        await simulateLatency(20_000_000)
+        if let error = ci.error { throw error }
+        if let annotations = ci.annotations[jobID] { return annotations }
+        let jobs = ci.jobs.values.joined() + ci.runs.flatMap(MockData.ciJobs(for:))
+        return jobs.first { $0.id == jobID }.map(MockData.ciAnnotations(for:)) ?? []
     }
 
     func ciJobLog(jobID: Int) async throws -> String {

@@ -163,6 +163,30 @@ struct CIRunDetailTests {
         await detail.show(nil)
         #expect(detail.run == nil && detail.jobs.isEmpty && detail.selectedJob == nil)
     }
+
+    @Test func finishedJobsAnnotationsLoadOnceWithFailuresFirst() async {
+        let repo = MockGitRepository()
+        let detail = CIRunDetailViewModel(repository: repo)
+        let jobs = MockData.ciJobs(for: failed)
+
+        await detail.show(failed)
+        await detail.show(finished)
+        await detail.show(failed)
+
+        #expect(detail.annotations.map(\.annotation.level) == [.failure, .warning, .warning])
+        #expect(detail.annotations.first?.job.id == jobs[1].id)
+        #expect(repo.ci.annotationRequests.filter { jobs.map(\.id).contains($0) }.count == 2, "Each finished job is read once")
+    }
+
+    @Test func runningJobsAnnotationsWaitUntilTheyFinish() async {
+        let repo = MockGitRepository()
+        let detail = CIRunDetailViewModel(repository: repo)
+
+        await detail.show(active)
+
+        let running = Set(MockData.ciJobs(for: active).filter { $0.status.isActive }.map(\.id))
+        #expect(!running.isEmpty && repo.ci.annotationRequests.allSatisfy { !running.contains($0) })
+    }
 }
 
 // MARK: - Artifacts

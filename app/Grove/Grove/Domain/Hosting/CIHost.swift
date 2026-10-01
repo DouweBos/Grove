@@ -14,6 +14,8 @@ nonisolated protocol CIHost: Sendable {
     func run(id: Int) async throws -> CIRun
     /// Jobs of the run's latest attempt, with their steps.
     func jobs(runID: Int) async throws -> [CIJob]
+    /// Notes the finished job left, such as warnings and test failures.
+    func annotations(jobID: Int) async throws -> [CIAnnotation]
     /// The job's whole log as plain text; only there once the job has finished.
     func log(jobID: Int) async throws -> String
     func artifacts(runID: Int) async throws -> [CIArtifact]
