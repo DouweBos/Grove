@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.4.0
+
+- A run's graph now lists the annotations its jobs left, such as errors, deprecation warnings and notices, like GitHub's run summary.
+- A run's Artifacts tab in the Actions tab lists the files it uploaded, with size and expiry, and downloads them as zip archives.
+- Drag a run's graph to move around it; zooming now scales the graph inside its card instead of growing the card.
+- The zoom level resets the graph to actual size when clicked.
+- A job opened from the summary has a back button, and Back (⌘[ or the mouse's back button) returns to the summary.
+- A run in the Actions tab now opens on a graph of its jobs, wired the way the workflow wires them, with each job's status, including jobs that haven't started yet. Clicking a job in the graph or the list opens its steps and log; Graph at the top of the list goes back, and the graph can be zoomed.
+- Selecting a workflow run in the Actions tab shows its jobs and each job's steps, with their status and duration.
+- The Actions tab updates by itself while it's open: runs in progress refresh every few seconds, and new runs appear without reloading.
+- Job logs in the Actions tab keep their terminal colors, and can be searched: matches are marked, and the arrows or Return step through them, opening the steps they're in.
+- Finished jobs in the Actions tab show their log under each step: failed steps open by themselves, groups fold, errors and warnings stand out, and the log can be wrapped and copied.
+- Workflow runs can be re-run (all jobs or only the failed ones) and cancelled from the Actions tab.
+- Workflows with a manual trigger can be started from Grove: Run Workflow (in the Actions tab, the Git menu and Quick Actions) asks for the branch or tag and the workflow's inputs, then selects the run it started.
+- A run's artifacts now sit under its graph and annotations in a Summary, like GitHub's, with each artifact's size and digest, instead of in a separate tab.
+- A new Actions tab (Cmd+9) lists the repository’s GitHub Actions workflow runs, filtered by workflow, branch and status; older runs load as the list scrolls.
+- Branches in the sidebar show how CI went for their latest commit, and "Show Runs for Branch" opens the Actions tab filtered to them.
+- The Actions pill gets a red dot when the checked-out branch's latest run failed.
+- A worktree or repository folder deleted outside Grove no longer leaves a broken tab behind: the tab moves to the main repository, or closes when another tab already shows it.
+- Grove no longer freezes when a repository suddenly has thousands of changed files, such as a worktree being deleted while it is open.
+- With several files selected in Changes, the context menu's Discard Changes, Copy Path, Reveal in Finder and Track with Git LFS now act on every selected file instead of only the one that was right-clicked.
+- Pull requests load with a GitHub token that lacks the `read:org` scope; only the names of requested team reviewers are left out.
+- Restack a stack in one click from the Stack tab: Restack moves only the branches that drifted from their parent, Sync fetches and moves the whole stack onto the new trunk, and Restack from Here moves one branch and everything on it. Branches checked out in other worktrees are restacked there. A conflict pauses the cascade in Changes, where Continue picks it up and Abort puts every branch back.
+- Push Stack pushes every changed branch of a stack at once, and only if nobody else moved them on the remote.
+- Stack layers can be checked out, pushed, moved onto another branch, folded into the branch below, or get a new branch on top. Drag a stacked branch onto another branch in the sidebar to move it there with everything on it.
+- New pull requests for a stacked branch start out based on the branch it's stacked on.
+- When a stacked branch's pull request merges, even as a squash merge, the Stack tab offers to retarget what was built on it. Grove moves those branches onto trunk, pushes them, points their pull requests at trunk on GitHub, GitLab, Bitbucket or Azure DevOps, and offers to delete the merged branch.
+- A new Stack tab (⌘9) shows the stack you're on as one tree: each branch's pull request and checks, its own commits and size, whether it's pushed, and which layers need a restack, with trunk at the bottom and splits side by side.
+- Stacked branches are recognized on their own, however they were made, and grouped per stack under Branches in the sidebar, with each branch under the one it builds on and a glyph when it needs a restack, its parent merged, or it isn't pushed.
+
 ## 0.3.0
 
 - Add a remote to an existing repository from the sidebar, the More menu or Repository Settings. Grove fetches it right away so its branches show up.
