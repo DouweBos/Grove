@@ -39,6 +39,7 @@ final class CIRunDetailViewModel {
     private var graphDefinitions: (source: String, jobs: [WorkflowJobDefinition])?
     private var loadingGraphSource: String?
     private(set) var graphError: String?
+    private(set) var graphZoom: CGFloat = 1
     @ObservationIgnored private var definitionCache: [String: [WorkflowJobDefinition]] = [:]
 
     // Keyed by attempt and update date too, so a re-run or a finished run misses instead of showing its old jobs.
@@ -147,6 +148,16 @@ final class CIRunDetailViewModel {
     func open(_ node: CIGraph.Node) async {
         guard let job = node.jobs.first(where: { $0.status == .failure }) ?? node.jobs.first else { return }
         await selectJob(job)
+    }
+
+    static let graphZoomRange: ClosedRange<CGFloat> = 0.5...1.5
+
+    func zoomGraph(by step: CGFloat) {
+        graphZoom = min(max(graphZoom + step, Self.graphZoomRange.lowerBound), Self.graphZoomRange.upperBound)
+    }
+
+    func resetGraphZoom() {
+        graphZoom = 1
     }
 
     private func clear() {
