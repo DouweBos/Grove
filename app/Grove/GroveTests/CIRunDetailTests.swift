@@ -37,7 +37,7 @@ struct CIRunDetailTests {
         await detail.selectJob(detail.jobs[1])
         #expect(detail.selectedJob?.id == detail.jobs[1].id && detail.log.job?.id == detail.jobs[1].id)
 
-        await detail.showGraph()
+        await detail.showSummary()
         #expect(detail.selectedJob == nil && detail.log.job == nil)
 
         await detail.selectJob(detail.jobs[1])
@@ -236,16 +236,16 @@ struct CIArtifactTests {
         #expect(repo.ci.artifactRequests == [finished.id, MockData.ciRuns[3].id])
     }
 
-    @Test func aRunningRunsArtifactsAreOnlyReadWhileTheirTabIsOpen() async {
+    @Test func aRunningRunsArtifactsAreOnlyReadWhileItsSummaryShows() async {
         let repo = MockGitRepository()
         let detail = CIRunDetailViewModel(repository: repo)
         await detail.show(active)
         await detail.show(active)
-        #expect(repo.ci.artifactRequests.isEmpty)
+        #expect(repo.ci.artifactRequests == [active.id, active.id], "Still arriving, so re-read on each refresh")
 
-        await detail.selectTab(.artifacts)
+        await detail.selectJob(detail.jobs[0])
         await detail.show(active)
-        #expect(repo.ci.artifactRequests == [active.id, active.id] && detail.activeTab == .artifacts)
+        #expect(repo.ci.artifactRequests == [active.id, active.id], "Not while a job's log is shown")
     }
 
     @Test func downloadingSavesWhereTheUserChose() async throws {

@@ -123,8 +123,8 @@ struct CIGraphTests {
         let detail = CIRunDetailViewModel(repository: repo)
         let run = MockData.ciRuns[3]
         await detail.show(run)
-        await detail.selectTab(.artifacts)
-        await detail.selectTab(.jobs)
+        await detail.selectJob(detail.jobs[0])
+        await detail.showSummary()
         await detail.show(run)
 
         #expect(repo.ci.workflowFileRequests == ["\(run.workflowPath)@\(run.headSHA)"])

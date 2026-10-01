@@ -3,7 +3,7 @@
 
 import SwiftUI
 
-/// Detail card for the selected run: what ran, where, how it went, and its Jobs / Artifacts tabs.
+/// Detail card for the selected run: what ran, where, how it went, and its jobs.
 struct CIRunDetailView: View {
 
     @Environment(CIViewModel.self) private var viewModel
@@ -15,10 +15,7 @@ struct CIRunDetailView: View {
                 VStack(spacing: 0) {
                     header(run)
                     Rectangle().fill(Theme.border).frame(height: 0.5)
-                    switch detail.activeTab {
-                    case .jobs: CIJobsView()
-                    case .artifacts: CIArtifactsView()
-                    }
+                    CIJobsView()
                 }
             } else {
                 EmptyStateView(systemImage: "play.circle", title: "No Run Selected",
@@ -32,18 +29,8 @@ struct CIRunDetailView: View {
     // MARK: - Header
 
     private func header(_ run: CIRun) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            summaryRow(run)
-            Picker("Section", selection: Binding(get: { detail.activeTab }, set: { tab in Task { await detail.selectTab(tab) } })) {
-                ForEach(CIRunDetailTab.allCases, id: \.self) { tab in
-                    Text(tab == .artifacts && !detail.artifacts.isEmpty ? "\(tab.rawValue) \(detail.artifacts.count)" : tab.rawValue).tag(tab)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
-        }
-        .padding(Theme.Spacing.lg)
+        summaryRow(run)
+            .padding(Theme.Spacing.lg)
     }
 
     private func summaryRow(_ run: CIRun) -> some View {

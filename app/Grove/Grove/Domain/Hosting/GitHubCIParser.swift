@@ -92,7 +92,8 @@ nonisolated enum GitHubCIParser {
     static func artifact(_ raw: HostingJSON.Object) -> CIArtifact? {
         guard let id = raw["id"] as? Int, let name = raw["name"] as? String else { return nil }
         return CIArtifact(id: id, name: name, sizeInBytes: raw["size_in_bytes"] as? Int ?? 0, isExpired: raw["expired"] as? Bool ?? false,
-                          createdDate: HostingJSON.date(raw["created_at"]), expiresDate: date(raw["expires_at"]))
+                          createdDate: HostingJSON.date(raw["created_at"]), expiresDate: date(raw["expires_at"]),
+                          digest: (raw["digest"] as? String).flatMap { $0.isEmpty ? nil : $0 })
     }
 
     private static func date(_ value: Any?) -> Date? {

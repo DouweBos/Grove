@@ -6,11 +6,6 @@ import Foundation
 import Observation
 import UniformTypeIdentifiers
 
-enum CIRunDetailTab: String, CaseIterable, Hashable {
-    case jobs = "Jobs"
-    case artifacts = "Artifacts"
-}
-
 /// The selected run's jobs, steps and artifacts.
 @MainActor
 @Observable
@@ -24,13 +19,12 @@ final class CIRunDetailViewModel {
     }
 
     private(set) var run: CIRun?
-    private(set) var activeTab: CIRunDetailTab = .jobs
     private(set) var jobs: [CIJob] = []
     // Loads are tracked by the run they're for: a flag would stay set when the selection moves on mid-load.
     private var loadingJobsRunID: Int?
     private var loadingArtifactsRunID: Int?
     private(set) var jobsError: String?
-    /// The job whose steps and log are shown; nil shows the graph.
+    /// The job whose steps and log are shown; nil shows the run's summary.
     private(set) var selectedJobID: Int?
     private(set) var artifacts: [CIArtifact] = []
     private(set) var artifactsError: String?
@@ -112,13 +106,13 @@ final class CIRunDetailViewModel {
         if let cachedJobs = cached?.jobs { await apply(cachedJobs) }
         async let jobsRead: Void = (cached?.jobs == nil || run.status.isActive) ? loadJobs(for: run) : ()
         async let artifactsRead: Void = needsArtifacts(run, cached: cached) ? loadArtifacts(for: run) : ()
-        async let graphRead: Void = activeTab == .jobs ? loadGraph() : ()
+        async let graphRead: Void = loadGraph()
         _ = await (jobsRead, artifactsRead, graphRead)
     }
 
-    /// A finished run's artifacts are read once; a running one's only while their tab is open, since they're still arriving.
+    /// A finished run's artifacts are read once; a running one's on each refresh while the summary shows, since they're still arriving.
     private func needsArtifacts(_ run: CIRun, cached: CIRunDetails?) -> Bool {
-        run.status.isActive ? activeTab == .artifacts : cached?.artifacts == nil
+        run.status.isActive ? selectedJobID == nil : cached?.artifacts == nil
     }
 
     /// Reads the shown run again, e.g. after a failed read.
@@ -127,12 +121,6 @@ final class CIRunDetailViewModel {
         async let jobsRead: Void = loadJobs(for: run)
         async let artifactsRead: Void = loadArtifacts(for: run)
         _ = await (jobsRead, artifactsRead)
-    }
-
-    func selectTab(_ tab: CIRunDetailTab) async {
-        activeTab = tab
-        if tab == .artifacts, let run, run.status.isActive { await loadArtifacts(for: run) }
-        if tab == .jobs { await loadGraph() }
     }
 
     /// Reads the workflow's job definitions once per file and commit.
@@ -252,7 +240,7 @@ final class CIRunDetailViewModel {
         await log.show(job)
     }
 
-    func showGraph() async {
+    func showSummary() async {
         selectedJobID = nil
         await log.show(nil)
     }

@@ -3,44 +3,35 @@
 
 import SwiftUI
 
-/// The run's jobs in columns by `needs`, linked like GitHub's workflow graph; a job opens its steps and log.
+/// The run's jobs in columns by `needs`, framed like GitHub's workflow card; a job opens its steps and log.
 struct CIGraphView: View {
 
     @Environment(CIRunDetailViewModel.self) private var viewModel
 
     var body: some View {
         let graph = viewModel.graph
-        VStack(spacing: 0) {
-            if let error = viewModel.graphError {
-                Banner(symbol: "exclamationmark.triangle", message: "Couldn\u{2019}t read the workflow file, so jobs aren\u{2019}t linked: \(error)")
-                    .padding([.horizontal, .top], Theme.Spacing.md)
-            }
-            if graph.nodes.isEmpty {
+        if graph.nodes.isEmpty {
+            Group {
                 if viewModel.isLoadingGraph || viewModel.isLoadingJobs {
-                    ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    ProgressView().controlSize(.small)
                 } else {
                     EmptyStateView(systemImage: "point.3.connected.trianglepath.dotted", title: "No Jobs")
                 }
-            } else {
-                VStack(spacing: Theme.Spacing.md) {
-                    canvas(graph)
-                        .layoutPriority(1)
-                    if !viewModel.annotations.isEmpty { CIAnnotationsView() }
-                    Spacer(minLength: 0)
-                }
-                .padding(Theme.Spacing.md)
             }
+            .frame(maxWidth: .infinity, minHeight: 160)
+            .summarySection()
+        } else {
+            canvas(graph)
         }
     }
 
-    /// Framed like GitHub's: the workflow file and its trigger above the graph, pinned top-leading, zoom bottom-right.
+    /// The workflow file and its trigger above the graph, pinned top-leading, zoom bottom-right.
     private func canvas(_ graph: CIGraph) -> some View {
         let zoom = viewModel.graphZoom
         let layout = CIGraphLayout(graph)
-        let contentSize = CGSize(width: layout.size.width * zoom + 2 * Theme.Spacing.xl,
-                                 height: layout.size.height * zoom + Self.chromeHeight)
+        let contentWidth = layout.size.width * zoom + 2 * Theme.Spacing.xl
         return GeometryReader { geo in
-            ScrollView([.horizontal, .vertical]) {
+            ScrollView(.horizontal) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                     header
                     CIGraphCanvas(graph: graph, layout: layout) { node in Task { await viewModel.open(node) } }
@@ -48,17 +39,15 @@ struct CIGraphView: View {
                         .frame(width: layout.size.width * zoom, height: layout.size.height * zoom, alignment: .topLeading)
                 }
                 .padding(Theme.Spacing.xl)
-                .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .topLeading)
+                .frame(minWidth: geo.size.width, alignment: .topLeading)
             }
-            // "Always show scroll bars" would otherwise draw them over a graph that fits.
-            .scrollIndicators(contentSize.width <= geo.size.width && contentSize.height <= geo.size.height ? .never : .automatic)
+            // "Always show scroll bars" would otherwise draw one under a graph that fits.
+            .scrollIndicators(contentWidth <= geo.size.width ? .never : .automatic)
         }
-        // Hugs the graph like GitHub's card, with room below it for the zoom controls.
-        .frame(maxHeight: contentSize.height)
+        // The summary scrolls vertically, so the card is as tall as its graph, with room below for the zoom controls.
+        .frame(height: layout.size.height * zoom + Self.chromeHeight)
         .overlay(alignment: .bottomTrailing) { zoomControls.padding(Theme.Spacing.md) }
-        .background(Theme.background, in: RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous).strokeBorder(Theme.border, lineWidth: 0.5))
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
+        .summarySection()
     }
 
     /// The header, padding and a strip for the zoom controls around the graph itself.
@@ -66,14 +55,8 @@ struct CIGraphView: View {
 
     @ViewBuilder private var header: some View {
         if let run = viewModel.run {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(run.workflowPath.isEmpty ? run.workflowName : (run.workflowPath as NSString).lastPathComponent)
-                    .font(.sectionLabel)
-                    .foregroundStyle(Theme.textPrimary)
-                Text("on: \(run.event)")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.textSecondary)
-            }
+            CISummaryHeader(title: run.workflowPath.isEmpty ? run.workflowName : (run.workflowPath as NSString).lastPathComponent,
+                            subtitle: "on: \(run.event)")
         }
     }
 
@@ -238,8 +221,7 @@ private struct CIGraphNodeView: View {
     let vm = CIRunDetailViewModel(repository: MockGitRepository())
     return CIGraphView()
         .environment(vm)
-        .frame(width: 760, height: 320)
-        .panel()
+        .frame(width: 760)
         .padding()
         .background(Theme.background)
         .task { await vm.show(MockData.ciRuns[0]) }

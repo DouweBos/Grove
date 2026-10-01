@@ -114,7 +114,7 @@ struct CIHostTests {
     @Test func artifactsAndWorkflowsAreUnwrapped() async throws {
         let http = FakeHTTPClient { request in
             request.url?.path.hasSuffix("/artifacts") == true
-                ? (200, #"{"artifacts":[{"id":9,"name":"app","size_in_bytes":2048,"expired":true,"created_at":"2026-09-01T10:00:00Z"}]}"#)
+                ? (200, #"{"artifacts":[{"id":9,"name":"app","size_in_bytes":2048,"expired":true,"created_at":"2026-09-01T10:00:00Z","digest":"sha256:ab12"}]}"#)
                 : (200, #"{"workflows":[{"id":7,"name":"CI","path":".github/workflows/ci.yml","state":"active"},"#
                         + #"{"id":8,"name":"Old","path":".github/workflows/old.yml","state":"disabled_manually"}]}"#)
         }
@@ -122,7 +122,7 @@ struct CIHostTests {
         let artifacts = try await host.artifacts(runID: 30)
         let workflows = try await host.workflows()
         #expect(artifacts == [CIArtifact(id: 9, name: "app", sizeInBytes: 2048, isExpired: true,
-                                         createdDate: GitDate.parse("2026-09-01T10:00:00Z")!, expiresDate: nil)])
+                                         createdDate: GitDate.parse("2026-09-01T10:00:00Z")!, expiresDate: nil, digest: "sha256:ab12")])
         #expect(workflows.map(\.isEnabled) == [true, false] && workflows[0].path == ".github/workflows/ci.yml")
         #expect(paths(http) == ["GET /repos/o/r/actions/runs/30/artifacts?per_page=100", "GET /repos/o/r/actions/workflows?per_page=100"])
     }

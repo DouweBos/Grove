@@ -136,7 +136,8 @@ extension MockData {
         let isExpired = created < Date().addingTimeInterval(-3600)
         return [
             CIArtifact(id: run.id * 10 + 1, name: "Grove-\(run.shortSHA).app", sizeInBytes: 48_312_776, isExpired: isExpired,
-                       createdDate: created, expiresDate: created.addingTimeInterval(90 * 86_400)),
+                       createdDate: created, expiresDate: created.addingTimeInterval(90 * 86_400),
+                       digest: "sha256:a1b6176d6e9712fb453c8c7411505ef4a6b6ab4e6ad52c0e1d2f3a4b5c6d7e8f"),
             CIArtifact(id: run.id * 10 + 2, name: "test-results", sizeInBytes: 184_320, isExpired: isExpired, createdDate: created,
                        expiresDate: created.addingTimeInterval(90 * 86_400))
         ]

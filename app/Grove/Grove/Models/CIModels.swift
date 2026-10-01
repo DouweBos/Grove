@@ -129,6 +129,8 @@ nonisolated struct CIArtifact: Identifiable, Hashable, Sendable {
     let isExpired: Bool
     let createdDate: Date
     let expiresDate: Date?
+    /// `sha256:…` of the zip; nil for artifacts uploaded before the host recorded one.
+    var digest: String?
 }
 
 /// Which runs to list; nil fields don't filter.
