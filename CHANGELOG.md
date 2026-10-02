@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- Get a notification when a workflow run finishes: turn on "Notify me when it finishes" when running a workflow, or pick "Notify When Finished" on a running run. Clicking the notification opens the run.
+- Run Workflow leaves an input empty when its default is `null` instead of filling in the text "null".
+- Click a stack in the sidebar to open it in the Stack tab; the stack on screen stays selected in the sidebar.
+- The Stack tab's title now opens a searchable stack switcher, like the repository switcher.
+
 ## 0.4.0
 
 - A run's graph now lists the annotations its jobs left, such as errors, deprecation warnings and notices, like GitHub's run summary.
