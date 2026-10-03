@@ -3,6 +3,7 @@
 //
 // The Stack tab: the stack HEAD or the sidebar's branch belongs to, tips on top and trunk at the bottom.
 
+import GroveKit
 import SwiftUI
 
 struct StackView: View {

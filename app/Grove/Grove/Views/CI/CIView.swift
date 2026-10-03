@@ -1,6 +1,7 @@
 // Views/CI/CIView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Workflow runs on the left, the selected run on the right. Data comes from the remote's hosting service.

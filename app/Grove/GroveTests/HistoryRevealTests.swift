@@ -4,6 +4,7 @@
 // Reveal in History pages a commit in when HEAD's history has it and falls back to the ref's own history.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

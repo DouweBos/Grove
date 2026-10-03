@@ -3,6 +3,7 @@
 //
 // Capsule shown on commit rows for branches and remotes pointing at that commit.
 
+import GroveKit
 import SwiftUI
 
 struct BranchLabel: View {

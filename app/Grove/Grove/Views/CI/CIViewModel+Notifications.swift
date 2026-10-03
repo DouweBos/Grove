@@ -2,6 +2,7 @@
 // Grove
 
 import Foundation
+import GroveKit
 
 extension CIViewModel {
 

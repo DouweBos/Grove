@@ -8,19 +8,19 @@ import os
 
 extension GitRepository {
 
-    func ignore(patterns: [String], localOnly: Bool) async throws {
+    public func ignore(patterns: [String], localOnly: Bool) async throws {
         guard !patterns.isEmpty else { return }
         let file = localOnly ? try await gitPath("info/exclude") : path.appendingPathComponent(".gitignore")
         Logger.gitRepository.info("Ignoring \(patterns.count) patterns in \(file.lastPathComponent, privacy: .public)")
         try await GitIgnoreFile.append(patterns, to: file, runner: shell.runner)
     }
 
-    func stopTracking(paths: [String]) async throws {
+    public func stopTracking(paths: [String]) async throws {
         guard !paths.isEmpty else { return }
         try await shell.run(["rm", "--cached", "-r", "--quiet", "--"] + paths)
     }
 
-    func moveFile(from source: String, to destination: String) async throws {
+    public func moveFile(from source: String, to destination: String) async throws {
         let target = path.appendingPathComponent(destination)
         try await shell.runner.createParentDirectory(of: target)
         let isTracked = try await shell.runAllowingFailure(["ls-files", "--error-unmatch", "--", source]).isSuccess
@@ -31,7 +31,7 @@ extension GitRepository {
         }
     }
 
-    func restoreFile(_ file: String, from revision: String, revisionPath: String) async throws {
+    public func restoreFile(_ file: String, from revision: String, revisionPath: String) async throws {
         Logger.gitRepository.info("Restoring \(file, privacy: .public) from \(revision, privacy: .public)")
         if revisionPath == file {
             // restore applies checkout filters (LFS, eol), which a raw `git show` would skip.

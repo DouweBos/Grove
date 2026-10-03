@@ -9,7 +9,7 @@ import Foundation
 /// - `G` → `.verified`
 /// - `B`, `E`, `X`, `Y`, `R` → `.unverified`
 /// - `N` → `.unsigned`
-enum SignatureStatus: Hashable, Sendable {
+public enum SignatureStatus: Hashable, Sendable {
     /// Signature is present and the key is trusted.
     case verified
     /// Signature is present but the key is not trusted or the signature is invalid.

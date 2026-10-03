@@ -3,6 +3,7 @@
 
 import AppKit
 import Foundation
+import GroveKit
 import Observation
 
 enum PRFilterState: String, CaseIterable, Hashable {

@@ -1,6 +1,7 @@
 // Views/CI/CILogRowView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// A step's header in the log: opens and closes the step's lines.

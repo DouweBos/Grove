@@ -1,6 +1,7 @@
 // Views/Dialogs/DeleteBranchDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Confirms deleting a local branch, optionally forcing it, removing its remote counterpart,

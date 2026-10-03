@@ -1,6 +1,7 @@
 // Views/Blame/BlameView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Tracked files on the left; the chosen file annotated line by line on the right.

@@ -3,6 +3,7 @@
 //
 // Searchable gitmoji list shown from the commit composer; picking one prefixes the summary.
 
+import GroveKit
 import SwiftUI
 
 struct GitmojiPicker: View {

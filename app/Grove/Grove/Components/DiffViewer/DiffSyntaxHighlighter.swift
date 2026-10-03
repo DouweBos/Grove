@@ -3,6 +3,7 @@
 //
 // Colors diff lines by syntax, one hunk at a time as lines come into view, beneath the word highlights.
 
+import GroveKit
 import SwiftUI
 
 enum DiffSyntax {

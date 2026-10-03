@@ -4,6 +4,7 @@
 // Bitbucket and Azure DevOps against a fake HTTP client, and GitLab's parsers on API fixtures.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

@@ -4,6 +4,7 @@
 // Job logs: fetched through GitHub's redirect without leaking the token, split by step, folded by group.
 
 import Foundation
+@testable import GroveKit
 import SwiftUI
 import Testing
 @testable import Grove

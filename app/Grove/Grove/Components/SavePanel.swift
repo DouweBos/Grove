@@ -2,6 +2,7 @@
 // Grove
 
 import AppKit
+import GroveKit
 import UniformTypeIdentifiers
 
 /// Asks where to save an export; nil when cancelled.
@@ -20,8 +21,6 @@ enum SavePanel {
 
     /// A file-name-safe version of a commit subject or ref name.
     static func slug(_ text: String, limit: Int = 50) -> String {
-        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_."))
-        let words = text.components(separatedBy: allowed.inverted).filter { !$0.isEmpty }
-        return String(words.joined(separator: "-").prefix(limit))
+        ExportName.slug(text, limit: limit)
     }
 }

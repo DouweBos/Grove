@@ -18,7 +18,7 @@ import Foundation
 /// - `git diff --cached`
 /// - `git show <sha>`
 /// - `git diff <sha>^! -- <path>` (single-commit diff)
-enum DiffParser {
+public enum DiffParser {
 
     // MARK: Public API
 

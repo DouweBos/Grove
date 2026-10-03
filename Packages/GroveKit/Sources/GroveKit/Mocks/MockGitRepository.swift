@@ -16,18 +16,18 @@ import Observation
 /// short artificial delay to surface any loading-state UI issues early.
 @MainActor
 @Observable
-final class MockGitRepository: GitRepositoryProtocol {
+public final class MockGitRepository: GitRepositoryProtocol {
 
     // MARK: Observable State
 
-    let path: URL
-    let displayName: String
-    var currentBranch: BranchInfo?
-    var repositoryState: RepositoryState = .normal
+    public let path: URL
+    public let displayName: String
+    public var currentBranch: BranchInfo?
+    public var repositoryState: RepositoryState = .normal
 
     // MARK: Init
 
-    init(
+    public init(
         path: URL = URL(fileURLWithPath: "/Users/dev/Projects/my-app"),
         displayName: String = "my-app"
     ) {
@@ -39,8 +39,8 @@ final class MockGitRepository: GitRepositoryProtocol {
     // MARK: Helpers
 
     /// How often each git call ran, keyed by its signature, e.g. `"tags()"`; tests check for cache hits and duplicate reads.
-    @ObservationIgnored private(set) var callCounts: [String: Int] = [:]
-    @ObservationIgnored var ci = MockCIState()
+    @ObservationIgnored public private(set) var callCounts: [String: Int] = [:]
+    @ObservationIgnored public var ci = MockCIState()
 
     func recordCall(_ name: String = #function) {
         callCounts[name, default: 0] += 1
@@ -54,79 +54,79 @@ final class MockGitRepository: GitRepositoryProtocol {
 
     // MARK: Status
 
-    func refreshStatus() async throws {
+    public func refreshStatus() async throws {
         await simulateLatency()
     }
 
-    func status() async throws -> [StatusEntry] {
+    public func status() async throws -> [StatusEntry] {
         await simulateLatency()
         return MockData.statusEntries
     }
 
-    func listTrackedFiles() async throws -> [String] {
+    public func listTrackedFiles() async throws -> [String] {
         await simulateLatency()
         return MockData.trackedFiles
     }
 
     // MARK: Staging
 
-    func stage(paths: [String]) async throws {
+    public func stage(paths: [String]) async throws {
         await simulateLatency()
     }
 
-    func unstage(paths: [String]) async throws {
+    public func unstage(paths: [String]) async throws {
         await simulateLatency()
     }
 
-    func stageHunk(_ hunk: HunkData, in file: String) async throws {
+    public func stageHunk(_ hunk: HunkData, in file: String) async throws {
         await simulateLatency()
     }
 
-    func unstageHunk(_ hunk: HunkData, in file: String) async throws {
+    public func unstageHunk(_ hunk: HunkData, in file: String) async throws {
         await simulateLatency()
     }
 
-    func stageLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
+    public func stageLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
         await simulateLatency()
     }
 
-    func unstageLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
+    public func unstageLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
         await simulateLatency()
     }
 
-    func discardLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
+    public func discardLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
         await simulateLatency()
     }
 
-    func stageAll() async throws {
+    public func stageAll() async throws {
         await simulateLatency()
     }
 
-    func unstageAll() async throws {
+    public func unstageAll() async throws {
         await simulateLatency()
     }
 
-    func discardChanges(paths: [String]) async throws {
+    public func discardChanges(paths: [String]) async throws {
         await simulateLatency()
     }
 
-    func discardHunk(_ hunk: HunkData, in file: String) async throws {
+    public func discardHunk(_ hunk: HunkData, in file: String) async throws {
         await simulateLatency()
     }
 
     // MARK: Diff
 
-    func diff(for entry: StatusEntry, staged: Bool, ignoreWhitespace: Bool = false) async throws -> DiffResult {
+    public func diff(for entry: StatusEntry, staged: Bool, ignoreWhitespace: Bool = false) async throws -> DiffResult {
         await simulateLatency()
         return MockData.diffResult(for: entry.path)
     }
 
-    func diffForCommit(_ sha: String) async throws -> [FileDiff] {
+    public func diffForCommit(_ sha: String) async throws -> [FileDiff] {
         await simulateLatency()
         return MockData.commitFileDiffs
     }
 
-    func filesInCommit(_ sha: String) async throws -> [String] {
+    public func filesInCommit(_ sha: String) async throws -> [String] {
         await simulateLatency()
         return MockData.trackedFiles
     }
@@ -134,17 +134,17 @@ final class MockGitRepository: GitRepositoryProtocol {
     // MARK: Commits
 
     @discardableResult
-    func commit(message: String, body: String?, amend: Bool, sign: Bool = false) async throws -> CommitInfo {
+    public func commit(message: String, body: String?, amend: Bool, sign: Bool = false) async throws -> CommitInfo {
         await simulateLatency()
         return MockData.commits[0]
     }
 
-    func isSigningConfigured() async throws -> Bool {
+    public func isSigningConfigured() async throws -> Bool {
         await simulateLatency()
         return true
     }
 
-    func log(maxCount: Int, skip: Int, branch: String?) async throws -> [CommitInfo] {
+    public func log(maxCount: Int, skip: Int, branch: String?) async throws -> [CommitInfo] {
         await simulateLatency(30_000_000)
         let all = MockData.commits
         let start = min(skip, all.count)
@@ -152,43 +152,43 @@ final class MockGitRepository: GitRepositoryProtocol {
         return Array(all[start..<end])
     }
 
-    func fileLog(path: String, maxCount: Int) async throws -> [CommitInfo] {
+    public func fileLog(path: String, maxCount: Int) async throws -> [CommitInfo] {
         await simulateLatency(60_000_000)
         // Return a plausible subset of commits to simulate file-specific history.
         return Array(MockData.commits.prefix(maxCount))
     }
 
-    func commitDetail(_ sha: String) async throws -> CommitInfo {
+    public func commitDetail(_ sha: String) async throws -> CommitInfo {
         await simulateLatency()
         return MockData.commits.first(where: { $0.id == sha }) ?? MockData.commits[0]
     }
 
-    func isAncestor(_ commit: String, of descendant: String) async -> Bool {
+    public func isAncestor(_ commit: String, of descendant: String) async -> Bool {
         MockData.commits.contains { $0.id == commit }
     }
 
-    func formatPatch(commits: [String]) async throws -> String {
+    public func formatPatch(commits: [String]) async throws -> String {
         commits.map { "From \($0) Mon Sep 17 00:00:00 2001\n" }.joined()
     }
 
-    func archive(revision: String, to url: URL) async throws {
+    public func archive(revision: String, to url: URL) async throws {
         try Data().write(to: url)
     }
 
     // MARK: Branches
 
-    func localBranches() async throws -> [BranchInfo] {
+    public func localBranches() async throws -> [BranchInfo] {
         await simulateLatency()
         return MockData.branches.filter(\.isLocal)
     }
 
-    func remoteBranches() async throws -> [BranchInfo] {
+    public func remoteBranches() async throws -> [BranchInfo] {
         await simulateLatency()
         return MockData.branches.filter(\.isRemote)
     }
 
     @discardableResult
-    func createBranch(name: String, from: String?, checkout: Bool) async throws -> BranchInfo {
+    public func createBranch(name: String, from: String?, checkout: Bool) async throws -> BranchInfo {
         await simulateLatency()
         let branch = BranchInfo(
             id: "refs/heads/\(name)",
@@ -208,58 +208,58 @@ final class MockGitRepository: GitRepositoryProtocol {
         return branch
     }
 
-    func checkout(branch: String) async throws {
+    public func checkout(branch: String) async throws {
         await simulateLatency(80_000_000)
         currentBranch = MockData.branches.first(where: { $0.name == branch })
     }
 
-    func deleteBranch(name: String, force: Bool) async throws {
+    public func deleteBranch(name: String, force: Bool) async throws {
         await simulateLatency()
     }
 
-    func deleteRemoteBranch(name: String, remote: String) async throws {
+    public func deleteRemoteBranch(name: String, remote: String) async throws {
         await simulateLatency()
     }
 
-    func renameBranch(oldName: String, newName: String) async throws {
+    public func renameBranch(oldName: String, newName: String) async throws {
         await simulateLatency()
     }
 
     // MARK: Remotes
 
-    func remotes() async throws -> [RemoteInfo] {
+    public func remotes() async throws -> [RemoteInfo] {
         await simulateLatency()
         return MockData.remotes
     }
 
-    func fetch(remote: String?, progress: (@Sendable (Double) -> Void)?) async throws {
+    public func fetch(remote: String?, progress: (@Sendable (Double) -> Void)?) async throws {
         await simulateLatency(200_000_000)
         progress?(1.0)
     }
 
-    func pull(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
+    public func pull(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
         await simulateLatency(300_000_000)
         progress?(1.0)
     }
 
-    func pull(remote: String?, branch: String?, strategy: PullStrategy, options: PullOptions,
+    public func pull(remote: String?, branch: String?, strategy: PullStrategy, options: PullOptions,
               progress: (@Sendable (Double) -> Void)?) async throws {
         await simulateLatency(300_000_000)
         progress?(1.0)
     }
 
-    func push(remote: String, branch: String, forceWithLease: Bool, setUpstream: Bool, options: PushOptions,
+    public func push(remote: String, branch: String, forceWithLease: Bool, setUpstream: Bool, options: PushOptions,
               progress: (@Sendable (Double) -> Void)?) async throws {
         await simulateLatency(300_000_000)
         progress?(1.0)
     }
 
-    func push(remote: String?, forceWithLease: Bool, setUpstream: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
+    public func push(remote: String?, forceWithLease: Bool, setUpstream: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
         await simulateLatency(300_000_000)
         progress?(1.0)
     }
 
-    func sync(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
+    public func sync(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
         await simulateLatency(200_000_000)
         progress?(0.33)
         await simulateLatency(200_000_000)
@@ -270,76 +270,76 @@ final class MockGitRepository: GitRepositoryProtocol {
 
     // MARK: Merge / Rebase
 
-    func merge(branch: String) async throws {
+    public func merge(branch: String) async throws {
         await simulateLatency(150_000_000)
     }
 
-    func abortMerge() async throws {
+    public func abortMerge() async throws {
         await simulateLatency()
         repositoryState = .normal
     }
 
-    func rebase(onto: String) async throws {
+    public func rebase(onto: String) async throws {
         await simulateLatency(150_000_000)
     }
 
-    func abortRebase() async throws {
+    public func abortRebase() async throws {
         await simulateLatency()
         repositoryState = .normal
     }
 
-    func continueRebase() async throws {
+    public func continueRebase() async throws {
         await simulateLatency()
     }
 
-    func conflicts() async throws -> [StatusEntry] {
+    public func conflicts() async throws -> [StatusEntry] {
         await simulateLatency()
         return MockData.statusEntries.filter { $0.indexStatus == .conflicted || $0.workdirStatus == .conflicted }
     }
 
     // MARK: Cherry-pick
 
-    func cherryPick(commit: String) async throws {
+    public func cherryPick(commit: String) async throws {
         await simulateLatency(100_000_000)
     }
 
-    func abortCherryPick() async throws {
+    public func abortCherryPick() async throws {
         await simulateLatency()
         repositoryState = .normal
     }
 
     // MARK: Revert
 
-    func revert(commit: String) async throws {
+    public func revert(commit: String) async throws {
         await simulateLatency(100_000_000)
     }
 
-    func abortRevert() async throws {
+    public func abortRevert() async throws {
         await simulateLatency()
         repositoryState = .normal
     }
 
     // MARK: Bisect
 
-    func bisectStart() async throws {
+    public func bisectStart() async throws {
         await simulateLatency()
         repositoryState = .bisect
     }
 
-    func bisectBad(commit: String?) async throws {
+    public func bisectBad(commit: String?) async throws {
         await simulateLatency()
     }
 
-    func bisectGood(commit: String?) async throws {
+    public func bisectGood(commit: String?) async throws {
         await simulateLatency()
     }
 
-    func bisectReset() async throws {
+    public func bisectReset() async throws {
         await simulateLatency()
         repositoryState = .normal
     }
 
-    func bisectLog() async throws -> [String] {
+    public func bisectLog() async throws -> [String] {
         await simulateLatency()
         return [
             "# bad: [a1b2c3d] feat: add OAuth2 authentication flow",
@@ -351,63 +351,63 @@ final class MockGitRepository: GitRepositoryProtocol {
 
     // MARK: Interactive Rebase
 
-    func rebaseInteractive(onto base: String, steps: [RebaseStep]) async throws {
+    public func rebaseInteractive(onto base: String, steps: [RebaseStep]) async throws {
         await simulateLatency(150_000_000)
     }
 
-    func squashCommits(_ commits: [String], message: String) async throws {
+    public func squashCommits(_ commits: [String], message: String) async throws {
         await simulateLatency(200_000_000)
     }
 
-    func rewordCommit(_ commit: String, newMessage: String) async throws {
+    public func rewordCommit(_ commit: String, newMessage: String) async throws {
         await simulateLatency(150_000_000)
     }
 
-    func dropCommit(_ commit: String) async throws {
+    public func dropCommit(_ commit: String) async throws {
         await simulateLatency(150_000_000)
     }
 
     // MARK: Reset
 
-    func resetToCommit(_ commit: String, mode: ResetMode) async throws {
+    public func resetToCommit(_ commit: String, mode: ResetMode) async throws {
         await simulateLatency(100_000_000)
         currentBranch = MockData.branches.first(where: { $0.isHEAD })
     }
 
     // MARK: Clean
 
-    func cleanUntracked(directories: Bool, force: Bool) async throws {
+    public func cleanUntracked(directories: Bool, force: Bool) async throws {
         await simulateLatency()
     }
 
     // MARK: Stash
 
-    func stashes() async throws -> [StashEntry] {
+    public func stashes() async throws -> [StashEntry] {
         await simulateLatency()
         return MockData.stashEntries
     }
 
-    func stashCreate(message: String?, includeUntracked: Bool, paths: [String]? = nil) async throws {
+    public func stashCreate(message: String?, includeUntracked: Bool, paths: [String]? = nil) async throws {
         await simulateLatency()
     }
 
-    func stashApply(index: Int, drop: Bool) async throws {
+    public func stashApply(index: Int, drop: Bool) async throws {
         await simulateLatency()
     }
 
-    func stashDrop(index: Int) async throws {
+    public func stashDrop(index: Int) async throws {
         await simulateLatency()
     }
 
     // MARK: Tags
 
-    func tags() async throws -> [TagInfo] {
+    public func tags() async throws -> [TagInfo] {
         await simulateLatency()
         return MockData.tags
     }
 
     @discardableResult
-    func createTag(name: String, at sha: String?, message: String?, sign: Bool = false) async throws -> TagInfo {
+    public func createTag(name: String, at sha: String?, message: String?, sign: Bool = false) async throws -> TagInfo {
         await simulateLatency()
         return TagInfo(
             id: name,
@@ -420,37 +420,37 @@ final class MockGitRepository: GitRepositoryProtocol {
         )
     }
 
-    func deleteTag(name: String) async throws {
+    public func deleteTag(name: String) async throws {
         await simulateLatency()
     }
 
-    func pushTag(name: String, remote: String?) async throws {
+    public func pushTag(name: String, remote: String?) async throws {
         await simulateLatency(150_000_000)
     }
 
-    func pushAllTags(remote: String?) async throws {
+    public func pushAllTags(remote: String?) async throws {
         await simulateLatency(200_000_000)
     }
 
     // MARK: Submodules
 
-    func updateSubmodule(path: String) async throws {
+    public func updateSubmodule(path: String) async throws {
         await simulateLatency()
     }
 
-    func updateSubmodule(path: String, toRemote: Bool) async throws {
+    public func updateSubmodule(path: String, toRemote: Bool) async throws {
         await simulateLatency()
     }
 
-    func initSubmodule(path: String) async throws {
+    public func initSubmodule(path: String) async throws {
         await simulateLatency()
     }
 
-    func fetchSubmodule(path: String) async throws {
+    public func fetchSubmodule(path: String) async throws {
         await simulateLatency()
     }
 
-    func submodules() async throws -> [SubmoduleInfo] {
+    public func submodules() async throws -> [SubmoduleInfo] {
         [
             SubmoduleInfo(name: "vendor/analytics", path: "vendor/analytics", url: "https://github.com/example/analytics.git",
                           sha: "1a2b3c4d5e6f7a8b9c0d", state: .upToDate),
@@ -461,7 +461,7 @@ final class MockGitRepository: GitRepositoryProtocol {
 
     // MARK: Worktrees
 
-    func worktrees() async throws -> [WorktreeInfo] {
+    public func worktrees() async throws -> [WorktreeInfo] {
         [
             WorktreeInfo(path: path.path, branch: "main", headSHA: "a1b2c3d4e5f6", isMain: true, isPrunable: false, isLocked: false),
             WorktreeInfo(path: path.path + "-feature-auth", branch: "feature/auth", headSHA: "b2c3d4e5f6a1",
@@ -469,26 +469,26 @@ final class MockGitRepository: GitRepositoryProtocol {
         ]
     }
 
-    func removeWorktree(path: String, force: Bool) async throws {
+    public func removeWorktree(path: String, force: Bool) async throws {
         await simulateLatency()
     }
 
     // MARK: Working Copy
 
-    func commitIdentity() async -> CommitIdentity? {
+    public func commitIdentity() async -> CommitIdentity? {
         CommitIdentity(name: "Jane Developer", email: "jane@example.com")
     }
 
-    func operationContext() async -> OperationContext? {
+    public func operationContext() async -> OperationContext? {
         repositoryState == .normal ? nil : OperationContext(oursLabel: currentBranch?.name ?? "main", theirsLabel: "feature/auth")
     }
 
-    func continueOperation() async throws {
+    public func continueOperation() async throws {
         await simulateLatency()
         repositoryState = .normal
     }
 
-    func conflictVersions(path: String) async throws -> ConflictVersions {
+    public func conflictVersions(path: String) async throws -> ConflictVersions {
         ConflictVersions(ours: "let value = 1\n", theirs: "let value = 2\n")
     }
 }

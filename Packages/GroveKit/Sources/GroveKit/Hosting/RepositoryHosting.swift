@@ -7,7 +7,7 @@ import Foundation
 
 /// Finds the host behind a repository's remotes. Read on every call, so a remote added or changed takes effect at once.
 @MainActor
-protocol RepositoryHosting {
+public protocol RepositoryHosting {
     /// The pull request API for `remotes`, and the remote it was found through.
     func pullRequestHost(for remotes: [RemoteInfo]) throws -> (host: any PullRequestHost, remote: String)
     /// The CI API for `remotes`.
@@ -17,16 +17,17 @@ protocol RepositoryHosting {
 }
 
 /// No code host: pull requests and CI behave as for a repository without a hosted remote.
-struct NoRepositoryHosting: RepositoryHosting {
-    nonisolated init() {}
-    func pullRequestHost(for remotes: [RemoteInfo]) throws -> (host: any PullRequestHost, remote: String) {
+public struct NoRepositoryHosting: RepositoryHosting {
+    public nonisolated init() {}
+    public func pullRequestHost(for remotes: [RemoteInfo]) throws -> (host: any PullRequestHost, remote: String) {
         throw HostingError.noHostedRemote
     }
-    func ciHost(for remotes: [RemoteInfo]) throws -> any CIHost { throw HostingError.noHostedRemote }
-    func service(of remotes: [RemoteInfo]) -> HostingServiceKind? { nil }
+    public func ciHost(for remotes: [RemoteInfo]) throws -> any CIHost { throw HostingError.noHostedRemote }
+    public func service(of remotes: [RemoteInfo]) -> HostingServiceKind? { nil }
 }
 
-nonisolated protocol PullRequestHost: Sendable {
+/// Pull requests of one repository on its hosting service.
+public nonisolated protocol PullRequestHost: Sendable {
     var kind: HostingServiceKind { get }
     func pullRequests() async throws -> [PullRequestInfo]
     /// Open and merged pull requests, as small rows for branch lists and stacks.
@@ -51,11 +52,11 @@ nonisolated protocol PullRequestHost: Sendable {
 }
 
 extension PullRequestHost {
-    func headRef(number: Int) -> String? { nil }
+    public func headRef(number: Int) -> String? { nil }
 }
 
 /// Why a repository's hosting service can't be reached.
-nonisolated enum HostingError: LocalizedError, Equatable {
+public nonisolated enum HostingError: LocalizedError, Equatable {
     /// No remote points at a service Grove knows.
     case noHostedRemote
     /// The service needs an account in Preferences > Accounts.
@@ -67,7 +68,7 @@ nonisolated enum HostingError: LocalizedError, Equatable {
     case ciUnsupported(HostingServiceKind)
     case http(status: Int, message: String)
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .noHostedRemote: "None of this repository's remotes point at GitHub, GitLab, Bitbucket or Azure DevOps."
         case .noAccount(let kind, let host): "Add a \(kind.displayName) account for \(host) in Settings > Accounts."
@@ -79,7 +80,8 @@ nonisolated enum HostingError: LocalizedError, Equatable {
     }
 }
 
-nonisolated protocol CIHost: Sendable {
+/// Workflow runs of one repository on its hosting service.
+public nonisolated protocol CIHost: Sendable {
     var kind: HostingServiceKind { get }
     func workflows() async throws -> [CIWorkflow]
     /// The newest runs matching `query`, newest first.

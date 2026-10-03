@@ -107,7 +107,7 @@ extension MockData {
 
     // MARK: Status Entries
 
-    static let statusEntries: [StatusEntry] = [
+    public static let statusEntries: [StatusEntry] = [
         StatusEntry(id: "Sources/Grove/Views/WorkingCopy/WorkingCopyView.swift",
                     path: "Sources/Grove/Views/WorkingCopy/WorkingCopyView.swift",
                     indexStatus: .modified, workdirStatus: .unmodified),
@@ -166,7 +166,7 @@ extension MockData {
 
     // MARK: Diff
 
-    static func diffResult(for path: String) -> DiffResult {
+    public static func diffResult(for path: String) -> DiffResult {
         DiffResult(
             filePath: path,
             oldPath: nil,
@@ -219,7 +219,7 @@ extension MockData {
         ]
     )
 
-    static let commitFileDiffs: [FileDiff] = statusEntries.prefix(5).map { entry in
+    public static let commitFileDiffs: [FileDiff] = statusEntries.prefix(5).map { entry in
         FileDiff(
             path: entry.path,
             status: entry.indexStatus,

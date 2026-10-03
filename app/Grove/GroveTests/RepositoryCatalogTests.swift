@@ -2,6 +2,7 @@
 // GroveTests
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

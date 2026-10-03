@@ -2,6 +2,7 @@
 // Grove
 
 import AppKit
+import GroveKit
 import SwiftUI
 
 /// The repository's other worktrees; from a linked worktree that includes the main one.

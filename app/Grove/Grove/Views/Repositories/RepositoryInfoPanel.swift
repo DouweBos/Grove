@@ -5,6 +5,7 @@
 // recent commits and remotes, with a prominent Open button.
 
 import AppKit
+import GroveKit
 import SwiftUI
 
 struct RepositoryInfoPanel: View {

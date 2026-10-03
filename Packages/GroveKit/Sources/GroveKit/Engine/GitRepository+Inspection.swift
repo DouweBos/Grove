@@ -11,7 +11,7 @@ extension GitRepository {
 
     // MARK: Stash
 
-    func stashDiff(index: Int) async throws -> [FileDiff] {
+    public func stashDiff(index: Int) async throws -> [FileDiff] {
         let ref = "stash@{\(index)}"
         let shell = inspectionShell
         let patch = try await shell.run(["stash", "show", "-p", "-U3", "--include-untracked", ref])
@@ -21,7 +21,7 @@ extension GitRepository {
 
     // MARK: Files
 
-    func fileContents(path file: String, revision: String?) async throws -> String {
+    public func fileContents(path file: String, revision: String?) async throws -> String {
         guard let revision else {
             let data = try await shell.runner.readFile(at: path.appendingPathComponent(file))
             guard let text = String(data: data, encoding: .utf8) else { throw CocoaError(.fileReadInapplicableStringEncoding) }
@@ -30,7 +30,7 @@ extension GitRepository {
         return try await inspectionShell.run(["show", "\(revision):\(file)"]).stdout
     }
 
-    func fileData(path file: String, at revision: FileRevision) async throws -> Data {
+    public func fileData(path file: String, at revision: FileRevision) async throws -> Data {
         switch revision {
         case .workingTree:
             return try await shell.runner.readFile(at: path.appendingPathComponent(file))
@@ -45,19 +45,19 @@ extension GitRepository {
 
     // MARK: Branch Review
 
-    func mergedBranches(into base: String) async throws -> Set<String> {
+    public func mergedBranches(into base: String) async throws -> Set<String> {
         let result = try await inspectionShell.run(["branch", "--merged", base, "--format=%(refname:short)"])
         return Set(result.stdout.split(separator: "\n").map(String.init))
     }
 
-    func aheadBehind(branch: String, base: String) async throws -> (ahead: Int, behind: Int) {
+    public func aheadBehind(branch: String, base: String) async throws -> (ahead: Int, behind: Int) {
         let result = try await inspectionShell.run(["rev-list", "--left-right", "--count", "\(branch)...\(base)"])
         let parts = result.stdout.split(whereSeparator: \.isWhitespace).compactMap { Int($0) }
         guard parts.count == 2 else { return (0, 0) }
         return (parts[0], parts[1])
     }
 
-    func compareBranches(base: String, compare: String) async throws -> BranchComparison {
+    public func compareBranches(base: String, compare: String) async throws -> BranchComparison {
         let shell = inspectionShell
         let range = "\(base)...\(compare)"
         let log = try await shell.run(["log", "--left-right", "--cherry-mark", "--date-order", "-1000",
@@ -88,14 +88,14 @@ extension GitRepository {
 
     // MARK: Local Config
 
-    func localConfigValue(_ key: String) async throws -> String? {
+    public func localConfigValue(_ key: String) async throws -> String? {
         // Exit code 1 just means the key is unset.
         let result = try await inspectionShell.runAllowingFailure(["config", "--local", "--get", key])
         let value = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         return result.isSuccess && !value.isEmpty ? value : nil
     }
 
-    func setLocalConfigValue(_ key: String, to value: String?) async throws {
+    public func setLocalConfigValue(_ key: String, to value: String?) async throws {
         let shell = inspectionShell
         if let value, !value.isEmpty {
             try await shell.run(["config", "--local", key, value])
@@ -108,15 +108,15 @@ extension GitRepository {
         }
     }
 
-    func setRemoteURL(_ url: String, forRemote name: String) async throws {
+    public func setRemoteURL(_ url: String, forRemote name: String) async throws {
         try await inspectionShell.run(["remote", "set-url", name, url])
     }
 
-    func addRemote(name: String, url: String) async throws {
+    public func addRemote(name: String, url: String) async throws {
         try await inspectionShell.run(["remote", "add", name, url])
     }
 
-    func removeRemote(name: String) async throws {
+    public func removeRemote(name: String) async throws {
         try await inspectionShell.run(["remote", "remove", name])
     }
 

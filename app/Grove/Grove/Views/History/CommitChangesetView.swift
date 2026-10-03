@@ -1,6 +1,7 @@
 // Views/History/CommitChangesetView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Changed files of the selected commit; each row expands into its diff.

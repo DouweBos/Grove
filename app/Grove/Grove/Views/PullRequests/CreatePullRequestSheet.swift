@@ -1,6 +1,7 @@
 // Views/PullRequests/CreatePullRequestSheet.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Opens a pull request from a head branch into a base branch on the host.

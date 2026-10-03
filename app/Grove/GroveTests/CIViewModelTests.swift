@@ -4,6 +4,7 @@
 // The Actions tab's list: what it reads, how filters re-read it, and what it shows when the host can't be reached.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

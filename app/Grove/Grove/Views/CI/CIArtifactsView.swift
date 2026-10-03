@@ -1,6 +1,7 @@
 // Views/CI/CIArtifactsView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Files the run uploaded, in a table under its graph like GitHub's summary; each downloads as a zip until it expires.

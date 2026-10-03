@@ -1,6 +1,7 @@
 // Views/Sidebar/RemotesSidebarSection.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Remote-tracking branches grouped by remote. Without remotes it offers to add one, once refs have loaded.

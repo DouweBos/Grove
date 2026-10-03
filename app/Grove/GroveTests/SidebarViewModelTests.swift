@@ -5,6 +5,7 @@
 // data source doesn't block others) and derived computed properties.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

@@ -1,6 +1,7 @@
 // Views/Dialogs/CreateBranchDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Creates a local branch from a branch, tag or commit.

@@ -1,6 +1,7 @@
 // Views/History/HistorySheetComponents.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 struct HistorySheetHeader: View {

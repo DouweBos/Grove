@@ -1,6 +1,7 @@
 // Views/Sidebar/ArchivedBranchesSidebarSection.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Branches the user archived to declutter the Branches list. Collapsed by default,

@@ -8,17 +8,17 @@ import Foundation
 extension StackViewModel {
 
     /// Layers with commits their remote branch lacks, or none at all.
-    func changedLayers(_ stack: BranchStack) -> [StackLayer] {
+    public func changedLayers(_ stack: BranchStack) -> [StackLayer] {
         stack.layers.filter { !$0.health.isDisjoint(with: [.unpushed, .diverged]) }
     }
 
     /// Force-with-lease on every changed layer at once, so a push that loses a race changes nothing.
-    func pushStack() async {
+    public func pushStack() async {
         guard let stack else { return }
         await pushLayers(changedLayers(stack), title: "Pushing \(stack.name)")
     }
 
-    func push(_ layer: StackLayer) async {
+    public func push(_ layer: StackLayer) async {
         await pushLayers([layer], title: "Pushing \(layer.branch)")
     }
 
@@ -37,33 +37,33 @@ extension StackViewModel {
         await run(title) { try await self.repository.pushStack(pushes, to: remote) }
     }
 
-    func checkOut(_ layer: StackLayer) async {
+    public func checkOut(_ layer: StackLayer) async {
         await run("Checking out \(layer.branch)") { try await self.repository.checkout(branch: layer.branch) }
     }
 
-    func createPullRequest(for layer: StackLayer) {
+    public func createPullRequest(for layer: StackLayer) {
         onCreatePullRequest?(layer.branch)
     }
 
     /// Other branches `layer` could be moved onto: trunk and every branch outside its own subtree.
-    func moveTargets(for layer: StackLayer) -> [String] {
+    public func moveTargets(for layer: StackLayer) -> [String] {
         let subtree = Set(stack?.subtree(from: layer.branch).map(\.branch) ?? [])
         return refs.localBranches.map(\.name).filter { !subtree.contains($0) && $0 != layer.parent }
             .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }
 
-    func move(_ layer: StackLayer, onto target: String) async {
+    public func move(_ layer: StackLayer, onto target: String) async {
         guard let stack else { return }
         await restack(stack, mode: .move(layer.branch, onto: target), title: "Moving \(layer.branch) onto \(target)")
     }
 
     /// Only a layer sitting right on its parent can fold: the parent fast-forwards over it, then the branch goes.
-    func canFold(_ layer: StackLayer) -> Bool {
+    public func canFold(_ layer: StackLayer) -> Bool {
         guard let parent = layer.parent, stack?.layer(parent) != nil else { return false }
         return !layer.health.contains(.needsRestack) && layer.worktreePath == nil
     }
 
-    func fold(_ layer: StackLayer) async {
+    public func fold(_ layer: StackLayer) async {
         guard canFold(layer), let parent = layer.parent, let parentLayer = stack?.layer(parent) else { return }
         await run("Folding \(layer.branch) into \(parent)") {
             try await self.repository.fastForward(branch: parent, to: layer.tipSHA, worktreePath: parentLayer.worktreePath)

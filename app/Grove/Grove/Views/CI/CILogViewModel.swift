@@ -2,6 +2,7 @@
 // Grove
 
 import Foundation
+import GroveKit
 import Observation
 
 /// One visible row of a job log.

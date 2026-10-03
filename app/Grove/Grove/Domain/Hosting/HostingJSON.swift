@@ -4,6 +4,7 @@
 // Shared pieces for turning service JSON into Grove's pull request and commit models.
 
 import Foundation
+import GroveKit
 
 nonisolated enum HostingJSON {
 

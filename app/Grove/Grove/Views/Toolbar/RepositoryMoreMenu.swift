@@ -3,6 +3,7 @@
 //
 // The toolbar's More menu: secondary tabs, stash, new branch or tag, and git-flow.
 
+import GroveKit
 import SwiftUI
 
 struct RepositoryMoreMenu: View {

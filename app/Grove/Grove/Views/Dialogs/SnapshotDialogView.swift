@@ -1,6 +1,7 @@
 // Views/Dialogs/SnapshotDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Saves the working state as a stash while leaving every change in place.

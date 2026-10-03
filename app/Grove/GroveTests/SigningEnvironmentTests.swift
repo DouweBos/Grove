@@ -4,6 +4,7 @@
 // 1Password environment overrides, reading the signing setup, and a real SSH test signature with a throwaway key.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

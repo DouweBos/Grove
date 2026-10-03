@@ -1,6 +1,7 @@
 // Views/Settings/AddHostingAccountSheet.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Adds or re-authenticates an account: a browser sign-in where the service has one, else a token, checked before saving.

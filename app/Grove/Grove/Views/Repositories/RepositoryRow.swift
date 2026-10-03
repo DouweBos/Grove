@@ -1,6 +1,7 @@
 // Views/Repositories/RepositoryRow.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Browser sidebar row: repository or worktree name; the full path is in the tooltip.

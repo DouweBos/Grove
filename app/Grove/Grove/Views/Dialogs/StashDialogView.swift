@@ -1,6 +1,7 @@
 // Views/Dialogs/StashDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Saves local changes to a new stash, either everything or selected files.

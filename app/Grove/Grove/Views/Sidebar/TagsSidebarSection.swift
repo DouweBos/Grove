@@ -1,6 +1,7 @@
 // Views/Sidebar/TagsSidebarSection.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Tags, collapsed by default since repositories often have many. Hidden when there are none.

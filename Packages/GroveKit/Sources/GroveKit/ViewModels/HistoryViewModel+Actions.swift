@@ -4,7 +4,7 @@
 import Foundation
 
 /// Something the user asked to do from the History tab that needs a sheet first.
-enum HistoryAction: Identifiable {
+public enum HistoryAction: Identifiable {
     case createBranch(CommitInfo)
     case createTag(CommitInfo)
     case revert(CommitInfo)
@@ -17,7 +17,7 @@ enum HistoryAction: Identifiable {
     case fileHistory(String)
     case compare(BranchInfo)
 
-    var id: String {
+    public var id: String {
         switch self {
         case .createBranch(let c): "branch-\(c.id)"
         case .createTag(let c): "tag-\(c.id)"
@@ -36,35 +36,35 @@ enum HistoryAction: Identifiable {
 
 extension HistoryViewModel {
 
-    func request(_ action: HistoryAction) {
+    public func request(_ action: HistoryAction) {
         errorMessage = nil
         setPendingAction(action)
     }
 
-    func dismissAction() {
+    public func dismissAction() {
         setPendingAction(nil)
     }
 
-    func dismissError() {
+    public func dismissError() {
         errorMessage = nil
     }
 
     // MARK: - Mutations
 
-    func cherryPick(_ commit: CommitInfo) async {
+    public func cherryPick(_ commit: CommitInfo) async {
         await perform { try await $0.cherryPick(commit: commit.id) }
     }
 
-    func revert(_ commit: CommitInfo) async {
+    public func revert(_ commit: CommitInfo) async {
         await perform { try await $0.revert(commit: commit.id) }
     }
 
-    func reset(to commit: CommitInfo, mode: ResetMode) async {
+    public func reset(to commit: CommitInfo, mode: ResetMode) async {
         await perform { try await $0.resetToCommit(commit.id, mode: mode) }
     }
 
     /// Called by the create branch/tag sheets after they wrote the ref themselves.
-    func refCreated() async {
+    public func refCreated() async {
         dismissAction()
         await repositoryChanged()
     }

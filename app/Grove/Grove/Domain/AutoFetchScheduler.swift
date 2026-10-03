@@ -5,6 +5,7 @@
 // Owned by RepositorySession; runs from the session's first start until it's evicted.
 
 import Foundation
+import GroveKit
 import Observation
 import os
 

@@ -1,6 +1,7 @@
 // Views/Sidebar/SidebarBranchRow.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// A local branch in the sidebar: name, pin, and ahead/behind counts.

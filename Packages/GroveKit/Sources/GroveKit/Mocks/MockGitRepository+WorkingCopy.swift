@@ -7,37 +7,37 @@ import Foundation
 
 extension MockGitRepository {
 
-    func ignore(patterns: [String], localOnly: Bool) async throws {
+    public func ignore(patterns: [String], localOnly: Bool) async throws {
         await simulateLatency()
     }
 
-    func stopTracking(paths: [String]) async throws {
+    public func stopTracking(paths: [String]) async throws {
         await simulateLatency()
     }
 
-    func moveFile(from source: String, to destination: String) async throws {
+    public func moveFile(from source: String, to destination: String) async throws {
         await simulateLatency()
     }
 
-    func restoreFile(_ path: String, from revision: String, revisionPath: String) async throws {
+    public func restoreFile(_ path: String, from revision: String, revisionPath: String) async throws {
         await simulateLatency()
     }
 
-    func patch(paths: [String], staged: Bool) async throws -> String {
+    public func patch(paths: [String], staged: Bool) async throws -> String {
         await simulateLatency()
         return paths.map { "diff --git a/\($0) b/\($0)\n" }.joined()
     }
 
-    func applyPatch(at file: URL, toIndex: Bool, checkOnly: Bool) async throws {
+    public func applyPatch(at file: URL, toIndex: Bool, checkOnly: Bool) async throws {
         await simulateLatency()
     }
 
-    func commitTemplate() async -> String? {
+    public func commitTemplate() async -> String? {
         nil
     }
 
     @discardableResult
-    func saveSnapshot(message: String, includeUntracked: Bool) async throws -> Bool {
+    public func saveSnapshot(message: String, includeUntracked: Bool) async throws -> Bool {
         await simulateLatency()
         return true
     }

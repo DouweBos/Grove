@@ -3,6 +3,7 @@
 //
 // Rows and lane connectors for a stack drawn like History: tips on top, trunk at the bottom, a split in its own lane.
 
+import GroveKit
 import SwiftUI
 
 /// Where each layer sits and which connector pieces its row draws.

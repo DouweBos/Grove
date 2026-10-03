@@ -4,6 +4,7 @@
 // Local branches: pinned first, then flat names, then stacks, then "prefix/" groups.
 // Rows are draggable; dropping a ref on the header starts a new branch from it.
 
+import GroveKit
 import SwiftUI
 
 struct BranchesSidebarSection: View {

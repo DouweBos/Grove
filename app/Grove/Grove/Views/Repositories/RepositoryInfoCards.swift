@@ -3,6 +3,7 @@
 //
 // Panels shown on the browser's repository summary.
 
+import GroveKit
 import SwiftUI
 
 /// The latest commits on the checked-out branch.

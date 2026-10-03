@@ -1,6 +1,7 @@
 // Views/PullRequests/PRConversationView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// The pull request's comments and line comments, with a composer for a new comment.

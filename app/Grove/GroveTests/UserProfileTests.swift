@@ -4,6 +4,7 @@
 // Profiles persist in their own defaults suite, match identities, and write a scratch repository's local config.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 
@@ -32,22 +33,6 @@ struct UserProfileTests {
         #expect(reloaded.profiles == [work])
         reloaded.delete(id: work.id)
         #expect(UserProfileStore(defaults: defaults).profiles.isEmpty)
-    }
-
-    @Test func matchesIdentityIgnoringEmailCase() {
-        let profile = UserProfile(label: "Work", userName: "Ada", email: "Ada@Work.example")
-        #expect(profile.matches(CommitIdentity(name: "Ada", email: "ada@work.example")))
-        #expect(!profile.matches(CommitIdentity(name: "Grace", email: "ada@work.example")))
-    }
-
-    @Test func applyWritesLocalConfigAndUnsetsAnEmptyKey() async throws {
-        try git(["config", "user.signingkey", "OLDKEY"])
-        let repo = try await GitRepository(path: root)
-        try await repo.apply(UserProfile(label: "Home", userName: "Ada", email: "ada@home.example"))
-
-        #expect(try await repo.localConfigValue("user.name") == "Ada")
-        #expect(try await repo.localConfigValue("user.email") == "ada@home.example")
-        #expect(try await repo.localConfigValue("user.signingkey") == nil)
     }
 
     @Test func settingsFillFromProfileAndSave() async throws {

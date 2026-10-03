@@ -1,6 +1,7 @@
 // Views/CI/CIGraphView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// The run's jobs in columns by `needs`, framed like GitHub's workflow card; a job opens its steps and log.

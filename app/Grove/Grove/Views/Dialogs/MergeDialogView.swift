@@ -1,6 +1,7 @@
 // Views/Dialogs/MergeDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Merges a chosen branch into the checked-out branch.

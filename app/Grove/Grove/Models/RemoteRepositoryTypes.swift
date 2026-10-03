@@ -4,6 +4,7 @@
 // Repositories on the hosting accounts, for the cloud browser.
 
 import Foundation
+import GroveKit
 
 nonisolated struct RemoteRepositoryOwner: Identifiable, Hashable, Sendable {
     var id: String { "\(accountID)/\(login)" }

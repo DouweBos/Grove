@@ -1,6 +1,7 @@
 // Views/PullRequests/PullRequestDetailView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Detail card for the selected pull request: header, actions, and Overview / Commits / Files tabs.

@@ -3,6 +3,7 @@
 //
 // Canvas that paints one row of the commit graph: lane lines plus the commit dot.
 
+import GroveKit
 import SwiftUI
 
 enum CommitGraphLayout {

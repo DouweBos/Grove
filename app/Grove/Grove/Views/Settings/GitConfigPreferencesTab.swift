@@ -3,6 +3,7 @@
 //
 // Global git config (`git config --global`), written only when the user clicks Save.
 
+import GroveKit
 import SwiftUI
 
 @MainActor

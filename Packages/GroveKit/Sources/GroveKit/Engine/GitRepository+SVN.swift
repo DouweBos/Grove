@@ -14,7 +14,7 @@ enum SVNError: LocalizedError {
 
 /// Finds a git that has git-svn; Apple's /usr/bin/git doesn't, Homebrew's does once subversion is installed.
 /// Only runners that can switch executables (the local one) offer git-svn.
-nonisolated enum SVNSupport {
+public nonisolated enum SVNSupport {
     static let candidates = ["/opt/homebrew/bin/git", "/usr/local/bin/git", "/usr/bin/git"]
 
     /// A found path is kept; a miss is re-checked after a minute, so installing git-svn is picked up.
@@ -37,7 +37,7 @@ nonisolated enum SVNSupport {
         return found
     }
 
-    static func shell(in directory: URL, runner: any GitRunner) async throws -> GitShell {
+    public static func shell(in directory: URL, runner: any GitRunner) async throws -> GitShell {
         guard let path = await gitPath(using: runner), let svnRunner = runner.withGitExecutable(path) else { throw SVNError.notInstalled }
         return GitShell(workingDirectory: directory, runner: svnRunner)
     }
@@ -45,7 +45,7 @@ nonisolated enum SVNSupport {
 
 extension GitRepository {
 
-    func svnStatus() async -> SVNStatus {
+    public func svnStatus() async -> SVNStatus {
         let result = try? await shell.runAllowingFailure(["config", "--get-regexp", "^svn-remote\\."])
         var status = SVNStatus(configValues: Self.parseConfigList(result?.stdout ?? ""))
         guard status.isSVN else { return status }
@@ -58,7 +58,7 @@ extension GitRepository {
     }
 
     /// `git svn rebase` fetches and replays local commits on top; `rebase: false` only fetches.
-    func svnFetch(rebase: Bool) async throws {
+    public func svnFetch(rebase: Bool) async throws {
         Logger.gitRepository.info("git svn \(rebase ? "rebase" : "fetch", privacy: .public) in \(self.displayName, privacy: .public)")
         try await SVNSupport.shell(in: path, runner: shell.runner).run(["svn", rebase ? "rebase" : "fetch"])
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
@@ -66,7 +66,7 @@ extension GitRepository {
     }
 
     /// Sends each local commit to Subversion as a revision, then rewrites them with their svn metadata.
-    func svnDcommit() async throws {
+    public func svnDcommit() async throws {
         Logger.gitRepository.info("git svn dcommit in \(self.displayName, privacy: .public)")
         try await SVNSupport.shell(in: path, runner: shell.runner).run(["svn", "dcommit"])
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)

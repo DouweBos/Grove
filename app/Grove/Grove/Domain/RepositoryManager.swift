@@ -6,6 +6,7 @@
 
 import CryptoKit
 import Foundation
+import GroveKit
 import Observation
 import os
 
@@ -120,7 +121,7 @@ final class RepositoryManager: RepositoryManagerProtocol {
     @discardableResult
     func cloneSVNRepository(url: String, to destination: URL, standardLayout: Bool) async throws -> any GitRepositoryProtocol {
         Logger.repositoryManager.info("git svn clone \(url, privacy: .public) to \(destination.path, privacy: .public)")
-        let shell = try await SVNSupport.shell(in: destination.deletingLastPathComponent())
+        let shell = try await SVNSupport.shell(in: destination.deletingLastPathComponent(), runner: LocalGitRunner.grove)
         try await shell.run(["svn", "clone"] + (standardLayout ? ["--stdlayout"] : []) + [url, destination.path])
         let repo = try await GitRepository(path: destination)
         try addBookmark(path: destination.path, displayName: destination.lastPathComponent, groupID: nil)

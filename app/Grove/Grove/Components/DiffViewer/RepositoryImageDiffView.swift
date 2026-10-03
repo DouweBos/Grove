@@ -4,6 +4,7 @@
 // Loads both versions of an image file from the repository and shows them in ImageDiffView.
 
 import AppKit
+import GroveKit
 import SwiftUI
 
 /// Where a changeset's image files are read from; one pair of revisions covers every file.

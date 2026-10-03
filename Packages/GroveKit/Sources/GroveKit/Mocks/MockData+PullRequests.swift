@@ -91,7 +91,7 @@ extension MockData {
 
     // MARK: PR Comments
 
-    static let prComments: [PRComment] = {
+    public static let prComments: [PRComment] = {
         let now = Date()
         let cal = Calendar.current
         return [

@@ -4,6 +4,7 @@
 // A run's jobs as the workflow wires them: columns by `needs`, with the host's jobs laid over the definitions.
 
 import Foundation
+import GroveKit
 
 /// One entry under a workflow's `jobs:`.
 nonisolated struct WorkflowJobDefinition: Hashable, Sendable {

@@ -4,6 +4,7 @@
 // Right-hand card of the Changes tab: the selected file's diff with hunk actions,
 // or the conflict resolver when the file is conflicted.
 
+import GroveKit
 import SwiftUI
 
 struct DiffPanelView: View {

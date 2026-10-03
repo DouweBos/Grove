@@ -6,16 +6,16 @@
 import Foundation
 
 /// Children waiting on one merged parent.
-struct MergedParent: Identifiable, Hashable {
-    var id: String { branch }
-    let branch: String
-    let pullRequest: BranchPullRequest?
-    let children: [StackLayer]
+public struct MergedParent: Identifiable, Hashable {
+    public var id: String { branch }
+    public let branch: String
+    public let pullRequest: BranchPullRequest?
+    public let children: [StackLayer]
 }
 
 extension StackViewModel {
 
-    func mergedParents(_ stack: BranchStack) -> [MergedParent] {
+    public func mergedParents(_ stack: BranchStack) -> [MergedParent] {
         let waiting = stack.layers.filter { $0.health.contains(.parentMerged) }
         let grouped = Dictionary(grouping: waiting) { $0.mergedParent?.headBranch ?? $0.parent ?? "" }
         return grouped.keys.sorted().map { branch in
@@ -25,7 +25,7 @@ extension StackViewModel {
 
     /// Rebases the children onto trunk (dropping the parent's commits, which trunk has in squashed form),
     /// pushes the ones already on the remote, and retargets their pull requests.
-    func retarget(_ merged: MergedParent) async {
+    public func retarget(_ merged: MergedParent) async {
         guard let stack else { return }
         let trunk = stack.trunk
         await restack(stack, mode: .retarget(merged: merged.branch), title: "Retargeting onto \(trunk)")
@@ -49,7 +49,7 @@ extension StackViewModel {
     }
 
     /// The merged branch still exists locally after a retarget; offered for deletion.
-    func deleteMergedParent() async {
+    public func deleteMergedParent() async {
         guard let branch = retargetedParent else { return }
         retargetedParent = nil
         await run("Deleting \(branch)") {
@@ -60,5 +60,5 @@ extension StackViewModel {
         }
     }
 
-    func keepMergedParent() { retargetedParent = nil }
+    public func keepMergedParent() { retargetedParent = nil }
 }

@@ -4,6 +4,7 @@
 // Notifications for watched runs: when one is due, and how a dispatched run is found to watch.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

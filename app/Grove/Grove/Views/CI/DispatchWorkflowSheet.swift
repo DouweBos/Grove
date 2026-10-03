@@ -1,6 +1,7 @@
 // Views/CI/DispatchWorkflowSheet.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Starts a workflow by hand on a branch or tag, with the inputs its definition asks for.

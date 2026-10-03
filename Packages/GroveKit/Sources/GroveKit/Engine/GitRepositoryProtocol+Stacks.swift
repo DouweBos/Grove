@@ -6,7 +6,7 @@
 import Foundation
 
 @MainActor
-protocol StackGitOperations: AnyObject {
+public protocol StackGitOperations: AnyObject {
     /// Commits reachable from `tips` but none of `excluding`, with their parents, children first.
     func stackGraph(tips: [String], excluding: [String]) async throws -> StackGraph
     /// `git patch-id --stable` of each of `commits`; merges and empty commits have none.
@@ -36,7 +36,7 @@ protocol StackGitOperations: AnyObject {
 }
 
 /// One layer of a stack push.
-nonisolated struct StackPush: Hashable, Sendable {
+public nonisolated struct StackPush: Hashable, Sendable {
     let branch: String
     /// Name on the remote; the upstream's when it has one.
     let remoteBranch: String
@@ -49,17 +49,17 @@ nonisolated struct StackPush: Hashable, Sendable {
 }
 
 extension StackGitOperations {
-    func stackGraph(tips: [String], excluding: [String]) async throws -> StackGraph { StackGraph() }
-    func patchIDs(for commits: [String]) async throws -> [String: String] { [:] }
-    func formerTips(of branches: [String]) async -> [String: Set<String>] { [:] }
-    func commitCount(from base: String, to revision: String) async -> Int { 0 }
-    func forkPoint(parent: String, branch: String) async -> String? { nil }
-    func diffStats(from base: String, to revision: String) async throws -> DiffStats { DiffStats(additions: 0, deletions: 0) }
-    func restack(_ plan: RestackPlan) async throws {}
-    func continueRestack() async throws {}
-    func abortRestack() async throws {}
-    func pendingRestack() async -> RestackPlan? { nil }
-    func pushStack(_ layers: [StackPush], to remote: String) async throws {}
-    func fastForward(branch: String, to revision: String, worktreePath: String?) async throws {}
-    func updatePullRequestBase(number: Int, base: String) async throws {}
+    public func stackGraph(tips: [String], excluding: [String]) async throws -> StackGraph { StackGraph() }
+    public func patchIDs(for commits: [String]) async throws -> [String: String] { [:] }
+    public func formerTips(of branches: [String]) async -> [String: Set<String>] { [:] }
+    public func commitCount(from base: String, to revision: String) async -> Int { 0 }
+    public func forkPoint(parent: String, branch: String) async -> String? { nil }
+    public func diffStats(from base: String, to revision: String) async throws -> DiffStats { DiffStats(additions: 0, deletions: 0) }
+    public func restack(_ plan: RestackPlan) async throws {}
+    public func continueRestack() async throws {}
+    public func abortRestack() async throws {}
+    public func pendingRestack() async -> RestackPlan? { nil }
+    public func pushStack(_ layers: [StackPush], to remote: String) async throws {}
+    public func fastForward(branch: String, to revision: String, worktreePath: String?) async throws {}
+    public func updatePullRequestBase(number: Int, base: String) async throws {}
 }

@@ -4,6 +4,7 @@
 // The repositories one signed-in account can see, for the cloud browser.
 
 import Foundation
+import GroveKit
 
 /// One signed-in account in the cloud browser.
 nonisolated struct CatalogAccount: Identifiable, Hashable, Sendable {

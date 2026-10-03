@@ -11,7 +11,7 @@ import Foundation
 ///
 /// All values are crafted to look realistic so that views developed against
 /// the mock closely resemble what the real engine will produce.
-enum MockData {
+public enum MockData {
 
     // MARK: Authors
 
@@ -21,7 +21,7 @@ enum MockData {
 
     // MARK: Commits
 
-    static let commits: [CommitInfo] = {
+    public static let commits: [CommitInfo] = {
         let calendar = Calendar.current
         var result: [CommitInfo] = []
 
@@ -171,7 +171,7 @@ enum MockData {
 
     // MARK: Branches
 
-    static let branches: [BranchInfo] = [
+    public static let branches: [BranchInfo] = [
         BranchInfo(
             id: "refs/heads/main",
             name: "main",
@@ -273,7 +273,7 @@ enum MockData {
 
     // MARK: Remotes
 
-    static let remotes: [RemoteInfo] = [
+    public static let remotes: [RemoteInfo] = [
         RemoteInfo(
             id: "origin",
             name: "origin",
@@ -290,7 +290,7 @@ enum MockData {
 
     // MARK: Tags
 
-    static let tags: [TagInfo] = [
+    public static let tags: [TagInfo] = [
         TagInfo(
             id: "v1.0.0",
             name: "v1.0.0",

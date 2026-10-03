@@ -4,6 +4,7 @@
 // Reloading repository settings keeps unsaved edits.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

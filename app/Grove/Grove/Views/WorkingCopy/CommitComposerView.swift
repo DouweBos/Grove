@@ -4,6 +4,7 @@
 // Commit composer card: subject with autocomplete, body, Amend / Sign-off,
 // the git identity that will author the commit, and the Commit button.
 
+import GroveKit
 import SwiftUI
 
 struct CommitComposerView: View {

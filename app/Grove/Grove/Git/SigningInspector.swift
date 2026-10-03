@@ -4,6 +4,7 @@
 // The commit signing setup git will use, and a test signature made in a throwaway repository.
 
 import Foundation
+import GroveKit
 
 struct SigningConfig: Equatable, Sendable {
     /// `gpg.format`: openpgp (the default), ssh or x509.

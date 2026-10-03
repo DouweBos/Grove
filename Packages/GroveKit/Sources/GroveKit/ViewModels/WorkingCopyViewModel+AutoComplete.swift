@@ -9,7 +9,7 @@ import Foundation
 // MARK: - AutoCompleteTrigger
 
 /// Identifies which trigger character caused the autocomplete list to appear.
-enum AutoCompleteTrigger: Equatable {
+public enum AutoCompleteTrigger: Equatable {
     /// `#` — issue and pull-request references.
     case issue
     /// `c:` — recent commit SHAs / summaries.
@@ -25,17 +25,25 @@ enum AutoCompleteTrigger: Equatable {
 // MARK: - AutoCompleteSuggestion
 
 /// A single row in the autocomplete dropdown.
-struct AutoCompleteSuggestion: Identifiable, Sendable, Equatable {
+public struct AutoCompleteSuggestion: Identifiable, Sendable, Equatable {
     /// Stable unique identifier (typically the `insertText`).
-    let id: String
+    public let id: String
     /// SF Symbol name shown on the leading edge.
-    let icon: String
+    public let icon: String
     /// Primary display text.
-    let title: String
+    public let title: String
     /// Optional secondary information shown in a lighter style.
-    let subtitle: String?
+    public let subtitle: String?
     /// The text that replaces the trigger sequence in the subject field.
     let insertText: String
+
+    public init(id: String, icon: String, title: String, subtitle: String? = nil, insertText: String) {
+        self.id = id
+        self.icon = icon
+        self.title = title
+        self.subtitle = subtitle
+        self.insertText = insertText
+    }
 }
 
 extension WorkingCopyViewModel {
@@ -58,11 +66,11 @@ extension WorkingCopyViewModel {
         autoCompleteHighlight = autoCompleteSuggestions.first?.id
     }
 
-    func highlightAutoComplete(_ id: String) {
+    public func highlightAutoComplete(_ id: String) {
         autoCompleteHighlight = id
     }
 
-    func moveAutoCompleteHighlight(by delta: Int) {
+    public func moveAutoCompleteHighlight(by delta: Int) {
         let suggestions = autoCompleteSuggestions
         guard !suggestions.isEmpty else { return }
         let current = suggestions.firstIndex { $0.id == autoCompleteHighlight } ?? 0
@@ -70,7 +78,7 @@ extension WorkingCopyViewModel {
     }
 
     /// Return in the subject field; false when no list is showing, so Return moves on to the description.
-    func acceptAutoComplete() -> Bool {
+    public func acceptAutoComplete() -> Bool {
         guard isAutoCompleteVisible,
               let suggestion = autoCompleteSuggestions.first(where: { $0.id == autoCompleteHighlight }) ?? autoCompleteSuggestions.first
         else { return false }
@@ -79,7 +87,7 @@ extension WorkingCopyViewModel {
     }
 
     /// Apply a chosen suggestion: replace the trigger + query with `insertText`.
-    func applyAutoComplete(_ suggestion: AutoCompleteSuggestion) {
+    public func applyAutoComplete(_ suggestion: AutoCompleteSuggestion) {
         guard let trigger = autoCompleteTrigger else { return }
         let triggerPrefix = prefix(for: trigger)
         // Find the last occurrence of the trigger prefix and replace from there.
@@ -92,7 +100,7 @@ extension WorkingCopyViewModel {
     }
 
     /// Hide the autocomplete dropdown without modifying the subject text.
-    func dismissAutoComplete() {
+    public func dismissAutoComplete() {
         autoCompleteTrigger = nil
         autoCompleteSuggestions = []
         autoCompleteHighlight = nil

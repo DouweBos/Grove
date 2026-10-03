@@ -3,6 +3,7 @@
 //
 // Compact bar showing the additions/deletions ratio of a file or commit.
 
+import GroveKit
 import SwiftUI
 
 struct DiffStatsBar: View {

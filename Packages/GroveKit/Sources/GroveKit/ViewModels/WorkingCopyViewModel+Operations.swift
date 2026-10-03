@@ -8,18 +8,18 @@ import Foundation
 extension WorkingCopyViewModel {
 
     /// Jump to the first unresolved file so the diff panel shows the resolution UI.
-    func resolveNextConflict() async {
+    public func resolveNextConflict() async {
         guard let first = conflictedFiles.first else { return }
         await select(first)
     }
 
-    func resolveConflict(taking side: ConflictSide) async {
+    public func resolveConflict(taking side: ConflictSide) async {
         guard let entry = selectedEntry, entry.isConflicted else { return }
         await mutate { try await self.repository.resolveConflict(path: entry.path, side: side) }
         if let next = conflictedFiles.first { await select(next) }
     }
 
-    func abortOperation() async {
+    public func abortOperation() async {
         await runOperation {
             let repo = self.repository
             if self.pendingRestack != nil { return try await repo.abortRestack() }
@@ -32,7 +32,7 @@ extension WorkingCopyViewModel {
         }
     }
 
-    func continueOperation() async {
+    public func continueOperation() async {
         await runOperation {
             guard self.pendingRestack != nil else { return try await self.repository.continueOperation() }
             do {

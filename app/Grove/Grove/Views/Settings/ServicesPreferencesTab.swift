@@ -3,6 +3,7 @@
 //
 // Accounts: Grove's own sign-ins to GitHub, GitLab, Bitbucket and Azure DevOps, with tokens in the Keychain.
 
+import GroveKit
 import SwiftUI
 
 struct ServicesPreferencesTab: View {

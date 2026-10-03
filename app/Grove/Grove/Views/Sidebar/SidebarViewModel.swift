@@ -2,6 +2,7 @@
 // Grove
 
 import Foundation
+import GroveKit
 import Observation
 
 /// ViewModel for the in-repository sidebar.

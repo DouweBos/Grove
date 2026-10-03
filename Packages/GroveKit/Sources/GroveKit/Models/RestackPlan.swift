@@ -6,7 +6,7 @@
 import Foundation
 
 /// Which layers a restack moves.
-nonisolated enum RestackMode: Hashable, Sendable {
+public nonisolated enum RestackMode: Hashable, Sendable {
     /// Layers that drifted from their parent, and everything above them.
     case drifted
     /// Every layer, the roots onto trunk's current tip: what Sync does after fetching.
@@ -19,7 +19,7 @@ nonisolated enum RestackMode: Hashable, Sendable {
     case retarget(merged: String)
 }
 
-nonisolated struct RestackPlan: Codable, Hashable, Sendable {
+public nonisolated struct RestackPlan: Codable, Hashable, Sendable {
 
     struct Step: Codable, Hashable, Sendable {
         let branch: String
@@ -45,13 +45,13 @@ nonisolated struct RestackPlan: Codable, Hashable, Sendable {
     var current: Step? { steps.indices.contains(next) ? steps[next] : nil }
 
     /// "Restacking 3 of 5: 20-music".
-    var progressTitle: String {
+    public var progressTitle: String {
         guard let current else { return "Restacking \(stackName)" }
         return "Restacking \(next + 1) of \(steps.count): \(current.branch)"
     }
 
     /// Steps in topological order, so a parent is always moved before its children.
-    static func make(_ stack: BranchStack, mode: RestackMode, trunkRef: String, headBranch: String?) -> RestackPlan {
+    public static func make(_ stack: BranchStack, mode: RestackMode, trunkRef: String, headBranch: String?) -> RestackPlan {
         var moving: Set<String> = []
         var onto: [String: String] = [:]
         for layer in stack.layers {

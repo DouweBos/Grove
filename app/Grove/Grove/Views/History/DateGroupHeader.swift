@@ -1,6 +1,7 @@
 // Views/History/DateGroupHeader.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Day label between commit groups; keeps the graph lanes running through it.

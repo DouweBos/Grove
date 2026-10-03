@@ -9,35 +9,35 @@ import Observation
 /// Branches, tags, remotes and worktrees of one repository, kept until the next refresh replaces them.
 @MainActor
 @Observable
-final class RepositoryRefs {
+public final class RepositoryRefs {
 
-    private(set) var localBranches: [BranchInfo] = []
-    private(set) var remoteBranches: [BranchInfo] = []
-    private(set) var tags: [TagInfo] = []
-    private(set) var remotes: [RemoteInfo] = []
-    private(set) var worktrees: [WorktreeInfo] = []
-    private(set) var submodules: [SubmoduleInfo] = []
+    public private(set) var localBranches: [BranchInfo] = []
+    public private(set) var remoteBranches: [BranchInfo] = []
+    public private(set) var tags: [TagInfo] = []
+    public private(set) var remotes: [RemoteInfo] = []
+    public private(set) var worktrees: [WorktreeInfo] = []
+    public private(set) var submodules: [SubmoduleInfo] = []
     /// Parent branch recorded when a branch was created, keyed by branch name.
-    private(set) var parents: [String: String] = [:]
+    public private(set) var parents: [String: String] = [:]
     /// Open and merged pull requests keyed by head branch; a network read, so refreshed at most once a minute.
-    private(set) var branchPullRequests: [String: BranchPullRequest] = [:]
+    public private(set) var branchPullRequests: [String: BranchPullRequest] = [:]
     /// Recently merged pull requests, which tell a stack its parent landed.
     private(set) var mergedPullRequests: [BranchPullRequest] = []
     private var pullRequestsFetchedAt: Date?
     private var pullRequestTask: Task<Void, Never>?
     /// CI status of each branch's newest commit on the host; a network read, throttled like pull requests.
-    private(set) var branchCIStatuses: [String: BranchCIStatus] = [:]
+    public private(set) var branchCIStatuses: [String: BranchCIStatus] = [:]
     private var ciStatusesFetchedAt: Date?
     private var ciStatusTask: Task<Void, Never>?
     /// Staged or unstaged entries, for the Changes badge.
-    private(set) var changedCount = 0
-    private(set) var hasLoaded = false
-    private(set) var isRefreshing = false
-    private(set) var errorMessage: String?
+    public private(set) var changedCount = 0
+    public private(set) var hasLoaded = false
+    public private(set) var isRefreshing = false
+    public private(set) var errorMessage: String?
     /// Bumped whenever branches or tags change, so consumers can skip re-indexing identical refs.
     private(set) var generation = 0
     /// Stacked branches recognized from the graph, reflogs and pull requests after each read.
-    private(set) var stacks: [BranchStack] = []
+    public private(set) var stacks: [BranchStack] = []
     /// Branches whose patches all exist on another branch.
     private(set) var duplicateBranches: [DuplicateBranch] = []
     /// The branch stacks are measured against.
@@ -53,19 +53,19 @@ final class RepositoryRefs {
     private let readsStatus: Bool
     private var inFlight: Task<Void, Never>?
 
-    init(repository: any GitRepositoryProtocol, readsStatus: Bool = true) {
+    public init(repository: any GitRepositoryProtocol, readsStatus: Bool = true) {
         self.repository = repository
         self.readsStatus = readsStatus
     }
 
     /// Re-reads everything concurrently; a call during a running read waits for that read instead of starting another.
-    func refresh() async {
+    public func refresh() async {
         await beginRefresh().value
     }
 
     /// Starts (or joins) a read synchronously, so lists refreshing alongside it can `settled()` on it.
     @discardableResult
-    func beginRefresh() -> Task<Void, Never> {
+    public func beginRefresh() -> Task<Void, Never> {
         refreshPullRequests()
         refreshCIStatuses()
         if let inFlight { return inFlight }
@@ -77,25 +77,25 @@ final class RepositoryRefs {
         return task
     }
 
-    func loadIfNeeded() async {
+    public func loadIfNeeded() async {
         guard !hasLoaded else { return await settled() }
         await refresh()
     }
 
     /// The running read's result if one is underway, else the last one; never starts a read once loaded.
-    func settled() async {
+    public func settled() async {
         if let inFlight { await inFlight.value } else if !hasLoaded { await refresh() }
     }
 
-    func dismissError() { errorMessage = nil }
+    public func dismissError() { errorMessage = nil }
 
     /// The pull request whose head is `branch`; remote branches match on the part after the remote name.
-    func pullRequest(for branch: BranchInfo) -> BranchPullRequest? {
+    public func pullRequest(for branch: BranchInfo) -> BranchPullRequest? {
         let head = branch.isRemote ? branch.name.split(separator: "/", maxSplits: 1).last.map(String.init) : branch.name
         return head.flatMap { branchPullRequests[$0] }.flatMap { $0.applies(toTip: branch.targetSHA) ? $0 : nil }
     }
 
-    func hasOpenPullRequest(branch name: String) -> Bool {
+    public func hasOpenPullRequest(branch name: String) -> Bool {
         branchPullRequests[name].map { !$0.isMerged } ?? false
     }
 
@@ -110,7 +110,7 @@ final class RepositoryRefs {
     }
 
     /// Runs beside ref reads without holding them up; a failure (no account, no hosted remote) keeps the last result.
-    func refreshPullRequests(force: Bool = false) {
+    public func refreshPullRequests(force: Bool = false) {
         guard pullRequestTask == nil else { return }
         if !force, let pullRequestsFetchedAt, Date().timeIntervalSince(pullRequestsFetchedAt) < 60 { return }
         pullRequestTask = Task {
@@ -128,16 +128,16 @@ final class RepositoryRefs {
     }
 
     /// CI's verdict on `branch`, while the branch still points at the commit CI ran on.
-    func ciStatus(for branch: BranchInfo) -> BranchCIStatus? {
+    public func ciStatus(for branch: BranchInfo) -> BranchCIStatus? {
         let name = branch.isRemote ? branch.name.split(separator: "/", maxSplits: 1).last.map(String.init) : branch.name
         return name.flatMap { branchCIStatuses[$0] }.flatMap { $0.applies(toTip: branch.targetSHA) ? $0 : nil }
     }
 
     /// The checked-out branch's newest commit failed CI.
-    var isHeadFailingCI: Bool { headBranch.flatMap(ciStatus(for:))?.status == .failure }
+    public var isHeadFailingCI: Bool { headBranch.flatMap(ciStatus(for:))?.status == .failure }
 
     /// Runs beside ref reads without holding them up; a failure (no account, unsupported host) keeps the last result.
-    func refreshCIStatuses(force: Bool = false) {
+    public func refreshCIStatuses(force: Bool = false) {
         guard ciStatusTask == nil else { return }
         if !force, let ciStatusesFetchedAt, Date().timeIntervalSince(ciStatusesFetchedAt) < 60 { return }
         ciStatusTask = Task {
@@ -150,7 +150,7 @@ final class RepositoryRefs {
     }
 
     /// Replaces the lists directly, for previews and tests.
-    func replace(localBranches: [BranchInfo]? = nil, remoteBranches: [BranchInfo]? = nil, tags: [TagInfo]? = nil,
+    public func replace(localBranches: [BranchInfo]? = nil, remoteBranches: [BranchInfo]? = nil, tags: [TagInfo]? = nil,
                  remotes: [RemoteInfo]? = nil, worktrees: [WorktreeInfo]? = nil, stacks: [BranchStack]? = nil) {
         apply(local: localBranches, remote: remoteBranches, tags: tags)
         if let remotes { self.remotes = remotes }
@@ -163,7 +163,7 @@ final class RepositoryRefs {
     }
 
     /// The stack `branch` is a layer of.
-    func stack(containing branch: String) -> BranchStack? {
+    public func stack(containing branch: String) -> BranchStack? {
         stacks.first { $0.contains(branch) }
     }
 

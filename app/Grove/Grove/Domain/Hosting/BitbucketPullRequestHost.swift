@@ -4,6 +4,7 @@
 // Bitbucket Cloud pull requests over its 2.0 REST API, signed in with an app password or API token.
 
 import Foundation
+import GroveKit
 
 nonisolated struct BitbucketPullRequestHost: PullRequestHost {
     let location: RemoteLocation

@@ -4,6 +4,7 @@
 // GitHub Actions against a fake HTTP client: which endpoints are read and how their JSON maps to runs, jobs and artifacts.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

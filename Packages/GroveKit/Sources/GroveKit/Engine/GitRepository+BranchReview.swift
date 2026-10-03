@@ -14,12 +14,12 @@ extension GitRepository {
     /// Fallback `rev-list` processes in flight at once when `%(ahead-behind)` is unavailable.
     nonisolated static let aheadBehindConcurrency = 8
 
-    func branchTips() async throws -> [BranchTip] {
+    public func branchTips() async throws -> [BranchTip] {
         let result = try await shell.run(["for-each-ref", "refs/heads", "--format=\(Self.branchTipFormat)"])
         return Self.parseBranchTips(result.stdout)
     }
 
-    func aheadBehind(branches: [String], base: String) async throws -> [String: AheadBehind] {
+    public func aheadBehind(branches: [String], base: String) async throws -> [String: AheadBehind] {
         guard !branches.isEmpty else { return [:] }
         let shell = shell
         if let version = await GitVersion.current(shell: shell), version >= GitVersion(major: 2, minor: 41) {

@@ -8,24 +8,8 @@
 // Usage:
 //   Logger.gitShell.debug("Running: git \(args.joined(separator: " "))")
 
+import GroveKit
 import os
-
-// MARK: - RepositoryState logging support
-
-extension RepositoryState {
-    /// A short, human-readable description used in log messages.
-    var logDescription: String {
-        switch self {
-        case .normal:            return "normal"
-        case .merge:             return "merge"
-        case .rebase:            return "rebase"
-        case .rebaseInteractive: return "rebase-interactive"
-        case .revert:            return "revert"
-        case .cherrypick:        return "cherry-pick"
-        case .bisect:            return "bisect"
-        }
-    }
-}
 
 // MARK: - Loggers
 

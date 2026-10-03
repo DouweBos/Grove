@@ -4,6 +4,7 @@
 // "New Remote Repository" on each service.
 
 import Foundation
+import GroveKit
 
 extension GitHubCatalog {
 

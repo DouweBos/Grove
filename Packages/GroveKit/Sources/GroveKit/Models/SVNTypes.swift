@@ -5,19 +5,19 @@
 
 import Foundation
 
-struct SVNStatus: Equatable, Sendable {
+public struct SVNStatus: Equatable, Sendable {
     /// Set when the repository has an `svn-remote` in its config.
-    var isSVN = false
+    public var isSVN = false
     /// `svn-remote.svn.url`.
-    var url: String?
+    public var url: String?
     /// The ref git svn fetches the main line into, e.g. `refs/remotes/origin/trunk`.
     var trackingRef: String?
     /// Whether a git with git-svn support was found.
-    var isAvailable = true
+    public var isAvailable = true
     /// Local commits not yet sent to Subversion.
-    var unsentCount = 0
+    public var unsentCount = 0
 
-    static let missingMessage = "git svn isn't available: Apple's git leaves it out. Install it with "
+    public static let missingMessage = "git svn isn't available: Apple's git leaves it out. Install it with "
         + "\u{201C}brew install git subversion\u{201D}, then try again."
 
     /// `svn-remote.<name>.url` and `.fetch` from `git config --get-regexp`; the first remote wins.

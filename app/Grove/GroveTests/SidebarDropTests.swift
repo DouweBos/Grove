@@ -4,6 +4,7 @@
 // Sidebar drag and drop: which action a drop asks to confirm, and what each does, against a scratch clone and bare remote.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

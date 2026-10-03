@@ -1,6 +1,7 @@
 // Views/Reflog/ReflogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Reflog entries on the left, the selected entry's commit and restore actions on the right.

@@ -1,16 +1,9 @@
 // Views/History/CommitTableRow.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
-/// How History lists commits.
-enum HistoryLayout: String, CaseIterable, Identifiable {
-    case graph, table
-
-    var id: Self { self }
-    var title: String { self == .graph ? "Graph" : "Table" }
-    var symbol: String { self == .graph ? "point.3.connected.trianglepath.dotted" : "tablecells" }
-}
 
 /// Column widths shared by the table's header and rows.
 enum CommitTableColumns {

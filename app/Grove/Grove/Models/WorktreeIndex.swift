@@ -5,6 +5,7 @@
 
 import CryptoKit
 import Foundation
+import GroveKit
 
 nonisolated struct WorktreeIndex: Sendable {
 

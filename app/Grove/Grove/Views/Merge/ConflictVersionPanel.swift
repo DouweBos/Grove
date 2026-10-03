@@ -4,6 +4,7 @@
 // One side of the conflict resolver: which branch it comes from, the file's
 // content on that side, and a button to keep it.
 
+import GroveKit
 import SwiftUI
 
 struct ConflictVersionPanel: View {

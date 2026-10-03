@@ -4,6 +4,7 @@
 // Patches that git am applies, and ZIP archives of a commit or ref, against a scratch repository.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 
@@ -26,18 +27,6 @@ struct HistoryExportTests {
             try git(["commit", "-q", "-m", "commit \(index)"])
         }
         try git(["tag", "v1", "HEAD~1"])
-    }
-
-    @Test func patchOfSelectedCommitsAppliesInOrder() async throws {
-        let vm = HistoryViewModel(repository: try await GitRepository(path: root))
-        await vm.loadInitial()
-        let url = root.appendingPathComponent("../\(UUID().uuidString).patch").standardizedFileURL
-        await vm.savePatch(Array(vm.commits[0...1]), to: url)
-        #expect(vm.errorMessage == nil)
-
-        try git(["checkout", "-q", "-b", "replay", "HEAD~2"])
-        try git(["am", "-q", url.path])
-        #expect(try git(["log", "--format=%s"]).split(separator: "\n") == ["commit 3", "commit 2", "commit 1"])
     }
 
     @Test func commitAndRefArchivesHoldTheirFiles() async throws {

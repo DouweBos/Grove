@@ -1,6 +1,7 @@
 // Views/Dialogs/TrackRemoteBranchDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Sets the remote branch a local branch pulls from and compares against.

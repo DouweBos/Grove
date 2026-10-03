@@ -3,6 +3,7 @@
 //
 // Every tracked file grouped by directory; changed files carry their status letter.
 
+import GroveKit
 import SwiftUI
 
 struct AllFilesTreeView: View {

@@ -5,6 +5,7 @@
 // the unified NavigationSplitView detail pane.
 
 import AppKit
+import GroveKit
 import SwiftUI
 
 // MARK: - RepositoryContentRouter

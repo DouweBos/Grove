@@ -3,6 +3,7 @@
 //
 // Cloud browser detail: the selected hosted repository with Clone / Open, or the account state.
 
+import GroveKit
 import SwiftUI
 
 struct RemoteRepositoriesContent: View {

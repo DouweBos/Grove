@@ -8,48 +8,48 @@ import Observation
 
 @MainActor
 @Observable
-final class StackViewModel {
+public final class StackViewModel {
 
-    let refs: RepositoryRefs
-    let repository: any GitRepositoryProtocol
-    var onRepositoryChanged: (() async -> Void)?
+    public let refs: RepositoryRefs
+    public let repository: any GitRepositoryProtocol
+    public var onRepositoryChanged: (() async -> Void)?
     /// A layer conflicted mid-cascade; the session switches to Changes, where the banner continues it.
-    var onRestackStopped: (() -> Void)?
-    var onCreatePullRequest: ((String) -> Void)?
+    public var onRestackStopped: (() -> Void)?
+    public var onCreatePullRequest: ((String) -> Void)?
     /// Selects a stack by id in the sidebar, which in turn focuses it here.
-    var onShowStack: ((String) -> Void)?
-    var activity: String?
+    public var onShowStack: ((String) -> Void)?
+    public var activity: String?
     /// A merged parent whose children were just retargeted, offered for deletion.
-    var retargetedParent: String?
+    public var retargetedParent: String?
 
     /// The branch last picked in the sidebar or the tab's menu; HEAD's stack when nil or no longer stacked.
     private(set) var focusedBranch: String?
-    private(set) var expandedLayers: Set<String> = []
+    public private(set) var expandedLayers: Set<String> = []
     /// Keyed by `base..tip`, so a layer that didn't move keeps its numbers.
-    private(set) var stats: [String: DiffStats] = [:]
+    public private(set) var stats: [String: DiffStats] = [:]
     private(set) var layerCommits: [String: [CommitInfo]] = [:]
-    var errorMessage: String?
+    public var errorMessage: String?
 
-    init(repository: any GitRepositoryProtocol, refs: RepositoryRefs) {
+    public init(repository: any GitRepositoryProtocol, refs: RepositoryRefs) {
         self.repository = repository
         self.refs = refs
     }
 
-    var stacks: [BranchStack] { refs.stacks }
+    public var stacks: [BranchStack] { refs.stacks }
 
-    var stack: BranchStack? {
+    public var stack: BranchStack? {
         if let focusedBranch, let stack = refs.stack(containing: focusedBranch) { return stack }
         if let head = refs.headBranch, let stack = refs.stack(containing: head.name) { return stack }
         return refs.stacks.first
     }
 
-    func focus(branch: String) {
+    public func focus(branch: String) {
         guard refs.stack(containing: branch) != nil else { return }
         focusedBranch = branch
     }
 
     /// Stacks whose name or a layer's branch contains the query.
-    func stacks(matching query: String) -> [BranchStack] {
+    public func stacks(matching query: String) -> [BranchStack] {
         let query = query.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return stacks }
         return stacks.filter { stack in
@@ -58,12 +58,12 @@ final class StackViewModel {
         }
     }
 
-    func show(_ stack: BranchStack) {
+    public func show(_ stack: BranchStack) {
         focus(branch: stack.id)
         onShowStack?(stack.id)
     }
 
-    func toggleExpanded(_ layer: StackLayer) {
+    public func toggleExpanded(_ layer: StackLayer) {
         if expandedLayers.contains(layer.branch) {
             expandedLayers.remove(layer.branch)
         } else {
@@ -72,12 +72,12 @@ final class StackViewModel {
         }
     }
 
-    func stats(for layer: StackLayer) -> DiffStats? { stats[Self.key(layer)] }
+    public func stats(for layer: StackLayer) -> DiffStats? { stats[Self.key(layer)] }
 
-    func commits(for layer: StackLayer) -> [CommitInfo]? { layerCommits[Self.key(layer)] }
+    public func commits(for layer: StackLayer) -> [CommitInfo]? { layerCommits[Self.key(layer)] }
 
     /// Reads diff stats for the shown stack's layers that moved since the last read.
-    func refresh() async {
+    public func refresh() async {
         guard let stack else { return }
         for layer in stack.layers where stats[Self.key(layer)] == nil && !layer.base.isEmpty {
             if let read = try? await repository.diffStats(from: layer.base, to: layer.tipSHA) {
@@ -98,29 +98,29 @@ final class StackViewModel {
         }
     }
 
-    func dismissError() { errorMessage = nil }
+    public func dismissError() { errorMessage = nil }
 
     // MARK: - Restack
 
-    var isBusy: Bool { activity != nil }
+    public var isBusy: Bool { activity != nil }
 
-    func canRestack(_ stack: BranchStack) -> Bool {
+    public func canRestack(_ stack: BranchStack) -> Bool {
         stack.layers.contains { $0.health.contains(.needsRestack) }
     }
 
     /// Fixes only the layers that drifted from their parent, and whatever sits on them.
-    func restackDrifted() async {
+    public func restackDrifted() async {
         guard let stack else { return }
         await restack(stack, mode: .drifted, title: "Restacking \(stack.name)")
     }
 
-    func restack(from layer: StackLayer) async {
+    public func restack(from layer: StackLayer) async {
         guard let stack else { return }
         await restack(stack, mode: .from(layer.branch), title: "Restacking \(layer.branch)")
     }
 
     /// Fetches, then moves the whole stack onto trunk's new tip.
-    func sync() async {
+    public func sync() async {
         guard let stack else { return }
         activity = "Fetching"
         do {
@@ -135,7 +135,7 @@ final class StackViewModel {
         await restack(fresh, mode: .ontoTrunk, title: "Syncing \(fresh.name)")
     }
 
-    func restack(_ stack: BranchStack, mode: RestackMode, title: String) async {
+    public func restack(_ stack: BranchStack, mode: RestackMode, title: String) async {
         activity = title
         defer { activity = nil }
         let plan = RestackPlan.make(stack, mode: mode, trunkRef: await trunkRef(stack.trunk), headBranch: refs.headBranch?.name)

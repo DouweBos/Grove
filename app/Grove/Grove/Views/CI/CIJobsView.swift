@@ -1,6 +1,7 @@
 // Views/CI/CIJobsView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// A run's jobs on the left; on the right, the run's summary or the selected job's steps and log.

@@ -4,6 +4,7 @@
 // Add, update, fetch and remove submodules against a local library repository in a temp directory.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

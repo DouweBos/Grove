@@ -6,6 +6,7 @@
 // Shared between WorkingCopy, History commit detail, Stashes, and Blame.
 
 import AppKit
+import GroveKit
 import SwiftUI
 
 // MARK: - DiffView

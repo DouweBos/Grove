@@ -5,6 +5,7 @@
 // handles open / clone / init operations.
 
 import Foundation
+import GroveKit
 
 // MARK: - RepositoryManagerProtocol
 

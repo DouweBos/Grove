@@ -4,6 +4,7 @@
 // Shared sheet layout for every Grove dialog: header, fields card,
 // progress / error status, and a Cancel + primary footer.
 
+import GroveKit
 import SwiftUI
 
 // MARK: - DialogSheet

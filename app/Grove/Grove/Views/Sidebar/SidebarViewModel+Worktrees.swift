@@ -4,6 +4,7 @@
 // Removing worktrees, and deleting branches that one has checked out.
 
 import Foundation
+import GroveKit
 
 extension SidebarViewModel {
 

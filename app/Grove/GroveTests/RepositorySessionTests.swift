@@ -5,6 +5,7 @@
 // and hidden lists reload only when shown.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

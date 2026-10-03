@@ -4,6 +4,7 @@
 // What stacks need from each host: open plus recently merged pull requests with base and head, and retargeting a base.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

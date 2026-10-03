@@ -3,6 +3,7 @@
 //
 // Confirms a sidebar drop before it runs: merge, rebase, pull or push, with what it will change.
 
+import GroveKit
 import SwiftUI
 
 struct SidebarDropSheet: View {

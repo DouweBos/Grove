@@ -8,56 +8,79 @@ import Foundation
 // MARK: - DiffResult
 
 /// Complete diff output for a single file, containing one or more hunks.
-struct DiffResult: Sendable {
-    let filePath: String
+public struct DiffResult: Sendable {
+    public let filePath: String
     /// Original path before a rename, `nil` otherwise.
-    let oldPath: String?
-    let isBinary: Bool
-    let hunks: [HunkData]
-    let stats: DiffStats
+    public let oldPath: String?
+    public let isBinary: Bool
+    public let hunks: [HunkData]
+    public let stats: DiffStats
 }
 
 // MARK: - DiffStats
 
 /// Aggregate line-change counts for a diff.
-struct DiffStats: Hashable, Sendable {
-    let additions: Int
-    let deletions: Int
+public struct DiffStats: Hashable, Sendable {
+    public let additions: Int
+    public let deletions: Int
+
+    public init(additions: Int, deletions: Int) {
+        self.additions = additions
+        self.deletions = deletions
+    }
 }
 
 // MARK: - HunkData
 
 /// One contiguous changed region inside a diff.
-struct HunkData: Identifiable, Hashable, Sendable {
+public struct HunkData: Identifiable, Hashable, Sendable {
     /// Derived from the hunk header string; stable within a diff result.
-    let id: String
+    public let id: String
     /// Raw hunk header, e.g. `@@ -10,6 +10,8 @@ func foo() {`.
-    let header: String
+    public let header: String
     let oldStart: Int
     let oldCount: Int
     let newStart: Int
     let newCount: Int
-    let lines: [DiffLine]
+    public let lines: [DiffLine]
+
+    public init(id: String, header: String, oldStart: Int, oldCount: Int, newStart: Int, newCount: Int, lines: [DiffLine]) {
+        self.id = id
+        self.header = header
+        self.oldStart = oldStart
+        self.oldCount = oldCount
+        self.newStart = newStart
+        self.newCount = newCount
+        self.lines = lines
+    }
 }
 
 // MARK: - DiffLine
 
 /// A single line inside a ``HunkData``.
-struct DiffLine: Identifiable, Hashable, Sendable {
-    let id: String
-    let type: DiffLineType
+public struct DiffLine: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let type: DiffLineType
     /// Raw line content, without the leading `+`/`-`/` ` prefix.
-    let content: String
+    public let content: String
     /// Line number in the old file; `nil` for addition lines.
-    let oldLineNumber: Int?
+    public let oldLineNumber: Int?
     /// Line number in the new file; `nil` for deletion lines.
-    let newLineNumber: Int?
+    public let newLineNumber: Int?
+
+    public init(id: String, type: DiffLineType, content: String, oldLineNumber: Int? = nil, newLineNumber: Int? = nil) {
+        self.id = id
+        self.type = type
+        self.content = content
+        self.oldLineNumber = oldLineNumber
+        self.newLineNumber = newLineNumber
+    }
 }
 
 // MARK: - DiffLineType
 
 /// Whether a diff line is context, an addition, or a deletion.
-enum DiffLineType: String, Hashable, Sendable {
+public enum DiffLineType: String, Hashable, Sendable {
     case context = " "
     case addition = "+"
     case deletion = "-"
@@ -66,18 +89,18 @@ enum DiffLineType: String, Hashable, Sendable {
 // MARK: - FileDiff
 
 /// Pairs a file's status entry with its optional computed diff.
-struct FileDiff: Sendable {
-    let path: String
-    let status: FileStatus
+public struct FileDiff: Sendable {
+    public let path: String
+    public let status: FileStatus
     /// `nil` for binary files or when the diff hasn't been loaded yet.
-    let diff: DiffResult?
-    let stats: DiffStats
+    public let diff: DiffResult?
+    public let stats: DiffStats
 }
 
 // MARK: - FileRevision
 
 /// Where to read one version of a file from.
-enum FileRevision: Hashable, Sendable {
+public enum FileRevision: Hashable, Sendable {
     case workingTree
     case index
     /// Merge conflict stage: 1 base, 2 ours, 3 theirs.

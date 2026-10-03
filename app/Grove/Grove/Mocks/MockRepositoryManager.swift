@@ -6,6 +6,7 @@
 // during Phase B development and in SwiftUI Previews.
 
 import Foundation
+import GroveKit
 import Observation
 
 // MARK: - MockRepositoryManager

@@ -2,6 +2,7 @@
 // Grove
 
 import AppKit
+import GroveKit
 import SwiftUI
 
 /// "Open Pull Request #N in Browser", shared by local and remote branch menus.

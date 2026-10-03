@@ -10,12 +10,12 @@ extension GitRepository {
 
     // MARK: - Staging
 
-    func stage(paths: [String]) async throws {
+    public func stage(paths: [String]) async throws {
         guard !paths.isEmpty else { return }
         try await shell.run(["add", "--"] + paths)
     }
 
-    func unstage(paths: [String]) async throws {
+    public func unstage(paths: [String]) async throws {
         guard !paths.isEmpty else { return }
         // Use `git restore --staged` (git 2.23+); fallback: `git reset HEAD --`
         let result = try await shell.runAllowingFailure(["restore", "--staged", "--"] + paths)
@@ -24,35 +24,35 @@ extension GitRepository {
         }
     }
 
-    func stageHunk(_ hunk: HunkData, in file: String) async throws {
+    public func stageHunk(_ hunk: HunkData, in file: String) async throws {
         let patch = DiffParser.buildPatch(from: hunk, filePath: file)
         try await applyPatch(patch, cached: true)
     }
 
-    func unstageHunk(_ hunk: HunkData, in file: String) async throws {
+    public func unstageHunk(_ hunk: HunkData, in file: String) async throws {
         let patch = DiffParser.buildPatch(from: hunk, filePath: file)
         try await applyPatch(patch, cached: true, reverse: true)
     }
 
-    func stageLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
+    public func stageLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
         let patch = DiffParser.buildPatch(from: lines, in: hunk, filePath: file)
         try await applyPatch(patch, cached: true)
     }
 
-    func unstageLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
+    public func unstageLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
         let patch = DiffParser.buildPatch(from: lines, in: hunk, filePath: file)
         try await applyPatch(patch, cached: true, reverse: true)
     }
 
-    func stageAll() async throws {
+    public func stageAll() async throws {
         try await shell.run(["add", "-A"])
     }
 
-    func unstageAll() async throws {
+    public func unstageAll() async throws {
         try await shell.run(["reset", "HEAD"])
     }
 
-    func discardChanges(paths: [String]) async throws {
+    public func discardChanges(paths: [String]) async throws {
         guard !paths.isEmpty else { return }
         // Untracked files have nothing to restore; they are deleted instead.
         let untrackedOutput = try await shell.run(["ls-files", "--others", "--exclude-standard", "-z", "--"] + paths).stdout
@@ -67,13 +67,13 @@ extension GitRepository {
         }
     }
 
-    func discardHunk(_ hunk: HunkData, in file: String) async throws {
+    public func discardHunk(_ hunk: HunkData, in file: String) async throws {
         // Apply a reverse patch to the working tree (no --cached).
         let patch = DiffParser.buildReversePatch(from: hunk, filePath: file)
         try await applyPatch(patch, cached: false, reverse: false)
     }
 
-    func discardLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
+    public func discardLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
         // Apply a reverse patch for the selected lines to the working tree.
         let patch = DiffParser.buildPatch(from: lines, in: hunk, filePath: file)
         try await applyPatch(patch, cached: false, reverse: true)
@@ -81,7 +81,7 @@ extension GitRepository {
 
     // MARK: - Diff
 
-    func diff(for entry: StatusEntry, staged: Bool, ignoreWhitespace: Bool = false) async throws -> DiffResult {
+    public func diff(for entry: StatusEntry, staged: Bool, ignoreWhitespace: Bool = false) async throws -> DiffResult {
         var args: [String]
         if staged {
             // diff HEAD → index (what would be committed)
@@ -111,11 +111,11 @@ extension GitRepository {
         )
     }
 
-    func diffForCommit(_ sha: String) async throws -> [FileDiff] {
+    public func diffForCommit(_ sha: String) async throws -> [FileDiff] {
         try await diffForCommit(sha, paths: [])
     }
 
-    func diffForCommit(_ sha: String, path: String) async throws -> [FileDiff] {
+    public func diffForCommit(_ sha: String, path: String) async throws -> [FileDiff] {
         try await diffForCommit(sha, paths: [path])
     }
 
@@ -140,7 +140,7 @@ extension GitRepository {
         }
     }
 
-    func filesInCommit(_ sha: String) async throws -> [String] {
+    public func filesInCommit(_ sha: String) async throws -> [String] {
         let result = try await shell.run(["ls-tree", "-r", "--name-only", "--full-tree", sha])
         return result.stdout.split(separator: "\n").map(String.init)
     }

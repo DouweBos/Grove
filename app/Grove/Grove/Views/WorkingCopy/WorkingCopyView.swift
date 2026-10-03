@@ -5,6 +5,7 @@
 // as two cards with a draggable gap between them.
 
 import AppKit
+import GroveKit
 import SwiftUI
 
 struct WorkingCopyView: View {

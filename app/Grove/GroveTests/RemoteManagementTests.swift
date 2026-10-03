@@ -4,6 +4,7 @@
 // Adding and removing remotes from the sidebar and repository settings, against a scratch repository and bare server.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

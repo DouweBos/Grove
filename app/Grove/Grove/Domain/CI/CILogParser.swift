@@ -4,6 +4,7 @@
 // A job's plain-text log into steps, groups and marked lines.
 
 import Foundation
+import GroveKit
 
 nonisolated struct CILogLine: Identifiable, Hashable, Sendable {
     enum Kind: Sendable { case plain, group, error, warning, notice, command, debug }

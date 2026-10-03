@@ -6,9 +6,9 @@
 
 import Foundation
 
-nonisolated enum GitErrorMessage {
+public nonisolated enum GitErrorMessage {
 
-    static func message(command: String, stderr: String) -> String {
+    public static func message(command: String, stderr: String) -> String {
         if let known = known(stderr) { return known }
         let cleaned = clean(stderr)
         return cleaned.isEmpty ? "git \(command) failed." : cleaned

@@ -1,6 +1,7 @@
 // Views/History/InteractiveRebaseSheet.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Plans an interactive rebase: an action per commit above `base`, reordered by drag.

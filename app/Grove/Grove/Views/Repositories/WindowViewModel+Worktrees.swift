@@ -4,6 +4,7 @@
 // Nests git worktrees under their main repository in the browser.
 
 import Foundation
+import GroveKit
 
 extension WindowViewModel {
 

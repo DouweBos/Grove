@@ -4,6 +4,7 @@
 // History date headers: in topological order a day can recur, and each run still needs its own group.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

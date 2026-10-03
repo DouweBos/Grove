@@ -10,21 +10,21 @@ extension GitRepository {
 
     // MARK: - Branches
 
-    func localBranches() async throws -> [BranchInfo] {
+    public func localBranches() async throws -> [BranchInfo] {
         try await fetchBranches(refPattern: "refs/heads/")
     }
 
-    func remoteBranches() async throws -> [BranchInfo] {
+    public func remoteBranches() async throws -> [BranchInfo] {
         try await fetchBranches(refPattern: "refs/remotes/")
     }
 
     @discardableResult
-    func createBranch(name: String, from: String?, checkout: Bool) async throws -> BranchInfo {
+    public func createBranch(name: String, from: String?, checkout: Bool) async throws -> BranchInfo {
         try await createBranch(name: name, from: from, checkout: checkout, track: false, parent: nil)
     }
 
     @discardableResult
-    func createBranch(name: String, from: String?, checkout: Bool, track: Bool, parent: String?) async throws -> BranchInfo {
+    public func createBranch(name: String, from: String?, checkout: Bool, track: Bool, parent: String?) async throws -> BranchInfo {
         var args = checkout ? ["checkout", "-b", name] : ["branch", name]
         if track { args.append("--track") }
         if let from { args.append(from) }
@@ -45,7 +45,7 @@ extension GitRepository {
     }
 
     /// Parent recorded for each branch created with one, from a single config read.
-    func branchParents() async throws -> [String: String] {
+    public func branchParents() async throws -> [String: String] {
         let result = try await shell.runAllowingFailure(["config", "--local", "--get-regexp", #"^branch\..*\.grove-parent$"#])
         // Exit 1 just means no branch has a parent yet.
         guard result.isSuccess else { return [:] }
@@ -66,27 +66,27 @@ extension GitRepository {
         return parents
     }
 
-    func checkout(branch: String) async throws {
+    public func checkout(branch: String) async throws {
         try await shell.run(["checkout", branch])
         currentBranch   = try? await Self.loadCurrentBranch(shell: shell)
         repositoryState = await Self.loadRepositoryState(path: path, runner: shell.runner)
     }
 
-    func deleteBranch(name: String, force: Bool) async throws {
+    public func deleteBranch(name: String, force: Bool) async throws {
         let flag = force ? "-D" : "-d"
         try await shell.run(["branch", flag, name])
     }
 
-    func deleteRemoteBranch(name: String, remote: String) async throws {
+    public func deleteRemoteBranch(name: String, remote: String) async throws {
         try await shell.run(["push", remote, "--delete", name])
     }
 
-    func renameBranch(oldName: String, newName: String) async throws {
+    public func renameBranch(oldName: String, newName: String) async throws {
         try await shell.run(["branch", "-m", oldName, newName])
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
     }
 
-    func setUpstream(of branch: String, to remoteBranch: String?) async throws {
+    public func setUpstream(of branch: String, to remoteBranch: String?) async throws {
         if let remoteBranch {
             try await shell.run(["branch", "--set-upstream-to=\(remoteBranch)", branch])
         } else {
@@ -97,12 +97,12 @@ extension GitRepository {
 
     // MARK: - Remotes
 
-    func remotes() async throws -> [RemoteInfo] {
+    public func remotes() async throws -> [RemoteInfo] {
         let result = try await shell.run(["remote", "-v"])
         return parseRemoteVerbose(result.stdout)
     }
 
-    func fetch(remote: String?, progress: (@Sendable (Double) -> Void)?) async throws {
+    public func fetch(remote: String?, progress: (@Sendable (Double) -> Void)?) async throws {
         Logger.gitRepository.info(
             "Fetching \(remote ?? "all remotes", privacy: .public) in \(self.displayName, privacy: .public)"
         )
@@ -114,16 +114,16 @@ extension GitRepository {
         Logger.gitRepository.info("Fetch complete in \(self.displayName, privacy: .public)")
     }
 
-    func pull(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
+    public func pull(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
         try await pull(remote: remote, branch: nil, strategy: strategy, options: PullOptions(), progress: progress)
     }
 
-    func defaultPullStrategy() async -> PullStrategy {
+    public func defaultPullStrategy() async -> PullStrategy {
         if let rebase = await configValue("pull.rebase")?.lowercased(), rebase != "false" { return .rebase }
         return await configValue("pull.ff")?.lowercased() == "only" ? .fastForwardOnly : .merge
     }
 
-    func pull(remote: String?, branch: String?, strategy: PullStrategy, options: PullOptions,
+    public func pull(remote: String?, branch: String?, strategy: PullStrategy, options: PullOptions,
               progress: (@Sendable (Double) -> Void)?) async throws {
         Logger.gitRepository.info(
             "Pulling (\(strategy.rawValue, privacy: .public)) from \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
@@ -154,7 +154,7 @@ extension GitRepository {
         }
     }
 
-    func push(remote: String?, forceWithLease: Bool, setUpstream: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
+    public func push(remote: String?, forceWithLease: Bool, setUpstream: Bool, progress: (@Sendable (Double) -> Void)?) async throws {
         let flags = (forceWithLease ? " --force-with-lease" : "") + (setUpstream ? " -u" : "")
         Logger.gitRepository.info(
             "Pushing\(flags, privacy: .public) to \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
@@ -176,7 +176,7 @@ extension GitRepository {
         Logger.gitRepository.info("Push complete in \(self.displayName, privacy: .public)")
     }
 
-    func push(remote: String, branch: String, forceWithLease: Bool, setUpstream: Bool, options: PushOptions,
+    public func push(remote: String, branch: String, forceWithLease: Bool, setUpstream: Bool, options: PushOptions,
               progress: (@Sendable (Double) -> Void)?) async throws {
         Logger.gitRepository.info(
             "Pushing to \(remote, privacy: .public)/\(branch, privacy: .public) in \(self.displayName, privacy: .public)"
@@ -193,20 +193,20 @@ extension GitRepository {
         Logger.gitRepository.info("Push complete in \(self.displayName, privacy: .public)")
     }
 
-    func publishBranch(_ name: String, to remote: String, as target: String) async throws {
+    public func publishBranch(_ name: String, to remote: String, as target: String) async throws {
         Logger.gitRepository.info("Publishing \(name, privacy: .public) to \(remote, privacy: .public) in \(self.displayName, privacy: .public)")
         try await shell.run(["push", "-u", remote, "refs/heads/\(name):refs/heads/\(target)"])
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
     }
 
-    func defaultBranch(of remote: String) async -> String? {
+    public func defaultBranch(of remote: String) async -> String? {
         guard let result = try? await shell.runAllowingFailure(["symbolic-ref", "--quiet", "--short", "refs/remotes/\(remote)/HEAD"]),
               result.isSuccess else { return nil }
         let short = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         return short.hasPrefix(remote + "/") ? String(short.dropFirst(remote.count + 1)) : nil
     }
 
-    func sync(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
+    public func sync(remote: String?, strategy: PullStrategy, progress: (@Sendable (Double) -> Void)?) async throws {
         Logger.gitRepository.info(
             "Syncing with \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
         )
@@ -229,7 +229,7 @@ extension GitRepository {
 
     // MARK: - Tags
 
-    func tags() async throws -> [TagInfo] {
+    public func tags() async throws -> [TagInfo] {
         let result = try await shell.run([
             "for-each-ref",
             "--sort=-creatordate",
@@ -240,7 +240,7 @@ extension GitRepository {
     }
 
     @discardableResult
-    func createTag(name: String, at sha: String?, message: String?, sign: Bool = false) async throws -> TagInfo {
+    public func createTag(name: String, at sha: String?, message: String?, sign: Bool = false) async throws -> TagInfo {
         var args: [String]
         if sign {
             // -s implies an annotated tag and uses the configured signing key.
@@ -261,11 +261,11 @@ extension GitRepository {
         return tag
     }
 
-    func deleteTag(name: String) async throws {
+    public func deleteTag(name: String) async throws {
         try await shell.run(["tag", "-d", name])
     }
 
-    func pushTag(name: String, remote: String?) async throws {
+    public func pushTag(name: String, remote: String?) async throws {
         let remoteName = remote ?? "origin"
         Logger.gitRepository.info(
             "Pushing tag '\(name, privacy: .public)' to \(remoteName, privacy: .public) in \(self.displayName, privacy: .public)"
@@ -274,7 +274,7 @@ extension GitRepository {
         Logger.gitRepository.info("Tag push complete in \(self.displayName, privacy: .public)")
     }
 
-    func pushAllTags(remote: String?) async throws {
+    public func pushAllTags(remote: String?) async throws {
         let remoteName = remote ?? "origin"
         Logger.gitRepository.info(
             "Pushing all tags to \(remoteName, privacy: .public) in \(self.displayName, privacy: .public)"

@@ -8,12 +8,12 @@ import Foundation
 // MARK: - ReflogEntry
 
 /// One entry from `git reflog`.
-struct ReflogEntry: Identifiable, Hashable, Sendable {
-    let id: String
-    let oldSHA: String
-    let newSHA: String
+public struct ReflogEntry: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let oldSHA: String
+    public let newSHA: String
     let committerName: String
     let committerEmail: String
-    let date: Date
-    let message: String
+    public let date: Date
+    public let message: String
 }

@@ -8,12 +8,12 @@ import Foundation
 // MARK: - StashEntry
 
 /// A single entry in the stash list.
-struct StashEntry: Identifiable, Hashable, Sendable {
+public struct StashEntry: Identifiable, Hashable, Sendable {
     /// Zero-based stash index (stash@{0} = 0).
-    let id: Int
-    let message: String
-    let sha: String
-    let date: Date
+    public let id: Int
+    public let message: String
+    public let sha: String
+    public let date: Date
     /// Branch name from which the stash was created, if available.
-    let branchName: String?
+    public let branchName: String?
 }

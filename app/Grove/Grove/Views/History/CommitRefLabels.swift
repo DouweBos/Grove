@@ -1,6 +1,7 @@
 // Views/History/CommitRefLabels.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Ref labels before a commit's subject: a local branch and its same-named remote branch

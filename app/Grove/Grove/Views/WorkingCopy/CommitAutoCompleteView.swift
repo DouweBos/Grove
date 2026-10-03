@@ -11,6 +11,7 @@
 //   /     → commit message templates
 //   :     → gitmoji codes, inserting the emoji
 
+import GroveKit
 import SwiftUI
 
 // MARK: - CommitAutoCompleteView

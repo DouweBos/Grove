@@ -4,6 +4,7 @@
 // GitHub (REST + GraphQL) and GitLab (REST) against a fake HTTP client: what's read, and every write request sent.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

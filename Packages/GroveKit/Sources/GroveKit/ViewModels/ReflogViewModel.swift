@@ -7,10 +7,10 @@ import Observation
 // MARK: - ReflogActionType
 
 /// Categorised action derived from a ``ReflogEntry`` message prefix.
-enum ReflogActionType: String, Sendable {
+public enum ReflogActionType: String, Sendable {
     case commit, commitAmend, checkout, rebase, merge, pull, push, reset, cherryPick, other
 
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .commit: "Commit"
         case .commitAmend: "Amend"
@@ -25,7 +25,7 @@ enum ReflogActionType: String, Sendable {
         }
     }
 
-    var systemImage: String {
+    public var systemImage: String {
         switch self {
         case .commit: "checkmark.circle"
         case .commitAmend: "pencil.circle"
@@ -40,7 +40,7 @@ enum ReflogActionType: String, Sendable {
         }
     }
 
-    static func from(message: String) -> ReflogActionType {
+    public static func from(message: String) -> ReflogActionType {
         let lower = message.lowercased()
         if lower.hasPrefix("commit (amend)") { return .commitAmend }
         if lower.hasPrefix("commit") { return .commit }
@@ -59,44 +59,44 @@ enum ReflogActionType: String, Sendable {
 
 @MainActor
 @Observable
-final class ReflogViewModel {
+public final class ReflogViewModel {
 
-    struct PendingReset: Identifiable {
-        let entry: ReflogEntry
-        let index: Int
-        let mode: ResetMode
-        var id: String { "\(entry.id)-\(mode)" }
+    public struct PendingReset: Identifiable {
+        public let entry: ReflogEntry
+        public let index: Int
+        public let mode: ResetMode
+        public var id: String { "\(entry.id)-\(mode)" }
     }
 
     // MARK: - State
 
-    private(set) var entries: [ReflogEntry] = []
-    private(set) var selectedEntry: ReflogEntry?
-    private(set) var selectedCommit: CommitInfo?
-    private(set) var isLoading = false
-    private(set) var isLoadingDetail = false
-    var errorMessage: String?
-    var pendingReset: PendingReset?
+    public private(set) var entries: [ReflogEntry] = []
+    public private(set) var selectedEntry: ReflogEntry?
+    public private(set) var selectedCommit: CommitInfo?
+    public private(set) var isLoading = false
+    public private(set) var isLoadingDetail = false
+    public internal(set) var errorMessage: String?
+    public var pendingReset: PendingReset?
     /// Entry the Create Branch sheet is open for.
-    var branchSource: ReflogEntry?
+    public internal(set) var branchSource: ReflogEntry?
 
     /// Maximum number of reflog entries to load.
     let maxCount = 500
 
-    var onRepositoryChanged: (() async -> Void)?
-    var undoManager: GitUndoManager?
+    public var onRepositoryChanged: (() async -> Void)?
+    public var undoManager: GitUndoManager?
 
-    let repository: any GitRepositoryProtocol
+    public let repository: any GitRepositoryProtocol
     // Keyed by SHA: commit details are immutable and verifying signatures makes each lookup slow.
     @ObservationIgnored private var commitCache = LRUCache<String, CommitInfo>(capacity: 100)
 
-    init(repository: any GitRepositoryProtocol) {
+    public init(repository: any GitRepositoryProtocol) {
         self.repository = repository
     }
 
     // MARK: - Loading
 
-    func refresh() async {
+    public func refresh() async {
         isLoading = true
         defer { isLoading = false }
         do {
@@ -116,7 +116,7 @@ final class ReflogViewModel {
         }
     }
 
-    func select(_ entry: ReflogEntry) async {
+    public func select(_ entry: ReflogEntry) async {
         guard entry.id != selectedEntry?.id else { return }
         selectedEntry = entry
         if let cached = commitCache.value(for: entry.newSHA) {
@@ -136,16 +136,16 @@ final class ReflogViewModel {
 
     // MARK: - Reset
 
-    func requestReset(to entry: ReflogEntry, mode: ResetMode) {
+    public func requestReset(to entry: ReflogEntry, mode: ResetMode) {
         pendingReset = PendingReset(entry: entry, index: index(of: entry), mode: mode)
     }
 
-    func cancelReset() {
+    public func cancelReset() {
         pendingReset = nil
     }
 
     /// Takes the dialog item because the dialog clears `pendingReset` before running its action.
-    func confirmReset(_ pending: PendingReset) async {
+    public func confirmReset(_ pending: PendingReset) async {
         pendingReset = nil
         let previousHead = entries.first?.newSHA
         do {
@@ -162,15 +162,15 @@ final class ReflogViewModel {
 
     // MARK: - Create Branch
 
-    func beginCreateBranch(from entry: ReflogEntry) {
+    public func beginCreateBranch(from entry: ReflogEntry) {
         branchSource = entry
     }
 
-    func cancelCreateBranch() {
+    public func cancelCreateBranch() {
         branchSource = nil
     }
 
-    func createBranch(named rawName: String, checkout: Bool) async {
+    public func createBranch(named rawName: String, checkout: Bool) async {
         guard let entry = branchSource else { return }
         let name = rawName.trimmingCharacters(in: .whitespaces)
         guard Self.isValidBranchName(name) else { return }
@@ -186,22 +186,22 @@ final class ReflogViewModel {
         await onRepositoryChanged?()
     }
 
-    func dismissError() {
+    public func dismissError() {
         errorMessage = nil
     }
 
     // MARK: - Derived
 
-    func index(of entry: ReflogEntry) -> Int {
+    public func index(of entry: ReflogEntry) -> Int {
         entries.firstIndex(where: { $0.id == entry.id }) ?? 0
     }
 
-    func actionType(for entry: ReflogEntry) -> ReflogActionType {
+    public func actionType(for entry: ReflogEntry) -> ReflogActionType {
         ReflogActionType.from(message: entry.message)
     }
 
     /// Mirrors the common `git check-ref-format` rules closely enough for inline validation.
-    static func isValidBranchName(_ name: String) -> Bool {
+    public static func isValidBranchName(_ name: String) -> Bool {
         guard !name.isEmpty, !name.hasPrefix("-"), !name.hasPrefix("/"), !name.hasSuffix("/"),
               !name.hasSuffix("."), !name.hasSuffix(".lock"), !name.contains(".."), !name.contains("@{"),
               !name.contains("//") else { return false }

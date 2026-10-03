@@ -3,6 +3,7 @@
 //
 // The "can't reach the host" state shared by every tab that reads from the hosting service.
 
+import GroveKit
 import SwiftUI
 
 /// Why a host-backed list couldn't load, so the view can offer the right fix.

@@ -4,6 +4,7 @@
 // A run's jobs: read on selection, cached once the run is finished, re-read while it's still going.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

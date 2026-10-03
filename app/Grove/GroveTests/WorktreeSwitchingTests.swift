@@ -4,6 +4,7 @@
 // A repository window runs git in one worktree at a time; double-clicking another worktree opens it in a new tab.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

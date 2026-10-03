@@ -8,13 +8,13 @@ import os
 
 extension GitRepository {
 
-    func stackGraph(tips: [String], excluding: [String]) async throws -> StackGraph {
+    public func stackGraph(tips: [String], excluding: [String]) async throws -> StackGraph {
         guard !tips.isEmpty else { return StackGraph() }
         let args = ["rev-list", "--parents", "--topo-order"] + tips + ["--not"] + excluding + ["--"]
         return StackGraph.parse(try await shell.run(args).stdout)
     }
 
-    func patchIDs(for commits: [String]) async throws -> [String: String] {
+    public func patchIDs(for commits: [String]) async throws -> [String: String] {
         guard !commits.isEmpty else { return [:] }
         let diffs = try await shell.runWithInput(["diff-tree", "--stdin", "-p", "--no-color", "--pretty=format:commit %H"],
                                                  input: commits.joined(separator: "\n") + "\n")
@@ -33,7 +33,7 @@ extension GitRepository {
     }
 
     /// Reads `logs/refs/heads/<branch>` directly: one file per branch beats one `git reflog` per branch.
-    func formerTips(of branches: [String]) async -> [String: Set<String>] {
+    public func formerTips(of branches: [String]) async -> [String: Set<String>] {
         guard let common = try? await shell.run(["rev-parse", "--path-format=absolute", "--git-common-dir"]) else { return [:] }
         let logs = URL(fileURLWithPath: common.stdout.trimmingCharacters(in: .whitespacesAndNewlines))
             .appendingPathComponent("logs/refs/heads")
@@ -60,20 +60,20 @@ extension GitRepository {
         return tips
     }
 
-    func commitCount(from base: String, to revision: String) async -> Int {
+    public func commitCount(from base: String, to revision: String) async -> Int {
         guard let result = try? await shell.runAllowingFailure(["rev-list", "--count", "\(base)..\(revision)", "--"]),
               result.isSuccess else { return 0 }
         return Int(result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
     }
 
-    func forkPoint(parent: String, branch: String) async -> String? {
+    public func forkPoint(parent: String, branch: String) async -> String? {
         guard let result = try? await shell.runAllowingFailure(["merge-base", "--fork-point", parent, branch]),
               result.isSuccess else { return nil }
         let sha = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         return sha.isEmpty ? nil : sha
     }
 
-    func diffStats(from base: String, to revision: String) async throws -> DiffStats {
+    public func diffStats(from base: String, to revision: String) async throws -> DiffStats {
         Self.parseShortStat(try await shell.run(["diff", "--shortstat", base, revision, "--"]).stdout)
     }
 

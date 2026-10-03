@@ -4,18 +4,18 @@
 import Foundation
 
 /// How CI went for a branch's newest commit, as far as branch rows need to know.
-nonisolated struct BranchCIStatus: Hashable, Sendable {
-    let branch: String
+public nonisolated struct BranchCIStatus: Hashable, Sendable {
+    public let branch: String
     /// The worst status among the commit's runs: one failed workflow makes the branch failing.
-    let status: CIRunStatus
+    public let status: CIRunStatus
     let headSHA: String
     /// Names of the workflows that ran, the ones in `status` first.
-    let workflows: [String]
+    public let workflows: [String]
     /// The run that decided `status`, to open in the browser.
     let url: String
 
     /// The newest commit's runs per branch; `runs` are newest first, as hosts list them.
-    static func index(_ runs: [CIRun]) -> [String: BranchCIStatus] {
+    public static func index(_ runs: [CIRun]) -> [String: BranchCIStatus] {
         var newestSHA: [String: String] = [:]
         var grouped: [String: [CIRun]] = [:]
         for run in runs {
@@ -52,7 +52,7 @@ nonisolated struct BranchCIStatus: Hashable, Sendable {
         !headSHA.isEmpty && sha == headSHA
     }
 
-    var tooltip: String {
+    public var tooltip: String {
         let names = workflows.isEmpty ? "" : ": " + workflows.joined(separator: ", ")
         switch status {
         case .success: return "CI passed\(names)"

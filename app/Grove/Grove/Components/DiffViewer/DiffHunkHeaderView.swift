@@ -5,19 +5,10 @@
 // Gray background, "Discard Chunk / Stage Chunk"
 // or "Discard Lines / Stage Lines" buttons aligned to the trailing edge.
 
+import GroveKit
 import SwiftUI
 
 // MARK: - HunkAction
-
-/// The set of operations the user can invoke from a hunk header.
-enum HunkAction {
-    case stageHunk
-    case unstageHunk
-    case discardHunk
-    case stageLines
-    case unstageLines
-    case discardLines
-}
 
 // MARK: - DiffHunkHeaderView
 

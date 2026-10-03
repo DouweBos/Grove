@@ -1,6 +1,7 @@
 // Views/History/BranchComparisonView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Both sides of `base...compare`: commits only in each branch, plus the files `compare` changed, with Merge / Rebase actions.

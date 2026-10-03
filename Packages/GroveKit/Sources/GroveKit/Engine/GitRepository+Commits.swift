@@ -11,12 +11,12 @@ extension GitRepository {
     // MARK: - Commits
 
     @discardableResult
-    func commit(message: String, body: String?, amend: Bool, sign: Bool = false) async throws -> CommitInfo {
+    public func commit(message: String, body: String?, amend: Bool, sign: Bool = false) async throws -> CommitInfo {
         try await commit(message: message, body: body, amend: amend, sign: sign, signOff: false)
     }
 
     @discardableResult
-    func commit(message: String, body: String?, amend: Bool, sign: Bool, signOff: Bool) async throws -> CommitInfo {
+    public func commit(message: String, body: String?, amend: Bool, sign: Bool, signOff: Bool) async throws -> CommitInfo {
         guard !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             Logger.gitRepository.error("Commit attempted with empty message in \(self.displayName, privacy: .public)")
             throw GitRepositoryError.invalidCommitMessage
@@ -53,7 +53,7 @@ extension GitRepository {
         return commit
     }
 
-    func isSigningConfigured() async throws -> Bool {
+    public func isSigningConfigured() async throws -> Bool {
         // Check if commit.gpgsign is explicitly set to "true".
         let gpgsignResult = try await shell.runAllowingFailure(["config", "--get", "commit.gpgsign"])
         if gpgsignResult.isSuccess {
@@ -71,28 +71,28 @@ extension GitRepository {
         return false
     }
 
-    func log(maxCount: Int, skip: Int, branch: String?) async throws -> [CommitInfo] {
+    public func log(maxCount: Int, skip: Int, branch: String?) async throws -> [CommitInfo] {
         try await log(maxCount: maxCount, skip: skip, revisions: branch.map { [$0] } ?? [])
     }
 
-    func log(maxCount: Int, skip: Int, revisions: [String]) async throws -> [CommitInfo] {
+    public func log(maxCount: Int, skip: Int, revisions: [String]) async throws -> [CommitInfo] {
         let args = ["log", "--format=\(LogParser.formatString)", "--author-date-order", "-\(maxCount)", "--skip=\(skip)"]
             + revisions + ["--"]
         let result = try await shell.run(args)
         return LogParser.parse(result.stdout)
     }
 
-    func commits(in revision: String, notIn base: String) async throws -> Set<String> {
+    public func commits(in revision: String, notIn base: String) async throws -> Set<String> {
         let result = try await shell.run(["rev-list", "\(base)..\(revision)", "--"])
         return Set(result.stdout.split(separator: "\n").map(String.init))
     }
 
-    func isAncestor(_ commit: String, of descendant: String) async -> Bool {
+    public func isAncestor(_ commit: String, of descendant: String) async -> Bool {
         let result = try? await shell.runAllowingFailure(["merge-base", "--is-ancestor", commit, descendant])
         return result?.isSuccess ?? false
     }
 
-    func fileLog(path: String, maxCount: Int) async throws -> [CommitInfo] {
+    public func fileLog(path: String, maxCount: Int) async throws -> [CommitInfo] {
         let args = [
             "log",
             "--format=\(LogParser.formatString)",
@@ -105,7 +105,7 @@ extension GitRepository {
         return LogParser.parse(result.stdout)
     }
 
-    func commitDetail(_ sha: String) async throws -> CommitInfo {
+    public func commitDetail(_ sha: String) async throws -> CommitInfo {
         let result = try await shell.run(
             ["log", "--format=\(LogParser.verifiedFormatString)", "-1", sha]
         )
@@ -118,7 +118,7 @@ extension GitRepository {
 
     // MARK: - Reset
 
-    func resetToCommit(_ commit: String, mode: ResetMode) async throws {
+    public func resetToCommit(_ commit: String, mode: ResetMode) async throws {
         Logger.gitRepository.info(
             "Resetting (\(mode.rawValue, privacy: .public)) to \(commit, privacy: .public) in \(self.displayName, privacy: .public)"
         )
@@ -129,7 +129,7 @@ extension GitRepository {
 
     // MARK: - Clean
 
-    func cleanUntracked(directories: Bool, force: Bool) async throws {
+    public func cleanUntracked(directories: Bool, force: Bool) async throws {
         Logger.gitRepository.info(
             "Cleaning untracked\(directories ? " (+ dirs)" : "", privacy: .public) in \(self.displayName, privacy: .public)"
         )

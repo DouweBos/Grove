@@ -5,22 +5,22 @@
 
 import Foundation
 
-struct Gitmoji: Decodable, Hashable, Identifiable, Sendable {
-    let emoji: String
+public struct Gitmoji: Decodable, Hashable, Identifiable, Sendable {
+    public let emoji: String
     /// `:sparkles:`, what the `:` autocomplete matches.
-    let code: String
-    let description: String
+    public let code: String
+    public let description: String
 
-    var id: String { code }
+    public var id: String { code }
 
-    static let all: [Gitmoji] = {
+    public static let all: [Gitmoji] = {
         guard let url = Bundle.module.url(forResource: "Gitmojis", withExtension: "json"),
               let data = try? Data(contentsOf: url) else { return [] }
         return (try? JSONDecoder().decode([Gitmoji].self, from: data)) ?? []
     }()
 
     /// Code matches first, then description matches; `query` is what follows the `:`.
-    static func search(_ query: String, in list: [Gitmoji] = all) -> [Gitmoji] {
+    public static func search(_ query: String, in list: [Gitmoji] = all) -> [Gitmoji] {
         let query = query.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: ":"))
         guard !query.isEmpty else { return list }
         let byCode = list.filter { $0.code.contains(query) }

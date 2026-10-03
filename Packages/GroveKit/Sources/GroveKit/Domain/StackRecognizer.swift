@@ -7,7 +7,7 @@
 import Foundation
 
 /// Commits reachable from the candidate tips but not from trunk, from one `git rev-list --parents --topo-order`.
-nonisolated struct StackGraph: Hashable, Sendable {
+public nonisolated struct StackGraph: Hashable, Sendable {
     /// Children before parents.
     var order: [String] = []
     /// Parent SHAs of each commit in `order`; parents on trunk are listed but not in `order`.
@@ -30,7 +30,7 @@ nonisolated struct StackGraph: Hashable, Sendable {
 nonisolated struct StackRecognizerInput: Sendable {
     var trunk: String
     /// Local branches other than trunk; those with no commits off trunk are ignored.
-    var branches: [BranchInfo]
+    public var branches: [BranchInfo]
     var graph: StackGraph
     /// SHAs each branch pointed at before its current tip, from its reflog; creation entries are left out.
     var formerTips: [String: Set<String>] = [:]
@@ -46,7 +46,7 @@ nonisolated struct StackRecognizerInput: Sendable {
 }
 
 nonisolated struct StackRecognition: Hashable, Sendable {
-    var stacks: [BranchStack] = []
+    public var stacks: [BranchStack] = []
     var duplicates: [DuplicateBranch] = []
     /// The trunk commit each stack's root grew from, keyed by stack id, for counting what trunk gained since.
     var trunkBases: [String: String] = [:]

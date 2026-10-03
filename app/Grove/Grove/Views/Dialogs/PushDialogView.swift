@@ -1,6 +1,7 @@
 // Views/Dialogs/PushDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Pushes the checked-out branch to a branch on a remote, its upstream by default.

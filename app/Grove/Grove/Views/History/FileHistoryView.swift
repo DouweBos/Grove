@@ -2,6 +2,7 @@
 // Grove
 
 import AppKit
+import GroveKit
 import SwiftUI
 
 /// Commits that touched one file (left card) and the file's diff at the selected commit (right card).

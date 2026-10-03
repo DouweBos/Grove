@@ -4,6 +4,7 @@
 // Info-panel snapshots, kept per repository so reselecting one shows its last state while it refreshes.
 
 import Foundation
+import GroveKit
 
 extension WindowViewModel {
 

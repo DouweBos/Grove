@@ -3,6 +3,7 @@
 
 import AppKit
 import Foundation
+import GroveKit
 import Observation
 
 enum QuickActionsTab: String, CaseIterable, Identifiable {

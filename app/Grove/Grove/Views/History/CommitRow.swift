@@ -1,6 +1,7 @@
 // Views/History/CommitRow.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// One commit in the history list: graph lanes, avatar, refs + subject, and a mono meta line.
@@ -68,14 +69,6 @@ struct CommitRow: View {
         }
         .contentShape(Rectangle())
     }
-}
-
-/// Where a commit stands against the branch's upstream.
-enum CommitSyncState {
-    case incoming, outgoing
-
-    var symbol: String { self == .incoming ? "arrow.down.left" : "arrow.up.right" }
-    var label: String { self == .incoming ? "Not pulled yet" : "Not pushed yet" }
 }
 
 #Preview {

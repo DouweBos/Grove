@@ -7,21 +7,21 @@ import Foundation
 
 extension WorkingCopyViewModel {
 
-    func stageFile(_ entry: StatusEntry) async {
+    public func stageFile(_ entry: StatusEntry) async {
         await mutate {
             try await self.repository.stage(paths: [entry.path])
             self.undoManager?.record(GitUndoManager.stageAction(paths: [entry.path], repository: self.repository))
         }
     }
 
-    func unstageFile(_ entry: StatusEntry) async {
+    public func unstageFile(_ entry: StatusEntry) async {
         await mutate {
             try await self.repository.unstage(paths: [entry.path])
             self.undoManager?.record(GitUndoManager.unstageAction(paths: [entry.path], repository: self.repository))
         }
     }
 
-    func stageAll() async {
+    public func stageAll() async {
         let paths = unstagedFiles.map(\.path)
         await mutate {
             try await self.repository.stageAll()
@@ -29,7 +29,7 @@ extension WorkingCopyViewModel {
         }
     }
 
-    func unstageAll() async {
+    public func unstageAll() async {
         let paths = stagedFiles.map(\.path)
         await mutate {
             try await self.repository.unstageAll()
@@ -38,13 +38,13 @@ extension WorkingCopyViewModel {
     }
 
     /// Space: selected changes are staged and selected staged files unstaged.
-    func toggleStageOfSelection() async {
+    public func toggleStageOfSelection() async {
         let conflicted = Set(conflictedFiles.map(\.path))
         await toggleStage(fileSelection.rows.filter { !conflicted.contains($0.path) })
     }
 
     /// Stages the unstaged rows and unstages the staged ones, as one undo step.
-    func toggleStage(_ rows: Set<FileRow>) async {
+    public func toggleStage(_ rows: Set<FileRow>) async {
         let toStage = rows.filter { $0.side == .unstaged }.map(\.path).sorted()
         let toUnstage = rows.filter { $0.side == .staged }.map(\.path).sorted()
         guard !toStage.isEmpty || !toUnstage.isEmpty else { return }
@@ -76,7 +76,7 @@ extension WorkingCopyViewModel {
     }
 
     /// Entries grouped by directory in tree mode; flat mode keeps git's order.
-    func directoryGroups(_ entries: [StatusEntry]) -> [(directory: String, entries: [StatusEntry])] {
+    public func directoryGroups(_ entries: [StatusEntry]) -> [(directory: String, entries: [StatusEntry])] {
         Dictionary(grouping: entries, by: \.directory)
             .sorted { $0.key < $1.key }
             .map { (directory: $0.key, entries: $0.value) }

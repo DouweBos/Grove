@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		D9F0A0032F90000000C0FFEE /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = D9F0A0022F90000000C0FFEE /* Sparkle */; };
+		D9F0A0062F90000000C0FFEE /* GroveKit in Frameworks */ = {isa = PBXBuildFile; productRef = D9F0A0052F90000000C0FFEE /* GroveKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +58,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D9F0A0032F90000000C0FFEE /* Sparkle in Frameworks */,
+				D9F0A0062F90000000C0FFEE /* GroveKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -118,6 +120,7 @@
 			name = Grove;
 			packageProductDependencies = (
 				D9F0A0022F90000000C0FFEE /* Sparkle */,
+				D9F0A0052F90000000C0FFEE /* GroveKit */,
 			);
 			productName = Grove;
 			productReference = D9AC148D2F6D84D200DE8FDD /* Grove.app */;
@@ -203,6 +206,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				D9F0A0012F90000000C0FFEE /* XCRemoteSwiftPackageReference "Sparkle" */,
+				D9F0A0042F90000000C0FFEE /* XCLocalSwiftPackageReference "../../Packages/GroveKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D9AC148E2F6D84D200DE8FDD /* Products */;
@@ -585,6 +589,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		D9F0A0042F90000000C0FFEE /* XCLocalSwiftPackageReference "../../Packages/GroveKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/GroveKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		D9F0A0012F90000000C0FFEE /* XCRemoteSwiftPackageReference "Sparkle" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -597,6 +608,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		D9F0A0052F90000000C0FFEE /* GroveKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GroveKit;
+		};
 		D9F0A0022F90000000C0FFEE /* Sparkle */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D9F0A0012F90000000C0FFEE /* XCRemoteSwiftPackageReference "Sparkle" */;

@@ -4,6 +4,7 @@
 // Colored badge displaying a single-character file status code (M / A / D / ? / U / R / C).
 // Shown as a staged/unstaged pair in the Working Copy file list.
 
+import GroveKit
 import SwiftUI
 
 // MARK: - StatusIcon

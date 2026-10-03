@@ -1,6 +1,7 @@
 // Views/CI/CILogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// The selected job's steps, each opening to its log lines.

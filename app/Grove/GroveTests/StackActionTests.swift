@@ -4,6 +4,7 @@
 // Pushing, moving and folding stack layers against scratch repositories and a bare remote under /tmp.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 
@@ -34,66 +35,6 @@ struct StackActionTests {
         let vm = StackViewModel(repository: repository, refs: refs)
         vm.onRepositoryChanged = { await refs.refresh() }
         return vm
-    }
-
-    @Test func pushStackForcesOnlyChangedLayersWithALease() async throws {
-        let (repo, remote) = try pushedStack()
-        try repo.git(["checkout", "-q", "a"])
-        try repo.git(["commit", "-q", "--amend", "-m", "a1 amended"])
-        try repo.git(["checkout", "-q", "main"])
-        let vm = try await viewModel(repo)
-        await vm.restackDrifted()
-        #expect(vm.errorMessage == nil)
-        let stack = try #require(vm.stack)
-        #expect(Set(vm.changedLayers(stack).map(\.branch)) == ["a", "b", "c"])
-
-        await vm.pushStack()
-        #expect(vm.errorMessage == nil)
-        for branch in ["a", "b", "c"] {
-            #expect(try repo.git(["rev-parse", branch]) == repo.git(["rev-parse", "refs/heads/\(branch)"], in: remote))
-        }
-    }
-
-    @Test func pushStackChangesNothingWhenOneLeaseFails() async throws {
-        let (repo, remote) = try pushedStack()
-        // Someone else moves c on the remote.
-        let other = repo.root.appendingPathExtension("other")
-        try repo.git(["clone", "-q", "-b", "c", remote.path, other.path])
-        try repo.commit("x.txt", "x\n", "theirs", in: other)
-        try repo.git(["push", "-q", "origin", "c"], in: other)
-        let remoteA = try repo.git(["rev-parse", "refs/heads/a"], in: remote)
-
-        try repo.git(["checkout", "-q", "a"])
-        try repo.git(["commit", "-q", "--amend", "-m", "a1 amended"])
-        try repo.git(["checkout", "-q", "main"])
-        let vm = try await viewModel(repo)
-        await vm.restackDrifted()
-        await vm.pushStack()
-        #expect(vm.errorMessage != nil)
-        #expect(try repo.git(["rev-parse", "refs/heads/a"], in: remote) == remoteA)
-    }
-
-    @Test func foldMovesTheParentOverTheLayerAndDropsIt() async throws {
-        let (repo, _) = try pushedStack()
-        let vm = try await viewModel(repo)
-        let c = try #require(vm.stack?.layer("c"))
-        #expect(vm.canFold(c))
-        await vm.fold(c)
-        #expect(vm.errorMessage == nil)
-        #expect(try repo.sha("b") == repo.sha("origin/c"))
-        #expect(throws: (any Error).self) { try repo.git(["rev-parse", "--verify", "refs/heads/c"]) }
-    }
-
-    @Test func moveRebasesALayerAndItsChildrenOntoAnotherBranch() async throws {
-        let (repo, _) = try pushedStack()
-        let vm = try await viewModel(repo)
-        let b = try #require(vm.stack?.layer("b"))
-        #expect(vm.moveTargets(for: b).contains("main"))
-        await vm.move(b, onto: "main")
-        #expect(vm.errorMessage == nil)
-        #expect(try repo.git(["rev-list", "--count", "main..b"]).trimmingCharacters(in: .whitespacesAndNewlines) == "1")
-        #expect((try? repo.git(["merge-base", "--is-ancestor", "b", "c"])) != nil)
-        #expect((try? repo.git(["merge-base", "--is-ancestor", "a", "b"])) == nil)
     }
 
     @Test func newPullRequestIsBasedOnTheRecognizedParent() async throws {

@@ -3,6 +3,7 @@
 //
 // Floating command palette (Cmd+Shift+A): commands, views, refs, commits and files.
 
+import GroveKit
 import SwiftUI
 
 struct QuickActionsPanel: View {

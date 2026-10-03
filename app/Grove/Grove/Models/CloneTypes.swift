@@ -4,6 +4,7 @@
 // Clone operation progress types.
 
 import Foundation
+import GroveKit
 
 // MARK: - CloneProgress
 

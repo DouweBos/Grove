@@ -3,6 +3,7 @@
 //
 // Named identities (name, email, signing key) to pick per repository.
 
+import GroveKit
 import SwiftUI
 
 struct ProfilesPreferencesTab: View {

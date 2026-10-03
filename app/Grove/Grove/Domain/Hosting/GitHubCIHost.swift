@@ -4,6 +4,7 @@
 // GitHub Actions over REST: `{api}/repos/{owner}/{name}/actions/…`.
 
 import Foundation
+import GroveKit
 
 nonisolated struct GitHubCIHost: CIHost, GitHubRepositoryAPI {
     let location: RemoteLocation

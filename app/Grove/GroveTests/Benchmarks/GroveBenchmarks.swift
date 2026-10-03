@@ -4,6 +4,7 @@
 // Times real Grove load paths against generated fixtures. Opt-in: run tools/fixtures/bench.sh (GROVE_BENCH=1).
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

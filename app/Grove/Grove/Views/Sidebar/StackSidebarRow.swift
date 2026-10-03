@@ -1,6 +1,7 @@
 // Views/Sidebar/StackSidebarRow.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// One layer of a stack: its name indented by depth, PR label, health glyphs and ahead/behind.

@@ -4,20 +4,32 @@
 import Foundation
 
 /// A branch's open or merged pull request, as far as branch rows and stacks need to know.
-nonisolated struct BranchPullRequest: Hashable, Sendable {
-    let number: Int
+public nonisolated struct BranchPullRequest: Hashable, Sendable {
+    public let number: Int
     let title: String
     let headBranch: String
-    let isDraft: Bool
-    let url: String
-    var baseBranch: String = ""
-    var isMerged = false
+    public let isDraft: Bool
+    public let url: String
+    public var baseBranch: String = ""
+    public var isMerged = false
     /// Head commit the host knows, at merge time for a merged one; Bitbucket reports it abbreviated.
-    var headSHA: String?
-    var checks: PRChecksStatus = .none
+    public var headSHA: String?
+    public var checks: PRChecksStatus = .none
+
+    public init(number: Int, title: String, headBranch: String, isDraft: Bool, url: String, baseBranch: String = "", isMerged: Bool = false, headSHA: String? = nil, checks: PRChecksStatus = .none) {
+        self.number = number
+        self.title = title
+        self.headBranch = headBranch
+        self.isDraft = isDraft
+        self.url = url
+        self.baseBranch = baseBranch
+        self.isMerged = isMerged
+        self.headSHA = headSHA
+        self.checks = checks
+    }
 
     /// Open pull requests keyed by head branch, then merged ones for branches without one; the newest wins.
-    static func index(_ pullRequests: [BranchPullRequest]) -> [String: BranchPullRequest] {
+    public static func index(_ pullRequests: [BranchPullRequest]) -> [String: BranchPullRequest] {
         var result: [String: BranchPullRequest] = [:]
         for pr in pullRequests where !pr.isMerged && (result[pr.headBranch]?.number ?? 0) < pr.number { result[pr.headBranch] = pr }
         for pr in pullRequests where pr.isMerged && result[pr.headBranch].map({ $0.isMerged && $0.number < pr.number }) ?? true {
@@ -34,12 +46,12 @@ nonisolated struct BranchPullRequest: Hashable, Sendable {
     }
 
     /// Shown after the branch name, like `#6549`; draft state lives in the tooltip to keep names readable.
-    var label: String { "#\(number)" }
+    public var label: String { "#\(number)" }
 
     /// Merged is marked the way the Pull Requests list marks it; open needs no symbol.
-    var detailSymbol: String? { isMerged ? "arrow.triangle.merge" : nil }
+    public var detailSymbol: String? { isMerged ? "arrow.triangle.merge" : nil }
 
-    var tooltip: String {
+    public var tooltip: String {
         let kind = isMerged ? "Merged pull request" : isDraft ? "Draft pull request" : "Pull request"
         return "\(kind) #\(number): \(title)"
     }
@@ -53,7 +65,7 @@ nonisolated struct BranchPullRequest: Hashable, Sendable {
 
 extension BranchPullRequest {
     /// From a full pull request, for hosts whose list endpoint already returns everything.
-    init(_ pr: PullRequestInfo, url: String) {
+    public init(_ pr: PullRequestInfo, url: String) {
         self.init(number: pr.id, title: pr.title, headBranch: pr.sourceBranch, isDraft: pr.isDraft, url: url,
                   baseBranch: pr.targetBranch, isMerged: pr.state == .merged, headSHA: pr.headSHA, checks: pr.checksStatus)
     }

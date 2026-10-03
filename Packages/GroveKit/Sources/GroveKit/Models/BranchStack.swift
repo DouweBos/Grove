@@ -6,7 +6,7 @@
 import Foundation
 
 /// Something about a layer that asks for an action.
-nonisolated enum LayerHealth: String, Hashable, Sendable, CaseIterable {
+public nonisolated enum LayerHealth: String, Hashable, Sendable, CaseIterable {
     /// The parent moved on (amended, rebased, restacked) without this layer.
     case needsRestack
     /// The parent's pull request merged; this layer should move onto trunk and retarget its PR.
@@ -18,7 +18,7 @@ nonisolated enum LayerHealth: String, Hashable, Sendable, CaseIterable {
     /// Pull requests loaded and none is open for this branch.
     case noPR
 
-    var symbol: String {
+    public var symbol: String {
         switch self {
         case .needsRestack: "arrow.triangle.2.circlepath"
         case .parentMerged: "arrow.merge"
@@ -28,7 +28,7 @@ nonisolated enum LayerHealth: String, Hashable, Sendable, CaseIterable {
         }
     }
 
-    var title: String {
+    public var title: String {
         switch self {
         case .needsRestack: "Needs restack"
         case .parentMerged: "Parent merged"
@@ -40,46 +40,70 @@ nonisolated enum LayerHealth: String, Hashable, Sendable, CaseIterable {
 }
 
 /// One branch of a stack.
-nonisolated struct StackLayer: Identifiable, Hashable, Sendable {
-    var id: String { branch }
-    let branch: String
+public nonisolated struct StackLayer: Identifiable, Hashable, Sendable {
+    public var id: String { branch }
+    public let branch: String
     let tipSHA: String
     /// The branch below, or nil when the layer sits on trunk.
-    let parent: String?
+    public let parent: String?
     /// Last commit that belongs to the parent rather than this layer: `rebase --onto <parent> <base> <branch>`.
     var base: String
     /// This layer's own commits along the first-parent chain, newest first.
-    let commits: [String]
-    var health: Set<LayerHealth>
-    let pullRequest: BranchPullRequest?
+    public let commits: [String]
+    public var health: Set<LayerHealth>
+    public let pullRequest: BranchPullRequest?
     /// The merged pull request of the parent, when `health` has `.parentMerged`.
     let mergedParent: BranchPullRequest?
-    let ahead: Int
-    let behind: Int
+    public let ahead: Int
+    public let behind: Int
     let hasUpstream: Bool
-    let isHEAD: Bool
+    public let isHEAD: Bool
     /// A linked worktree the branch is checked out in, if not the one Grove has open.
-    let worktreePath: String?
+    public let worktreePath: String?
     /// Distance from trunk: roots are 0.
-    let depth: Int
+    public let depth: Int
+
+    public init(branch: String, tipSHA: String, parent: String? = nil, base: String, commits: [String], health: Set<LayerHealth>, pullRequest: BranchPullRequest? = nil, mergedParent: BranchPullRequest? = nil, ahead: Int, behind: Int, hasUpstream: Bool, isHEAD: Bool, worktreePath: String? = nil, depth: Int) {
+        self.branch = branch
+        self.tipSHA = tipSHA
+        self.parent = parent
+        self.base = base
+        self.commits = commits
+        self.health = health
+        self.pullRequest = pullRequest
+        self.mergedParent = mergedParent
+        self.ahead = ahead
+        self.behind = behind
+        self.hasUpstream = hasUpstream
+        self.isHEAD = isHEAD
+        self.worktreePath = worktreePath
+        self.depth = depth
+    }
 }
 
 /// A tree of layers on one trunk branch; splits show as siblings.
-nonisolated struct BranchStack: Identifiable, Hashable, Sendable {
+public nonisolated struct BranchStack: Identifiable, Hashable, Sendable {
     /// The root layer's branch, which stays stable while layers above come and go.
-    var id: String { layers.first?.branch ?? name }
-    let name: String
-    let trunk: String
+    public var id: String { layers.first?.branch ?? name }
+    public let name: String
+    public let trunk: String
     /// Topological order: every parent comes before its children, siblings by name.
-    let layers: [StackLayer]
+    public let layers: [StackLayer]
     /// Commits on trunk since the root's base, filled in once counted.
-    var trunkAhead: Int = 0
+    public var trunkAhead: Int = 0
 
-    var roots: [StackLayer] { layers.filter { $0.parent == nil || layer($0.parent!) == nil } }
+    public init(name: String, trunk: String, layers: [StackLayer], trunkAhead: Int = 0) {
+        self.name = name
+        self.trunk = trunk
+        self.layers = layers
+        self.trunkAhead = trunkAhead
+    }
 
-    func layer(_ branch: String) -> StackLayer? { layers.first { $0.branch == branch } }
+    public var roots: [StackLayer] { layers.filter { $0.parent == nil || layer($0.parent!) == nil } }
 
-    func children(of branch: String) -> [StackLayer] { layers.filter { $0.parent == branch } }
+    public func layer(_ branch: String) -> StackLayer? { layers.first { $0.branch == branch } }
+
+    public func children(of branch: String) -> [StackLayer] { layers.filter { $0.parent == branch } }
 
     func contains(_ branch: String) -> Bool { layer(branch) != nil }
 
@@ -94,11 +118,11 @@ nonisolated struct BranchStack: Identifiable, Hashable, Sendable {
         }
     }
 
-    var needsAttention: Bool { layers.contains { !$0.health.isDisjoint(with: [.needsRestack, .parentMerged]) } }
+    public var needsAttention: Bool { layers.contains { !$0.health.isDisjoint(with: [.needsRestack, .parentMerged]) } }
 }
 
 /// A branch whose patches all exist on another branch: an older copy, flagged rather than stacked.
 nonisolated struct DuplicateBranch: Hashable, Sendable {
-    let branch: String
+    public let branch: String
     let duplicateOf: String
 }

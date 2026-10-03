@@ -7,17 +7,17 @@
 import Foundation
 
 /// One git invocation: its arguments, where it runs, and what it adds to the environment.
-nonisolated struct GitInvocation: Sendable {
-    var arguments: [String]
-    var workingDirectory: URL
+public nonisolated struct GitInvocation: Sendable {
+    public var arguments: [String]
+    public var workingDirectory: URL
     /// Set by the shell for all its invocations; layered under the runner's own per-launch variables.
-    var shellEnvironment: [String: String] = [:]
+    public var shellEnvironment: [String: String] = [:]
     /// Per-call overrides, applied last.
-    var environment: [String: String] = [:]
+    public var environment: [String: String] = [:]
     /// Written to git's stdin when present.
-    var input: Data?
+    public var input: Data?
 
-    init(arguments: [String], workingDirectory: URL, shellEnvironment: [String: String] = [:],
+    public init(arguments: [String], workingDirectory: URL, shellEnvironment: [String: String] = [:],
          environment: [String: String] = [:], input: Data? = nil) {
         self.arguments = arguments
         self.workingDirectory = workingDirectory
@@ -28,7 +28,7 @@ nonisolated struct GitInvocation: Sendable {
 }
 
 /// Runs git and reaches the worktree's files. Every git process and worktree file GroveKit touches goes through one.
-nonisolated protocol GitRunner: Sendable {
+public nonisolated protocol GitRunner: Sendable {
     /// Runs git and returns its output whatever the exit code.
     func run(_ invocation: GitInvocation) async throws -> ShellResult
     /// Runs a long command (clone), handing stderr to `onStderr` as it arrives; cancelling the task stops git.
@@ -50,27 +50,27 @@ nonisolated protocol GitRunner: Sendable {
     func withGitExecutable(_ path: String) -> (any GitRunner)?
 }
 
-nonisolated enum FileItemKind: Sendable {
+public nonisolated enum FileItemKind: Sendable {
     case file, directory
 }
 
 extension GitRunner {
-    func withGitExecutable(_ path: String) -> (any GitRunner)? { nil }
+    public func withGitExecutable(_ path: String) -> (any GitRunner)? { nil }
 
-    func fileExists(at url: URL) async -> Bool { await itemKind(at: url) != nil }
+    public func fileExists(at url: URL) async -> Bool { await itemKind(at: url) != nil }
 
     /// The file as UTF-8, or nil when it's missing or unreadable.
-    func readString(at url: URL) async -> String? {
+    public func readString(at url: URL) async -> String? {
         guard let data = try? await readFile(at: url) else { return nil }
         return String(data: data, encoding: .utf8)
     }
 
-    func writeString(_ string: String, to url: URL, executable: Bool = false) async throws {
+    public func writeString(_ string: String, to url: URL, executable: Bool = false) async throws {
         try await writeFile(Data(string.utf8), to: url, executable: executable)
     }
 
     /// Makes sure the folder `url` goes in exists, e.g. before git moves a file there.
-    func createParentDirectory(of url: URL) async throws {
+    public func createParentDirectory(of url: URL) async throws {
         try await createDirectory(at: url.deletingLastPathComponent())
     }
 }

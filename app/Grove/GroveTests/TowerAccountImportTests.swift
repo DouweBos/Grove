@@ -4,6 +4,7 @@
 // Tower's service accounts: reading the list without secrets, and importing one with its Keychain token.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

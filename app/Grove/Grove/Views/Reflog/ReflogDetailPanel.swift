@@ -1,6 +1,7 @@
 // Views/Reflog/ReflogDetailPanel.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Detail card for the selected reflog entry: what happened, the commit it points at, restore actions.

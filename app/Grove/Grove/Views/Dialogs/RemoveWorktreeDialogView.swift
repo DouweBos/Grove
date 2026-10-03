@@ -1,6 +1,7 @@
 // Views/Dialogs/RemoveWorktreeDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Confirms removing a linked worktree, optionally with its uncommitted changes and its branch.

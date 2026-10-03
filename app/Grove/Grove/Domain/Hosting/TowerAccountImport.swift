@@ -4,6 +4,7 @@
 // Migrates Tower's service accounts: the list lives in service-accounts-v3.plist, each token in Tower's Keychain item.
 
 import Foundation
+import GroveKit
 import Security
 
 nonisolated enum TowerAccountImport {

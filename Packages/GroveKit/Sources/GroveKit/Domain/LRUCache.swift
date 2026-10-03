@@ -5,13 +5,13 @@ import Foundation
 
 /// Small least-recently-used cache for per-item detail panes, keyed by immutable identity.
 /// Capacities are tens of entries, so a linear recency list is cheaper than a linked list.
-struct LRUCache<Key: Hashable, Value> {
+public struct LRUCache<Key: Hashable, Value> {
     let capacity: Int
     private var storage: [Key: Value] = [:]
     /// Least recently used first.
     private var order: [Key] = []
 
-    init(capacity: Int) {
+    public init(capacity: Int) {
         precondition(capacity > 0, "LRUCache needs room for at least one entry")
         self.capacity = capacity
     }
@@ -21,18 +21,18 @@ struct LRUCache<Key: Hashable, Value> {
     var keys: [Key] { order }
 
     /// Returns the value and marks it as most recently used.
-    mutating func value(for key: Key) -> Value? {
+    public mutating func value(for key: Key) -> Value? {
         guard let value = storage[key] else { return nil }
         touch(key)
         return value
     }
 
     /// Reads without changing recency, e.g. to check whether a prefetch is needed.
-    func peek(_ key: Key) -> Value? {
+    public func peek(_ key: Key) -> Value? {
         storage[key]
     }
 
-    mutating func insert(_ value: Value, for key: Key) {
+    public mutating func insert(_ value: Value, for key: Key) {
         if storage.updateValue(value, forKey: key) != nil {
             touch(key)
             return
@@ -44,13 +44,13 @@ struct LRUCache<Key: Hashable, Value> {
     }
 
     /// Updates an existing entry in place, or inserts `initial` modified by `change`.
-    mutating func update(_ key: Key, default initial: @autoclosure () -> Value, _ change: (inout Value) -> Void) {
+    public mutating func update(_ key: Key, default initial: @autoclosure () -> Value, _ change: (inout Value) -> Void) {
         var value = storage[key] ?? initial()
         change(&value)
         insert(value, for: key)
     }
 
-    mutating func removeValue(for key: Key) {
+    public mutating func removeValue(for key: Key) {
         guard storage.removeValue(forKey: key) != nil else { return }
         order.removeAll { $0 == key }
     }

@@ -6,6 +6,7 @@
 // Monospace font, green/red backgrounds,
 // word-level darker highlights, right-aligned numeric gutters.
 
+import GroveKit
 import SwiftUI
 
 // MARK: - DiffLineView

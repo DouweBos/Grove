@@ -4,6 +4,7 @@
 // Quick repository switcher on the sidebar title, like GitHub's repository dropdown.
 
 import Foundation
+import GroveKit
 
 extension WindowViewModel {
 

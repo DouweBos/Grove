@@ -8,12 +8,12 @@ import os
 
 extension GitRepository {
 
-    func lfsStatus() async -> LFSStatus {
+    public func lfsStatus() async -> LFSStatus {
         guard await Self.usesLFS(at: path, runner: shell.runner) else { return LFSStatus() }
         return LFSStatus(usesLFS: true, isInstalled: await Self.isLFSInstalled(shell: shell))
     }
 
-    func lfsTrackedPaths(among paths: [String]) async -> Set<String> {
+    public func lfsTrackedPaths(among paths: [String]) async -> Set<String> {
         guard !paths.isEmpty else { return [] }
         let input = paths.joined(separator: "\0") + "\0"
         let result = try? await shell.runWithInput(["check-attr", "-z", "--stdin", "filter"], input: input)
@@ -21,7 +21,7 @@ extension GitRepository {
     }
 
     /// `pattern` is a gitattributes glob such as `*.psd`; `literal` tracks exactly one file.
-    func trackWithLFS(pattern: String, literal: Bool) async throws {
+    public func trackWithLFS(pattern: String, literal: Bool) async throws {
         guard await Self.isLFSInstalled(shell: shell) else { throw GitShellError.lfsNotInstalled }
         try await shell.run(["lfs", "track"] + (literal ? ["--filename", pattern] : [pattern]))
         try await shell.run(["add", "--", ".gitattributes"])

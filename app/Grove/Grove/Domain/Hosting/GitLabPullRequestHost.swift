@@ -4,6 +4,7 @@
 // GitLab and self-hosted GitLab merge requests over the v4 REST API.
 
 import Foundation
+import GroveKit
 
 nonisolated struct GitLabPullRequestHost: PullRequestHost {
     let location: RemoteLocation

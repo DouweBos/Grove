@@ -1,6 +1,7 @@
 // Views/CI/CIRunFilterBar.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Workflow, branch and status filters above the run list; each re-reads the list from the host.

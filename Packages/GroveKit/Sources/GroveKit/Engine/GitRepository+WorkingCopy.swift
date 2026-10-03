@@ -10,21 +10,21 @@ extension GitRepository {
 
     // MARK: - Working Copy
 
-    func commitIdentity() async -> CommitIdentity? {
+    public func commitIdentity() async -> CommitIdentity? {
         let name = await configValue("user.name")
         let email = await configValue("user.email")
         guard name != nil || email != nil else { return nil }
         return CommitIdentity(name: name ?? "Unknown", email: email ?? "")
     }
 
-    func commitTemplate() async -> String? {
+    public func commitTemplate() async -> String? {
         guard let configured = await configValue("commit.template") else { return nil }
         let expanded = (configured as NSString).expandingTildeInPath
         let file = expanded.hasPrefix("/") ? URL(fileURLWithPath: expanded) : path.appendingPathComponent(expanded)
         return await shell.runner.readString(at: file)
     }
 
-    func operationContext() async -> OperationContext? {
+    public func operationContext() async -> OperationContext? {
         guard let gitDir = await absoluteGitDir() else { return nil }
         let current = currentBranch?.name ?? "HEAD"
         switch repositoryState {
@@ -58,7 +58,7 @@ extension GitRepository {
         }
     }
 
-    func continueOperation() async throws {
+    public func continueOperation() async throws {
         let command: String
         switch repositoryState {
         case .merge: command = "merge"
@@ -73,14 +73,14 @@ extension GitRepository {
         repositoryState = await Self.loadRepositoryState(path: path, runner: shell.runner)
     }
 
-    func conflictVersions(path: String) async throws -> ConflictVersions {
+    public func conflictVersions(path: String) async throws -> ConflictVersions {
         async let ours = shell.runAllowingFailure(["show", ":2:\(path)"])
         async let theirs = shell.runAllowingFailure(["show", ":3:\(path)"])
         let (o, t) = try await (ours, theirs)
         return ConflictVersions(ours: o.isSuccess ? o.stdout : nil, theirs: t.isSuccess ? t.stdout : nil)
     }
 
-    func resolveConflict(path: String, side: ConflictSide) async throws {
+    public func resolveConflict(path: String, side: ConflictSide) async throws {
         let stage = side == .ours ? ":2:" : ":3:"
         let exists = try await shell.runAllowingFailure(["cat-file", "-e", stage + path]).isSuccess
         if exists {

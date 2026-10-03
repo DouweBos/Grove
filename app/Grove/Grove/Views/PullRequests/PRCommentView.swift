@@ -1,6 +1,7 @@
 // Views/PullRequests/PRCommentView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// One comment or review in a pull request conversation.

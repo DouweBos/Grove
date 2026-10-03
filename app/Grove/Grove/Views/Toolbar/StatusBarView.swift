@@ -4,6 +4,7 @@
 // Bottom status bar shown in repository windows.
 // Displays background activity (fetch progress, current operation state).
 
+import GroveKit
 import SwiftUI
 
 // MARK: - StatusBarView

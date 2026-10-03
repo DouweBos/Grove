@@ -1,6 +1,7 @@
 // Views/Stashes/StashesView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Stash list panel on the left, selected stash's changes on the right.

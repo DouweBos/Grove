@@ -6,6 +6,7 @@
 // in-repository navigation. The detail pane shows either the
 // browser content or the active repository's content.
 
+import GroveKit
 import SwiftUI
 import AppKit
 import os

@@ -4,6 +4,7 @@
 // Runs someone asked to hear about, polled until they finish and then announced with a notification.
 
 import Foundation
+import GroveKit
 import Observation
 
 /// Shows the "run finished" notification; a protocol so tests can read what would have been shown.

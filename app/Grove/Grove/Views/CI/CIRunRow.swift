@@ -1,6 +1,7 @@
 // Views/CI/CIRunRow.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// One workflow run in the list: status, title, then workflow, branch and age.

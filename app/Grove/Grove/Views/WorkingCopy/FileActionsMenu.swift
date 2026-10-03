@@ -4,6 +4,7 @@
 // Ignore, Stop Tracking, Rename and Delete items of the Changes context menu,
 // plus the rename sheet and Trash confirmation they open.
 
+import GroveKit
 import SwiftUI
 
 struct FileActionsMenu: View {

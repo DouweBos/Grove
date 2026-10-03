@@ -1,6 +1,7 @@
 // Views/Dialogs/PullDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Pulls a remote branch into the checked-out branch: its upstream by default, or another one,

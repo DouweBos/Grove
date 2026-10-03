@@ -5,6 +5,7 @@
 // Sheet presentations live in RepositoryToolbarView (a thin wrapper view)
 // so that .sheet() modifiers can attach to a View, not ToolbarContent.
 
+import GroveKit
 import SwiftUI
 import Observation
 

@@ -1,6 +1,7 @@
 // Views/Dialogs/RenameBranchDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Renames a local branch.

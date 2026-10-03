@@ -2,6 +2,7 @@
 // Grove
 
 import AppKit
+import GroveKit
 import SwiftUI
 import UniformTypeIdentifiers
 

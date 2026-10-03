@@ -3,6 +3,7 @@
 //
 // How a run, job or step status looks everywhere it shows.
 
+import GroveKit
 import SwiftUI
 
 extension CIRunStatus {

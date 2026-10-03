@@ -7,21 +7,28 @@
 import Foundation
 
 /// A linked worktree of a repository, as recorded in `<repo>/.git/worktrees/<name>`.
-nonisolated struct LinkedWorktree: Hashable, Sendable {
-    let path: String
-    let mainRepositoryPath: String
+public nonisolated struct LinkedWorktree: Hashable, Sendable {
+    public let path: String
+    public let mainRepositoryPath: String
     /// Checked-out branch, or nil when detached.
     let branch: String?
     /// The folder was deleted without `git worktree remove`; `git worktree prune` cleans it up.
-    let isMissing: Bool
+    public let isMissing: Bool
 
-    var name: String { branch ?? URL(fileURLWithPath: path).lastPathComponent }
+    public init(path: String, mainRepositoryPath: String, branch: String? = nil, isMissing: Bool) {
+        self.path = path
+        self.mainRepositoryPath = mainRepositoryPath
+        self.branch = branch
+        self.isMissing = isMissing
+    }
+
+    public var name: String { branch ?? URL(fileURLWithPath: path).lastPathComponent }
 }
 
-nonisolated enum WorktreeResolver {
+public nonisolated enum WorktreeResolver {
 
     /// Whether two paths name the same folder; git reports `/private/tmp` where the user opened `/tmp`.
-    static func isSameFolder(_ lhs: String, _ rhs: String) -> Bool {
+    public static func isSameFolder(_ lhs: String, _ rhs: String) -> Bool {
         canonical(lhs) == canonical(rhs)
     }
 
@@ -30,7 +37,7 @@ nonisolated enum WorktreeResolver {
     }
 
     /// The main repository's working directory when `path` is a linked worktree, else nil.
-    static func mainRepositoryPath(forWorktreeAt path: String) -> String? {
+    public static func mainRepositoryPath(forWorktreeAt path: String) -> String? {
         let dotGit = URL(fileURLWithPath: path).appendingPathComponent(".git")
         guard let contents = try? String(contentsOf: dotGit, encoding: .utf8),
               let gitDir = value(after: "gitdir:", in: contents) else { return nil }
@@ -40,7 +47,7 @@ nonisolated enum WorktreeResolver {
     }
 
     /// Worktrees linked to the repository at `repositoryPath`, sorted by name.
-    static func linkedWorktrees(ofRepositoryAt repositoryPath: String) -> [LinkedWorktree] {
+    public static func linkedWorktrees(ofRepositoryAt repositoryPath: String) -> [LinkedWorktree] {
         let worktreesDir = URL(fileURLWithPath: repositoryPath).appendingPathComponent(".git/worktrees")
         guard let names = try? FileManager.default.contentsOfDirectory(atPath: worktreesDir.path) else { return [] }
         return names.compactMap { name -> LinkedWorktree? in

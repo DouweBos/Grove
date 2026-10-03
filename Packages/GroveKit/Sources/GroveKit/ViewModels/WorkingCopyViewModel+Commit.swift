@@ -7,7 +7,7 @@ import Foundation
 
 extension WorkingCopyViewModel {
 
-    func setAmend(_ on: Bool) async {
+    public func setAmend(_ on: Bool) async {
         isAmend = on
         if on {
             guard !hasSubject, commitBody.isEmpty,
@@ -26,15 +26,15 @@ extension WorkingCopyViewModel {
         }
     }
 
-    func setSignOff(_ on: Bool) {
+    public func setSignOff(_ on: Bool) {
         signOff = on
     }
 
-    func setSignCommit(_ on: Bool) {
+    public func setSignCommit(_ on: Bool) {
         signCommit = on
     }
 
-    func commit() async {
+    public func commit() async {
         guard canCommit else {
             if !hasSubject { errorMessage = "Please enter a commit subject." }
             return

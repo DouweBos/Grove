@@ -1,6 +1,7 @@
 // Views/Dialogs/RebaseDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Rebases the checked-out branch onto another branch.

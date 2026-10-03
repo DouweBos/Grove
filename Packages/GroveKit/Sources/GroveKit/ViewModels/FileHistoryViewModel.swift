@@ -12,27 +12,27 @@ import Observation
 /// and the diff for the selected file at any given commit.
 @Observable
 @MainActor
-final class FileHistoryViewModel {
+public final class FileHistoryViewModel {
 
     // MARK: - State
 
     /// All commits that touched ``filePath``, in reverse-chronological order.
-    var commits: [CommitInfo] = []
+    public var commits: [CommitInfo] = []
     /// The commit currently selected in the list panel.
-    var selectedCommit: CommitInfo?
+    public var selectedCommit: CommitInfo?
     /// The file diff at the selected commit revision.
-    var fileDiff: DiffResult?
-    var isLoading = false
-    var isLoadingDiff = false
-    var errorMessage: String?
+    public var fileDiff: DiffResult?
+    public var isLoading = false
+    public var isLoadingDiff = false
+    public var errorMessage: String?
     /// A restore waiting for confirmation because the file has local changes it would overwrite.
-    private(set) var pendingRestore: CommitInfo?
+    public private(set) var pendingRestore: CommitInfo?
     /// The version last written into the working copy, for the inline confirmation.
-    private(set) var restoredCommit: CommitInfo?
-    private(set) var isRestoring = false
+    public private(set) var restoredCommit: CommitInfo?
+    public private(set) var isRestoring = false
 
     /// Set by the presenter so a restore refreshes the Changes list and badges.
-    var onRepositoryChanged: (() async -> Void)?
+    public var onRepositoryChanged: (() async -> Void)?
 
     // MARK: - Configuration
 
@@ -41,15 +41,15 @@ final class FileHistoryViewModel {
     // MARK: - Dependencies
 
     /// The repository this history belongs to.
-    let repository: any GitRepositoryProtocol
+    public let repository: any GitRepositoryProtocol
     /// Repository-relative path of the file whose history is shown.
-    let filePath: String
+    public let filePath: String
     // Keyed by SHA; the path is fixed per view model, so this is effectively (sha, path).
     @ObservationIgnored private var diffCache = LRUCache<String, DiffResult>(capacity: 100)
 
     // MARK: - Init
 
-    init(repository: any GitRepositoryProtocol, filePath: String) {
+    public init(repository: any GitRepositoryProtocol, filePath: String) {
         self.repository = repository
         self.filePath = filePath
     }
@@ -59,7 +59,7 @@ final class FileHistoryViewModel {
     /// Load the full file-level commit history.
     ///
     /// Uses `git log --follow -- <filePath>` via ``GitRepositoryProtocol/fileLog(path:maxCount:)``.
-    func loadHistory() async {
+    public func loadHistory() async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
@@ -75,7 +75,7 @@ final class FileHistoryViewModel {
     }
 
     /// Select a commit and load the file diff at that revision, from cache when revisited.
-    func selectCommit(_ commit: CommitInfo) async {
+    public func selectCommit(_ commit: CommitInfo) async {
         guard selectedCommit?.id != commit.id else { return }
         selectedCommit = commit
         if let cached = diffCache.value(for: commit.id) {
@@ -112,7 +112,7 @@ final class FileHistoryViewModel {
     // MARK: - Restore
 
     /// A commit that deleted the file has no version to restore.
-    var canRestoreSelected: Bool {
+    public var canRestoreSelected: Bool {
         guard selectedCommit != nil, !isRestoring else { return false }
         guard let diff = fileDiff else { return true }
         let deletesFile = !diff.hunks.isEmpty && diff.hunks.allSatisfy { $0.newCount == 0 }
@@ -120,7 +120,7 @@ final class FileHistoryViewModel {
     }
 
     /// Restores straight away on a clean file; local changes ask first since they'd be overwritten.
-    func requestRestore(_ commit: CommitInfo) async {
+    public func requestRestore(_ commit: CommitInfo) async {
         restoredCommit = nil
         let entries = (try? await repository.status()) ?? []
         let isDirty = entries.contains { $0.path == filePath && ($0.indexStatus != .unmodified || $0.workdirStatus != .unmodified) }
@@ -131,15 +131,15 @@ final class FileHistoryViewModel {
         }
     }
 
-    func cancelRestore() {
+    public func cancelRestore() {
         pendingRestore = nil
     }
 
-    func dismissRestoreNotice() {
+    public func dismissRestoreNotice() {
         restoredCommit = nil
     }
 
-    func restore(_ commit: CommitInfo) async {
+    public func restore(_ commit: CommitInfo) async {
         pendingRestore = nil
         isRestoring = true
         errorMessage = nil
@@ -161,7 +161,7 @@ final class FileHistoryViewModel {
     /// Reads the file through the repository, so LFS files export their content rather than the pointer.
     ///
     /// - Parameter destinationURL: Where the user chose to save it.
-    func exportFile(to destinationURL: URL) async {
+    public func exportFile(to destinationURL: URL) async {
         guard let commit = selectedCommit else { return }
         errorMessage = nil
         do {

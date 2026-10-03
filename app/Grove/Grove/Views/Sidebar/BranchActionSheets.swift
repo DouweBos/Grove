@@ -3,6 +3,7 @@
 //
 // The new, rename and delete sheets a branch row's context menu opens, shared by Branches and Stacks.
 
+import GroveKit
 import SwiftUI
 
 /// Which branch sheet is up; one per section, so each section's rows present their own.

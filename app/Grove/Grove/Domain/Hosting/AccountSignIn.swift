@@ -4,6 +4,7 @@
 // Signing in: which services the Accounts tab offers, the token check, OAuth device flow and importing CLI logins.
 
 import Foundation
+import GroveKit
 
 /// What "Add Account" offers; GitHub Enterprise and self-hosted GitLab are their service on another host.
 nonisolated enum AccountProvider: String, CaseIterable, Identifiable, Sendable {

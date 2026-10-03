@@ -3,6 +3,7 @@
 //
 // Templates: add, edit, reorder and delete the commit message templates the composer offers.
 
+import GroveKit
 import SwiftUI
 
 struct CommitTemplatesPreferencesTab: View {

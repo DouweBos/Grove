@@ -7,14 +7,14 @@ import Foundation
 import os
 
 #if os(macOS)
-final class FileWatcher: Sendable {
+public final class FileWatcher: Sendable {
 
     private let paths: [String]
     private let latency: CFTimeInterval
     private let queue: DispatchQueue
     private let box: StreamBox
 
-    init(
+    public init(
         paths: [String],
         latency: CFTimeInterval = 0.5,
         handler: @escaping @Sendable () -> Void
@@ -27,7 +27,7 @@ final class FileWatcher: Sendable {
 
     deinit { box.stop() }
 
-    func start() {
+    public func start() {
         guard !box.isRunning else { return }
 
         Logger.fileWatcher.info("Starting file watcher for paths: \(self.paths.joined(separator: ", "), privacy: .public)")
@@ -84,7 +84,7 @@ final class FileWatcher: Sendable {
             || inner == "FETCH_HEAD" || inner.hasPrefix("gk/")
     }
 
-    func stop() {
+    public func stop() {
         Logger.fileWatcher.info("Stopping file watcher")
         box.stop()
         Logger.fileWatcher.info("File watcher stopped")

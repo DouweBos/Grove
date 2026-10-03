@@ -8,19 +8,19 @@ import Foundation
 extension WorkingCopyViewModel {
 
     /// git's own template first, then the ones managed in Preferences.
-    var availableTemplates: [CommitTemplate] {
+    public var availableTemplates: [CommitTemplate] {
         [gitTemplate].compactMap { $0 } + templateStore.templates
     }
 
     /// Replaces the message; an empty template description keeps what was typed there.
-    func applyTemplate(_ template: CommitTemplate) {
+    public func applyTemplate(_ template: CommitTemplate) {
         commitSubject = template.summary
         if !template.body.isEmpty || commitBody.isEmpty { commitBody = template.body }
         dismissAutoComplete()
     }
 
     /// Gitmoji go first in the summary, by convention; picking another replaces it.
-    func insertGitmoji(_ gitmoji: Gitmoji) {
+    public func insertGitmoji(_ gitmoji: Gitmoji) {
         commitSubject = Gitmoji.prefixing(commitSubject, with: gitmoji)
         dismissAutoComplete()
     }

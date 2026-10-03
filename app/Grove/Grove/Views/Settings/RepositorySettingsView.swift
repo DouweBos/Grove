@@ -3,6 +3,7 @@
 //
 // Settings scoped to the open repository, backed by `git config --local`.
 
+import GroveKit
 import SwiftUI
 
 struct RepositorySettingsView: View {

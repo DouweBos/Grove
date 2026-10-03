@@ -4,6 +4,7 @@
 // What a refresh reloads: the history list and tab on screen now, everything else when it's shown again.
 
 import Foundation
+import GroveKit
 
 /// Tabs whose lists load on entry rather than with every refresh.
 enum RefreshedTab: Hashable {

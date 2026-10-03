@@ -4,6 +4,7 @@
 // Accounts Grove signs in to itself: service, host and username here, the token in the Keychain.
 
 import Foundation
+import GroveKit
 import Observation
 import Security
 

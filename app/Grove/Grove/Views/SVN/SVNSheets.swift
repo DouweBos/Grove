@@ -3,6 +3,7 @@
 //
 // Fetch from SVN and Commit to SVN, shown in place of Pull and Push for git-svn clones.
 
+import GroveKit
 import SwiftUI
 
 struct SVNSheetView: View {

@@ -1,6 +1,7 @@
 // Views/PullRequests/PullRequestsView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Pull request list on the left, the selected PR on the right. Data comes from the remote's hosting service.

@@ -4,6 +4,7 @@
 // GitHub Actions JSON into Grove's CI models.
 
 import Foundation
+import GroveKit
 
 nonisolated enum GitHubCIParser {
 

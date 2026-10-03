@@ -6,11 +6,11 @@
 import Foundation
 
 /// A rename or delete waiting for the user's input or confirmation.
-enum PendingFileAction: Identifiable {
+public enum PendingFileAction: Identifiable {
     case rename(StatusEntry)
     case delete([StatusEntry])
 
-    var id: String {
+    public var id: String {
         switch self {
         case .rename(let entry): "rename-\(entry.path)"
         case .delete(let entries): "delete-" + entries.map(\.path).joined(separator: "|")
@@ -19,7 +19,7 @@ enum PendingFileAction: Identifiable {
 }
 
 /// What an Ignore menu item adds to the ignore file.
-enum IgnoreTarget: Hashable {
+public enum IgnoreTarget: Hashable {
     case files
     case fileExtension(String)
     case folder(String)
@@ -28,7 +28,7 @@ enum IgnoreTarget: Hashable {
 extension WorkingCopyViewModel {
 
     /// Right-clicking inside the selection acts on every selected file; outside it, on the clicked one.
-    func actionEntries(for entry: StatusEntry, side: DiffSide) -> [StatusEntry] {
+    public func actionEntries(for entry: StatusEntry, side: DiffSide) -> [StatusEntry] {
         let row = FileRow(path: entry.path, side: entry.isConflicted ? .unstaged : side)
         guard fileSelection.contains(row), fileSelection.count > 1 else { return [entry] }
         let paths = Set(fileSelection.rows.map(\.path))
@@ -36,7 +36,7 @@ extension WorkingCopyViewModel {
     }
 
     /// Extension and folder only when every file shares it, so one line covers them all.
-    func ignoreTargets(for entries: [StatusEntry]) -> [IgnoreTarget] {
+    public func ignoreTargets(for entries: [StatusEntry]) -> [IgnoreTarget] {
         var targets: [IgnoreTarget] = [.files]
         let extensions = Set(entries.map { ($0.path as NSString).pathExtension })
         if extensions.count == 1, let ext = extensions.first, !ext.isEmpty { targets.append(.fileExtension(ext)) }
@@ -45,7 +45,7 @@ extension WorkingCopyViewModel {
         return targets
     }
 
-    func ignore(_ target: IgnoreTarget, of entries: [StatusEntry], localOnly: Bool) async {
+    public func ignore(_ target: IgnoreTarget, of entries: [StatusEntry], localOnly: Bool) async {
         let patterns: [String]
         switch target {
         case .files: patterns = entries.map { GitIgnoreFile.pattern(forFile: $0.path) }
@@ -56,11 +56,11 @@ extension WorkingCopyViewModel {
     }
 
     /// Files git knows about; untracked ones have nothing to stop tracking.
-    func trackedEntries(_ entries: [StatusEntry]) -> [StatusEntry] {
+    public func trackedEntries(_ entries: [StatusEntry]) -> [StatusEntry] {
         entries.filter { $0.workdirStatus != .untracked && $0.indexStatus != .deleted && !$0.isConflicted }
     }
 
-    func stopTracking(_ entries: [StatusEntry]) async {
+    public func stopTracking(_ entries: [StatusEntry]) async {
         let paths = trackedEntries(entries).map(\.path)
         guard !paths.isEmpty else { return }
         let repo = repository
@@ -74,26 +74,26 @@ extension WorkingCopyViewModel {
     }
 
     /// Files that still exist on disk, so they can be renamed or moved to the Trash.
-    func existingEntries(_ entries: [StatusEntry]) -> [StatusEntry] {
+    public func existingEntries(_ entries: [StatusEntry]) -> [StatusEntry] {
         entries.filter { $0.workdirStatus != .deleted && !($0.indexStatus == .deleted && $0.workdirStatus == .unmodified) }
     }
 
-    func requestRename(_ entry: StatusEntry) {
+    public func requestRename(_ entry: StatusEntry) {
         pendingFileAction = .rename(entry)
     }
 
-    func requestDelete(_ entries: [StatusEntry]) {
+    public func requestDelete(_ entries: [StatusEntry]) {
         let existing = existingEntries(entries)
         guard !existing.isEmpty else { return }
         pendingFileAction = .delete(existing)
     }
 
-    func cancelFileAction() {
+    public func cancelFileAction() {
         pendingFileAction = nil
     }
 
     /// `newPath` is repository-relative, so a rename can also move the file into another folder.
-    func rename(_ entry: StatusEntry, to newPath: String) async {
+    public func rename(_ entry: StatusEntry, to newPath: String) async {
         pendingFileAction = nil
         let destination = newPath.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !destination.isEmpty, destination != entry.path else { return }
@@ -112,7 +112,7 @@ extension WorkingCopyViewModel {
     }
 
     /// The Trash keeps the files recoverable, unlike Discard.
-    func moveToTrash(_ entries: [StatusEntry]) async {
+    public func moveToTrash(_ entries: [StatusEntry]) async {
         pendingFileAction = nil
         let root = repository.path
         await mutate {

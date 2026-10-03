@@ -1,6 +1,7 @@
 // Views/History/CommitDetailHeader.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Subject, body and metadata of the selected commit.

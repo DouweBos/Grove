@@ -10,7 +10,7 @@ extension GitRepository {
 
     // MARK: - Merge / Rebase
 
-    func merge(branch: String) async throws {
+    public func merge(branch: String) async throws {
         Logger.gitRepository.info(
             "Merging \(branch, privacy: .public) into \(self.currentBranch?.name ?? "HEAD", privacy: .public) in \(self.displayName, privacy: .public)"
         )
@@ -25,7 +25,7 @@ extension GitRepository {
         }
     }
 
-    func abortMerge() async throws {
+    public func abortMerge() async throws {
         Logger.gitRepository.info("Aborting merge in \(self.displayName, privacy: .public)")
         try await shell.run(["merge", "--abort"])
         let mergeStateBefore = repositoryState
@@ -35,7 +35,7 @@ extension GitRepository {
         )
     }
 
-    func rebase(onto: String) async throws {
+    public func rebase(onto: String) async throws {
         Logger.gitRepository.info(
             "Rebasing onto \(onto, privacy: .public) in \(self.displayName, privacy: .public)"
         )
@@ -50,7 +50,7 @@ extension GitRepository {
         }
     }
 
-    func abortRebase() async throws {
+    public func abortRebase() async throws {
         Logger.gitRepository.info("Aborting rebase in \(self.displayName, privacy: .public)")
         try await shell.run(["rebase", "--abort"])
         let rebaseStateBefore = repositoryState
@@ -60,7 +60,7 @@ extension GitRepository {
         )
     }
 
-    func continueRebase() async throws {
+    public func continueRebase() async throws {
         Logger.gitRepository.info("Continuing rebase in \(self.displayName, privacy: .public)")
         try await shell.run(
             ["rebase", "--continue"],
@@ -76,7 +76,7 @@ extension GitRepository {
         }
     }
 
-    func conflicts() async throws -> [StatusEntry] {
+    public func conflicts() async throws -> [StatusEntry] {
         let all = try await status()
         return all.filter {
             $0.indexStatus == .conflicted || $0.workdirStatus == .conflicted
@@ -85,7 +85,7 @@ extension GitRepository {
 
     // MARK: - Cherry-pick
 
-    func cherryPick(commit: String) async throws {
+    public func cherryPick(commit: String) async throws {
         Logger.gitRepository.info(
             "Cherry-picking \(commit, privacy: .public) in \(self.displayName, privacy: .public)"
         )
@@ -100,7 +100,7 @@ extension GitRepository {
         }
     }
 
-    func abortCherryPick() async throws {
+    public func abortCherryPick() async throws {
         Logger.gitRepository.info("Aborting cherry-pick in \(self.displayName, privacy: .public)")
         try await shell.run(["cherry-pick", "--abort"])
         let stateBefore = repositoryState
@@ -112,7 +112,7 @@ extension GitRepository {
 
     // MARK: - Revert
 
-    func revert(commit: String) async throws {
+    public func revert(commit: String) async throws {
         Logger.gitRepository.info(
             "Reverting \(commit, privacy: .public) in \(self.displayName, privacy: .public)"
         )
@@ -128,7 +128,7 @@ extension GitRepository {
         }
     }
 
-    func abortRevert() async throws {
+    public func abortRevert() async throws {
         Logger.gitRepository.info("Aborting revert in \(self.displayName, privacy: .public)")
         try await shell.run(["revert", "--abort"])
         let stateBefore = repositoryState
@@ -140,13 +140,13 @@ extension GitRepository {
 
     // MARK: - Bisect
 
-    func bisectStart() async throws {
+    public func bisectStart() async throws {
         Logger.gitRepository.info("Starting bisect in \(self.displayName, privacy: .public)")
         try await shell.run(["bisect", "start"])
         repositoryState = await Self.loadRepositoryState(path: path, runner: shell.runner)
     }
 
-    func bisectBad(commit: String?) async throws {
+    public func bisectBad(commit: String?) async throws {
         var args = ["bisect", "bad"]
         if let commit { args.append(commit) }
         Logger.gitRepository.info(
@@ -155,7 +155,7 @@ extension GitRepository {
         try await shell.run(args)
     }
 
-    func bisectGood(commit: String?) async throws {
+    public func bisectGood(commit: String?) async throws {
         var args = ["bisect", "good"]
         if let commit { args.append(commit) }
         Logger.gitRepository.info(
@@ -164,7 +164,7 @@ extension GitRepository {
         try await shell.run(args)
     }
 
-    func bisectReset() async throws {
+    public func bisectReset() async throws {
         Logger.gitRepository.info("Resetting bisect in \(self.displayName, privacy: .public)")
         try await shell.run(["bisect", "reset"])
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
@@ -175,7 +175,7 @@ extension GitRepository {
         )
     }
 
-    func bisectLog() async throws -> [String] {
+    public func bisectLog() async throws -> [String] {
         let result = try await shell.run(["bisect", "log"])
         return result.stdout
             .components(separatedBy: "\n")
@@ -186,7 +186,7 @@ extension GitRepository {
 
     /// Runs `steps` (oldest first) on top of `base`. A conflict leaves the rebase stopped for the conflict
     /// banner to resolve and throws ``GitRepositoryError/rebaseStopped``.
-    func rebaseInteractive(onto base: String, steps: [RebaseStep]) async throws {
+    public func rebaseInteractive(onto base: String, steps: [RebaseStep]) async throws {
         Logger.gitRepository.info(
             "Interactive rebase of \(steps.count, privacy: .public) commits onto \(base, privacy: .public) in \(self.displayName, privacy: .public)"
         )
@@ -219,7 +219,7 @@ extension GitRepository {
         repositoryState = await Self.loadRepositoryState(path: path, runner: shell.runner)
     }
 
-    func squashCommits(_ commits: [String], message: String) async throws {
+    public func squashCommits(_ commits: [String], message: String) async throws {
         guard commits.count >= 2 else { return }
         Logger.gitRepository.info(
             "Squashing \(commits.count, privacy: .public) commits in \(self.displayName, privacy: .public)"
@@ -228,7 +228,7 @@ extension GitRepository {
         Logger.gitRepository.info("Squash complete in \(self.displayName, privacy: .public)")
     }
 
-    func rewordCommit(_ commit: String, newMessage: String) async throws {
+    public func rewordCommit(_ commit: String, newMessage: String) async throws {
         Logger.gitRepository.info(
             "Rewording \(commit, privacy: .public) in \(self.displayName, privacy: .public)"
         )
@@ -236,7 +236,7 @@ extension GitRepository {
         Logger.gitRepository.info("Reword complete in \(self.displayName, privacy: .public)")
     }
 
-    func dropCommit(_ commit: String) async throws {
+    public func dropCommit(_ commit: String) async throws {
         Logger.gitRepository.info(
             "Dropping \(commit, privacy: .public) in \(self.displayName, privacy: .public)"
         )

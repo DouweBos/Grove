@@ -6,18 +6,18 @@
 import Foundation
 
 #if os(macOS)
-nonisolated enum ProcessRunner {
+public nonisolated enum ProcessRunner {
 
-    struct Output: Sendable {
-        let stdout: Data
-        let stderr: Data
-        let status: Int32
+    public struct Output: Sendable {
+        public let stdout: Data
+        public let stderr: Data
+        public let status: Int32
     }
 
     /// Runs `process` on a background queue, draining stdout and stderr at the same time (a full
     /// 64 KB pipe would otherwise stall the child) and waking on its termination handler rather
     /// than `waitUntilExit`, which polls. Callers on the main actor only suspend.
-    static func run(_ process: Process, input: Data? = nil) async throws -> Output {
+    public static func run(_ process: Process, input: Data? = nil) async throws -> Output {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 do {

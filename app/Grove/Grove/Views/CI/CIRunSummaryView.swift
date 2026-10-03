@@ -1,6 +1,7 @@
 // Views/CI/CIRunSummaryView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// A run at a glance like GitHub's summary: the job graph, then annotations and artifacts, scrolling together.

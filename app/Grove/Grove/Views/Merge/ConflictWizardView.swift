@@ -5,6 +5,7 @@
 // side by side, keep one, or open the file to merge the markers by hand.
 
 import AppKit
+import GroveKit
 import SwiftUI
 
 struct ConflictWizardView: View {

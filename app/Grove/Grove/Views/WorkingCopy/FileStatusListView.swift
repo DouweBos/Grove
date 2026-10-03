@@ -5,6 +5,7 @@
 // staged file appears in both Staged and Changes, each row acting on its own half.
 
 import AppKit
+import GroveKit
 import SwiftUI
 
 struct FileStatusListView: View {

@@ -4,6 +4,7 @@
 // Linking worktrees to their main repository from git's files, and folding them on Tower import.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 
@@ -21,35 +22,6 @@ struct WorktreeResolverTests {
         try git(["init", "-q", "-b", "main", "main"])
         try git(["-c", "user.name=T", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"], in: repo)
         try git(["worktree", "add", "-q", "-b", "feature/login", worktree], in: repo)
-    }
-
-    @Test func worktreeResolvesToMainRepository() {
-        #expect(WorktreeResolver.mainRepositoryPath(forWorktreeAt: worktree) == repo)
-        #expect(WorktreeResolver.mainRepositoryPath(forWorktreeAt: repo) == nil)
-    }
-
-    @Test func submoduleIsNotAWorktree() throws {
-        // A submodule's `.git` file points into the superproject's `.git/modules`, which has no commondir.
-        let modules = root.appendingPathComponent("main/.git/modules/vendor/lib")
-        try FileManager.default.createDirectory(at: modules, withIntermediateDirectories: true)
-        try Data("ref: refs/heads/main\n".utf8).write(to: modules.appendingPathComponent("HEAD"))
-        let submodule = root.appendingPathComponent("main/vendor/lib")
-        try FileManager.default.createDirectory(at: submodule, withIntermediateDirectories: true)
-        try Data("gitdir: ../../.git/modules/vendor/lib\n".utf8).write(to: submodule.appendingPathComponent(".git"))
-
-        #expect(WorktreeResolver.mainRepositoryPath(forWorktreeAt: submodule.path) == nil)
-    }
-
-    @Test func repositoryListsItsWorktreesWithBranch() {
-        let linked = WorktreeResolver.linkedWorktrees(ofRepositoryAt: repo)
-        #expect(linked.map(\.path) == [worktree])
-        #expect(linked.first?.branch == "feature/login")
-        #expect(linked.first?.isMissing == false)
-    }
-
-    @Test func deletedWorktreeFolderIsMissing() throws {
-        try FileManager.default.removeItem(atPath: worktree)
-        #expect(WorktreeResolver.linkedWorktrees(ofRepositoryAt: repo).first?.isMissing == true)
     }
 
     @Test func worktreeBookmarkNestsUnderBookmarkedRepository() {

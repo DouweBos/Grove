@@ -1,6 +1,7 @@
 // Views/GitFlow/GitFlowFinishSheet.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Finishes a feature, release or hotfix: merges it where git-flow merges it, with the finish options.

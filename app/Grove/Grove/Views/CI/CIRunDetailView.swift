@@ -1,6 +1,7 @@
 // Views/CI/CIRunDetailView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Detail card for the selected run: what ran, where, how it went, and its jobs.

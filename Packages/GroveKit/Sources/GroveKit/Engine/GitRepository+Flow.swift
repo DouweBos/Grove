@@ -24,13 +24,13 @@ enum GitFlowError: LocalizedError {
 
 extension GitRepository {
 
-    func gitFlowConfig() async -> GitFlowConfig? {
+    public func gitFlowConfig() async -> GitFlowConfig? {
         let result = try? await shell.runAllowingFailure(["config", "--local", "--get-regexp", "^gitflow\\."])
         return GitFlowConfig(configValues: Self.parseConfigList(result?.stdout ?? ""))
     }
 
     /// Writes the config, creates develop from production when missing, and checks develop out.
-    func initializeGitFlow(_ config: GitFlowConfig) async throws {
+    public func initializeGitFlow(_ config: GitFlowConfig) async throws {
         guard try await branchExists(config.productionBranch) else { throw GitFlowError.noCommits }
         for (key, value) in config.configValues {
             try await shell.run(["config", "--local", key, value])
@@ -42,7 +42,7 @@ extension GitRepository {
         await reloadHead()
     }
 
-    func startFlowBranch(_ kind: GitFlowKind, name: String, base: String?, config: GitFlowConfig) async throws {
+    public func startFlowBranch(_ kind: GitFlowKind, name: String, base: String?, config: GitFlowConfig) async throws {
         let branch = config.branchName(kind, name)
         try await validateNewBranch(branch)
         Logger.gitRepository.info("git-flow: starting \(branch, privacy: .public)")
@@ -52,7 +52,7 @@ extension GitRepository {
 
     /// Features merge into develop; releases and hotfixes into production (tagged) and back into develop,
     /// or into a release in progress for a hotfix, as git-flow does. Conflicts stop on the branch being merged into.
-    func finishFlowBranch(_ kind: GitFlowKind, name: String, config: GitFlowConfig, options: GitFlowFinishOptions) async throws {
+    public func finishFlowBranch(_ kind: GitFlowKind, name: String, config: GitFlowConfig, options: GitFlowFinishOptions) async throws {
         let branch = config.branchName(kind, name)
         Logger.gitRepository.info("git-flow: finishing \(branch, privacy: .public)")
         do {

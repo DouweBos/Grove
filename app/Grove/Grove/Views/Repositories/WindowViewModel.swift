@@ -6,6 +6,7 @@
 // and loaded repository sessions.
 
 import Foundation
+import GroveKit
 import Observation
 import os
 

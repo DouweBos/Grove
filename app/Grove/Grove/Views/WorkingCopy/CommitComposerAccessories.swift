@@ -3,6 +3,7 @@
 //
 // Buttons along the bottom of the commit message box: templates and other message helpers.
 
+import GroveKit
 import SwiftUI
 
 struct CommitComposerAccessories: View {

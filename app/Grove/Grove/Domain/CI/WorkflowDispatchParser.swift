@@ -4,6 +4,7 @@
 // Reads `on.workflow_dispatch.inputs` out of a GitHub workflow file, and says when a file goes beyond the YAML subset it reads.
 
 import Foundation
+import GroveKit
 
 /// What a workflow file says about starting it by hand.
 nonisolated enum WorkflowDispatchForm: Hashable, Sendable {

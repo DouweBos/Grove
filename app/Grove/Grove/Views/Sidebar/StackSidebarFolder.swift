@@ -1,6 +1,7 @@
 // Views/Sidebar/StackSidebarFolder.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// A stack in the Branches section, with each layer indented under its parent; selecting it opens the Stack tab.

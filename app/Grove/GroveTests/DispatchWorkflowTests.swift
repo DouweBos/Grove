@@ -5,6 +5,7 @@
 // and the Actions tab picking up the run that starts.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

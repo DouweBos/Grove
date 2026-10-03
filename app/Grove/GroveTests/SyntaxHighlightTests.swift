@@ -4,6 +4,7 @@
 // The diff syntax lexer, its per-side state across lines, and layering under word highlights.
 
 import Foundation
+@testable import GroveKit
 import SwiftUI
 import Testing
 @testable import Grove

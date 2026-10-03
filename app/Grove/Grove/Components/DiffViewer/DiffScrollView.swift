@@ -4,6 +4,7 @@
 // Scroll containers that give every diff the same line-wrapping behaviour,
 // driven by one shared "Wrap Lines" preference.
 
+import GroveKit
 import SwiftUI
 
 enum DiffPreferences {

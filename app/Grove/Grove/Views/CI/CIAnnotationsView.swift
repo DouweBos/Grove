@@ -1,6 +1,7 @@
 // Views/CI/CIAnnotationsView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// The run's annotations under its graph, like GitHub's summary.

@@ -4,6 +4,7 @@
 // Removing a worktree with its branch, keeping its branch out of cleanup, and letting go of tabs that showed it.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

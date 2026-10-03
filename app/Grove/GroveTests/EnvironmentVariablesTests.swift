@@ -4,6 +4,7 @@
 // Custom environment variables: global and per-repository layering, persistence, and hooks receiving them.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 
@@ -44,7 +45,7 @@ struct EnvironmentVariablesTests {
                                           .repository(repo.path), defaults: defaults)
 
         let env = GitEnvironment.variables(forRepositoryAt: repo.path, base: [:], defaults: defaults)
-        let shell = GitShell(workingDirectory: repo, gitPath: "/usr/bin/git", extraEnvironment: env)
+        let shell = GitShell(workingDirectory: repo, runner: LocalGitRunner(gitPath: "/usr/bin/git"), extraEnvironment: env)
         try await shell.run(["init", "-q"])
         let hook = repo.appendingPathComponent(".git/hooks/pre-commit")
         try Data("#!/bin/sh\nprintf '%s' \"$GROVE_HOOK_VALUE\" > hook-output.txt\n".utf8).write(to: hook)

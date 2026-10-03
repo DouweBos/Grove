@@ -4,6 +4,7 @@
 // Hands a changed or conflicted file to the diff/merge tool configured in Editor preferences.
 
 import Foundation
+import GroveKit
 
 extension WorkingCopyViewModel {
 

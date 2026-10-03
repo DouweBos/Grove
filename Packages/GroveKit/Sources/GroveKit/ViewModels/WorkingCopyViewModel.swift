@@ -8,12 +8,12 @@ import Foundation
 import Observation
 
 /// How changed files are presented in the file list.
-enum FileViewMode: String, CaseIterable {
+public enum FileViewMode: String, CaseIterable {
     case flatModified = "List"
     case treeModified = "Tree"
     case allFiles = "All Files"
 
-    var symbol: String {
+    public var symbol: String {
         switch self {
         case .flatModified: "list.bullet"
         case .treeModified: "list.bullet.indent"
@@ -23,72 +23,72 @@ enum FileViewMode: String, CaseIterable {
 }
 
 /// Which half of a file's changes the diff panel shows.
-enum DiffSide: Hashable {
+public enum DiffSide: Hashable {
     case staged
     case unstaged
 }
 
 @MainActor
 @Observable
-final class WorkingCopyViewModel {
+public final class WorkingCopyViewModel {
 
-    let repository: any GitRepositoryProtocol
+    public let repository: any GitRepositoryProtocol
 
     /// Set by the session so mutations refresh every view (sidebar badge, history), not just this one.
-    var onRepositoryChanged: (() async -> Void)?
-    var undoManager: GitUndoManager?
+    public var onRepositoryChanged: (() async -> Void)?
+    public var undoManager: GitUndoManager?
 
     // MARK: Status
 
-    var statusEntries: [StatusEntry] = []
+    public var statusEntries: [StatusEntry] = []
     /// Only read while the All Files mode is shown; `ls-files` is slow on large repositories.
-    private(set) var allTrackedFiles: [String] = []
+    public private(set) var allTrackedFiles: [String] = []
     private var trackedFilesAreStale = true
 
-    var conflictedFiles: [StatusEntry] { statusEntries.filter(\.isConflicted) }
+    public var conflictedFiles: [StatusEntry] { statusEntries.filter(\.isConflicted) }
     /// Staged or unstaged entries, for the Changes badge.
-    var changedCount: Int { statusEntries.filter { $0.indexStatus != .unmodified || $0.workdirStatus != .unmodified }.count }
-    var stagedFiles: [StatusEntry] { statusEntries.filter { !$0.isConflicted && $0.indexStatus != .unmodified } }
-    var unstagedFiles: [StatusEntry] { statusEntries.filter { !$0.isConflicted && $0.workdirStatus != .unmodified } }
+    public var changedCount: Int { statusEntries.filter { $0.indexStatus != .unmodified || $0.workdirStatus != .unmodified }.count }
+    public var stagedFiles: [StatusEntry] { statusEntries.filter { !$0.isConflicted && $0.indexStatus != .unmodified } }
+    public var unstagedFiles: [StatusEntry] { statusEntries.filter { !$0.isConflicted && $0.workdirStatus != .unmodified } }
 
     // MARK: Selection & Diff
 
     private(set) var selectedPath: String?
-    private(set) var selectedSide: DiffSide = .unstaged
+    public private(set) var selectedSide: DiffSide = .unstaged
     /// Rows Space and the context menu act on; the diff shows its focus.
-    private(set) var fileSelection = FileSelection()
+    public private(set) var fileSelection = FileSelection()
 
-    var selectedEntry: StatusEntry? { statusEntries.first { $0.path == selectedPath } }
-    var showingStaged: Bool { selectedSide == .staged }
+    public var selectedEntry: StatusEntry? { statusEntries.first { $0.path == selectedPath } }
+    public var showingStaged: Bool { selectedSide == .staged }
 
     /// Only offer the Staged/Unstaged switch when the file has changes on both sides.
-    var canSwitchDiffSide: Bool {
+    public var canSwitchDiffSide: Bool {
         guard let entry = selectedEntry, !entry.isConflicted else { return false }
         return entry.indexStatus != .unmodified && entry.workdirStatus != .unmodified
     }
 
-    private(set) var currentDiff: DiffResult?
-    private(set) var isDiffLoading = false
+    public private(set) var currentDiff: DiffResult?
+    public private(set) var isDiffLoading = false
     /// Bumped on every diff load so views reading files directly (images) reload too.
-    private(set) var diffLoadCount = 0
-    private(set) var conflictVersions: ConflictVersions?
+    public private(set) var diffLoadCount = 0
+    public private(set) var conflictVersions: ConflictVersions?
     @ObservationIgnored private var diffCache = WorkingDiffCache()
 
-    private(set) var fileViewMode: FileViewMode = .flatModified
-    private(set) var ignoreWhitespace = false
-    private(set) var showOnlyConflicts = false
+    public private(set) var fileViewMode: FileViewMode = .flatModified
+    public private(set) var ignoreWhitespace = false
+    public private(set) var showOnlyConflicts = false
 
     // MARK: Commit Composer
 
-    var commitSubject = "" {
+    public var commitSubject = "" {
         didSet { updateAutoComplete(text: commitSubject) }
     }
-    var commitBody = ""
-    var isAmend = false
-    var signOff = false
-    var signCommit = false
-    private(set) var isSigningAvailable = false
-    private(set) var identity: CommitIdentity?
+    public var commitBody = ""
+    public var isAmend = false
+    public var signOff = false
+    public var signCommit = false
+    public private(set) var isSigningAvailable = false
+    public private(set) var identity: CommitIdentity?
     var isCommitting = false
     /// HEAD's message as loaded for amend, so turning amend off can drop an untouched prefill.
     var amendPrefill: (subject: String, body: String)?
@@ -98,9 +98,9 @@ final class WorkingCopyViewModel {
     var didPrefillGitTemplate = false
 
     var hasSubject: Bool { !commitSubject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-    var canCommit: Bool { hasSubject && (isAmend || !stagedFiles.isEmpty) && conflictedFiles.isEmpty && !isCommitting }
+    public var canCommit: Bool { hasSubject && (isAmend || !stagedFiles.isEmpty) && conflictedFiles.isEmpty && !isCommitting }
 
-    var commitButtonTitle: String {
+    public var commitButtonTitle: String {
         if isAmend { return "Amend Commit" }
         let count = stagedFiles.count
         return count == 0 ? "Commit" : "Commit \(count) \(count == 1 ? "File" : "Files")"
@@ -108,48 +108,48 @@ final class WorkingCopyViewModel {
 
     // MARK: Operations (merge / rebase / cherry-pick / revert)
 
-    var repositoryState: RepositoryState { repository.repositoryState }
-    var isInOperation: Bool {
+    public var repositoryState: RepositoryState { repository.repositoryState }
+    public var isInOperation: Bool {
         switch repositoryState {
         case .merge, .rebase, .rebaseInteractive, .cherrypick, .revert: true
         case .normal, .bisect: false
         }
     }
-    private(set) var operationContext: OperationContext?
+    public private(set) var operationContext: OperationContext?
     /// The stack restack this operation belongs to, whose Continue and Abort cover the whole cascade.
-    private(set) var pendingRestack: RestackPlan?
-    var isRunningOperation = false
+    public private(set) var pendingRestack: RestackPlan?
+    public var isRunningOperation = false
 
     // MARK: Autocomplete
 
-    var autoCompleteTrigger: AutoCompleteTrigger?
-    var autoCompleteSuggestions: [AutoCompleteSuggestion] = []
+    public var autoCompleteTrigger: AutoCompleteTrigger?
+    public var autoCompleteSuggestions: [AutoCompleteSuggestion] = []
     /// The suggestion Return picks; the subject field keeps focus, so arrow keys move this.
-    var autoCompleteHighlight: String?
-    var isAutoCompleteVisible: Bool { autoCompleteTrigger != nil && !autoCompleteSuggestions.isEmpty }
+    public var autoCompleteHighlight: String?
+    public var isAutoCompleteVisible: Bool { autoCompleteTrigger != nil && !autoCompleteSuggestions.isEmpty }
     /// Recent commits for the `c:` trigger, warmed on refresh.
     private(set) var cachedRecentCommits: [CommitInfo] = []
 
     // MARK: Misc
 
-    private(set) var hasLoadedStatus = false
-    private(set) var lfs = WorkingCopyLFS()
-    private(set) var pendingDiscard: [StatusEntry]?
-    private(set) var pendingHunkDiscard: PendingHunkDiscard?
-    var pendingFileAction: PendingFileAction?
-    var patchApply: PatchApplyRequest?
-    var isChoosingPatch = false
-    var errorMessage: String?
+    public private(set) var hasLoadedStatus = false
+    public private(set) var lfs = WorkingCopyLFS()
+    public private(set) var pendingDiscard: [StatusEntry]?
+    public private(set) var pendingHunkDiscard: PendingHunkDiscard?
+    public var pendingFileAction: PendingFileAction?
+    public var patchApply: PatchApplyRequest?
+    public var isChoosingPatch = false
+    public var errorMessage: String?
 
     /// Without a `templateStore`, templates are kept in memory only.
-    init(repository: any GitRepositoryProtocol, templateStore: CommitTemplateStore? = nil) {
+    public init(repository: any GitRepositoryProtocol, templateStore: CommitTemplateStore? = nil) {
         self.repository = repository
         self.templateStore = templateStore ?? CommitTemplateStore()
     }
 
     // MARK: - Refresh
 
-    func refresh() async {
+    public func refresh() async {
         do {
             try await repository.refreshStatus()
             statusEntries = try await repository.status()
@@ -209,7 +209,7 @@ final class WorkingCopyViewModel {
     // MARK: - Selection
 
     /// Select a file; without an explicit side, show the working-tree changes when there are any.
-    func select(_ entry: StatusEntry, side: DiffSide? = nil) async {
+    public func select(_ entry: StatusEntry, side: DiffSide? = nil) async {
         selectedPath = entry.path
         selectedSide = side ?? (entry.workdirStatus != .unmodified ? .unstaged : .staged)
         fileSelection.select(FileRow(path: entry.path, side: entry.isConflicted ? .unstaged : selectedSide))
@@ -217,12 +217,12 @@ final class WorkingCopyViewModel {
     }
 
     /// A click in the Changes list; Shift extends the range and Cmd toggles, as in Finder.
-    func click(_ entry: StatusEntry, side: DiffSide, extend: Bool, toggle: Bool) async {
+    public func click(_ entry: StatusEntry, side: DiffSide, extend: Bool, toggle: Bool) async {
         fileSelection.click(FileRow(path: entry.path, side: side), in: fileRowOrder, extend: extend, toggle: toggle)
         await showSelectionFocus()
     }
 
-    func moveSelection(by offset: Int, extend: Bool) async {
+    public func moveSelection(by offset: Int, extend: Bool) async {
         fileSelection.move(by: offset, in: fileRowOrder, extend: extend)
         await showSelectionFocus()
     }
@@ -234,27 +234,27 @@ final class WorkingCopyViewModel {
         await loadDiff()
     }
 
-    func setDiffSide(_ side: DiffSide) async {
+    public func setDiffSide(_ side: DiffSide) async {
         guard side != selectedSide else { return }
         selectedSide = side
         await loadDiff()
     }
 
-    func setIgnoreWhitespace(_ ignore: Bool) async {
+    public func setIgnoreWhitespace(_ ignore: Bool) async {
         ignoreWhitespace = ignore
         await loadDiff()
     }
 
-    func setFileViewMode(_ mode: FileViewMode) async {
+    public func setFileViewMode(_ mode: FileViewMode) async {
         fileViewMode = mode
         await loadTrackedFilesIfShown()
     }
 
-    func setShowOnlyConflicts(_ show: Bool) {
+    public func setShowOnlyConflicts(_ show: Bool) {
         showOnlyConflicts = show
     }
 
-    func isSelected(_ entry: StatusEntry, side: DiffSide) -> Bool {
+    public func isSelected(_ entry: StatusEntry, side: DiffSide) -> Bool {
         fileSelection.contains(FileRow(path: entry.path, side: entry.isConflicted ? .unstaged : side))
     }
 
@@ -295,7 +295,7 @@ final class WorkingCopyViewModel {
         selectedPath == key.path && selectedSide == key.side && ignoreWhitespace == key.ignoreWhitespace
     }
 
-    func performHunkAction(_ action: HunkAction, hunk: HunkData, lines: [DiffLine] = []) async {
+    public func performHunkAction(_ action: HunkAction, hunk: HunkData, lines: [DiffLine] = []) async {
         guard let path = selectedEntry?.path else { return }
         if action.isDiscard && ViewModelPreferences.warnOnHunkDiscard {
             pendingHunkDiscard = PendingHunkDiscard(action: action, hunk: hunk, lines: lines, path: path)
@@ -305,13 +305,13 @@ final class WorkingCopyViewModel {
     }
 
     /// Takes the discard explicitly: the dialog clears `pendingHunkDiscard` before this task runs.
-    func confirmHunkDiscard(_ pending: PendingHunkDiscard, dontAskAgain: Bool) async {
+    public func confirmHunkDiscard(_ pending: PendingHunkDiscard, dontAskAgain: Bool) async {
         pendingHunkDiscard = nil
         if dontAskAgain { ViewModelPreferences.warnOnHunkDiscard = false }
         await applyHunkAction(pending.action, hunk: pending.hunk, lines: pending.lines, path: pending.path)
     }
 
-    func cancelHunkDiscard() {
+    public func cancelHunkDiscard() {
         pendingHunkDiscard = nil
     }
 
@@ -332,23 +332,23 @@ final class WorkingCopyViewModel {
 
     // MARK: - Discard
 
-    func requestDiscard(_ entries: [StatusEntry]) {
+    public func requestDiscard(_ entries: [StatusEntry]) {
         pendingDiscard = entries.isEmpty ? nil : entries
     }
 
-    func cancelDiscard() {
+    public func cancelDiscard() {
         pendingDiscard = nil
     }
 
     /// Takes the entries explicitly: the dialog clears `pendingDiscard` before this task runs.
-    func discard(_ entries: [StatusEntry]) async {
+    public func discard(_ entries: [StatusEntry]) async {
         pendingDiscard = nil
         await mutate { try await self.repository.discardChanges(paths: entries.map(\.path)) }
     }
 
     // MARK: - Helpers
 
-    func clearError() {
+    public func clearError() {
         errorMessage = nil
     }
 
@@ -371,13 +371,13 @@ final class WorkingCopyViewModel {
 }
 
 /// A hunk or line discard waiting for the user to confirm it.
-struct PendingHunkDiscard {
+public struct PendingHunkDiscard {
     let action: HunkAction
     let hunk: HunkData
     let lines: [DiffLine]
     let path: String
 
-    var title: String { action == .discardLines ? "Discard the selected lines?" : "Discard this hunk?" }
+    public var title: String { action == .discardLines ? "Discard the selected lines?" : "Discard this hunk?" }
 }
 
 extension HunkAction {
@@ -385,12 +385,12 @@ extension HunkAction {
 }
 
 extension StatusEntry {
-    var isConflicted: Bool { indexStatus == .conflicted || workdirStatus == .conflicted }
+    public var isConflicted: Bool { indexStatus == .conflicted || workdirStatus == .conflicted }
 
-    var fileName: String { (path as NSString).lastPathComponent }
+    public var fileName: String { (path as NSString).lastPathComponent }
 
     /// Parent directory with a trailing slash, or "" for root files.
-    var directory: String {
+    public var directory: String {
         let dir = (path as NSString).deletingLastPathComponent
         return dir.isEmpty ? "" : dir + "/"
     }

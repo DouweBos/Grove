@@ -2,6 +2,7 @@
 // Grove
 
 import AppKit
+import GroveKit
 import SwiftUI
 
 /// Left panel of History: header with filter, date-grouped commit rows, infinite scroll.

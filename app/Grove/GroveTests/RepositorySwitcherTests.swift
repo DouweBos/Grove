@@ -4,6 +4,7 @@
 // The sidebar title's switcher lists repositories, the open one first, and switches on the same tab.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

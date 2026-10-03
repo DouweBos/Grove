@@ -4,6 +4,7 @@
 // Back / forward through the window: browsers, repositories and their tabs.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

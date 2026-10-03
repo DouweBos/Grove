@@ -4,6 +4,7 @@
 // Left column of the Changes tab: commit composer (or the conflict banner while
 // a merge/rebase is in progress) above the file list.
 
+import GroveKit
 import SwiftUI
 
 struct WorkingCopyLeftColumn: View {

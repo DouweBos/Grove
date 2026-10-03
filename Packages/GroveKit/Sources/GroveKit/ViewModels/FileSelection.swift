@@ -4,9 +4,14 @@
 import Foundation
 
 /// A file row in the Changes list: a partially staged file has one row per side.
-struct FileRow: Hashable {
-    let path: String
-    let side: DiffSide
+public struct FileRow: Hashable {
+    public let path: String
+    public let side: DiffSide
+
+    public init(path: String, side: DiffSide) {
+        self.path = path
+        self.side = side
+    }
 }
 
-typealias FileSelection = ListSelection<FileRow>
+public typealias FileSelection = ListSelection<FileRow>

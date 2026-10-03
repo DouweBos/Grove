@@ -5,6 +5,7 @@
 
 import AppKit
 import Foundation
+import GroveKit
 
 enum GrovePreferences {
 
@@ -52,19 +53,19 @@ enum GrovePreferences {
 
     /// Whether discarding a hunk or lines asks for confirmation first.
     static var warnOnHunkDiscard: Bool {
-        get { defaults.object(forKey: Key.warnOnHunkDiscard) as? Bool ?? Default.warnOnHunkDiscard }
-        set { defaults.set(newValue, forKey: Key.warnOnHunkDiscard) }
+        get { ViewModelPreferences.warnOnHunkDiscard }
+        set { ViewModelPreferences.warnOnHunkDiscard = newValue }
     }
 
     /// Days without commits before Branches Review calls a branch stale.
     static var staleBranchDays: Int {
-        max(1, defaults.object(forKey: Key.staleBranchDays) as? Int ?? Default.staleBranchDays)
+        ViewModelPreferences.staleBranchDays
     }
 
     /// How History lists commits: the graph, or a compact table.
     static var historyLayout: HistoryLayout {
-        get { HistoryLayout(rawValue: defaults.string(forKey: Key.historyLayout) ?? "") ?? .graph }
-        set { defaults.set(newValue.rawValue, forKey: Key.historyLayout) }
+        get { ViewModelPreferences.historyLayout }
+        set { ViewModelPreferences.historyLayout = newValue }
     }
 
     static var terminalApp: TerminalApp {

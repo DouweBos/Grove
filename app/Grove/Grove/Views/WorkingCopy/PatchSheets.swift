@@ -4,6 +4,7 @@
 // Apply Patch sheet with its inline `git apply --check` result, and the save panel for Create Patch.
 
 import AppKit
+import GroveKit
 import SwiftUI
 import UniformTypeIdentifiers
 

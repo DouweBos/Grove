@@ -3,6 +3,7 @@
 //
 // Read-only file list + diff, shared by the Stashes and Pull Request detail cards.
 
+import GroveKit
 import SwiftUI
 
 struct ChangesetBrowser: View {

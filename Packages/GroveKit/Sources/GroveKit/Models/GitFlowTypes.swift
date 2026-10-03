@@ -6,12 +6,12 @@
 import Foundation
 
 /// The branches git-flow starts and finishes.
-enum GitFlowKind: String, CaseIterable, Identifiable, Sendable {
+public enum GitFlowKind: String, CaseIterable, Identifiable, Sendable {
     case feature, release, hotfix
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 
-    var title: String {
+    public var title: String {
         switch self {
         case .feature: "Feature"
         case .release: "Release"
@@ -19,7 +19,7 @@ enum GitFlowKind: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    var symbol: String {
+    public var symbol: String {
         switch self {
         case .feature: "sparkles"
         case .release: "shippingbox"
@@ -28,21 +28,21 @@ enum GitFlowKind: String, CaseIterable, Identifiable, Sendable {
     }
 
     /// Releases and hotfixes are named after the version they ship.
-    var namePrompt: String {
+    public var namePrompt: String {
         self == .feature ? "login-screen" : "1.2.0"
     }
 
     /// Releases and hotfixes land on the production branch and get a tag.
-    var isTagged: Bool { self != .feature }
+    public var isTagged: Bool { self != .feature }
 }
 
-struct GitFlowConfig: Equatable, Sendable {
-    var productionBranch = "main"
-    var developBranch = "develop"
-    var featurePrefix = "feature/"
-    var releasePrefix = "release/"
-    var hotfixPrefix = "hotfix/"
-    var versionTagPrefix = ""
+public struct GitFlowConfig: Equatable, Sendable {
+    public var productionBranch = "main"
+    public var developBranch = "develop"
+    public var featurePrefix = "feature/"
+    public var releasePrefix = "release/"
+    public var hotfixPrefix = "hotfix/"
+    public var versionTagPrefix = ""
 
     enum Key {
         static let production = "gitflow.branch.master"
@@ -59,7 +59,7 @@ struct GitFlowConfig: Equatable, Sendable {
     }
 
     /// nil unless both branch keys are set, which is what git-flow checks for "initialized".
-    init?(configValues values: [String: String]) {
+    public init?(configValues values: [String: String]) {
         guard let production = values[Key.production], let develop = values[Key.develop] else { return nil }
         productionBranch = production
         developBranch = develop
@@ -69,9 +69,9 @@ struct GitFlowConfig: Equatable, Sendable {
         versionTagPrefix = values[Key.versionTag] ?? ""
     }
 
-    init() {}
+    public init() {}
 
-    func prefix(for kind: GitFlowKind) -> String {
+    public func prefix(for kind: GitFlowKind) -> String {
         switch kind {
         case .feature: featurePrefix
         case .release: releasePrefix
@@ -80,14 +80,14 @@ struct GitFlowConfig: Equatable, Sendable {
     }
 
     /// Features and releases branch off develop, hotfixes off production.
-    func base(for kind: GitFlowKind) -> String {
+    public func base(for kind: GitFlowKind) -> String {
         kind == .hotfix ? productionBranch : developBranch
     }
 
-    func branchName(_ kind: GitFlowKind, _ name: String) -> String { prefix(for: kind) + name }
+    public func branchName(_ kind: GitFlowKind, _ name: String) -> String { prefix(for: kind) + name }
 
     /// The kind and short name of a flow branch, e.g. `feature/login` → (.feature, "login").
-    func classify(branch: String) -> (kind: GitFlowKind, name: String)? {
+    public func classify(branch: String) -> (kind: GitFlowKind, name: String)? {
         for kind in GitFlowKind.allCases {
             let prefix = prefix(for: kind)
             if !prefix.isEmpty, branch.hasPrefix(prefix), branch.count > prefix.count {
@@ -98,12 +98,19 @@ struct GitFlowConfig: Equatable, Sendable {
     }
 }
 
-struct GitFlowFinishOptions: Equatable, Sendable {
-    var keepBranch = false
+public struct GitFlowFinishOptions: Equatable, Sendable {
+    public var keepBranch = false
     /// Features only: one commit on develop instead of a merge commit.
-    var squash = false
+    public var squash = false
     /// Releases and hotfixes: the annotated tag's message; nil skips tagging.
-    var tagMessage: String?
+    public var tagMessage: String?
     /// Push production, develop and tags to `origin` afterwards.
-    var push = false
+    public var push = false
+
+    public init(keepBranch: Bool = false, squash: Bool = false, tagMessage: String? = nil, push: Bool = false) {
+        self.keepBranch = keepBranch
+        self.squash = squash
+        self.tagMessage = tagMessage
+        self.push = push
+    }
 }

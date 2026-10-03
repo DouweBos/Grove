@@ -1,6 +1,7 @@
 // Views/Dialogs/AddRemoteDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Adds a named remote and fetches it, so its branches appear in the sidebar.

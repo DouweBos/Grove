@@ -4,6 +4,7 @@
 // Replaces the commit composer while a merge, rebase, cherry-pick or revert is
 // in progress: what is happening, how many conflicts remain, and Abort / Resolve / Continue.
 
+import GroveKit
 import SwiftUI
 
 struct ConflictBannerView: View {

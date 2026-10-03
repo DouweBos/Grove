@@ -4,6 +4,7 @@
 // Dragging refs onto each other in the sidebar: every drop asks for confirmation in a sheet before git runs.
 
 import Foundation
+import GroveKit
 
 /// What a drop in the sidebar will do once confirmed.
 enum SidebarDropAction: Identifiable, Equatable {

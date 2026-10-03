@@ -12,6 +12,7 @@
 // The one exception is the Undo/Redo group, which reads git and text undo
 // state through EditUndoState to title and enable its items.
 
+import GroveKit
 import SwiftUI
 
 // MARK: - GroveCommands

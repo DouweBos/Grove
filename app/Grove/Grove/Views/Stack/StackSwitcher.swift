@@ -3,6 +3,7 @@
 //
 // Searchable list of the repository's stacks, shown from the Stack tab's title like the repository switcher.
 
+import GroveKit
 import SwiftUI
 
 struct StackSwitcher: View {

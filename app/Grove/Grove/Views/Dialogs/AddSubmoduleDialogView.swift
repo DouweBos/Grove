@@ -1,6 +1,7 @@
 // Views/Dialogs/AddSubmoduleDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Clones a repository into a folder of this one as a submodule.

@@ -4,6 +4,7 @@
 // Grove's accounts as a fallback for git's HTTPS username/password prompts, for Grove's own git processes only.
 
 import Foundation
+import GroveKit
 
 /// Answers git's prompts through `GIT_ASKPASS`. git asks its own credential helpers first, so this only fills in
 /// when nothing else knows the host; the user's git config is never touched.

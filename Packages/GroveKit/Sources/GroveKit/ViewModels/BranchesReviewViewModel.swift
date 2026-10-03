@@ -4,30 +4,30 @@
 import Foundation
 import Observation
 
-enum BranchCategory: String, CaseIterable, Sendable {
+public enum BranchCategory: String, CaseIterable, Sendable {
     case merged = "Merged"
     case stale = "Stale"
     case active = "Active"
 }
 
-struct ReviewedBranch: Identifiable, Hashable, Sendable {
-    let id: String
-    let name: String
-    let sha: String
-    let isCurrentBranch: Bool
+public struct ReviewedBranch: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let name: String
+    public let sha: String
+    public let isCurrentBranch: Bool
     let isPrimary: Bool
-    let lastCommitDate: Date?
-    let lastCommitSummary: String
-    let authorName: String
+    public let lastCommitDate: Date?
+    public let lastCommitSummary: String
+    public let authorName: String
     /// Relative to the primary branch.
-    let ahead: Int
-    let behind: Int
-    let category: BranchCategory
-    let daysSinceLastCommit: Int?
+    public let ahead: Int
+    public let behind: Int
+    public let category: BranchCategory
+    public let daysSinceLastCommit: Int?
     /// Another worktree has it checked out, so git won't delete it.
-    let worktreePath: String?
+    public let worktreePath: String?
 
-    var isDeletable: Bool { !isCurrentBranch && !isPrimary && worktreePath == nil }
+    public var isDeletable: Bool { !isCurrentBranch && !isPrimary && worktreePath == nil }
 }
 
 /// Ahead/behind only change when either tip moves, so counts are cached by both SHAs.
@@ -57,65 +57,65 @@ struct AheadBehindCache {
 
 @MainActor
 @Observable
-final class BranchesReviewViewModel {
+public final class BranchesReviewViewModel {
 
-    struct PendingDelete: Identifiable {
-        let branches: [ReviewedBranch]
-        var id: [String] { branches.map(\.id) }
+    public struct PendingDelete: Identifiable {
+        public let branches: [ReviewedBranch]
+        public var id: [String] { branches.map(\.id) }
         /// Unmerged branches need `-D`, which loses their unique commits.
-        var needsForce: Bool { branches.contains { $0.category != .merged } }
+        public var needsForce: Bool { branches.contains { $0.category != .merged } }
     }
 
     // MARK: - State
 
-    private(set) var branches: [ReviewedBranch] = []
-    private(set) var primaryBranch = "main"
-    private(set) var selectedIDs: Set<String> = []
-    private(set) var categoryFilter: BranchCategory?
-    private(set) var isLoading = false
+    public private(set) var branches: [ReviewedBranch] = []
+    public private(set) var primaryBranch = "main"
+    public private(set) var selectedIDs: Set<String> = []
+    public private(set) var categoryFilter: BranchCategory?
+    public private(set) var isLoading = false
     private(set) var isDeleting = false
-    var errorMessage: String?
+    public var errorMessage: String?
     /// Set when the merged-branches check failed; deleting stays off so unmerged branches aren't force-deleted as merged.
     // TODO: Check this error state and the grouped-delete undo in the running app; only unit tests cover them.
-    private(set) var mergeStatusError: String?
-    var pendingDelete: PendingDelete?
+    public private(set) var mergeStatusError: String?
+    public var pendingDelete: PendingDelete?
     private var aheadBehindCache = AheadBehindCache()
 
-    var onRepositoryChanged: (() async -> Void)?
-    var undoManager: GitUndoManager?
+    public var onRepositoryChanged: (() async -> Void)?
+    public var undoManager: GitUndoManager?
 
-    let repository: any GitRepositoryProtocol
+    public let repository: any GitRepositoryProtocol
 
     /// The session's shared refs; without them (previews, tests) branches are read directly.
     private let refs: RepositoryRefs?
 
-    init(repository: any GitRepositoryProtocol, refs: RepositoryRefs? = nil) {
+    public init(repository: any GitRepositoryProtocol, refs: RepositoryRefs? = nil) {
         self.repository = repository
         self.refs = refs
     }
 
-    var staleDays: Int { ViewModelPreferences.staleBranchDays }
+    public var staleDays: Int { ViewModelPreferences.staleBranchDays }
 
     // MARK: - Derived
 
-    var visibleBranches: [ReviewedBranch] {
+    public var visibleBranches: [ReviewedBranch] {
         guard let categoryFilter else { return branches }
         return branches.filter { $0.category == categoryFilter }
     }
 
-    func count(of category: BranchCategory) -> Int {
+    public func count(of category: BranchCategory) -> Int {
         branches.filter { $0.category == category }.count
     }
 
-    var canDelete: Bool { mergeStatusError == nil && !isDeleting && !isLoading }
+    public var canDelete: Bool { mergeStatusError == nil && !isDeleting && !isLoading }
 
-    var selectedBranches: [ReviewedBranch] {
+    public var selectedBranches: [ReviewedBranch] {
         branches.filter { selectedIDs.contains($0.id) }
     }
 
     // MARK: - Loading
 
-    func refresh() async {
+    public func refresh() async {
         isLoading = true
         defer { isLoading = false }
         do {
@@ -195,37 +195,37 @@ final class BranchesReviewViewModel {
 
     // MARK: - Selection & Filter
 
-    func toggleSelection(_ branch: ReviewedBranch) {
+    public func toggleSelection(_ branch: ReviewedBranch) {
         guard branch.isDeletable else { return }
         if selectedIDs.contains(branch.id) { selectedIDs.remove(branch.id) } else { selectedIDs.insert(branch.id) }
     }
 
-    func selectAllVisible() {
+    public func selectAllVisible() {
         selectedIDs.formUnion(visibleBranches.filter(\.isDeletable).map(\.id))
     }
 
-    func clearSelection() {
+    public func clearSelection() {
         selectedIDs.removeAll()
     }
 
-    func toggleFilter(_ category: BranchCategory) {
+    public func toggleFilter(_ category: BranchCategory) {
         categoryFilter = categoryFilter == category ? nil : category
     }
 
     // MARK: - Delete
 
-    func requestDelete(_ branches: [ReviewedBranch]) {
+    public func requestDelete(_ branches: [ReviewedBranch]) {
         let deletable = branches.filter(\.isDeletable)
         guard canDelete, !deletable.isEmpty else { return }
         pendingDelete = PendingDelete(branches: deletable)
     }
 
-    func cancelDelete() {
+    public func cancelDelete() {
         pendingDelete = nil
     }
 
     /// Takes the dialog item because the dialog clears `pendingDelete` before running its action.
-    func confirmDelete(_ pending: PendingDelete) async {
+    public func confirmDelete(_ pending: PendingDelete) async {
         pendingDelete = nil
         guard mergeStatusError == nil else { return }
         isDeleting = true
@@ -254,7 +254,7 @@ final class BranchesReviewViewModel {
         await onRepositoryChanged?()
     }
 
-    func dismissError() {
+    public func dismissError() {
         errorMessage = nil
     }
 

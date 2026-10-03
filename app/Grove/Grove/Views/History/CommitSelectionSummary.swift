@@ -1,6 +1,7 @@
 // Views/History/CommitSelectionSummary.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Detail pane for a multi-selection: count, SHA range, authors and dates, then each commit.

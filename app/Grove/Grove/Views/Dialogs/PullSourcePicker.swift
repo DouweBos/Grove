@@ -1,6 +1,7 @@
 // Views/Dialogs/PullSourcePicker.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Which remote branch to pull from: the upstream by default, or e.g. `origin/main` to rebase onto it.

@@ -4,6 +4,7 @@
 // Live updates: how often the Actions tab polls, and what one poll reads.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

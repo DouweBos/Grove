@@ -4,33 +4,7 @@
 // One service's CI/CD API. GitHub Actions is the only provider so far; the others answer "not supported yet".
 
 import Foundation
-
-/// Workflow runs of one repository on its hosting service.
-nonisolated protocol CIHost: Sendable {
-    var kind: HostingServiceKind { get }
-    func workflows() async throws -> [CIWorkflow]
-    /// The newest runs matching `query`, newest first.
-    func runs(_ query: CIRunQuery) async throws -> [CIRun]
-    func run(id: Int) async throws -> CIRun
-    /// Jobs of the run's latest attempt, with their steps.
-    func jobs(runID: Int) async throws -> [CIJob]
-    /// Notes the finished job left, such as warnings and test failures.
-    func annotations(jobID: Int) async throws -> [CIAnnotation]
-    /// The job's whole log as plain text; only there once the job has finished.
-    func log(jobID: Int) async throws -> String
-    func artifacts(runID: Int) async throws -> [CIArtifact]
-    /// How CI went for each branch's newest commit, keyed by branch, for branch rows.
-    func branchStatuses() async throws -> [String: BranchCIStatus]
-    /// Saves the artifact's zip at `destination`.
-    func downloadArtifact(id: Int, to destination: URL) async throws
-    /// Starts a new attempt of the run: every job, or only the failed ones and those depending on them.
-    func rerun(runID: Int, failedOnly: Bool) async throws
-    func cancel(runID: Int) async throws
-    /// The workflow's definition as it is on `ref`, to read the inputs it asks for.
-    func workflowFile(path: String, ref: String) async throws -> String
-    /// Starts a workflow by hand. The host answers without saying which run that became.
-    func dispatch(_ dispatch: CIDispatch) async throws
-}
+import GroveKit
 
 @MainActor
 enum CIHostResolver {

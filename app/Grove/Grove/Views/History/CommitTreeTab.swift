@@ -1,6 +1,7 @@
 // Views/History/CommitTreeTab.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Every file in the repository as of the selected commit, with this commit's changes marked.

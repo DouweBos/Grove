@@ -1,6 +1,7 @@
 // Views/Dialogs/CreateTagDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Creates a lightweight or annotated tag at HEAD or a given commit.

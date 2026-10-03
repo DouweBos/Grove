@@ -1,6 +1,7 @@
 // Views/Dialogs/SyncDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Fetch, pull, then push in one round-trip.

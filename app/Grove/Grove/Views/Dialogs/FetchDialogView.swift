@@ -1,6 +1,7 @@
 // Views/Dialogs/FetchDialogView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Downloads new refs from one or all remotes without touching the working tree.

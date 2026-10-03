@@ -10,14 +10,14 @@ extension GitRepository {
 
     // MARK: - Stash
 
-    func stashes() async throws -> [StashEntry] {
+    public func stashes() async throws -> [StashEntry] {
         let result = try await shell.run(
             ["stash", "list", "--format=\(StashParser.formatString)"]
         )
         return StashParser.parse(result.stdout)
     }
 
-    func stashCreate(message: String?, includeUntracked: Bool, paths: [String]? = nil) async throws {
+    public func stashCreate(message: String?, includeUntracked: Bool, paths: [String]? = nil) async throws {
         let pathDesc = paths.map { " (\($0.count) files)" } ?? ""
         Logger.gitRepository.info(
             "Creating stash\(message.map { " '\($0)'" } ?? "")\(pathDesc, privacy: .public) in \(self.displayName, privacy: .public)"
@@ -35,7 +35,7 @@ extension GitRepository {
         Logger.gitRepository.info("Stash created in \(self.displayName, privacy: .public)")
     }
 
-    func stashApply(index: Int, drop: Bool) async throws {
+    public func stashApply(index: Int, drop: Bool) async throws {
         let operation = drop ? "pop" : "apply"
         Logger.gitRepository.info(
             "Stash \(operation, privacy: .public) stash@{\(index, privacy: .public)} in \(self.displayName, privacy: .public)"
@@ -49,12 +49,12 @@ extension GitRepository {
         repositoryState = await Self.loadRepositoryState(path: path, runner: shell.runner)
     }
 
-    func stashDrop(index: Int) async throws {
+    public func stashDrop(index: Int) async throws {
         try await shell.run(["stash", "drop", "stash@{\(index)}"])
     }
 
     @discardableResult
-    func saveSnapshot(message: String, includeUntracked: Bool) async throws -> Bool {
+    public func saveSnapshot(message: String, includeUntracked: Bool) async throws -> Bool {
         Logger.gitRepository.info("Saving snapshot in \(self.displayName, privacy: .public)")
         var stash = try await shell.run(["stash", "create", message]).stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         if includeUntracked, let untracked = try await untrackedSnapshotCommit() {
@@ -97,7 +97,7 @@ extension GitRepository {
 
     // MARK: - Submodules
 
-    func updateSubmodule(path: String) async throws {
+    public func updateSubmodule(path: String) async throws {
         Logger.gitRepository.info(
             "Updating submodule '\(path, privacy: .public)' in \(self.displayName, privacy: .public)"
         )
@@ -105,7 +105,7 @@ extension GitRepository {
         Logger.gitRepository.info("Submodule update complete in \(self.displayName, privacy: .public)")
     }
 
-    func submodules() async throws -> [SubmoduleInfo] {
+    public func submodules() async throws -> [SubmoduleInfo] {
         let gitmodules = path.appendingPathComponent(".gitmodules")
         guard let declared = await shell.runner.readString(at: gitmodules) else { return [] }
         let status = try await shell.runAllowingFailure(["submodule", "status"])
@@ -114,15 +114,15 @@ extension GitRepository {
 
     // MARK: - Worktrees
 
-    func worktrees() async throws -> [WorktreeInfo] {
+    public func worktrees() async throws -> [WorktreeInfo] {
         WorktreeParser.parse(try await shell.run(["worktree", "list", "--porcelain"]).stdout)
     }
 
-    func pruneWorktrees() async throws {
+    public func pruneWorktrees() async throws {
         try await shell.run(["worktree", "prune"])
     }
 
-    func removeWorktree(path: String, force: Bool) async throws {
+    public func removeWorktree(path: String, force: Bool) async throws {
         Logger.gitRepository.info(
             "Removing worktree '\(path, privacy: .public)' in \(self.displayName, privacy: .public)"
         )
@@ -135,7 +135,7 @@ extension GitRepository {
 
     // MARK: - Blame
 
-    func blame(file: String, revision: String?) async throws -> [BlameEntry] {
+    public func blame(file: String, revision: String?) async throws -> [BlameEntry] {
         var args = ["blame", "--porcelain"]
         if let revision { args.append(revision) }
         args += ["--", file]
@@ -145,7 +145,7 @@ extension GitRepository {
 
     // MARK: - Reflog
 
-    func reflog(maxCount: Int) async throws -> [ReflogEntry] {
+    public func reflog(maxCount: Int) async throws -> [ReflogEntry] {
         let result = try await shell.run([
             "reflog",
             "--format=\(ReflogParser.formatString)",

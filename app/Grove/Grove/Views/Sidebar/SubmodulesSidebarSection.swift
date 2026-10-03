@@ -2,6 +2,7 @@
 // Grove
 
 import AppKit
+import GroveKit
 import SwiftUI
 
 /// Submodules with their checkout state. Double-click opens an initialized one in a new tab.

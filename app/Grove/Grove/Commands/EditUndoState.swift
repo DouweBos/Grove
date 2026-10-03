@@ -5,6 +5,7 @@
 // Edit menu can choose between text undo and git undo.
 
 import AppKit
+import GroveKit
 import Observation
 
 /// Snapshot of the responder chain's `UndoManager`, refreshed after every event.

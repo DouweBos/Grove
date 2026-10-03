@@ -1,6 +1,7 @@
 // Views/BranchesReview/BranchesReviewView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Summary tiles (merged / stale / active) above a checklist of local branches.

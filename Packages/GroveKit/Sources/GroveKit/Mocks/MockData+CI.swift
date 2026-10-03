@@ -7,7 +7,7 @@ import Foundation
 
 extension CIRun {
     /// The same run as the host reports it after a re-run or cancel.
-    func with(status: CIRunStatus, attempt: Int) -> CIRun {
+    public func with(status: CIRunStatus, attempt: Int) -> CIRun {
         CIRun(id: id, number: number, attempt: attempt, title: title, workflowID: workflowID, workflowName: workflowName, event: event,
               branch: branch, headSHA: headSHA, status: status, actor: actor, createdDate: createdDate, updatedDate: Date(),
               startedDate: status == .queued ? nil : startedDate, webURL: webURL, workflowPath: workflowPath)
@@ -16,7 +16,7 @@ extension CIRun {
 
 extension MockData {
 
-    static let ciWorkflows: [CIWorkflow] = [
+    public static let ciWorkflows: [CIWorkflow] = [
         CIWorkflow(id: 1, name: "CI", path: ".github/workflows/ci.yml", isEnabled: true),
         CIWorkflow(id: 2, name: "Release", path: ".github/workflows/release.yml", isEnabled: true),
         CIWorkflow(id: 3, name: "Nightly", path: ".github/workflows/nightly.yml", isEnabled: false)
@@ -57,7 +57,7 @@ extension MockData {
         ".github/workflows/nightly.yml": "on:\n  schedule:\n    - cron: '0 3 * * *'\n  workflow_dispatch:\n"
     ]
 
-    static let ciRuns: [CIRun] = {
+    public static let ciRuns: [CIRun] = {
         let now = Date()
         func run(_ id: Int, _ title: String, workflow: Int, event: String = "push", branch: String?, sha: Int, _ status: CIRunStatus,
                  minutesAgo: Double, length: Double?, attempt: Int = 1, actor: String = authorJane.name) -> CIRun {
@@ -84,7 +84,7 @@ extension MockData {
     }()
 
     /// A lint, build and test job whose states add up to the run's status.
-    static func ciJobs(for run: CIRun) -> [CIJob] {
+    public static func ciJobs(for run: CIRun) -> [CIJob] {
         let start = run.startedDate ?? run.createdDate
         func job(_ offset: Int, _ name: String, _ status: CIRunStatus, steps: [(String, CIRunStatus, Double)]) -> CIJob {
             var clock = start.addingTimeInterval(Double(offset))

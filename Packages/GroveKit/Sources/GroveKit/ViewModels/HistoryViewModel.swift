@@ -7,39 +7,39 @@ import Observation
 /// Commit log, graph, selection and commit actions for the History tab.
 @MainActor
 @Observable
-final class HistoryViewModel {
+public final class HistoryViewModel {
 
-    enum DetailTab: String, CaseIterable, Identifiable {
+    public enum DetailTab: String, CaseIterable, Identifiable {
         case changeset = "Changeset"
         case tree = "Tree"
-        var id: Self { self }
+        public var id: Self { self }
     }
 
     // MARK: - Log
 
-    private(set) var commits: [CommitInfo] = []
-    private(set) var branches: [BranchInfo] = [] {
+    public private(set) var commits: [CommitInfo] = []
+    public private(set) var branches: [BranchInfo] = [] {
         didSet { branchesBySHA = Self.index(branches) }
     }
-    private(set) var tags: [TagInfo] = [] {
+    public private(set) var tags: [TagInfo] = [] {
         didSet { tagsBySHA = Dictionary(grouping: tags, by: \.targetSHA) }
     }
     // Rows look refs up by SHA; scanning thousands of tags per row per render made branch switches slow.
     private var branchesBySHA: [String: [BranchInfo]] = [:]
     /// Signature state of the selected commit; nil until verified.
-    private(set) var selectedSignature: SignatureStatus?
+    public private(set) var selectedSignature: SignatureStatus?
     private var tagsBySHA: [String: [TagInfo]] = [:]
-    private(set) var graphNodes: [String: GraphNode] = [:]
-    private(set) var maxGraphColumns = 1
-    private(set) var isLoading = false {
+    public private(set) var graphNodes: [String: GraphNode] = [:]
+    public private(set) var maxGraphColumns = 1
+    public private(set) var isLoading = false {
         didSet { if !isLoading, pendingReload { Task { await reloadLog() } } }
     }
-    private(set) var hasMore = true
-    private(set) var searchText = ""
-    var filterBranch: String?
-    var errorMessage: String?
+    public private(set) var hasMore = true
+    public private(set) var searchText = ""
+    public var filterBranch: String?
+    public var errorMessage: String?
     /// The shown branch's upstream, logged alongside it so commits waiting to be pulled appear too.
-    private(set) var upstreamName: String?
+    public private(set) var upstreamName: String?
     /// Commits on the upstream the branch doesn't have yet.
     private(set) var incomingSHAs: Set<String> = []
     /// Commits on the branch the upstream doesn't have yet.
@@ -50,34 +50,34 @@ final class HistoryViewModel {
     // MARK: - Detail
 
     /// Selected commit SHAs; the focused one is ``selectedCommit``.
-    private(set) var selection = ListSelection<String>()
-    private(set) var selectedCommit: CommitInfo?
-    private(set) var commitDiffs: [FileDiff] = []
-    private(set) var expandedPaths: Set<String> = []
-    private(set) var isLoadingDiff = false
-    private(set) var detailTab: DetailTab = .changeset
+    public private(set) var selection = ListSelection<String>()
+    public private(set) var selectedCommit: CommitInfo?
+    public private(set) var commitDiffs: [FileDiff] = []
+    public private(set) var expandedPaths: Set<String> = []
+    public private(set) var isLoadingDiff = false
+    public private(set) var detailTab: DetailTab = .changeset
     /// Shared by every window through the app preference.
-    private(set) var layout = ViewModelPreferences.historyLayout
-    private(set) var treeFiles: [String] = []
-    private(set) var isLoadingTree = false
+    public private(set) var layout = ViewModelPreferences.historyLayout
+    public private(set) var treeFiles: [String] = []
+    public private(set) var isLoadingTree = false
 
     // MARK: - Actions
 
-    private(set) var pendingAction: HistoryAction?
-    private(set) var isPerformingAction = false
+    public private(set) var pendingAction: HistoryAction?
+    public private(set) var isPerformingAction = false
     /// Set by the session so mutations refresh every view, not just this list.
-    var onRepositoryChanged: (() async -> Void)?
+    public var onRepositoryChanged: (() async -> Void)?
     /// Set by the session to show Changes, where the conflict banner continues a stopped rebase.
-    var onRebaseStopped: (() -> Void)?
-    var undoManager: GitUndoManager?
+    public var onRebaseStopped: (() -> Void)?
+    public var undoManager: GitUndoManager?
 
-    let repository: any GitRepositoryProtocol
+    public let repository: any GitRepositoryProtocol
     /// The session's shared refs; rows decorate from them instead of reading refs per list.
-    let refs: RepositoryRefs
+    public let refs: RepositoryRefs
     private let pageSize = 100
     private var hasLoaded = false
     /// Set while hidden during a repository change, so the next appearance reloads.
-    private(set) var isStale = false
+    public private(set) var isStale = false
     /// A reload asked for while the log was loading; it runs once that finishes.
     private var pendingReload = false
     private var appliedRefsGeneration: Int?
@@ -86,7 +86,7 @@ final class HistoryViewModel {
     // Keyed by SHA: a commit's diff, tree and signature never change, so revisits skip git entirely.
     @ObservationIgnored private var detailCache = LRUCache<String, CommitDetails>(capacity: 50)
 
-    init(repository: any GitRepositoryProtocol, refs: RepositoryRefs? = nil) {
+    public init(repository: any GitRepositoryProtocol, refs: RepositoryRefs? = nil) {
         self.repository = repository
         self.refs = refs ?? RepositoryRefs(repository: repository)
     }
@@ -97,7 +97,7 @@ final class HistoryViewModel {
 
     // MARK: - Loading
 
-    func loadIfNeeded() async {
+    public func loadIfNeeded() async {
         guard hasLoaded else { return await loadInitial() }
         guard isStale else { return }
         isStale = false
@@ -106,11 +106,11 @@ final class HistoryViewModel {
     }
 
     /// The repository changed while this list was hidden; it reloads when shown again.
-    func markStale() {
+    public func markStale() {
         if hasLoaded { isStale = true }
     }
 
-    func loadInitial() async {
+    public func loadInitial() async {
         hasLoaded = true
         isStale = false
         commits = []
@@ -127,7 +127,7 @@ final class HistoryViewModel {
 
     /// Re-reads the loaded range in place, keeping the selection, after the repository changes.
     /// Joins the session's ref read when one is already running.
-    func reload() async {
+    public func reload() async {
         guard hasLoaded else { return }
         isStale = false
         async let refsRead: Void = refs.refresh()
@@ -174,7 +174,7 @@ final class HistoryViewModel {
     }
 
     /// Pages in more history once the list scrolls to its last row.
-    func rowAppeared(_ commit: CommitInfo) {
+    public func rowAppeared(_ commit: CommitInfo) {
         guard commit.id == filteredCommits.last?.id else { return }
         Task { await loadMore() }
     }
@@ -236,18 +236,18 @@ final class HistoryViewModel {
         }
     }
 
-    func syncState(of commit: CommitInfo) -> CommitSyncState? {
+    public func syncState(of commit: CommitInfo) -> CommitSyncState? {
         if incomingSHAs.contains(commit.id) { return .incoming }
         return outgoingSHAs.contains(commit.id) ? .outgoing : nil
     }
 
     // MARK: - Filter
 
-    func setSearchText(_ text: String) {
+    public func setSearchText(_ text: String) {
         searchText = text
     }
 
-    var filteredCommits: [CommitInfo] {
+    public var filteredCommits: [CommitInfo] {
         let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
         guard !query.isEmpty else { return commits }
         return commits.filter {
@@ -258,22 +258,22 @@ final class HistoryViewModel {
         }
     }
 
-    var isFiltering: Bool { !searchText.trimmingCharacters(in: .whitespaces).isEmpty }
+    public var isFiltering: Bool { !searchText.trimmingCharacters(in: .whitespaces).isEmpty }
 
     // MARK: - Refs
 
     /// Looked up from the refs, since an upstream ahead of HEAD tops the log; a detached HEAD tops it.
-    var headSHA: String? {
+    public var headSHA: String? {
         branches.first(where: \.isHEAD)?.targetSHA ?? (filterBranch == nil ? commits.first?.id : nil)
     }
 
-    var headBranchName: String? { branches.first(where: \.isHEAD)?.name }
+    public var headBranchName: String? { branches.first(where: \.isHEAD)?.name }
 
-    func branches(at commit: CommitInfo) -> [BranchInfo] {
+    public func branches(at commit: CommitInfo) -> [BranchInfo] {
         branchesBySHA[commit.id] ?? []
     }
 
-    func tags(at commit: CommitInfo) -> [TagInfo] {
+    public func tags(at commit: CommitInfo) -> [TagInfo] {
         tagsBySHA[commit.id] ?? []
     }
 
@@ -283,13 +283,13 @@ final class HistoryViewModel {
             .mapValues { $0.sorted { ($0.isHEAD ? 0 : $0.isLocal ? 1 : 2) < ($1.isHEAD ? 0 : $1.isLocal ? 1 : 2) } }
     }
 
-    func commit(withID id: String) -> CommitInfo? {
+    public func commit(withID id: String) -> CommitInfo? {
         commits.first { $0.id == id }
     }
 
     // MARK: - Selection
 
-    func select(_ commit: CommitInfo) {
+    public func select(_ commit: CommitInfo) {
         var next = ListSelection<String>()
         next.select(commit.id)
         applySelection(next)
@@ -374,31 +374,31 @@ final class HistoryViewModel {
 
     // MARK: - Detail
 
-    func setLayout(_ layout: HistoryLayout) {
+    public func setLayout(_ layout: HistoryLayout) {
         self.layout = layout
         ViewModelPreferences.historyLayout = layout
     }
 
-    func selectDetailTab(_ tab: DetailTab) {
+    public func selectDetailTab(_ tab: DetailTab) {
         detailTab = tab
         if tab == .tree, treeFiles.isEmpty { Task { await loadTree() } }
     }
 
-    func toggleFile(_ path: String) {
+    public func toggleFile(_ path: String) {
         if expandedPaths.contains(path) { expandedPaths.remove(path) } else { expandedPaths.insert(path) }
     }
 
-    func setAllFilesExpanded(_ expanded: Bool) {
+    public func setAllFilesExpanded(_ expanded: Bool) {
         expandedPaths = expanded ? Set(commitDiffs.map(\.path)) : []
     }
 
     /// Shows a file from the tree in the changeset tab, expanded.
-    func revealInChangeset(_ path: String) {
+    public func revealInChangeset(_ path: String) {
         expandedPaths.insert(path)
         detailTab = .changeset
     }
 
-    func fileDiff(for path: String) -> FileDiff? {
+    public func fileDiff(for path: String) -> FileDiff? {
         commitDiffs.first { $0.path == path }
     }
 
@@ -433,7 +433,7 @@ final class HistoryViewModel {
 /// Everything the detail pane shows for one commit; each part fills in as it loads.
 struct CommitDetails {
     var diffs: [FileDiff]?
-    var tree: [String]?
+    public var tree: [String]?
     var signature: SignatureStatus?
 
     func isComplete(needsTree: Bool) -> Bool {

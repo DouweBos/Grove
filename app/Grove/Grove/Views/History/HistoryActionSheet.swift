@@ -1,6 +1,7 @@
 // Views/History/HistoryActionSheet.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Presents the sheet for whatever ``HistoryAction`` the view model has pending.

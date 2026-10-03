@@ -3,6 +3,7 @@
 //
 // Who the next commit is authored as, with a menu to switch this repository to another profile.
 
+import GroveKit
 import SwiftUI
 
 struct CommitIdentityMenu: View {

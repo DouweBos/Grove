@@ -5,6 +5,7 @@
 // and YAML beyond the reader's subset.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

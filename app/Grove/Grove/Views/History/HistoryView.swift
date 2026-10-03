@@ -1,6 +1,7 @@
 // Views/History/HistoryView.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// History tab: commit list card on the left, commit detail card on the right.

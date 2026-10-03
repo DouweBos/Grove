@@ -1,6 +1,7 @@
 // Views/Stack/StackLayerCard.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// One layer of the Stack tab: branch, PR and checks, its own commits and diff size, sync state and health.

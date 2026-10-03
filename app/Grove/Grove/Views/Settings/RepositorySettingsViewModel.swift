@@ -2,6 +2,7 @@
 // Grove
 
 import Foundation
+import GroveKit
 import Observation
 
 /// Edits the repository's local `.git/config`: identity, pull strategy and remote URLs.

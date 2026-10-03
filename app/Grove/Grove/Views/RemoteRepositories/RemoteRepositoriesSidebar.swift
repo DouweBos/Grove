@@ -3,6 +3,7 @@
 //
 // Cloud browser sidebar: each signed-in account with its organizations, each listing its repositories.
 
+import GroveKit
 import SwiftUI
 
 struct RemoteRepositoriesSidebar: View {

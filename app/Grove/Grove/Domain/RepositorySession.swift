@@ -5,6 +5,7 @@
 // open repository. RootWindowHost caches one session per repo path.
 
 import Foundation
+import GroveKit
 import Observation
 import os
 
@@ -75,7 +76,7 @@ final class RepositorySession {
         let refs = RepositoryRefs(repository: repository, readsStatus: false)
         self.refs = refs
         self.sidebarVM        = SidebarViewModel(repository: repository, refs: refs)
-        self.workingCopyVM    = WorkingCopyViewModel(repository: repository)
+        self.workingCopyVM    = WorkingCopyViewModel(repository: repository, templateStore: .shared)
         self.historyVM        = HistoryViewModel(repository: repository, refs: refs)
         self.stashesVM        = StashesViewModel(repository: repository)
         self.reflogVM         = ReflogViewModel(repository: repository)
@@ -97,6 +98,7 @@ final class RepositorySession {
     /// Lets feature VMs refresh the whole session and record undoable actions.
     private func wireFeatureViewModels() {
         let refresh: () async -> Void = { [weak self] in await self?.refreshAll() }
+        gitUndoManager.onActionRecorded = { EditUndoState.shared.gitActionRecorded() }
         sidebarVM.onRepositoryChanged = refresh
         sidebarVM.changeCountSource = { [workingCopyVM] in workingCopyVM.changedCount }
         sidebarVM.undoManager = gitUndoManager

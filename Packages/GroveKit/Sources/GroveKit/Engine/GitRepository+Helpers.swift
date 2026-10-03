@@ -113,7 +113,7 @@ extension GitRepository {
     }
 
     /// Apply a patch string via `git apply`.
-    func applyPatch(_ patch: String, cached: Bool, reverse: Bool = false) async throws {
+    public func applyPatch(_ patch: String, cached: Bool, reverse: Bool = false) async throws {
         var args = ["apply"]
         if cached { args.append("--cached") }
         if reverse { args.append("--reverse") }

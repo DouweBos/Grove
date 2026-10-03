@@ -11,7 +11,7 @@ import os
 // MARK: - GitShellError
 
 /// Errors produced by ``GitShell`` when a git process fails.
-enum GitShellError: LocalizedError {
+public enum GitShellError: LocalizedError {
     /// The git process exited with a non-zero status code.
     case nonZeroExit(command: String, exitCode: Int32, stderr: String)
     /// The git executable could not be found on PATH.
@@ -32,7 +32,7 @@ enum GitShellError: LocalizedError {
         return .nonZeroExit(command: arguments.first ?? "", exitCode: result.exitCode, stderr: result.stderr)
     }
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .nonZeroExit(let command, _, let stderr):
             return GitErrorMessage.message(command: command, stderr: stderr)
@@ -49,18 +49,18 @@ enum GitShellError: LocalizedError {
 // MARK: - ShellResult
 
 /// Output captured from a completed git process.
-nonisolated struct ShellResult: Sendable {
+public nonisolated struct ShellResult: Sendable {
     /// Standard output, decoded as UTF-8.
-    let stdout: String
+    public let stdout: String
     /// Standard error, decoded as UTF-8.
-    let stderr: String
+    public let stderr: String
     /// Process exit code (0 = success).
-    let exitCode: Int32
+    public let exitCode: Int32
     /// Raw standard output, for binary content such as images.
     var stdoutData = Data()
 
     /// Whether the process completed successfully.
-    var isSuccess: Bool { exitCode == 0 }
+    public var isSuccess: Bool { exitCode == 0 }
 }
 
 // MARK: - GitShell
@@ -74,15 +74,15 @@ nonisolated struct ShellResult: Sendable {
 /// let result = try await shell.run(["log", "--oneline", "-10"])
 /// print(result.stdout)
 /// ```
-final class GitShell: Sendable {
+public final class GitShell: Sendable {
 
     // MARK: Properties
 
     /// Absolute URL of the repository working directory.
-    nonisolated let workingDirectory: URL
+    public nonisolated let workingDirectory: URL
 
     /// Where git runs and the worktree's files are read.
-    nonisolated let runner: any GitRunner
+    public nonisolated let runner: any GitRunner
 
     /// Variables added to every invocation of this shell.
     nonisolated private let extraEnvironment: [String: String]
@@ -93,7 +93,7 @@ final class GitShell: Sendable {
     ///   - workingDirectory: Absolute URL of the repository root.
     ///   - runner: Runs git and reaches the worktree's files.
     ///   - extraEnvironment: Additional environment variables injected into every process.
-    nonisolated init(
+    public nonisolated init(
         workingDirectory: URL,
         runner: any GitRunner,
         extraEnvironment: [String: String] = [:]
@@ -104,7 +104,7 @@ final class GitShell: Sendable {
     }
 
     /// A shell on the same runner in another directory, e.g. a linked worktree.
-    nonisolated func at(_ directory: URL) -> GitShell {
+    public nonisolated func at(_ directory: URL) -> GitShell {
         GitShell(workingDirectory: directory, runner: runner, extraEnvironment: extraEnvironment)
     }
 
@@ -118,7 +118,7 @@ final class GitShell: Sendable {
     /// - Returns: A ShellResult with stdout, stderr, and exit code.
     /// - Throws: GitShellError/nonZeroExit when exit code is non-zero.
     @discardableResult
-    nonisolated func run(
+    public nonisolated func run(
         _ arguments: [String],
         environment: [String: String] = [:]
     ) async throws -> ShellResult {
@@ -134,7 +134,7 @@ final class GitShell: Sendable {
     }
 
     /// Runs a long git command (clone), streaming stderr to `onStderr`; cancelling the task stops git.
-    nonisolated func runStreaming(_ arguments: [String], onStderr: @escaping @Sendable (String) -> Void) async throws {
+    public nonisolated func runStreaming(_ arguments: [String], onStderr: @escaping @Sendable (String) -> Void) async throws {
         let result = try await runner.runStreaming(invocation(arguments, environment: [:]), onStderr: onStderr)
         try Task.checkCancellation()
         guard result.isSuccess else {
@@ -145,7 +145,7 @@ final class GitShell: Sendable {
     /// Run a git subcommand, returning the result regardless of exit code.
     ///
     /// Use this when you need to inspect stderr or exit code without throwing.
-    nonisolated func runAllowingFailure(
+    public nonisolated func runAllowingFailure(
         _ arguments: [String],
         environment: [String: String] = [:]
     ) async throws -> ShellResult {
@@ -156,7 +156,7 @@ final class GitShell: Sendable {
     ///
     /// Used for `git apply --cached` (hunk/line-level staging).
     @discardableResult
-    nonisolated func runWithInput(
+    public nonisolated func runWithInput(
         _ arguments: [String],
         input: String,
         environment: [String: String] = [:]

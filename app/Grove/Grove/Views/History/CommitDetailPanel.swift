@@ -1,6 +1,7 @@
 // Views/History/CommitDetailPanel.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// Right panel of History: commit header, then its changeset or tree.

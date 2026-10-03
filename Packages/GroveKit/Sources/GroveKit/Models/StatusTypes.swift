@@ -8,20 +8,20 @@ import Foundation
 // MARK: - StatusEntry
 
 /// Working tree / index status for a single file path.
-struct StatusEntry: Identifiable, Hashable, Sendable {
+public struct StatusEntry: Identifiable, Hashable, Sendable {
     /// File path relative to repository root — used as the stable identifier.
-    let id: String
-    let path: String
+    public let id: String
+    public let path: String
     /// Status in the index (staged area).
-    let indexStatus: FileStatus
+    public let indexStatus: FileStatus
     /// Status in the working directory (unstaged).
-    let workdirStatus: FileStatus
+    public let workdirStatus: FileStatus
 }
 
 // MARK: - FileStatus
 
 /// Single-character status code matching `git status --porcelain` conventions.
-enum FileStatus: String, Hashable, Sendable, CaseIterable {
+public enum FileStatus: String, Hashable, Sendable, CaseIterable {
     case unmodified = " "
     case modified = "M"
     case added = "A"

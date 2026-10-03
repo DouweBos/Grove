@@ -19,14 +19,14 @@ import os
 /// because they cannot be safely undone. Show a confirmation alert instead.
 @MainActor
 @Observable
-final class GitUndoManager {
+public final class GitUndoManager {
 
     // MARK: - GitAction
 
     /// A single reversible git operation.
-    struct GitAction: Identifiable {
+    public struct GitAction: Identifiable {
         /// Stable identity for the action within a session.
-        let id: UUID
+        public let id: UUID
         /// Human-readable description shown in the Edit menu (e.g. "Commit 'fix: login bug'").
         let description: String
         /// Async closure that reverts the operation.
@@ -55,22 +55,24 @@ final class GitUndoManager {
     private(set) var redoStack: [GitAction] = []
 
     /// Whether there is an undo action available.
-    var canUndo: Bool { !undoStack.isEmpty }
+    public var canUndo: Bool { !undoStack.isEmpty }
     /// Whether there is a redo action available.
-    var canRedo: Bool { !redoStack.isEmpty }
+    public var canRedo: Bool { !redoStack.isEmpty }
 
     /// Short description of the next undo action, or `nil` when the stack is empty.
-    var undoDescription: String? { undoStack.last?.description }
+    public var undoDescription: String? { undoStack.last?.description }
     /// Short description of the next redo action, or `nil` when the stack is empty.
-    var redoDescription: String? { redoStack.last?.description }
+    public var redoDescription: String? { redoStack.last?.description }
 
     // MARK: - Error State
 
-    /// Non-nil when an undo or redo operation fails; RootWindowHost alerts on it.
-    private(set) var errorMessage: String?
+    /// Non-nil when an undo or redo operation fails, for the app to show.
+    public private(set) var errorMessage: String?
 
     /// Called after each recorded action, e.g. so the app's Edit menu prefers git undo over stale text undo.
-    @ObservationIgnored var onActionRecorded: (() -> Void)?
+    @ObservationIgnored public var onActionRecorded: (() -> Void)?
+
+    public init() {}
 
     // MARK: - Stack Mutation
 
@@ -78,7 +80,7 @@ final class GitUndoManager {
     ///
     /// Recording a new action always clears the redo stack, matching the
     /// standard undo model (any new operation invalidates the redo history).
-    func record(_ action: GitAction) {
+    public func record(_ action: GitAction) {
         undoStack.append(action)
         redoStack.removeAll()
         onActionRecorded?()
@@ -91,7 +93,7 @@ final class GitUndoManager {
     /// onto the redo stack.
     ///
     /// - Throws: Any error thrown by the underlying undo command.
-    func undo() async throws {
+    public func undo() async throws {
         guard let action = undoStack.last else { return }
         undoStack.removeLast()
         do {
@@ -112,7 +114,7 @@ final class GitUndoManager {
     /// the undo stack.
     ///
     /// - Throws: Any error thrown by the underlying redo command.
-    func redo() async throws {
+    public func redo() async throws {
         guard let action = redoStack.last else { return }
         redoStack.removeLast()
         do {
@@ -127,15 +129,15 @@ final class GitUndoManager {
         }
     }
 
-    private(set) var errorTitle = "Couldn't Undo"
+    public private(set) var errorTitle = "Couldn't Undo"
 
     /// Records an undo/redo failure so the window can alert.
-    func reportError(_ error: Error, redo: Bool = false) {
+    public func reportError(_ error: Error, redo: Bool = false) {
         errorTitle = redo ? "Couldn't Redo" : "Couldn't Undo"
         errorMessage = error.localizedDescription
     }
 
-    func dismissError() {
+    public func dismissError() {
         errorMessage = nil
     }
 
@@ -253,7 +255,7 @@ final class GitUndoManager {
     ///   - branchName: The name of the deleted branch.
     ///   - sha: The SHA the branch pointed at before deletion (must be captured before calling `deleteBranch`).
     ///   - repository: The repository to operate on.
-    static func deleteBranchAction(
+    public static func deleteBranchAction(
         branchName: String,
         sha: String,
         repository: any GitRepositoryProtocol
@@ -276,7 +278,7 @@ final class GitUndoManager {
     ///   - targetBranch: The branch being checked out.
     ///   - previousBranch: The branch that was checked out before the switch.
     ///   - repository: The repository to operate on.
-    static func checkoutAction(
+    public static func checkoutAction(
         targetBranch: String,
         previousBranch: String,
         repository: any GitRepositoryProtocol

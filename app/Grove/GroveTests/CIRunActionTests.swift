@@ -4,6 +4,7 @@
 // Re-running and cancelling runs: the requests sent, the confirmation in between, and the list catching up after.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

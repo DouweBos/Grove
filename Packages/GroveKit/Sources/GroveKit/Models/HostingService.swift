@@ -4,10 +4,10 @@
 import Foundation
 
 /// The code hosts Grove talks to for pull requests and hosted repositories.
-nonisolated enum HostingServiceKind: String, CaseIterable, Codable, Hashable, Sendable {
+public nonisolated enum HostingServiceKind: String, CaseIterable, Codable, Hashable, Sendable {
     case github, gitlab, bitbucket, azureDevOps
 
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .github: "GitHub"
         case .gitlab: "GitLab"
@@ -17,9 +17,9 @@ nonisolated enum HostingServiceKind: String, CaseIterable, Codable, Hashable, Se
     }
 
     /// GitLab calls them merge requests.
-    var pullRequestNoun: String { self == .gitlab ? "Merge Request" : "Pull Request" }
+    public var pullRequestNoun: String { self == .gitlab ? "Merge Request" : "Pull Request" }
 
-    var symbol: String {
+    public var symbol: String {
         switch self {
         case .github: "chevron.left.forwardslash.chevron.right"
         case .gitlab: "square.stack.3d.up"
@@ -40,19 +40,27 @@ nonisolated enum HostingServiceKind: String, CaseIterable, Codable, Hashable, Se
 }
 
 /// Where a remote URL points: which service, and the repository on it.
-nonisolated struct RemoteLocation: Hashable, Sendable {
-    let kind: HostingServiceKind
-    let host: String
+public nonisolated struct RemoteLocation: Hashable, Sendable {
+    public let kind: HostingServiceKind
+    public let host: String
     /// GitHub owner, GitLab namespace (may contain slashes), Bitbucket workspace, Azure organization.
-    let owner: String
-    let name: String
+    public let owner: String
+    public let name: String
     /// Azure DevOps only: the project that holds the repository.
-    var project: String?
+    public var project: String?
 
-    var fullName: String { "\(owner)/\(name)" }
+    public init(kind: HostingServiceKind, host: String, owner: String, name: String, project: String? = nil) {
+        self.kind = kind
+        self.host = host
+        self.owner = owner
+        self.name = name
+        self.project = project
+    }
+
+    public var fullName: String { "\(owner)/\(name)" }
 
     /// Parses https, ssh and scp-style remote URLs; nil for local paths and unknown hosts.
-    static func parse(_ url: String) -> RemoteLocation? {
+    public static func parse(_ url: String) -> RemoteLocation? {
         guard let (host, path) = split(url) else { return nil }
         guard let kind = HostingServiceKind.detect(host: host) else { return nil }
         var parts = path.split(separator: "/").map(String.init)

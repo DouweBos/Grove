@@ -7,6 +7,7 @@
 // to the correct view.
 
 import Foundation
+import GroveKit
 
 /// Represents every selectable destination inside a repository window's sidebar.
 enum SidebarItem: Hashable, Sendable {

@@ -8,7 +8,7 @@ import os
 
 extension GitRepository {
 
-    func patch(paths: [String], staged: Bool) async throws -> String {
+    public func patch(paths: [String], staged: Bool) async throws -> String {
         guard !paths.isEmpty else { return "" }
         let base = ["diff", "--binary", "--no-color", "--no-ext-diff"]
         if staged {
@@ -29,7 +29,7 @@ extension GitRepository {
         return patch
     }
 
-    func applyPatch(at file: URL, toIndex: Bool, checkOnly: Bool) async throws {
+    public func applyPatch(at file: URL, toIndex: Bool, checkOnly: Bool) async throws {
         var args = ["apply", "--whitespace=nowarn"]
         if toIndex { args.append("--index") }
         if checkOnly { args.append("--check") }

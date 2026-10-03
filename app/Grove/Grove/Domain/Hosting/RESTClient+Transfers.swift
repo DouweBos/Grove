@@ -4,6 +4,7 @@
 // Requests beyond plain JSON lists: lists wrapped in an object, and files the API hands out through a redirect.
 
 import Foundation
+import GroveKit
 
 extension RESTClient {
 

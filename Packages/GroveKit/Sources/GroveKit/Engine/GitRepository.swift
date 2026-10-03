@@ -18,7 +18,7 @@ import os
 // MARK: - GitRepositoryError
 
 /// Domain errors thrown by ``GitRepository``.
-enum GitRepositoryError: LocalizedError {
+public enum GitRepositoryError: LocalizedError {
     case notAGitRepository(URL)
     case invalidCommitMessage
     case branchNotFound(String)
@@ -32,7 +32,7 @@ enum GitRepositoryError: LocalizedError {
     case historyRewriteConflict
     case rebaseStopped
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .notAGitRepository(let url):
             return "'\(url.path)' is not a Git repository."
@@ -71,14 +71,14 @@ enum GitRepositoryError: LocalizedError {
 /// work to ``GitShell``, returning on the main actor.
 @MainActor
 @Observable
-final class GitRepository: GitRepositoryProtocol {
+public final class GitRepository: GitRepositoryProtocol {
 
     // MARK: Observable Properties
 
-    let path: URL
-    let displayName: String
-    var currentBranch: BranchInfo?
-    var repositoryState: RepositoryState = .normal
+    public let path: URL
+    public let displayName: String
+    public var currentBranch: BranchInfo?
+    public var repositoryState: RepositoryState = .normal
 
     // MARK: Private
 
@@ -96,7 +96,7 @@ final class GitRepository: GitRepositoryProtocol {
     ///   - hosting: Finds the code host behind the remotes, for pull requests and CI.
     /// - Throws: ``GitRepositoryError/notAGitRepository`` if `path` is not
     ///   inside a git repo.
-    init(path: URL, runner: any GitRunner, hosting: any RepositoryHosting = NoRepositoryHosting()) async throws {
+    public init(path: URL, runner: any GitRunner, hosting: any RepositoryHosting = NoRepositoryHosting()) async throws {
         self.path        = path
         self.displayName = path.lastPathComponent
         self.shell       = GitShell(workingDirectory: path, runner: runner)
@@ -123,7 +123,7 @@ final class GitRepository: GitRepositoryProtocol {
 
     // MARK: - Status
 
-    func refreshStatus() async throws {
+    public func refreshStatus() async throws {
         Logger.gitRepository.debug("Refreshing status for \(self.displayName, privacy: .public)")
         let previousState = repositoryState
         // Status is computed on demand; this triggers a re-read of current branch.
@@ -136,12 +136,12 @@ final class GitRepository: GitRepositoryProtocol {
         }
     }
 
-    func status() async throws -> [StatusEntry] {
+    public func status() async throws -> [StatusEntry] {
         let result = try await shell.run(["--no-optional-locks", "status", "--porcelain=v2", "-uall"])
         return StatusParser.parse(result.stdout)
     }
 
-    func listTrackedFiles() async throws -> [String] {
+    public func listTrackedFiles() async throws -> [String] {
         let result = try await shell.run(["ls-files"])
         return result.stdout
             .split(separator: "\n")

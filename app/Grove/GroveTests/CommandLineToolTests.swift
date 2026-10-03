@@ -4,6 +4,7 @@
 // The `grove` script, installed into a temp folder and run with a stand-in `open`, and the URLs it produces.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

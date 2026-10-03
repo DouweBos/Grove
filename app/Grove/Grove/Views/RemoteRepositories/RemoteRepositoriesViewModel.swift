@@ -4,6 +4,7 @@
 // Repositories on every signed-in account and its organizations, loaded per owner on demand.
 
 import Foundation
+import GroveKit
 import Observation
 
 @MainActor

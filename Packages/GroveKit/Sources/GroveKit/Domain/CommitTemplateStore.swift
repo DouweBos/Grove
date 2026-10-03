@@ -6,53 +6,53 @@
 import Foundation
 import Observation
 
-struct CommitTemplate: Codable, Identifiable, Hashable, Sendable {
-    var id = UUID()
-    var name: String
-    var summary: String
-    var body: String = ""
+public struct CommitTemplate: Codable, Identifiable, Hashable, Sendable {
+    public var id = UUID()
+    public var name: String
+    public var summary: String
+    public var body: String = ""
 }
 
 @MainActor
 @Observable
-final class CommitTemplateStore {
+public final class CommitTemplateStore {
 
-    private(set) var templates: [CommitTemplate]
+    public private(set) var templates: [CommitTemplate]
     @ObservationIgnored private let persist: ([CommitTemplate]) -> Void
 
     /// The app decides where templates live; without `load`/`save` they're kept in memory only.
-    init(load: () -> [CommitTemplate]? = { nil }, save: @escaping ([CommitTemplate]) -> Void = { _ in }) {
+    public init(load: () -> [CommitTemplate]? = { nil }, save: @escaping ([CommitTemplate]) -> Void = { _ in }) {
         templates = load() ?? Self.defaults
         persist = save
     }
 
     @discardableResult
-    func add() -> CommitTemplate {
+    public func add() -> CommitTemplate {
         let template = CommitTemplate(name: "New Template", summary: "")
         templates.append(template)
         persist(templates)
         return template
     }
 
-    func update(_ template: CommitTemplate) {
+    public func update(_ template: CommitTemplate) {
         guard let index = templates.firstIndex(where: { $0.id == template.id }), templates[index] != template else { return }
         templates[index] = template
         persist(templates)
     }
 
-    func delete(_ id: CommitTemplate.ID) {
+    public func delete(_ id: CommitTemplate.ID) {
         templates.removeAll { $0.id == id }
         persist(templates)
     }
 
-    func move(fromOffsets source: IndexSet, toOffset destination: Int) {
+    public func move(fromOffsets source: IndexSet, toOffset destination: Int) {
         let moving = source.map { templates[$0] }
         for index in source.reversed() { templates.remove(at: index) }
         templates.insert(contentsOf: moving, at: destination - source.count(in: 0..<destination))
         persist(templates)
     }
 
-    func resetToDefaults() {
+    public func resetToDefaults() {
         templates = Self.defaults
         persist(templates)
     }
@@ -75,5 +75,5 @@ extension CommitTemplate {
                   body: parts.count > 1 ? parts[1].trimmingCharacters(in: .whitespacesAndNewlines) : "")
     }
 
-    static let gitTemplateID = UUID(uuidString: "00000000-0000-0000-0000-00000000C0DE")!
+    public static let gitTemplateID = UUID(uuidString: "00000000-0000-0000-0000-00000000C0DE")!
 }

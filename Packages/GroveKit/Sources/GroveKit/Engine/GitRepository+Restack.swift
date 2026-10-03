@@ -8,14 +8,14 @@ import Foundation
 import os
 
 /// Why a restack didn't finish.
-enum RestackError: LocalizedError, Equatable {
+public enum RestackError: LocalizedError, Equatable {
     /// A layer's rebase hit a conflict; resolve it in Changes, then continue.
     case stopped(String)
     case dirtyWorktree
     case alreadyRunning
     case notFastForward(branch: String, target: String)
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .stopped(let title): "\(title) stopped on a conflict. Resolve it in Changes, then continue."
         case .dirtyWorktree: "Commit or stash your changes before restacking."
@@ -31,7 +31,7 @@ extension GitRepository {
         await absoluteGitDir()?.appendingPathComponent("grove/restack.json")
     }
 
-    func pendingRestack() async -> RestackPlan? {
+    public func pendingRestack() async -> RestackPlan? {
         guard let url = await planURL(), let data = try? await shell.runner.readFile(at: url) else { return nil }
         return try? JSONDecoder().decode(RestackPlan.self, from: data)
     }
@@ -45,7 +45,7 @@ extension GitRepository {
         try await shell.runner.writeFile(JSONEncoder().encode(plan), to: url, executable: false)
     }
 
-    func restack(_ plan: RestackPlan) async throws {
+    public func restack(_ plan: RestackPlan) async throws {
         guard !plan.isEmpty else { return }
         guard await pendingRestack() == nil, repositoryState == .normal else { throw RestackError.alreadyRunning }
         guard try await isClean(shell) else { throw RestackError.dirtyWorktree }
@@ -59,7 +59,7 @@ extension GitRepository {
         try await run(plan)
     }
 
-    func continueRestack() async throws {
+    public func continueRestack() async throws {
         guard var plan = await pendingRestack() else { return try await continueOperation() }
         if repositoryState != .normal {
             let result = try await shell.runAllowingFailure(["rebase", "--continue"], environment: ["GIT_EDITOR": "true"])
@@ -72,7 +72,7 @@ extension GitRepository {
     }
 
     /// Stops the rebase in progress and puts every layer the cascade already moved back where it was.
-    func abortRestack() async throws {
+    public func abortRestack() async throws {
         guard let plan = await pendingRestack() else { return try await abortRebase() }
         Logger.gitRepository.info("Aborting restack of \(plan.stackName, privacy: .public)")
         if repositoryState != .normal { _ = try await shell.runAllowingFailure(["rebase", "--abort"]) }
@@ -134,14 +134,14 @@ extension GitRepository {
 
     // MARK: - Pushing and folding
 
-    func pushStack(_ layers: [StackPush], to remote: String) async throws {
+    public func pushStack(_ layers: [StackPush], to remote: String) async throws {
         guard !layers.isEmpty else { return }
         Logger.gitRepository.info("Pushing \(layers.count, privacy: .public) stack layers to \(remote, privacy: .public)")
         try await shell.run(["push", "--atomic", "-u"] + layers.map(\.leaseArgument) + [remote] + layers.map(\.refspec))
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
     }
 
-    func fastForward(branch: String, to revision: String, worktreePath: String?) async throws {
+    public func fastForward(branch: String, to revision: String, worktreePath: String?) async throws {
         let target = try await shell.run(["rev-parse", "--verify", "\(revision)^{commit}"]).stdout
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if let worktreePath {

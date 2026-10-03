@@ -3,6 +3,7 @@
 
 import AppKit
 import Foundation
+import GroveKit
 import Observation
 
 /// The Actions tab: workflow runs of the repository's hosting service, filtered by workflow, branch and status.

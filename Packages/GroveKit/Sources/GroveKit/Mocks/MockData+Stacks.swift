@@ -24,7 +24,7 @@ extension MockData {
     }
 
     /// `18-chromecast → 19-cast-connect → 20-music → 21-ota → 22-streams`, 54 commits behind main.
-    static let linearStack = BranchStack(name: "companion", trunk: "main", layers: [
+    public static let linearStack = BranchStack(name: "companion", trunk: "main", layers: [
         layer("douwe/companion-18-chromecast", parent: nil, commits: 9, depth: 0, pr: 6329),
         layer("douwe/companion-19-cast-connect", parent: "douwe/companion-18-chromecast", commits: 3, depth: 1, pr: 6330, isHEAD: true),
         layer("douwe/companion-20-music", parent: "douwe/companion-19-cast-connect", commits: 7, depth: 2,
@@ -35,7 +35,7 @@ extension MockData {
     ], trunkAhead: 54)
 
     /// `a → b → c` plus `b → d`, with `a` merged.
-    static let splitStack = BranchStack(name: "auth", trunk: "main", layers: [
+    public static let splitStack = BranchStack(name: "auth", trunk: "main", layers: [
         layer("auth-api", parent: nil, commits: 2, depth: 0, pr: 12),
         layer("auth-ui", parent: "auth-api", commits: 3, depth: 1, pr: 13),
         layer("auth-ui-tests", parent: "auth-ui", commits: 1, depth: 2, health: [.needsRestack, .noPR, .unpushed]),
@@ -43,7 +43,7 @@ extension MockData {
     ], trunkAhead: 3)
 
     /// Local branches matching the stack fixtures' layers.
-    static let stackBranches: [BranchInfo] = (linearStack.layers + splitStack.layers).map { layer in
+    public static let stackBranches: [BranchInfo] = (linearStack.layers + splitStack.layers).map { layer in
         BranchInfo(id: "refs/heads/\(layer.branch)", name: layer.branch, isLocal: true, isRemote: false, isHEAD: layer.isHEAD,
                    targetSHA: layer.tipSHA, remoteName: nil,
                    upstream: layer.hasUpstream ? "refs/remotes/origin/\(layer.branch)" : nil, ahead: layer.ahead, behind: 0)

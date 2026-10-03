@@ -4,6 +4,7 @@
 // GitHub and GitHub Enterprise pull requests: GraphQL for lists (checks and reviewers in one call), REST for the rest.
 
 import Foundation
+import GroveKit
 
 /// One repository's corner of the GitHub REST API, shared by the pull request and Actions hosts.
 nonisolated protocol GitHubRepositoryAPI: Sendable {

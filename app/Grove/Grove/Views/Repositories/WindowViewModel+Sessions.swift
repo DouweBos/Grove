@@ -4,6 +4,7 @@
 // Keeps the last few repository sessions so returning to one shows its last state at once.
 
 import Foundation
+import GroveKit
 import os
 
 extension WindowViewModel {

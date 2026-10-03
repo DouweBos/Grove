@@ -4,6 +4,7 @@
 // The browser keeps a repository's last snapshot visible while it re-reads it.
 
 import Foundation
+@testable import GroveKit
 import Testing
 @testable import Grove
 

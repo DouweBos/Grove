@@ -9,17 +9,17 @@ import Foundation
 // MARK: - GraphNode
 
 /// Drawing information for a single commit row.
-struct GraphNode: Identifiable, Equatable {
-    let id: String
+public struct GraphNode: Identifiable, Equatable {
+    public let id: String
     /// Lane of the commit dot (left = 0).
-    let column: Int
+    public let column: Int
     /// Index into the app's lane palette; stays stable for the lifetime of a lane.
-    let colorIndex: Int
-    let lines: [GraphLine]
-    let isMerge: Bool
+    public let colorIndex: Int
+    public let lines: [GraphLine]
+    public let isMerge: Bool
 
     /// Lanes entering the row from above, used to continue lines through non-commit rows.
-    var lanesAbove: [GraphLine] {
+    public var lanesAbove: [GraphLine] {
         lines.filter { $0.kind != .outgoing }
     }
 }
@@ -28,15 +28,22 @@ struct GraphNode: Identifiable, Equatable {
 
 /// A segment inside one row. Pass-through lines span the whole row; incoming
 /// lines end at the dot, outgoing lines start at the dot.
-struct GraphLine: Equatable {
-    enum Kind: Equatable { case passThrough, incoming, outgoing }
+public struct GraphLine: Equatable {
+    public enum Kind: Equatable { case passThrough, incoming, outgoing }
 
-    let kind: Kind
+    public let kind: Kind
     /// Column at the top of the segment (the dot's column for outgoing lines).
-    let fromColumn: Int
+    public let fromColumn: Int
     /// Column at the bottom of the segment (the dot's column for incoming lines).
-    let toColumn: Int
-    let colorIndex: Int
+    public let toColumn: Int
+    public let colorIndex: Int
+
+    public init(kind: Kind, fromColumn: Int, toColumn: Int, colorIndex: Int) {
+        self.kind = kind
+        self.fromColumn = fromColumn
+        self.toColumn = toColumn
+        self.colorIndex = colorIndex
+    }
 }
 
 // MARK: - CommitGraphBuilder
@@ -46,14 +53,17 @@ struct GraphLine: Equatable {
 /// Every lane slot holds the SHA it expects next. When several lanes expect the
 /// same commit (branches forking from it) they all converge into its dot.
 /// Lanes never shift sideways, so a column keeps its color while it's alive.
-struct CommitGraphBuilder {
+public struct CommitGraphBuilder {
+
+    public init() {
+    }
 
     private struct Lane {
         let sha: String
         let colorIndex: Int
     }
 
-    func buildGraph(from commits: [CommitInfo]) -> [GraphNode] {
+    public func buildGraph(from commits: [CommitInfo]) -> [GraphNode] {
         var lanes: [Lane?] = []
         var nextColor = 0
         var nodes: [GraphNode] = []

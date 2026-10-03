@@ -5,28 +5,28 @@ import Foundation
 import Observation
 
 /// One rendered line of a blamed file.
-struct BlameLine: Identifiable, Hashable {
-    let number: Int
-    let text: String
-    let entry: BlameEntry?
+public struct BlameLine: Identifiable, Hashable {
+    public let number: Int
+    public let text: String
+    public let entry: BlameEntry?
     /// First line of a run attributed to the same commit; carries the annotation.
-    let startsBlock: Bool
-    var id: Int { number }
+    public let startsBlock: Bool
+    public var id: Int { number }
 }
 
 /// Owns the tracked-file picker and the blame of the chosen file.
 /// Session-owned so Quick Actions can open a file directly.
 @MainActor
 @Observable
-final class BlameViewModel {
+public final class BlameViewModel {
 
     // MARK: - File Picker
 
-    private(set) var trackedFiles: [String] = []
-    private(set) var isLoadingFiles = false
-    private(set) var filterText = ""
+    public private(set) var trackedFiles: [String] = []
+    public private(set) var isLoadingFiles = false
+    public private(set) var filterText = ""
 
-    var filteredFiles: [String] {
+    public var filteredFiles: [String] {
         let query = filterText.trimmingCharacters(in: .whitespaces).lowercased()
         guard !query.isEmpty else { return trackedFiles }
         return trackedFiles.filter { $0.lowercased().contains(query) }
@@ -34,20 +34,20 @@ final class BlameViewModel {
 
     // MARK: - Blame
 
-    private(set) var selectedFile: String?
+    public private(set) var selectedFile: String?
     /// Revision being blamed; nil blames the working tree.
-    private(set) var revision: String?
+    public private(set) var revision: String?
     /// Newer revisions visited before stepping back, most recent last.
     private var revisionStack: [String?] = []
-    private(set) var lines: [BlameLine] = []
-    private(set) var isLoadingBlame = false
-    private(set) var errorMessage: String?
+    public private(set) var lines: [BlameLine] = []
+    public private(set) var isLoadingBlame = false
+    public private(set) var errorMessage: String?
 
-    var canGoForward: Bool { !revisionStack.isEmpty }
-    var isAtWorkingTree: Bool { revision == nil }
-    var commitCount: Int { Set(lines.compactMap { $0.entry?.commitSHA }).count }
+    public var canGoForward: Bool { !revisionStack.isEmpty }
+    public var isAtWorkingTree: Bool { revision == nil }
+    public var commitCount: Int { Set(lines.compactMap { $0.entry?.commitSHA }).count }
 
-    let repository: any GitRepositoryProtocol
+    public let repository: any GitRepositoryProtocol
     // Revisions are immutable; working-tree entries (nil revision) are shown at once but always re-read.
     @ObservationIgnored private var blameCache = LRUCache<BlameKey, [BlameLine]>(capacity: 30)
 
@@ -56,18 +56,18 @@ final class BlameViewModel {
         let revision: String?
     }
 
-    init(repository: any GitRepositoryProtocol) {
+    public init(repository: any GitRepositoryProtocol) {
         self.repository = repository
     }
 
     // MARK: - Files
 
-    func loadFilesIfNeeded() async {
+    public func loadFilesIfNeeded() async {
         guard trackedFiles.isEmpty else { return }
         await reloadFiles()
     }
 
-    func reloadFiles() async {
+    public func reloadFiles() async {
         isLoadingFiles = true
         defer { isLoadingFiles = false }
         trackedFiles = ((try? await repository.listTrackedFiles()) ?? []).sorted {
@@ -75,13 +75,13 @@ final class BlameViewModel {
         }
     }
 
-    func setFilter(_ text: String) {
+    public func setFilter(_ text: String) {
         filterText = text
     }
 
     // MARK: - Blame
 
-    func open(file: String) async {
+    public func open(file: String) async {
         selectedFile = file
         revision = nil
         revisionStack = []
@@ -89,31 +89,31 @@ final class BlameViewModel {
     }
 
     /// Re-blames at the parent of `sha`, i.e. how these lines looked before that commit.
-    func blameBefore(_ sha: String) async {
+    public func blameBefore(_ sha: String) async {
         revisionStack.append(revision)
         revision = "\(sha)^"
         await loadBlame()
     }
 
     /// Steps back through the file's history from the newest commit shown.
-    func goToPreviousRevision() async {
+    public func goToPreviousRevision() async {
         guard let newest = lines.compactMap(\.entry).max(by: { $0.authorDate < $1.authorDate }) else { return }
         await blameBefore(newest.commitSHA)
     }
 
-    func goForward() async {
+    public func goForward() async {
         guard let newer = revisionStack.popLast() else { return }
         revision = newer
         await loadBlame()
     }
 
-    func goToWorkingTree() async {
+    public func goToWorkingTree() async {
         revisionStack = []
         revision = nil
         await loadBlame()
     }
 
-    func reload() async {
+    public func reload() async {
         await loadBlame()
     }
 

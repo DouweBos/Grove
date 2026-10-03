@@ -3,6 +3,7 @@
 //
 // The Files panel's actions menu: patches, snapshots and stashing.
 
+import GroveKit
 import SwiftUI
 
 struct FilesPanelMenu: View {

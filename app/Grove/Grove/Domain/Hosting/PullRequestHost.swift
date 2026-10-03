@@ -4,60 +4,7 @@
 // One service's pull request API, reached over HTTPS with the account's token.
 
 import Foundation
-
-/// Pull requests of one repository on its hosting service.
-nonisolated protocol PullRequestHost: Sendable {
-    var kind: HostingServiceKind { get }
-    func pullRequests() async throws -> [PullRequestInfo]
-    /// Open and merged pull requests, as small rows for branch lists and stacks.
-    func branchPullRequests() async throws -> [BranchPullRequest]
-    func pullRequest(number: Int) async throws -> PullRequestInfo
-    func comments(number: Int) async throws -> [PRComment]
-    func reviewComments(number: Int) async throws -> [PRReviewComment]
-    func commits(number: Int) async throws -> [CommitInfo]
-    /// Unified diff of the pull request; nil when the service has none, so the branches are diffed locally.
-    func diff(number: Int) async throws -> String?
-    func merge(number: Int) async throws
-    func close(number: Int) async throws
-    /// Points the pull request at another base branch, as when the branch below it merged.
-    func updateBase(number: Int, base: String) async throws
-    func comment(number: Int, body: String) async throws
-    /// Opens a pull request and returns its web URL.
-    func create(_ draft: PullRequestDraft) async throws -> String
-    func webURL(number: Int) async throws -> URL?
-    /// A ref the remote keeps for the pull request's head (`refs/pull/N/head`), which also covers forks;
-    /// nil where there is none and the source branch is fetched instead.
-    func headRef(number: Int) -> String?
-}
-
-extension PullRequestHost {
-    func headRef(number: Int) -> String? { nil }
-}
-
-/// Why a repository's hosting service can't be reached.
-nonisolated enum HostingError: LocalizedError, Equatable {
-    /// No remote points at a service Grove knows.
-    case noHostedRemote
-    /// The service needs an account in Preferences > Accounts.
-    case noAccount(HostingServiceKind, host: String)
-    /// The stored token was refused.
-    case notSignedIn(HostingServiceKind)
-    case unsupported(String)
-    /// The service is known, but Grove can't read its CI yet.
-    case ciUnsupported(HostingServiceKind)
-    case http(status: Int, message: String)
-
-    var errorDescription: String? {
-        switch self {
-        case .noHostedRemote: "None of this repository's remotes point at GitHub, GitLab, Bitbucket or Azure DevOps."
-        case .noAccount(let kind, let host): "Add a \(kind.displayName) account for \(host) in Settings > Accounts."
-        case .notSignedIn(let kind): "\(kind.displayName) refused the sign-in. Sign in again in Settings > Accounts."
-        case .unsupported(let message): message
-        case .ciUnsupported(let kind): "Grove doesn't show CI runs from \(kind.displayName) yet."
-        case .http(let status, let message): message.isEmpty ? "The server answered \(status)." : message
-        }
-    }
-}
+import GroveKit
 
 // MARK: - HTTP
 

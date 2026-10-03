@@ -17,39 +17,39 @@ extension GitRepository {
         try await resolvedHost().host
     }
 
-    func hostingService() async -> HostingServiceKind? {
+    public func hostingService() async -> HostingServiceKind? {
         hosting.service(of: (try? await remotes()) ?? [])
     }
 
-    func pullRequests() async throws -> [PullRequestInfo] {
+    public func pullRequests() async throws -> [PullRequestInfo] {
         Logger.gitRepository.info("Fetching pull requests in \(self.displayName, privacy: .public)")
         let prs = try await host().pullRequests()
         Logger.gitRepository.info("Fetched \(prs.count, privacy: .public) pull requests in \(self.displayName, privacy: .public)")
         return prs
     }
 
-    func branchPullRequests() async throws -> [BranchPullRequest] {
+    public func branchPullRequests() async throws -> [BranchPullRequest] {
         try await host().branchPullRequests()
     }
 
-    func pullRequestDetail(number: Int) async throws -> PullRequestInfo {
+    public func pullRequestDetail(number: Int) async throws -> PullRequestInfo {
         try await host().pullRequest(number: number)
     }
 
-    func pullRequestComments(number: Int) async throws -> [PRComment] {
+    public func pullRequestComments(number: Int) async throws -> [PRComment] {
         try await host().comments(number: number)
     }
 
-    func pullRequestReviewComments(number: Int) async throws -> [PRReviewComment] {
+    public func pullRequestReviewComments(number: Int) async throws -> [PRReviewComment] {
         try await host().reviewComments(number: number)
     }
 
-    func pullRequestCommits(number: Int) async throws -> [CommitInfo] {
+    public func pullRequestCommits(number: Int) async throws -> [CommitInfo] {
         try await host().commits(number: number)
     }
 
     /// The service's diff, or for services without one the branches' diff after fetching both.
-    func pullRequestDiff(number: Int) async throws -> [FileDiff] {
+    public func pullRequestDiff(number: Int) async throws -> [FileDiff] {
         let (host, remote) = try await resolvedHost()
         if let patch = try await host.diff(number: number) {
             return DiffParser.parse(patch).map { FileDiff(path: $0.filePath, status: Self.inferStatus($0), diff: $0, stats: $0.stats) }
@@ -62,13 +62,13 @@ extension GitRepository {
         return Self.fileDiffs(patch: patch, nameStatus: names)
     }
 
-    func pullRequestWebURL(number: Int) async throws -> URL? {
+    public func pullRequestWebURL(number: Int) async throws -> URL? {
         try await host().webURL(number: number)
     }
 
     /// Fetches the pull request's head with git and checks it out as its source branch. The service's head ref
     /// (`refs/pull/N/head`) also works for forks; without one the source branch is fetched and tracked.
-    func checkoutPullRequest(number: Int) async throws {
+    public func checkoutPullRequest(number: Int) async throws {
         Logger.gitRepository.info("Checking out PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
         let (host, remote) = try await resolvedHost()
         let branch = try await host.pullRequest(number: number).sourceBranch
@@ -82,35 +82,35 @@ extension GitRepository {
         repositoryState = await Self.loadRepositoryState(path: path, runner: shell.runner)
     }
 
-    func closePullRequest(number: Int) async throws {
+    public func closePullRequest(number: Int) async throws {
         Logger.gitRepository.info("Closing PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
         try await host().close(number: number)
     }
 
-    func mergePullRequest(number: Int) async throws {
+    public func mergePullRequest(number: Int) async throws {
         Logger.gitRepository.info("Merging PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
         try await host().merge(number: number)
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
     }
 
-    func createPullRequest(_ draft: PullRequestDraft) async throws -> String {
+    public func createPullRequest(_ draft: PullRequestDraft) async throws -> String {
         Logger.gitRepository.info("Creating PR \(draft.head, privacy: .public) → \(draft.base, privacy: .public)")
         return try await host().create(draft)
     }
 
-    func updatePullRequestBase(number: Int, base: String) async throws {
+    public func updatePullRequestBase(number: Int, base: String) async throws {
         Logger.gitRepository.info("Retargeting PR #\(number, privacy: .public) onto \(base, privacy: .public)")
         try await host().updateBase(number: number, base: base)
     }
 
-    func commentOnPullRequest(number: Int, body: String) async throws {
+    public func commentOnPullRequest(number: Int, body: String) async throws {
         Logger.gitRepository.info("Commenting on PR #\(number, privacy: .public) in \(self.displayName, privacy: .public)")
         try await host().comment(number: number, body: body)
     }
 
     /// The git commands that bring a pull request's head into `branch`: a tracking branch when the branch is on the remote,
     /// otherwise the head ref fetched into it; an existing branch is checked out and fast-forwarded.
-    nonisolated static func checkoutSteps(branch: String, remote: String, headRef: String?, hasLocalBranch: Bool,
+    public nonisolated static func checkoutSteps(branch: String, remote: String, headRef: String?, hasLocalBranch: Bool,
                                           branchOnRemote: Bool) -> [[String]] {
         if branchOnRemote {
             return [["fetch", remote, branch],

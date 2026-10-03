@@ -3,6 +3,7 @@
 //
 // One file in the Staged / Changes sections: stage checkbox, status letter, path.
 
+import GroveKit
 import SwiftUI
 
 struct FileStatusRow: View {

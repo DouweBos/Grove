@@ -4,18 +4,18 @@
 import Foundation
 
 /// Multi-selection over a list, with Finder-style click, Cmd-click and Shift-click.
-struct ListSelection<Row: Hashable> {
-    private(set) var rows: Set<Row> = []
+public struct ListSelection<Row: Hashable> {
+    public private(set) var rows: Set<Row> = []
     /// The row the detail pane shows: the one clicked or moved to last.
     private(set) var focus: Row?
     /// Where Shift-click and Shift-arrow ranges start.
     private var anchor: Row?
 
-    var count: Int { rows.count }
+    public var count: Int { rows.count }
 
-    func contains(_ row: Row) -> Bool { rows.contains(row) }
+    public func contains(_ row: Row) -> Bool { rows.contains(row) }
 
-    mutating func select(_ row: Row) {
+    public mutating func select(_ row: Row) {
         rows = [row]
         focus = row
         anchor = row

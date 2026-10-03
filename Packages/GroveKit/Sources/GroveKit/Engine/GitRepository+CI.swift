@@ -13,58 +13,58 @@ extension GitRepository {
         try hosting.ciHost(for: try await remotes())
     }
 
-    func ciWorkflows() async throws -> [CIWorkflow] {
+    public func ciWorkflows() async throws -> [CIWorkflow] {
         try await ciHost().workflows()
     }
 
-    func ciRuns(_ query: CIRunQuery) async throws -> [CIRun] {
+    public func ciRuns(_ query: CIRunQuery) async throws -> [CIRun] {
         try await ciHost().runs(query)
     }
 
-    func ciRun(id: Int) async throws -> CIRun {
+    public func ciRun(id: Int) async throws -> CIRun {
         try await ciHost().run(id: id)
     }
 
-    func branchCIStatuses() async throws -> [String: BranchCIStatus] {
+    public func branchCIStatuses() async throws -> [String: BranchCIStatus] {
         try await ciHost().branchStatuses()
     }
 
-    func ciJobs(runID: Int) async throws -> [CIJob] {
+    public func ciJobs(runID: Int) async throws -> [CIJob] {
         try await ciHost().jobs(runID: runID)
     }
 
-    func ciAnnotations(jobID: Int) async throws -> [CIAnnotation] {
+    public func ciAnnotations(jobID: Int) async throws -> [CIAnnotation] {
         try await ciHost().annotations(jobID: jobID)
     }
 
-    func ciJobLog(jobID: Int) async throws -> String {
+    public func ciJobLog(jobID: Int) async throws -> String {
         try await ciHost().log(jobID: jobID)
     }
 
-    func ciArtifacts(runID: Int) async throws -> [CIArtifact] {
+    public func ciArtifacts(runID: Int) async throws -> [CIArtifact] {
         try await ciHost().artifacts(runID: runID)
     }
 
-    func downloadCIArtifact(id: Int, to destination: URL) async throws {
+    public func downloadCIArtifact(id: Int, to destination: URL) async throws {
         Logger.gitRepository.info("Downloading artifact \(id, privacy: .public) in \(self.displayName, privacy: .public)")
         try await ciHost().downloadArtifact(id: id, to: destination)
     }
 
-    func rerunCIRun(id: Int, failedOnly: Bool) async throws {
+    public func rerunCIRun(id: Int, failedOnly: Bool) async throws {
         Logger.gitRepository.info("Re-running run \(id, privacy: .public) in \(self.displayName, privacy: .public)")
         try await ciHost().rerun(runID: id, failedOnly: failedOnly)
     }
 
-    func ciWorkflowFile(path: String, ref: String) async throws -> String {
+    public func ciWorkflowFile(path: String, ref: String) async throws -> String {
         try await ciHost().workflowFile(path: path, ref: ref)
     }
 
-    func dispatchCIWorkflow(_ dispatch: CIDispatch) async throws {
+    public func dispatchCIWorkflow(_ dispatch: CIDispatch) async throws {
         Logger.gitRepository.info("Running workflow \(dispatch.workflowID, privacy: .public) on \(dispatch.ref, privacy: .public)")
         try await ciHost().dispatch(dispatch)
     }
 
-    func cancelCIRun(id: Int) async throws {
+    public func cancelCIRun(id: Int) async throws {
         Logger.gitRepository.info("Cancelling run \(id, privacy: .public) in \(self.displayName, privacy: .public)")
         try await ciHost().cancel(runID: id)
     }

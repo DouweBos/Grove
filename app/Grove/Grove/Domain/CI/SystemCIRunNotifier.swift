@@ -4,6 +4,7 @@
 // "CI #12 failed" in Notification Center; clicking it opens the run.
 
 import AppKit
+import GroveKit
 import UserNotifications
 
 final class SystemCIRunNotifier: NSObject, CIRunNotifying, UNUserNotificationCenterDelegate {

@@ -4,25 +4,25 @@
 import Foundation
 
 /// What an interactive rebase does with one commit; raw values are the todo-list verbs.
-enum RebaseAction: String, CaseIterable, Identifiable, Sendable {
+public enum RebaseAction: String, CaseIterable, Identifiable, Sendable {
     case pick, reword, squash, fixup, drop
 
-    var id: Self { self }
+    public var id: Self { self }
 
-    var title: String { rawValue.capitalized }
+    public var title: String { rawValue.capitalized }
 
     /// Squash and fixup fold into the commit before them, so they need one to fold into.
-    var foldsIntoPrevious: Bool { self == .squash || self == .fixup }
+    public var foldsIntoPrevious: Bool { self == .squash || self == .fixup }
 }
 
 /// One line of an interactive rebase plan.
-struct RebaseStep: Identifiable, Hashable, Sendable {
-    let sha: String
-    var action: RebaseAction = .pick
+public struct RebaseStep: Identifiable, Hashable, Sendable {
+    public let sha: String
+    public var action: RebaseAction = .pick
     /// The new message for a reword.
-    var message: String?
+    public var message: String?
 
-    var id: String { sha }
+    public var id: String { sha }
 }
 
 enum RebasePlan {

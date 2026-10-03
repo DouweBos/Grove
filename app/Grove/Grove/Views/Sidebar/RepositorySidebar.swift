@@ -1,6 +1,7 @@
 // Views/Sidebar/RepositorySidebar.swift
 // Grove
 
+import GroveKit
 import SwiftUI
 
 /// In-repository sidebar: a summary of the repository, then its refs.

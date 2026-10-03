@@ -5,18 +5,26 @@
 
 import Foundation
 
-struct UserProfile: Codable, Identifiable, Hashable, Sendable {
-    var id = UUID()
+public struct UserProfile: Codable, Identifiable, Hashable, Sendable {
+    public var id = UUID()
     /// What the profile is called in menus, e.g. "Work".
-    var label: String
-    var userName: String
-    var email: String
+    public var label: String
+    public var userName: String
+    public var email: String
     /// `user.signingkey`; empty leaves signing to the global config.
-    var signingKey = ""
+    public var signingKey = ""
 
-    var title: String { label.isEmpty ? email : label }
+    public init(id: UUID = UUID(), label: String, userName: String, email: String, signingKey: String = "") {
+        self.id = id
+        self.label = label
+        self.userName = userName
+        self.email = email
+        self.signingKey = signingKey
+    }
 
-    func matches(_ identity: CommitIdentity?) -> Bool {
+    public var title: String { label.isEmpty ? email : label }
+
+    public func matches(_ identity: CommitIdentity?) -> Bool {
         guard let identity else { return false }
         return identity.name == userName && identity.email.caseInsensitiveCompare(email) == .orderedSame
     }
@@ -29,7 +37,7 @@ struct UserProfile: Codable, Identifiable, Hashable, Sendable {
 
 extension GitRepositoryProtocol {
     /// Writes the profile's identity into this repository's local config.
-    func apply(_ profile: UserProfile) async throws {
+    public func apply(_ profile: UserProfile) async throws {
         for (key, value) in profile.configValues {
             try await setLocalConfigValue(key, to: value)
         }
