@@ -9,6 +9,19 @@ A macOS Git client built with SwiftUI. Its design language follows our disk anal
 - ViewModels use `@Observable` and `@MainActor`. `RepositorySession` owns every per-repository ViewModel; call `refreshAll()` after a git mutation instead of refreshing individual lists.
 - Never move toolbar items out of `.toolbar {}` into the view hierarchy.
 
+## GroveKit
+
+`Packages/GroveKit` is the git engine, git models and headless view models, exposed from the root `Package.swift` as the `GroveKit` product. It is public API: other apps (Argus first) import it by URL, pinned to a Grove release tag.
+
+- No SwiftUI or AppKit in GroveKit. View models may use Observation and `@MainActor`.
+- No Grove-app assumptions in the view models: a repository opened from a path, refresh after mutations through the app's callbacks (Grove's `refreshAll()`), external changes from a watcher. Preferences, persistence and menus come in through injected hooks.
+- Git and worktree file access go only through `GitRunner`; never spawn `Process` or read the worktree with `FileManager` outside `LocalGitRunner`.
+- Keep the public surface deliberate: make public what an app needs, nothing more.
+- A change there must keep `swift build && swift test` at the repository root green, as well as Grove's own build and tests.
+- Breaking API changes need a `minor` bump, with a note for other apps in the changeset.
+- Fix bugs found through Grove in GroveKit itself, not around it in the app, so every app gets the fix.
+- GroveKit's `Package.swift` and the root one must keep the same targets and settings.
+
 ## Design system
 
 1. All colors come from `Theme` (asset catalog tokens, light and dark). No `Color.red`, `Color(red:)`, hex, or `Color(nsColor:)` in views.
@@ -20,6 +33,7 @@ A macOS Git client built with SwiftUI. Its design language follows our disk anal
 ## Build and test
 
 ```sh
+swift build && swift test   # GroveKit, from the repository root
 cd app/Grove
 xcodebuild -project Grove.xcodeproj -scheme Grove -derivedDataPath build -destination 'platform=macOS,arch=arm64' build
 xcodebuild -project Grove.xcodeproj -scheme Grove -derivedDataPath build -destination 'platform=macOS,arch=arm64' test -only-testing:GroveTests

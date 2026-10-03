@@ -1,13 +1,5 @@
 # GroveKit
 
-The git engine and headless view models shared by Grove and Argus.
+Grove's git engine, git models and headless view models, shared with other apps. The repository's root `README.md` (usage, SPM snippet, runner seam) and `CLAUDE.md` (rules for changing it) are the source of truth.
 
-- No SwiftUI or AppKit in the engine. Views stay in each app.
-- Git and worktree file access run through a pluggable `GitRunner`: `LocalGitRunner` runs git on this Mac; a remote runner can slot in later.
-
-Grove uses this folder as a local package. Other apps depend on the Grove repository by URL; its root `Package.swift` exposes the same `GroveKit` product.
-
-```sh
-swift build
-swift test
-```
+Grove uses this folder as a local package; other apps get the same `GroveKit` product from the root `Package.swift`.
