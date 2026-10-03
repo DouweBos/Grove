@@ -3,7 +3,6 @@
 
 import Foundation
 import Observation
-import SwiftUI
 
 /// The plan being edited in the interactive rebase sheet, listed newest first like History.
 @MainActor
@@ -39,8 +38,13 @@ public final class InteractiveRebaseViewModel {
         steps[index].message = message
     }
 
+    /// Same semantics as SwiftUI's `move(fromOffsets:toOffset:)`, which GroveKit can't import.
     public func move(fromOffsets source: IndexSet, toOffset destination: Int) {
-        steps.move(fromOffsets: source, toOffset: destination)
+        let moving = source.map { steps[$0] }
+        var remaining = steps.enumerated().filter { !source.contains($0.offset) }.map(\.element)
+        let insertAt = destination - source.count(in: 0..<destination)
+        remaining.insert(contentsOf: moving, at: insertAt)
+        steps = remaining
     }
 
     /// The plan in the order git runs it, oldest first.
