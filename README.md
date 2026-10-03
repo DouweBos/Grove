@@ -32,7 +32,7 @@ Other apps depend on this repository by URL, pinned to a Grove release tag, and 
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/DouweBos/Grove.git", from: "0.6.0"),
+    .package(url: "https://github.com/DouweBos/Grove.git", from: "0.5.1"),
 ],
 targets: [
     .target(name: "MyApp", dependencies: [.product(name: "GroveKit", package: "Grove")]),
