@@ -19,7 +19,7 @@ let package = Package(
     .library(name: "GroveKit", targets: ["GroveKit"]),
   ],
   targets: [
-    .target(name: "GroveKit", swiftSettings: swiftSettings),
+    .target(name: "GroveKit", resources: [.process("Resources")], swiftSettings: swiftSettings),
     .testTarget(name: "GroveKitTests", dependencies: ["GroveKit"], swiftSettings: swiftSettings),
   ],
   swiftLanguageModes: [.v5]
