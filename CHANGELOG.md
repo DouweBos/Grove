@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1
+
+- Exporting a file from its history now saves the real content of Git LFS files instead of the LFS pointer.
+
 ## 0.5.0
 
 - Get a notification when a workflow run finishes: turn on "Notify me when it finishes" when running a workflow, or pick "Notify When Finished" on a running run. Clicking the notification opens the run.
