@@ -60,6 +60,8 @@ public protocol GitRepositoryProtocol: AnyObject, Observable, StackGitOperations
     func diffForCommit(_ sha: String) async throws -> [FileDiff]
     /// The commit's diff limited to one path; renames into that path show as additions.
     func diffForCommit(_ sha: String, path: String) async throws -> [FileDiff]
+    /// What changed from `from`'s tree to `to`'s (`git diff from to`); pass a merge base as `from` for a branch's changes.
+    func diff(from: String, to: String) async throws -> [FileDiff]
     /// Every file path in the commit's tree (`git ls-tree -r`).
     func filesInCommit(_ sha: String) async throws -> [String]
 

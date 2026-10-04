@@ -16,7 +16,7 @@ extension GitRepository {
         let shell = inspectionShell
         let patch = try await shell.run(["stash", "show", "-p", "-U3", "--include-untracked", ref])
         let names = try await shell.run(["stash", "show", "--name-status", "--include-untracked", ref])
-        return Self.fileDiffs(patch: patch.stdout, nameStatus: names.stdout)
+        return DiffParser.fileDiffs(patch: patch.stdout, nameStatus: names.stdout)
     }
 
     // MARK: Files
@@ -118,30 +118,5 @@ extension GitRepository {
 
     public func removeRemote(name: String) async throws {
         try await inspectionShell.run(["remote", "remove", name])
-    }
-
-    // MARK: Helpers
-
-    nonisolated static func fileDiffs(patch: String, nameStatus: String) -> [FileDiff] {
-        var statuses: [String: FileStatus] = [:]
-        for line in nameStatus.split(separator: "\n") {
-            let parts = line.split(separator: "\t").map(String.init)
-            guard parts.count >= 2, let code = parts[0].first,
-                  let status = FileStatus(rawValue: String(code)) else { continue }
-            statuses[parts[parts.count - 1]] = status
-        }
-        return DiffParser.parse(patch).map { diff in
-            FileDiff(path: diff.filePath, status: statuses[diff.filePath] ?? inferStatus(diff),
-                     diff: diff, stats: diff.stats)
-        }
-    }
-
-    nonisolated static func inferStatus(_ diff: DiffResult) -> FileStatus {
-        if diff.oldPath != nil { return .renamed }
-        if let hunk = diff.hunks.first, diff.hunks.count == 1 {
-            if hunk.oldStart == 0 && hunk.oldCount == 0 { return .added }
-            if hunk.newStart == 0 && hunk.newCount == 0 { return .deleted }
-        }
-        return .modified
     }
 }

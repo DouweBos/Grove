@@ -52,14 +52,14 @@ extension GitRepository {
     public func pullRequestDiff(number: Int) async throws -> [FileDiff] {
         let (host, remote) = try await resolvedHost()
         if let patch = try await host.diff(number: number) {
-            return DiffParser.parse(patch).map { FileDiff(path: $0.filePath, status: Self.inferStatus($0), diff: $0, stats: $0.stats) }
+            return DiffParser.fileDiffs(patch: patch)
         }
         let pr = try await host.pullRequest(number: number)
         try await shell.run(["fetch", remote, pr.sourceBranch, pr.targetBranch])
         let range = "\(remote)/\(pr.targetBranch)...\(remote)/\(pr.sourceBranch)"
         let patch = try await shell.run(["diff", "--no-color", "-M", range]).stdout
         let names = try await shell.run(["diff", "--name-status", "-M", range]).stdout
-        return Self.fileDiffs(patch: patch, nameStatus: names)
+        return DiffParser.fileDiffs(patch: patch, nameStatus: names)
     }
 
     public func pullRequestWebURL(number: Int) async throws -> URL? {

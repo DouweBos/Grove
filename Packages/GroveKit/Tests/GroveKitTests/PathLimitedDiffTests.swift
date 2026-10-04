@@ -48,6 +48,28 @@ struct PathLimitedDiffTests {
         #expect(vm.fileDiff?.oldPath == "a.txt")
     }
 
+    @Test func rangeDiffSpansSeveralCommits() async throws {
+        try write("a.txt", "one\n")
+        try commitAll("add a")
+        let base = try git(["rev-parse", "HEAD"]).trimmingCharacters(in: .whitespacesAndNewlines)
+        try write("a.txt", "two\n")
+        try commitAll("change a")
+        try write("b.txt", "b\n")
+        try commitAll("add b")
+        let repo = try await GitRepository(path: root, runner: LocalGitRunner())
+        let files = try await repo.diff(from: base, to: "HEAD")
+        #expect(files.map(\.path).sorted() == ["a.txt", "b.txt"])
+        #expect(files.first { $0.path == "b.txt" }?.status == .added)
+        #expect(files.first { $0.path == "a.txt" }?.stats == DiffStats(additions: 1, deletions: 1))
+    }
+
+    @Test func patchParsesWithoutARepository() {
+        let patch = "diff --git a/new.txt b/new.txt\nnew file mode 100644\n--- /dev/null\n+++ b/new.txt\n@@ -0,0 +1 @@\n+hi"
+        let files = DiffParser.fileDiffs(patch: patch)
+        #expect(files.map(\.path) == ["new.txt"])
+        #expect(files.first?.status == .added)
+    }
+
     // MARK: Helpers
 
     private func write(_ file: String, _ text: String) throws {

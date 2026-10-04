@@ -126,6 +126,11 @@ public final class MockGitRepository: GitRepositoryProtocol {
         return MockData.commitFileDiffs
     }
 
+    public func diff(from: String, to: String) async throws -> [FileDiff] {
+        await simulateLatency()
+        return MockData.commitFileDiffs
+    }
+
     public func filesInCommit(_ sha: String) async throws -> [String] {
         await simulateLatency()
         return MockData.trackedFiles

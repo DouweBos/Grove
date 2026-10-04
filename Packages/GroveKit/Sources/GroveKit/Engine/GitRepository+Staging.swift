@@ -140,6 +140,13 @@ extension GitRepository {
         }
     }
 
+    public func diff(from: String, to: String) async throws -> [FileDiff] {
+        let base = ["diff", "-M", "--no-ext-diff", "--no-color"]
+        let patch = try await shell.run(base + ["-U3", from, to, "--"]).stdout
+        let names = try await shell.run(base + ["--name-status", from, to, "--"]).stdout
+        return DiffParser.fileDiffs(patch: patch, nameStatus: names)
+    }
+
     public func filesInCommit(_ sha: String) async throws -> [String] {
         let result = try await shell.run(["ls-tree", "-r", "--name-only", "--full-tree", sha])
         return result.stdout.split(separator: "\n").map(String.init)

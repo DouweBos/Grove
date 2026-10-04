@@ -15,6 +15,14 @@ public struct DiffResult: Sendable {
     public let isBinary: Bool
     public let hunks: [HunkData]
     public let stats: DiffStats
+
+    public nonisolated init(filePath: String, oldPath: String? = nil, isBinary: Bool = false, hunks: [HunkData], stats: DiffStats) {
+        self.filePath = filePath
+        self.oldPath = oldPath
+        self.isBinary = isBinary
+        self.hunks = hunks
+        self.stats = stats
+    }
 }
 
 // MARK: - DiffStats
@@ -95,6 +103,13 @@ public struct FileDiff: Sendable {
     /// `nil` for binary files or when the diff hasn't been loaded yet.
     public let diff: DiffResult?
     public let stats: DiffStats
+
+    public nonisolated init(path: String, status: FileStatus, diff: DiffResult?, stats: DiffStats) {
+        self.path = path
+        self.status = status
+        self.diff = diff
+        self.stats = stats
+    }
 }
 
 // MARK: - FileRevision

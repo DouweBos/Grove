@@ -26,7 +26,7 @@ public enum DiffParser {
     ///
     /// - Parameter output: Raw unified diff string.
     /// - Returns: One ``DiffResult`` per changed file.
-    nonisolated static func parse(_ output: String) -> [DiffResult] {
+    public nonisolated static func parse(_ output: String) -> [DiffResult] {
         guard !output.isEmpty else { return [] }
 
         var results: [DiffResult] = []
@@ -48,6 +48,31 @@ public enum DiffParser {
         }
 
         return results
+    }
+
+    /// A patch's files with their status, read from `git diff --name-status` output when given and
+    /// otherwise inferred from the hunks (e.g. for a code host's pull request diff).
+    public nonisolated static func fileDiffs(patch: String, nameStatus: String? = nil) -> [FileDiff] {
+        var statuses: [String: FileStatus] = [:]
+        for line in (nameStatus ?? "").split(separator: "\n") {
+            let parts = line.split(separator: "\t").map(String.init)
+            guard parts.count >= 2, let code = parts[0].first,
+                  let status = FileStatus(rawValue: String(code)) else { continue }
+            statuses[parts[parts.count - 1]] = status
+        }
+        return parse(patch).map { diff in
+            FileDiff(path: diff.filePath, status: statuses[diff.filePath] ?? inferStatus(diff),
+                     diff: diff, stats: diff.stats)
+        }
+    }
+
+    nonisolated static func inferStatus(_ diff: DiffResult) -> FileStatus {
+        if diff.oldPath != nil { return .renamed }
+        if let hunk = diff.hunks.first, diff.hunks.count == 1 {
+            if hunk.oldStart == 0 && hunk.oldCount == 0 { return .added }
+            if hunk.newStart == 0 && hunk.newCount == 0 { return .deleted }
+        }
+        return .modified
     }
 
     /// Parse a unified diff for a single file, starting from a `diff --git` line.
