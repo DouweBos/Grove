@@ -85,6 +85,8 @@ public final class GitRepository: GitRepositoryProtocol {
     let shell: GitShell
     /// Where pull requests and CI runs come from.
     let hosting: any RepositoryHosting
+    /// Names of the scratch files, state and config GroveKit writes.
+    public let naming: GitNaming
 
     // MARK: Init
 
@@ -94,13 +96,16 @@ public final class GitRepository: GitRepositoryProtocol {
     ///   - path: Absolute URL of the repository working directory.
     ///   - runner: Runs git and reaches the worktree's files.
     ///   - hosting: Finds the code host behind the remotes, for pull requests and CI.
+    ///   - naming: Names of the scratch files, state and config written for the repository.
     /// - Throws: ``GitRepositoryError/notAGitRepository`` if `path` is not
     ///   inside a git repo.
-    public init(path: URL, runner: any GitRunner, hosting: any RepositoryHosting = NoRepositoryHosting()) async throws {
+    public init(path: URL, runner: any GitRunner, hosting: any RepositoryHosting = NoRepositoryHosting(),
+                naming: GitNaming = .default) async throws {
         self.path        = path
         self.displayName = path.lastPathComponent
         self.shell       = GitShell(workingDirectory: path, runner: runner)
         self.hosting     = hosting
+        self.naming      = naming
 
         Logger.gitRepository.info("Opening repository at \(path.path, privacy: .public)")
 

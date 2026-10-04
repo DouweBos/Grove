@@ -90,11 +90,16 @@ extension GitRepository {
         return .normal
     }
 
+    /// A fresh path in the runner's temporary directory, e.g. `grovekit-todo-<uuid>`.
+    func scratchURL(_ kind: String, suffix: String = "") -> URL {
+        shell.runner.temporaryDirectory.appendingPathComponent("\(naming.scratchPrefix)\(kind)-\(UUID().uuidString)\(suffix)")
+    }
+
     /// Write `content` to a temporary executable shell script and return its URL.
     ///
     /// The caller is responsible for removing the file when done.
     func writeTemporaryScript(_ content: String) async throws -> URL {
-        let url = shell.runner.temporaryDirectory.appendingPathComponent("grove-\(UUID().uuidString).sh")
+        let url = scratchURL("script", suffix: ".sh")
         try await shell.runner.writeString(content, to: url, executable: true)
         return url
     }

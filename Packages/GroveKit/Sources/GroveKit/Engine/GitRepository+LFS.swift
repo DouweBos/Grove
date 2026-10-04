@@ -57,7 +57,7 @@ extension GitRepository {
         return await runner.itemKind(at: root.appendingPathComponent(".git/lfs/objects")) == .directory
     }
 
-    /// Only a positive answer is cached, so installing git-lfs while Grove runs is picked up.
+    /// Only a positive answer is cached, so installing git-lfs while the app runs is picked up.
     nonisolated private static let lfsInstalled = OSAllocatedUnfairLock(initialState: false)
 
     nonisolated static func isLFSInstalled(shell: GitShell) async -> Bool {

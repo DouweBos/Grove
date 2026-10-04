@@ -11,3 +11,5 @@ GroveKit, for apps that use it:
 - Public `ListSelection.init()` and `focus`, `WorkingCopyViewModel.selectedPath`, `PendingHunkDiscard.action` and `RestackPlan.steps`; `PullRequestHost.headRef(number:)`'s default is nonisolated.
 - `RefName.isValid(_:)` validates ref names and `BranchTreeNode.build(_:)` nests branches into folders. Breaking: `ReflogViewModel.isValidBranchName(_:)` is now `RefName.isValid(_:)`.
 - `RefActionsViewModel` runs branch, tag, remote, submodule and worktree actions (checkout, rename, delete, merge, rebase, tracking, worktree removal) with undo records, so apps no longer rebuild them.
+- `GitRepository(path:runner:hosting:naming:)` takes a `GitNaming` for its scratch files, the restack plan's folder and the branch-parent config key; it defaults to `grovekit` names. Pass `GitNaming(name: "grove")` to share restacks and branch parents with Grove.
+- `ViewModelPreferences.store` and `keyPrefix` (default `grovekit.`) keep the view models' settings apart from an app's own. `HostingError` messages no longer mention Grove or its Settings.

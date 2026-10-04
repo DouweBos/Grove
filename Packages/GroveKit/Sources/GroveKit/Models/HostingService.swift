@@ -3,7 +3,7 @@
 
 import Foundation
 
-/// The code hosts Grove talks to for pull requests and hosted repositories.
+/// The code hosts GroveKit talks to for pull requests and hosted repositories.
 public nonisolated enum HostingServiceKind: String, CaseIterable, Codable, Hashable, Sendable {
     case github, gitlab, bitbucket, azureDevOps
 

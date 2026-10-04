@@ -2,7 +2,7 @@
 // GroveKit
 //
 // Recognizes stacked branches from the repository alone: the commit graph, reflogs, patch-ids and pull requests.
-// Nothing Grove records is read, so stacks made with plain `git checkout -b` show up the same way.
+// Nothing an app records is read, so stacks made with plain `git checkout -b` show up the same way.
 
 import Foundation
 
@@ -41,7 +41,7 @@ nonisolated struct StackRecognizerInput: Sendable {
     /// False when the host couldn't be reached, so a missing PR means nothing.
     var pullRequestsLoaded = false
     var worktrees: [WorktreeInfo] = []
-    /// The worktree Grove has open; a layer checked out anywhere else notes that worktree.
+    /// The worktree the app has open; a layer checked out anywhere else notes that worktree.
     var currentPath: String = ""
 }
 

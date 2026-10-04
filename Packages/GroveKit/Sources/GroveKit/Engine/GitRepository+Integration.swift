@@ -195,12 +195,12 @@ extension GitRepository {
         var messageFiles: [String: String] = [:]
         for step in steps where step.action == .reword {
             guard let message = step.message else { continue }
-            let url = shell.runner.temporaryDirectory.appendingPathComponent("grove-msg-\(UUID().uuidString)")
+            let url = scratchURL("msg")
             try await shell.runner.writeString(message, to: url)
             scratch.append(url)
             messageFiles[step.sha] = shellEscape(url.path)
         }
-        let todoURL = shell.runner.temporaryDirectory.appendingPathComponent("grove-todo-\(UUID().uuidString)")
+        let todoURL = scratchURL("todo")
         try await shell.runner.writeString(RebasePlan.todo(steps) { messageFiles[$0] }, to: todoURL)
         scratch.append(todoURL)
         // The sequence editor swaps git's proposed todo for ours; squashes keep git's combined message.
@@ -250,7 +250,7 @@ extension GitRepository {
         let todoScript = """
             #!/bin/sh
             TODO="$1"
-            TMP="$TODO.grove"
+            TMP="$TODO.tmp"
             : > "$TMP"
             while IFS= read -r line || [ -n "$line" ]; do
                 cmd=${line%% *}

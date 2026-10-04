@@ -32,31 +32,36 @@ public enum HistoryLayout: String, CaseIterable, Identifiable {
     public var symbol: String { self == .graph ? "point.3.connected.trianglepath.dotted" : "tablecells" }
 }
 
-/// The view model settings an app's preferences expose, kept in the standard user defaults.
+/// The view model settings an app's preferences expose, kept in `store` under `keyPrefix` + a ``Key``.
+/// Set both at launch, before any view model reads them.
 public enum ViewModelPreferences {
 
-    enum Key {
-        static let warnOnHunkDiscard = "warnOnHunkDiscard"
-        static let historyLayout = "historyLayout"
-        static let staleBranchDays = "staleBranchDays"
+    public enum Key {
+        public static let warnOnHunkDiscard = "warnOnHunkDiscard"
+        public static let historyLayout = "historyLayout"
+        public static let staleBranchDays = "staleBranchDays"
     }
 
-    private static var defaults: UserDefaults { .standard }
+    public static var store: UserDefaults = .standard
+    /// Keeps these apart from the app's own settings.
+    public static var keyPrefix = "grovekit."
+
+    private static var defaults: UserDefaults { store }
 
     /// Ask before discarding a hunk or lines.
     public static var warnOnHunkDiscard: Bool {
-        get { defaults.object(forKey: Key.warnOnHunkDiscard) as? Bool ?? true }
-        set { defaults.set(newValue, forKey: Key.warnOnHunkDiscard) }
+        get { defaults.object(forKey: keyPrefix + Key.warnOnHunkDiscard) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: keyPrefix + Key.warnOnHunkDiscard) }
     }
 
     /// Days without commits before Branches Review calls a branch stale.
     public static var staleBranchDays: Int {
-        max(1, defaults.object(forKey: Key.staleBranchDays) as? Int ?? 90)
+        max(1, defaults.object(forKey: keyPrefix + Key.staleBranchDays) as? Int ?? 90)
     }
 
     public static var historyLayout: HistoryLayout {
-        get { HistoryLayout(rawValue: defaults.string(forKey: Key.historyLayout) ?? "") ?? .graph }
-        set { defaults.set(newValue.rawValue, forKey: Key.historyLayout) }
+        get { HistoryLayout(rawValue: defaults.string(forKey: keyPrefix + Key.historyLayout) ?? "") ?? .graph }
+        set { defaults.set(newValue.rawValue, forKey: keyPrefix + Key.historyLayout) }
     }
 }
 

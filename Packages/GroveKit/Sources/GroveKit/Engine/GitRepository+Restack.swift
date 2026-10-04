@@ -1,7 +1,7 @@
 // Engine/GitRepository+Restack.swift
 // GroveKit
 //
-// Runs a restack plan layer by layer; the plan lives in `<git-dir>/grove/restack.json` while it runs, so a conflict
+// Runs a restack plan layer by layer; the plan lives in `<git-dir>/<state directory>/restack.json` while it runs, so a conflict
 // can stop the cascade and Continue or Abort pick it up, even after a relaunch.
 
 import Foundation
@@ -28,7 +28,7 @@ public enum RestackError: LocalizedError, Equatable {
 extension GitRepository {
 
     private func planURL() async -> URL? {
-        await absoluteGitDir()?.appendingPathComponent("grove/restack.json")
+        await absoluteGitDir()?.appendingPathComponent("\(naming.stateDirectory)/restack.json")
     }
 
     public func pendingRestack() async -> RestackPlan? {

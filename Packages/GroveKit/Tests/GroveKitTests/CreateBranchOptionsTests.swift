@@ -41,7 +41,7 @@ struct CreateBranchOptionsTests {
 
     @Test func parentConfigParsesSlashedNames() {
         let output = "branch.feature/a/b.grove-parent main\nbranch.fix.grove-parent feature/a/b\nbranch.x.remote origin\n"
-        #expect(GitRepository.parseBranchParents(output) == ["feature/a/b": "main", "fix": "feature/a/b"])
+        #expect(GitRepository.parseBranchParents(output, key: "grove-parent") == ["feature/a/b": "main", "fix": "feature/a/b"])
     }
 
     @Test func pullingTheLocalParentWithRebaseRebasesOntoIt() async throws {

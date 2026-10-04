@@ -27,7 +27,7 @@ public protocol StackGitOperations: AnyObject {
     func abortRestack() async throws
     /// The restack that stopped on a conflict, if any.
     func pendingRestack() async -> RestackPlan?
-    /// Pushes every layer in one `push --atomic`, each only if its remote branch is still where Grove last saw it.
+    /// Pushes every layer in one `push --atomic`, each only if its remote branch is still where it was last read.
     func pushStack(_ layers: [StackPush], to remote: String) async throws
     /// Moves `branch` forward to `revision`, in whichever worktree has it checked out; refuses anything but a fast-forward.
     func fastForward(branch: String, to revision: String, worktreePath: String?) async throws

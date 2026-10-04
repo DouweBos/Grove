@@ -70,7 +70,7 @@ extension GitRepository {
         let listed = try await shell.run(["ls-files", "--others", "--exclude-standard", "-z"]).stdout
         let files = listed.split(separator: "\0").map(String.init)
         guard !files.isEmpty else { return nil }
-        let index = shell.runner.temporaryDirectory.appendingPathComponent("grove-snapshot-\(UUID().uuidString)")
+        let index = scratchURL("snapshot")
         defer { discardScratch([index]) }
         let env = ["GIT_INDEX_FILE": index.path]
         try await shell.runWithInput(["update-index", "--add", "-z", "--stdin"], input: files.joined(separator: "\0"), environment: env)

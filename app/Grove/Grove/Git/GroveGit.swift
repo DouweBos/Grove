@@ -28,8 +28,13 @@ extension GitShell {
 extension GitRepository {
     /// Opens a repository with Grove's runner and hosting accounts.
     convenience init(path: URL) async throws {
-        try await self.init(path: path, runner: LocalGitRunner.grove, hosting: GroveRepositoryHosting())
+        try await self.init(path: path, runner: LocalGitRunner.grove, hosting: GroveRepositoryHosting(), naming: .grove)
     }
+}
+
+extension GitNaming {
+    /// `grove-` scratch files, `<git-dir>/grove` and `branch.<name>.grove-parent`, as Grove has always written them.
+    static let grove = GitNaming(name: "grove")
 }
 
 /// Pull requests and CI through the accounts in Settings.

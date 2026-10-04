@@ -58,7 +58,7 @@ public nonisolated struct StackLayer: Identifiable, Hashable, Sendable {
     public let behind: Int
     let hasUpstream: Bool
     public let isHEAD: Bool
-    /// A linked worktree the branch is checked out in, if not the one Grove has open.
+    /// A linked worktree the branch is checked out in, if not the one the app has open.
     public let worktreePath: String?
     /// Distance from trunk: roots are 0.
     public let depth: Int

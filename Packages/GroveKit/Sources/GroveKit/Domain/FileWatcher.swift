@@ -21,7 +21,7 @@ public final class FileWatcher: Sendable {
     ) {
         self.paths = paths
         self.latency = latency
-        self.queue = DispatchQueue(label: "grove.filewatcher", qos: .utility)
+        self.queue = DispatchQueue(label: "grovekit.filewatcher", qos: .utility)
         self.box = StreamBox(handler: handler)
     }
 

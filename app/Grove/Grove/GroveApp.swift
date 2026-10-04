@@ -3,6 +3,7 @@
 //
 // Application entry point.
 
+import GroveKit
 import SwiftUI
 
 // MARK: - GroveApp
@@ -27,6 +28,8 @@ struct GroveApp: App {
         for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("NSSplitView Subview Frames") {
             defaults.removeObject(forKey: key)
         }
+        // Grove's settings predate GroveKit and keep their unprefixed keys.
+        ViewModelPreferences.keyPrefix = ""
         // Loads the accounts now, so git's HTTPS prompts can use them from the first fetch.
         _ = HostingAccountStore.shared
     }

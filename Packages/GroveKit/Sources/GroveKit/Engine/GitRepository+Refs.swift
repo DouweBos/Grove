@@ -30,7 +30,7 @@ extension GitRepository {
         if let from { args.append(from) }
         try await shell.run(args)
         if let parent, !parent.isEmpty {
-            try await shell.run(["config", "--local", Self.parentConfigKey(for: name), parent])
+            try await shell.run(["config", "--local", parentConfigKey(for: name), parent])
         }
 
         let branches = try await localBranches()
@@ -46,21 +46,21 @@ extension GitRepository {
 
     /// Parent recorded for each branch created with one, from a single config read.
     public func branchParents() async throws -> [String: String] {
-        let result = try await shell.runAllowingFailure(["config", "--local", "--get-regexp", #"^branch\..*\.grove-parent$"#])
+        let result = try await shell.runAllowingFailure(["config", "--local", "--get-regexp", "^branch\\..*\\.\(naming.parentKey.replacingOccurrences(of: ".", with: "\\."))$"])
         // Exit 1 just means no branch has a parent yet.
         guard result.isSuccess else { return [:] }
-        return Self.parseBranchParents(result.stdout)
+        return Self.parseBranchParents(result.stdout, key: naming.parentKey)
     }
 
-    nonisolated static func parentConfigKey(for branch: String) -> String { "branch.\(branch).grove-parent" }
+    func parentConfigKey(for branch: String) -> String { "branch.\(branch).\(naming.parentKey)" }
 
-    /// `branch.feature/x.grove-parent main` lines → ["feature/x": "main"].
-    nonisolated static func parseBranchParents(_ output: String) -> [String: String] {
+    /// `branch.feature/x.grove-parent main` lines (for key `grove-parent`) → ["feature/x": "main"].
+    nonisolated static func parseBranchParents(_ output: String, key: String) -> [String: String] {
         var parents: [String: String] = [:]
         for line in output.split(whereSeparator: \.isNewline) {
             let parts = line.split(separator: " ", maxSplits: 1).map(String.init)
-            guard parts.count == 2, parts[0].hasPrefix("branch."), parts[0].hasSuffix(".grove-parent") else { continue }
-            let branch = parts[0].dropFirst("branch.".count).dropLast(".grove-parent".count)
+            guard parts.count == 2, parts[0].hasPrefix("branch."), parts[0].hasSuffix(".\(key)") else { continue }
+            let branch = parts[0].dropFirst("branch.".count).dropLast(".\(key)".count)
             parents[String(branch)] = parts[1]
         }
         return parents

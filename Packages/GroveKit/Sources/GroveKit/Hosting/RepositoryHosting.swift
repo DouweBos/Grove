@@ -58,24 +58,24 @@ nonisolated extension PullRequestHost {
 
 /// Why a repository's hosting service can't be reached.
 public nonisolated enum HostingError: LocalizedError, Equatable {
-    /// No remote points at a service Grove knows.
+    /// No remote points at a known service.
     case noHostedRemote
-    /// The service needs an account in Preferences > Accounts.
+    /// The service needs an account the app doesn't have.
     case noAccount(HostingServiceKind, host: String)
     /// The stored token was refused.
     case notSignedIn(HostingServiceKind)
     case unsupported(String)
-    /// The service is known, but Grove can't read its CI yet.
+    /// The service is known, but its CI can't be read yet.
     case ciUnsupported(HostingServiceKind)
     case http(status: Int, message: String)
 
     public var errorDescription: String? {
         switch self {
         case .noHostedRemote: "None of this repository's remotes point at GitHub, GitLab, Bitbucket or Azure DevOps."
-        case .noAccount(let kind, let host): "Add a \(kind.displayName) account for \(host) in Settings > Accounts."
-        case .notSignedIn(let kind): "\(kind.displayName) refused the sign-in. Sign in again in Settings > Accounts."
+        case .noAccount(let kind, let host): "Sign in to a \(kind.displayName) account for \(host) first."
+        case .notSignedIn(let kind): "\(kind.displayName) refused the sign-in. Sign in again."
         case .unsupported(let message): message
-        case .ciUnsupported(let kind): "Grove doesn't show CI runs from \(kind.displayName) yet."
+        case .ciUnsupported(let kind): "CI runs from \(kind.displayName) aren't supported yet."
         case .http(let status, let message): message.isEmpty ? "The server answered \(status)." : message
         }
     }
