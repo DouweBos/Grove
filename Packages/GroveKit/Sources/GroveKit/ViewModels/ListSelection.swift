@@ -7,9 +7,11 @@ import Foundation
 public struct ListSelection<Row: Hashable> {
     public private(set) var rows: Set<Row> = []
     /// The row the detail pane shows: the one clicked or moved to last.
-    private(set) var focus: Row?
+    public private(set) var focus: Row?
     /// Where Shift-click and Shift-arrow ranges start.
     private var anchor: Row?
+
+    public init() {}
 
     public var count: Int { rows.count }
 

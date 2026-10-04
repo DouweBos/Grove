@@ -8,3 +8,4 @@ GroveKit, for apps that use it:
 - `diff(from:to:)` diffs two revisions. Breaking: it is a new `GitRepositoryProtocol` requirement, so other conformers add it.
 - `BlameViewModel.open(file:revision:)` blames a file at any ref.
 - `CommitGraphBuilder.append(_:)` adds a page of commits to the graph without rebuilding it.
+- Public `ListSelection.init()` and `focus`, `WorkingCopyViewModel.selectedPath`, `PendingHunkDiscard.action` and `RestackPlan.steps`; `PullRequestHost.headRef(number:)`'s default is nonisolated.

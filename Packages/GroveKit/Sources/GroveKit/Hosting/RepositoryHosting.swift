@@ -51,7 +51,8 @@ public nonisolated protocol PullRequestHost: Sendable {
     func headRef(number: Int) -> String?
 }
 
-extension PullRequestHost {
+// Nonisolated so conformers outside GroveKit get the default whatever their default isolation.
+nonisolated extension PullRequestHost {
     public func headRef(number: Int) -> String? { nil }
 }
 

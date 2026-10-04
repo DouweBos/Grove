@@ -53,7 +53,8 @@ public final class WorkingCopyViewModel {
 
     // MARK: Selection & Diff
 
-    private(set) var selectedPath: String?
+    /// File whose diff is showing.
+    public private(set) var selectedPath: String?
     public private(set) var selectedSide: DiffSide = .unstaged
     /// Rows Space and the context menu act on; the diff shows its focus.
     public private(set) var fileSelection = FileSelection()
@@ -372,7 +373,7 @@ public final class WorkingCopyViewModel {
 
 /// A hunk or line discard waiting for the user to confirm it.
 public struct PendingHunkDiscard {
-    let action: HunkAction
+    public let action: HunkAction
     let hunk: HunkData
     let lines: [DiffLine]
     let path: String

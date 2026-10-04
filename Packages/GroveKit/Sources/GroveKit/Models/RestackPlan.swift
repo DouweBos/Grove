@@ -21,19 +21,19 @@ public nonisolated enum RestackMode: Hashable, Sendable {
 
 public nonisolated struct RestackPlan: Codable, Hashable, Sendable {
 
-    struct Step: Codable, Hashable, Sendable {
-        let branch: String
+    public struct Step: Codable, Hashable, Sendable {
+        public let branch: String
         /// Branch (or trunk ref) whose tip the layer goes onto, read when the step runs so it sees the parent's new tip.
-        let onto: String
+        public let onto: String
         /// Last commit that isn't the layer's own: `rebase --onto <onto> <oldBase> <branch>`.
-        var oldBase: String
-        let originalTip: String
+        public internal(set) var oldBase: String
+        public let originalTip: String
         /// Another worktree the branch is checked out in, where the step runs instead.
-        let worktreePath: String?
+        public let worktreePath: String?
     }
 
     var stackName: String
-    var steps: [Step]
+    public internal(set) var steps: [Step]
     /// The step running or about to run.
     var next = 0
     /// Branch checked out before the cascade, checked out again after it.
