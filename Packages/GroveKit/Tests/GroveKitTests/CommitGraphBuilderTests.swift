@@ -22,6 +22,17 @@ private func lines(_ node: GraphNode, _ kind: GraphLine.Kind) -> [GraphLine] {
 @MainActor
 struct CommitGraphBuilderTests {
 
+    @Test func pagesAppendLikeOneBuild() {
+        // M merges F into A's line; the fork point C lands on the second page.
+        let history = [commit("m", ["a", "f"]), commit("f", ["c"]), commit("a", ["b"]), commit("b", ["c"]),
+                       commit("c", ["d"]), commit("d")]
+        let whole = CommitGraphBuilder().buildGraph(from: history)
+        var builder = CommitGraphBuilder()
+        let paged = builder.append(Array(history[..<3])) + builder.append(Array(history[3...]))
+        #expect(paged == whole)
+        #expect(builder.maxColumn == 1)
+    }
+
     @Test func emptyInputYieldsNoNodes() {
         #expect(CommitGraphBuilder().buildGraph(from: []).isEmpty)
     }

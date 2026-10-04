@@ -7,3 +7,4 @@ GroveKit, for apps that use it:
 - `DiffParser.parse(_:)` and `DiffParser.fileDiffs(patch:nameStatus:)` are public, as are `DiffResult` and `FileDiff` initializers.
 - `diff(from:to:)` diffs two revisions. Breaking: it is a new `GitRepositoryProtocol` requirement, so other conformers add it.
 - `BlameViewModel.open(file:revision:)` blames a file at any ref.
+- `CommitGraphBuilder.append(_:)` adds a page of commits to the graph without rebuilding it.

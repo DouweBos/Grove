@@ -31,6 +31,7 @@ public final class HistoryViewModel {
     private var tagsBySHA: [String: [TagInfo]] = [:]
     public private(set) var graphNodes: [String: GraphNode] = [:]
     public private(set) var maxGraphColumns = 1
+    @ObservationIgnored private var graphBuilder = CommitGraphBuilder()
     public private(set) var isLoading = false {
         didSet { if !isLoading, pendingReload { Task { await reloadLog() } } }
     }
@@ -115,7 +116,7 @@ public final class HistoryViewModel {
         isStale = false
         commits = []
         hasMore = true
-        graphNodes = [:]
+        buildGraph()
         if refs.hasLoaded { syncRefs() } else { updateRevisions() }
         // Refs only decorate rows, so the log doesn't wait for them.
         async let refs = loadRefs()
@@ -167,7 +168,7 @@ public final class HistoryViewModel {
             let page = try await repository.log(maxCount: pageSize, skip: commits.count, revisions: revisions)
             commits.append(contentsOf: page)
             hasMore = page.count == pageSize
-            buildGraph()
+            appendGraph(page)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -423,10 +424,17 @@ public final class HistoryViewModel {
     // MARK: - Graph
 
     private func buildGraph() {
-        let nodes = CommitGraphBuilder().buildGraph(from: commits)
-        graphNodes = Dictionary(nodes.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let widest = nodes.flatMap { node in node.lines.map { max($0.fromColumn, $0.toColumn) } + [node.column] }.max() ?? 0
-        maxGraphColumns = widest + 1
+        graphBuilder = CommitGraphBuilder()
+        graphNodes = [:]
+        appendGraph(commits)
+    }
+
+    /// A new page continues the open lanes; only a reload or a changed log rebuilds from the top.
+    private func appendGraph(_ page: [CommitInfo]) {
+        for node in graphBuilder.append(page) where graphNodes[node.id] == nil {
+            graphNodes[node.id] = node
+        }
+        maxGraphColumns = graphBuilder.maxColumn + 1
     }
 }
 
