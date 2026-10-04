@@ -41,7 +41,11 @@ targets: [
 
 The root `Package.swift` exposes the product; the sources live in `Packages/GroveKit`. Build and test it with `swift build && swift test` from the repository root.
 
-Git runs through a pluggable `GitRunner`: it runs git invocations and reads and writes files in the worktree. `LocalGitRunner` runs the `git` on this Mac today; a remote runner (for example over a host gateway) can implement the same protocol without changing callers. Open a repository with `GitRepository(path:runner:hosting:)`; pull requests and CI come from a `RepositoryHosting` the app provides, and without one they behave as for a repository without a hosted remote.
+Git runs through a pluggable `GitRunner`: it runs git invocations, reads and writes files in the worktree, moves them to the Trash and watches folders. `LocalGitRunner` runs the `git` on this Mac today; a remote runner (for example over a host gateway) can implement the same protocol, building results with `ShellResult(stdout:stderr:exitCode:stdoutData:)`, without changing callers. Trash and watching have defaults that report "unsupported", so a runner only adds them when its machine can. Open a repository with `GitRepository(path:runner:hosting:naming:)`; pull requests and CI come from a `RepositoryHosting` the app provides, and without one they behave as for a repository without a hosted remote.
+
+What GroveKit writes carries the app's names: `GitNaming` sets the scratch-file prefix, the folder in the git directory that holds a running restack, and the branch-parent config key (`grovekit` by default; Grove passes `grove`, and apps that pass the same see each other's restacks and branch parents). The view models' settings live in `ViewModelPreferences.store` under `keyPrefix`.
+
+Besides the per-tab view models, apps get `RefActionsViewModel` (checkout, rename, delete, merge, rebase, remotes, tracking, submodules and worktrees, with undo records), `RepositoryWatcher` (refreshes on outside changes through the runner; a linked worktree ignores its siblings), `BranchTreeNode` and `RefName` for ref lists, and `DiffParser` for patches from elsewhere. Every view model takes an `onAction` hook that reports each git action as a `GroveKitAction` and whether it succeeded, with no user data, for telemetry.
 
 ## Architecture
 
