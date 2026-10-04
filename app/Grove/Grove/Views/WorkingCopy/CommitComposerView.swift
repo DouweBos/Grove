@@ -25,8 +25,8 @@ struct CommitComposerView: View {
                 bodyEditor(text: $vm.commitBody)
                 CommitComposerAccessories()
             }
-            .background(Theme.background, in: RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.border, lineWidth: 0.5))
+            .background(Theme.background, in: RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous).strokeBorder(Theme.border, lineWidth: 0.5))
             .overlay(alignment: .topLeading) { autoComplete }
             .zIndex(1)
 
