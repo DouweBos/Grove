@@ -81,9 +81,10 @@ public final class BlameViewModel {
 
     // MARK: - Blame
 
-    public func open(file: String) async {
+    /// Blames `file` at `revision` (any ref or SHA git accepts), or in the working tree when nil.
+    public func open(file: String, revision: String? = nil) async {
         selectedFile = file
-        revision = nil
+        self.revision = revision
         revisionStack = []
         await loadBlame()
     }
@@ -145,9 +146,10 @@ public final class BlameViewModel {
         } catch {
             guard selectedFile == file, revision == requested else { return }
             lines = []
-            errorMessage = requested == nil
-                ? error.localizedDescription
-                : "This file has no earlier revision (it may have been added or renamed in that commit)."
+            // Only stepping back (`sha^`) can land before the file existed; other failures are git's own.
+            errorMessage = requested?.hasSuffix("^") == true
+                ? "This file has no earlier revision (it may have been added or renamed in that commit)."
+                : error.localizedDescription
         }
     }
 
