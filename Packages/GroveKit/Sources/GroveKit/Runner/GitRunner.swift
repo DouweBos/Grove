@@ -54,7 +54,8 @@ public nonisolated enum FileItemKind: Sendable {
     case file, directory
 }
 
-extension GitRunner {
+// Nonisolated so conformers outside GroveKit get these defaults whatever their default isolation.
+nonisolated extension GitRunner {
     public func withGitExecutable(_ path: String) -> (any GitRunner)? { nil }
 
     public func fileExists(at url: URL) async -> Bool { await itemKind(at: url) != nil }

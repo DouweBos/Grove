@@ -57,7 +57,15 @@ public nonisolated struct ShellResult: Sendable {
     /// Process exit code (0 = success).
     public let exitCode: Int32
     /// Raw standard output, for binary content such as images.
-    var stdoutData = Data()
+    public let stdoutData: Data
+
+    /// `stdoutData` defaults to `stdout`'s UTF-8; pass the raw bytes when the output may be binary.
+    public init(stdout: String, stderr: String, exitCode: Int32, stdoutData: Data? = nil) {
+        self.stdout = stdout
+        self.stderr = stderr
+        self.exitCode = exitCode
+        self.stdoutData = stdoutData ?? Data(stdout.utf8)
+    }
 
     /// Whether the process completed successfully.
     public var isSuccess: Bool { exitCode == 0 }
