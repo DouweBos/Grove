@@ -150,7 +150,7 @@ struct ReflogCreateBranchSheet: View {
     @State private var checkout = false
 
     private var isValid: Bool {
-        ReflogViewModel.isValidBranchName(name.trimmingCharacters(in: .whitespaces))
+        RefName.isValid(name.trimmingCharacters(in: .whitespaces))
     }
 
     var body: some View {

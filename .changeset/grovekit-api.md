@@ -9,3 +9,4 @@ GroveKit, for apps that use it:
 - `BlameViewModel.open(file:revision:)` blames a file at any ref.
 - `CommitGraphBuilder.append(_:)` adds a page of commits to the graph without rebuilding it.
 - Public `ListSelection.init()` and `focus`, `WorkingCopyViewModel.selectedPath`, `PendingHunkDiscard.action` and `RestackPlan.steps`; `PullRequestHost.headRef(number:)`'s default is nonisolated.
+- `RefName.isValid(_:)` validates ref names and `BranchTreeNode.build(_:)` nests branches into folders. Breaking: `ReflogViewModel.isValidBranchName(_:)` is now `RefName.isValid(_:)`.

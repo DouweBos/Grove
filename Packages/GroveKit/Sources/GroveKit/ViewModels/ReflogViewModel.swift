@@ -173,7 +173,7 @@ public final class ReflogViewModel {
     public func createBranch(named rawName: String, checkout: Bool) async {
         guard let entry = branchSource else { return }
         let name = rawName.trimmingCharacters(in: .whitespaces)
-        guard Self.isValidBranchName(name) else { return }
+        guard RefName.isValid(name) else { return }
         branchSource = nil
         do {
             try await repository.createBranch(name: name, from: entry.newSHA, checkout: checkout)
@@ -198,15 +198,6 @@ public final class ReflogViewModel {
 
     public func actionType(for entry: ReflogEntry) -> ReflogActionType {
         ReflogActionType.from(message: entry.message)
-    }
-
-    /// Mirrors the common `git check-ref-format` rules closely enough for inline validation.
-    public static func isValidBranchName(_ name: String) -> Bool {
-        guard !name.isEmpty, !name.hasPrefix("-"), !name.hasPrefix("/"), !name.hasSuffix("/"),
-              !name.hasSuffix("."), !name.hasSuffix(".lock"), !name.contains(".."), !name.contains("@{"),
-              !name.contains("//") else { return false }
-        let forbidden = CharacterSet(charactersIn: " ~^:?*[\\").union(.controlCharacters)
-        return name.unicodeScalars.allSatisfy { !forbidden.contains($0) }
     }
 
     private func recordResetUndo(from oldHead: String, to newHead: String, mode: ResetMode) {
