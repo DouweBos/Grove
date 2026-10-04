@@ -60,7 +60,7 @@ final class RepositorySession {
     // MARK: - Private
 
     let repository: any GitRepositoryProtocol
-    private var fileWatcher: FileWatcher?
+    private var fileWatcher: RepositoryWatcher?
     /// False while paused: nothing watches or fetches, but every loaded list stays.
     private(set) var isActive = false
     /// Set by the window: the folder was deleted outside Grove. Passes its path and, for a worktree, its main repository.
@@ -145,12 +145,12 @@ final class RepositorySession {
     func start() async {
         guard !isActive else { return }
         isActive = true
-        let watcher = FileWatcher(paths: [repository.path.path], latency: 1.0) { [weak self] in
+        let watcher = RepositoryWatcher(path: repository.path, runner: LocalGitRunner.grove) { [weak self] in
             Task { @MainActor in await self?.folderChanged() }
         }
-        watcher.start()
         fileWatcher = watcher
         autoFetcher.start()
+        await watcher.start()
         await refreshAll()
     }
 
