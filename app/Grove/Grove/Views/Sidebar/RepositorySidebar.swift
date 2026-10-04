@@ -52,7 +52,7 @@ struct RepositorySidebar: View {
             Task { await viewModel.activate(branch: branch) }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let activity = viewModel.activity {
+            if let activity = viewModel.actions.activity {
                 ProgressStrip(title: activity, detail: "", fraction: nil)
                     .padding(Theme.Spacing.sm)
             } else if let message = viewModel.errorMessage {
@@ -90,7 +90,7 @@ private struct WorktreeSwitcher: View {
             Section("Worktrees") {
                 ForEach(viewModel.worktrees) { worktree in
                     Button { viewModel.switchTo(worktree) } label: {
-                        Label(title(worktree), systemImage: viewModel.isCurrent(worktree) ? "checkmark" : "tree")
+                        Label(title(worktree), systemImage: viewModel.actions.isCurrent(worktree) ? "checkmark" : "tree")
                     }
                     .disabled(worktree.isPrunable)
                 }

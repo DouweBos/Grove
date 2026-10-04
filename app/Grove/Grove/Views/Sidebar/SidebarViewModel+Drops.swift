@@ -99,7 +99,7 @@ extension SidebarViewModel {
             try await repository.rebase(onto: onto)
         case .pull(let remoteBranch, let target):
             guard let remote = remoteBranches.first(where: { $0.name == remoteBranch }), let remoteName = remote.remoteName else { return }
-            let branch = Self.shortName(of: remote)
+            let branch = RefActionsViewModel.shortName(of: remote)
             if target == headName {
                 try await repository.pull(remote: remoteName, branch: branch, strategy: pullStrategy, options: PullOptions(), progress: nil)
             } else {

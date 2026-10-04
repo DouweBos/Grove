@@ -9,18 +9,17 @@ struct RenameBranchDialogView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    let repository: any GitRepositoryProtocol
     let branch: BranchInfo
-    var onComplete: () -> Void = {}
+    /// Renames the branch, throwing for the dialog to show.
+    let rename: (String) async throws -> Void
 
     @State private var newName: String
     @State private var isRenaming = false
     @State private var errorMessage: String?
 
-    init(repository: any GitRepositoryProtocol, branch: BranchInfo, onComplete: @escaping () -> Void = {}) {
-        self.repository = repository
+    init(branch: BranchInfo, rename: @escaping (String) async throws -> Void) {
         self.branch = branch
-        self.onComplete = onComplete
+        self.rename = rename
         _newName = State(initialValue: branch.name)
     }
 
@@ -53,8 +52,7 @@ struct RenameBranchDialogView: View {
         errorMessage = nil
         Task {
             do {
-                try await repository.renameBranch(oldName: branch.name, newName: trimmedName)
-                onComplete()
+                try await rename(trimmedName)
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription
@@ -65,5 +63,5 @@ struct RenameBranchDialogView: View {
 }
 
 #Preview {
-    RenameBranchDialogView(repository: MockGitRepository(), branch: MockData.branches[1])
+    RenameBranchDialogView(branch: MockData.branches[1]) { _ in }
 }

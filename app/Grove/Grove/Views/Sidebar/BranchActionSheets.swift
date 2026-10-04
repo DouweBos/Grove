@@ -30,9 +30,7 @@ private struct BranchActionSheets: ViewModifier {
                 }
             }
             .sheet(item: $state.branchToRename) { branch in
-                RenameBranchDialogView(repository: viewModel.repository, branch: branch) {
-                    Task { await viewModel.didChangeRepository() }
-                }
+                RenameBranchDialogView(branch: branch) { try await viewModel.actions.renameBranch(branch, to: $0) }
             }
             .sheet(item: $state.branchToDelete) { branch in
                 DeleteBranchDialogView(viewModel: viewModel, branch: branch)

@@ -40,20 +40,20 @@ struct RemoteManagementTests {
 
     @Test func addingFetchesTheRemoteBranches() async throws {
         let vm = try await makeSidebar()
-        #expect(vm.remotes.isEmpty && vm.suggestedRemoteName == "origin")
+        #expect(vm.remotes.isEmpty && vm.actions.suggestedRemoteName == "origin")
         vm.requestAddRemote()
 
-        try await vm.addRemote(name: "origin", url: serverURL)
+        try await vm.actions.addRemote(name: "origin", url: serverURL) { vm.dismissAddRemote() }
 
         #expect(!vm.isAddingRemote)
         #expect(vm.remotes.map(\.name) == ["origin"])
         #expect(vm.remoteBranches.map(\.name).contains("origin/main"))
-        #expect(vm.suggestedRemoteName.isEmpty)
+        #expect(vm.actions.suggestedRemoteName.isEmpty)
     }
 
     @Test func aFailedFetchKeepsTheRemoteAndReportsIt() async throws {
         let vm = try await makeSidebar()
-        try await vm.addRemote(name: "origin", url: root.appendingPathComponent("missing.git").path)
+        try await vm.actions.addRemote(name: "origin", url: root.appendingPathComponent("missing.git").path)
 
         #expect(vm.remotes.map(\.name) == ["origin"])
         #expect(vm.errorMessage != nil)
@@ -62,12 +62,12 @@ struct RemoteManagementTests {
     @Test func aTakenNameStaysOpenWithTheError() async throws {
         try git(["remote", "add", "origin", serverURL], in: "app")
         let vm = try await makeSidebar()
-        #expect(vm.remoteNameProblem("origin") != nil)
-        #expect(vm.remoteNameProblem("my fork") != nil)
-        #expect(vm.remoteNameProblem("upstream") == nil)
+        #expect(vm.actions.remoteNameProblem("origin") != nil)
+        #expect(vm.actions.remoteNameProblem("my fork") != nil)
+        #expect(vm.actions.remoteNameProblem("upstream") == nil)
 
         vm.requestAddRemote()
-        await #expect(throws: (any Error).self) { try await vm.addRemote(name: "origin", url: serverURL) }
+        await #expect(throws: (any Error).self) { try await vm.actions.addRemote(name: "origin", url: serverURL) }
         #expect(vm.isAddingRemote)
     }
 
@@ -77,7 +77,7 @@ struct RemoteManagementTests {
         let vm = try await makeSidebar()
         let origin = try #require(vm.remotes.first)
 
-        await vm.removeRemote(origin)
+        await vm.actions.removeRemote(origin)
 
         #expect(vm.remotes.isEmpty && vm.remoteBranches.isEmpty)
         #expect(try git(["remote"], in: "app").isEmpty)
@@ -101,7 +101,7 @@ struct RemoteManagementTests {
         try git(["branch", "feature"], in: "app")
         let vm = try await makeSidebar()
 
-        try await vm.addRemote(name: "origin", url: serverURL)
+        try await vm.actions.addRemote(name: "origin", url: serverURL)
 
         let upstreams = Dictionary(uniqueKeysWithValues: vm.localBranches.map { ($0.name, $0.upstreamShortName) })
         #expect(upstreams["main"] == "origin/main")
@@ -114,7 +114,7 @@ struct RemoteManagementTests {
         try git(["branch", "--set-upstream-to=upstream/main", "main"], in: "app")
         let vm = try await makeSidebar()
 
-        try await vm.addRemote(name: "origin", url: serverURL)
+        try await vm.actions.addRemote(name: "origin", url: serverURL)
 
         #expect(vm.localBranches.first { $0.name == "main" }?.upstreamShortName == "upstream/main")
     }
@@ -125,14 +125,14 @@ struct RemoteManagementTests {
         let vm = try await makeSidebar()
         let main = try #require(vm.localBranches.first { $0.name == "main" })
         #expect(main.upstream == nil)
-        #expect(vm.trackableRemoteBranches == ["origin/main"])
-        #expect(vm.suggestedUpstream(for: main) == "origin/main")
+        #expect(vm.actions.trackableRemoteBranches == ["origin/main"])
+        #expect(vm.actions.suggestedUpstream(for: main) == "origin/main")
 
-        try await vm.track(main, remoteBranch: "origin/main")
+        try await vm.actions.track(main, remoteBranch: "origin/main")
         let tracking = try #require(vm.localBranches.first { $0.name == "main" })
         #expect(tracking.upstreamShortName == "origin/main")
 
-        await vm.stopTracking(tracking)
+        await vm.actions.stopTracking(tracking)
         #expect(vm.localBranches.first { $0.name == "main" }?.upstream == nil)
         #expect(vm.errorMessage == nil)
     }

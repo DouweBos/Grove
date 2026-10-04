@@ -49,7 +49,7 @@ struct AddSubmoduleDialogView: View {
             }
         }
         .onChange(of: url) { _, new in
-            if !pathEdited { path = SidebarViewModel.suggestedSubmodulePath(for: new) }
+            if !pathEdited { path = RefActionsViewModel.suggestedSubmodulePath(for: new) }
         }
     }
 
@@ -59,8 +59,9 @@ struct AddSubmoduleDialogView: View {
         errorMessage = nil
         Task {
             do {
-                try await viewModel.addSubmodule(url: trimmedURL, path: trimmedPath,
-                                                 branch: branch.trimmingCharacters(in: .whitespaces))
+                try await viewModel.actions.addSubmodule(url: trimmedURL, path: trimmedPath,
+                                                         branch: branch.trimmingCharacters(in: .whitespaces))
+                viewModel.dismissAddSubmodule()
             } catch {
                 errorMessage = error.localizedDescription
             }

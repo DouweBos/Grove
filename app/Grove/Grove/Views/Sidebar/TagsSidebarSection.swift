@@ -35,7 +35,7 @@ struct TagsSidebarSection: View {
                 presenting: tagToDelete
             ) { tag in
                 Button("Delete Tag", role: .destructive) {
-                    Task { await viewModel.deleteTag(tag) }
+                    Task { await viewModel.actions.deleteTag(tag) }
                 }
             } message: { _ in
                 Text("Only the local tag is deleted; a pushed copy stays on the remote.")

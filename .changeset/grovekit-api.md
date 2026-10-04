@@ -10,3 +10,4 @@ GroveKit, for apps that use it:
 - `CommitGraphBuilder.append(_:)` adds a page of commits to the graph without rebuilding it.
 - Public `ListSelection.init()` and `focus`, `WorkingCopyViewModel.selectedPath`, `PendingHunkDiscard.action` and `RestackPlan.steps`; `PullRequestHost.headRef(number:)`'s default is nonisolated.
 - `RefName.isValid(_:)` validates ref names and `BranchTreeNode.build(_:)` nests branches into folders. Breaking: `ReflogViewModel.isValidBranchName(_:)` is now `RefName.isValid(_:)`.
+- `RefActionsViewModel` runs branch, tag, remote, submodule and worktree actions (checkout, rename, delete, merge, rebase, tracking, worktree removal) with undo records, so apps no longer rebuild them.

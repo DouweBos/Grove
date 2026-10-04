@@ -15,13 +15,13 @@ struct AddRemoteDialogView: View {
 
     init(viewModel: SidebarViewModel) {
         self.viewModel = viewModel
-        _name = State(initialValue: viewModel.suggestedRemoteName)
+        _name = State(initialValue: viewModel.actions.suggestedRemoteName)
     }
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var trimmedURL: String { url.trimmingCharacters(in: .whitespacesAndNewlines) }
     /// Only shown once something is typed, so an empty field doesn't open with an error.
-    private var nameProblem: String? { name.isEmpty ? nil : viewModel.remoteNameProblem(trimmedName) }
+    private var nameProblem: String? { name.isEmpty ? nil : viewModel.actions.remoteNameProblem(trimmedName) }
 
     var body: some View {
         DialogSheet(
@@ -31,7 +31,7 @@ struct AddRemoteDialogView: View {
             progress: isAdding ? "Adding \(trimmedName)…" : nil,
             errorMessage: errorMessage ?? nameProblem,
             primaryTitle: "Add Remote",
-            isPrimaryDisabled: viewModel.remoteNameProblem(trimmedName) != nil || trimmedURL.isEmpty || isAdding,
+            isPrimaryDisabled: viewModel.actions.remoteNameProblem(trimmedName) != nil || trimmedURL.isEmpty || isAdding,
             onCancel: viewModel.dismissAddRemote,
             onPrimary: add
         ) {
@@ -53,12 +53,12 @@ struct AddRemoteDialogView: View {
     }
 
     private func add() {
-        guard viewModel.remoteNameProblem(trimmedName) == nil, !trimmedURL.isEmpty else { return }
+        guard viewModel.actions.remoteNameProblem(trimmedName) == nil, !trimmedURL.isEmpty else { return }
         isAdding = true
         errorMessage = nil
         Task {
             do {
-                try await viewModel.addRemote(name: trimmedName, url: trimmedURL)
+                try await viewModel.actions.addRemote(name: trimmedName, url: trimmedURL) { viewModel.dismissAddRemote() }
             } catch {
                 errorMessage = error.localizedDescription
             }

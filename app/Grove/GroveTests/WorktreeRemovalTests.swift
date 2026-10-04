@@ -31,17 +31,17 @@ struct WorktreeRemovalTests {
         let vm = SidebarViewModel(repository: try await GitRepository(path: repo))
         await vm.refresh()
         var removed: (String, String?)?
-        vm.onWorktreeRemoved = { removed = ($0, $1) }
+        vm.actions.onWorktreeRemoved = { removed = ($0, $1) }
         let branch = try #require(vm.localBranches.first { $0.name == "feature" })
-        let linked = try #require(vm.worktree(checkingOut: branch))
+        let linked = try #require(vm.actions.worktree(checkingOut: branch))
         try Data("wip".utf8).write(to: worktree.appendingPathComponent("wip.txt"))
 
         await #expect(throws: (any Error).self) {
-            try await vm.removeWorktree(linked, force: false, deleting: branch, forceBranch: false)
+            try await vm.actions.removeWorktree(linked, force: false, deleting: branch, forceBranch: false)
         }
         #expect(removed == nil)
 
-        try await vm.removeWorktree(linked, force: true, deleting: branch, forceBranch: false)
+        try await vm.actions.removeWorktree(linked, force: true, deleting: branch, forceBranch: false)
         #expect(!FileManager.default.fileExists(atPath: worktree.path))
         #expect(try git(["branch", "--list", "feature"], in: repo).isEmpty)
         #expect(removed?.0 == linked.path)
@@ -53,14 +53,14 @@ struct WorktreeRemovalTests {
         let vm = SidebarViewModel(repository: try await GitRepository(path: repo))
         await vm.refresh()
         let branch = try #require(vm.localBranches.first { $0.name == "feature" })
-        let linked = try #require(vm.worktree(checkingOut: branch))
+        let linked = try #require(vm.actions.worktree(checkingOut: branch))
 
         await #expect(throws: (any Error).self) {
-            try await vm.removeWorktree(linked, force: false, deleting: branch, forceBranch: false)
+            try await vm.actions.removeWorktree(linked, force: false, deleting: branch, forceBranch: false)
         }
         #expect(!FileManager.default.fileExists(atPath: worktree.path))
         await vm.refresh()
-        try await vm.removeWorktree(linked, force: false, deleting: branch, forceBranch: true)
+        try await vm.actions.removeWorktree(linked, force: false, deleting: branch, forceBranch: true)
         #expect(try git(["branch", "--list", "feature"], in: repo).isEmpty)
     }
 

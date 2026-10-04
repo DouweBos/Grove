@@ -63,7 +63,7 @@ extension WindowViewModel {
                     guard let self else { return }
                     if let onWorktreeRemoved { onWorktreeRemoved(path, main) } else { forgetWorktree(at: path, mainRepositoryPath: main) }
                 }
-                session.sidebarVM.onWorktreeRemoved = worktreeRemoved
+                session.sidebarVM.actions.onWorktreeRemoved = worktreeRemoved
                 session.onFolderRemoved = worktreeRemoved
                 if let pendingSelection {
                     session.restoreSelection(pendingSelection)

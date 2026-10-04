@@ -50,7 +50,7 @@ struct BranchesSidebarSection: View {
     private func branchRow(_ branch: BranchInfo, isPinned: Bool, showsFullName: Bool = false) -> some View {
         actions(for: branch, isPinned: isPinned, on: SidebarBranchRow(
             branch: branch, isPinned: isPinned, showsFullName: showsFullName,
-            worktree: viewModel.worktree(checkingOut: branch), parent: viewModel.refs.parents[branch.name],
+            worktree: viewModel.actions.worktree(checkingOut: branch), parent: viewModel.refs.parents[branch.name],
             pullRequest: viewModel.refs.pullRequest(for: branch), ciStatus: viewModel.refs.ciStatus(for: branch)))
     }
 
@@ -58,7 +58,7 @@ struct BranchesSidebarSection: View {
     private func stackRow(_ layer: StackLayer) -> some View {
         if let branch = viewModel.localBranches.first(where: { $0.name == layer.branch }) {
             actions(for: branch, isPinned: viewModel.pinnedBranchNames.contains(branch.name), inStack: true,
-                    on: StackSidebarRow(layer: layer, branch: branch, worktree: viewModel.worktree(checkingOut: branch)))
+                    on: StackSidebarRow(layer: layer, branch: branch, worktree: viewModel.actions.worktree(checkingOut: branch)))
         }
     }
 
@@ -140,7 +140,7 @@ struct BranchContextMenu: View {
     let onDelete: () -> Void
 
     /// Git refuses to check out, delete or archive a branch another worktree has checked out.
-    private var worktree: WorktreeInfo? { viewModel.worktree(checkingOut: branch) }
+    private var worktree: WorktreeInfo? { viewModel.actions.worktree(checkingOut: branch) }
 
     var body: some View {
         if let worktree {
@@ -148,7 +148,7 @@ struct BranchContextMenu: View {
             Button("Switch to Worktree", systemImage: "tree") { viewModel.switchTo(worktree) }
         } else {
             Button("Check Out \u{201C}\(branch.name)\u{201D}", systemImage: "arrow.uturn.backward") {
-                Task { await viewModel.checkout(branch: branch) }
+                Task { await viewModel.actions.checkout(branch: branch) }
             }
             .disabled(branch.isHEAD)
         }
@@ -168,21 +168,21 @@ struct BranchContextMenu: View {
         ExportFilesButton(ref: branch.name)
         Divider()
         Button("Merge into Current Branch", systemImage: "arrow.triangle.merge") {
-            Task { await viewModel.merge(branch: branch) }
+            Task { await viewModel.actions.merge(branch: branch) }
         }
         .disabled(branch.isHEAD)
         Button("Rebase Current Branch onto This", systemImage: "arrow.triangle.pull") {
-            Task { await viewModel.rebase(onto: branch) }
+            Task { await viewModel.actions.rebase(onto: branch) }
         }
         .disabled(branch.isHEAD)
         Divider()
         Button("Rename…", systemImage: "pencil", action: onRename)
         Button(branch.upstream == nil ? "Track Remote Branch\u{2026}" : "Change Tracked Branch\u{2026}",
                systemImage: "arrow.left.arrow.right", action: onTrack)
-            .disabled(viewModel.trackableRemoteBranches.isEmpty)
+            .disabled(viewModel.actions.trackableRemoteBranches.isEmpty)
         if let upstream = branch.upstreamShortName {
             Button("Stop Tracking \u{201C}\(upstream)\u{201D}", systemImage: "xmark.circle") {
-                Task { await viewModel.stopTracking(branch) }
+                Task { await viewModel.actions.stopTracking(branch) }
             }
         }
         Button(isPinned ? "Unpin" : "Pin to Top", systemImage: isPinned ? "pin.slash" : "pin") {

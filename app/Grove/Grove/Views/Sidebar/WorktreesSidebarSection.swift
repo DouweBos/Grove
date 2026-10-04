@@ -13,7 +13,7 @@ struct WorktreesSidebarSection: View {
     @State private var isExpanded = true
 
     var body: some View {
-        let worktrees = viewModel.otherWorktrees
+        let worktrees = viewModel.actions.otherWorktrees
         if !worktrees.isEmpty {
             Section(isExpanded: $isExpanded) {
                 ForEach(worktrees) { row($0) }
@@ -59,7 +59,7 @@ struct WorktreesSidebarSection: View {
                 Divider()
                 if worktree.isPrunable {
                     Button("Prune Missing Worktrees", systemImage: "scissors") {
-                        Task { await viewModel.pruneWorktrees() }
+                        Task { await viewModel.actions.pruneWorktrees() }
                     }
                 } else {
                     Button("Remove Worktree…", systemImage: "trash", role: .destructive) { viewModel.requestRemoval(of: worktree) }

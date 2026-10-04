@@ -18,7 +18,7 @@ struct RemoveWorktreeDialogView: View {
     @State private var isRemoving = false
     @State private var errorMessage: String?
 
-    private var branch: BranchInfo? { viewModel.branch(checkedOutIn: worktree) }
+    private var branch: BranchInfo? { viewModel.actions.branch(checkedOutIn: worktree) }
     private var title: String { worktree.branch ?? worktree.folderName }
 
     var body: some View {
@@ -63,7 +63,7 @@ struct RemoveWorktreeDialogView: View {
         errorMessage = nil
         Task {
             do {
-                try await viewModel.removeWorktree(worktree, force: force,
+                try await viewModel.actions.removeWorktree(worktree, force: force,
                                                    deleting: deleteBranch ? branch : nil, forceBranch: forceDeleteBranch)
                 await viewModel.didChangeRepository()
                 dismiss()

@@ -52,7 +52,7 @@ struct RemotesSidebarSection: View {
                 isPresented: Binding(get: { remoteToRemove != nil }, set: { if !$0 { remoteToRemove = nil } }),
                 presenting: remoteToRemove
             ) { remote in
-                Button("Remove Remote", role: .destructive) { Task { await viewModel.removeRemote(remote) } }
+                Button("Remove Remote", role: .destructive) { Task { await viewModel.actions.removeRemote(remote) } }
             } message: { remote in
                 Text("Grove forgets \(remote.url) and its remote branches. Nothing on the server changes.")
             }
@@ -71,7 +71,7 @@ struct RemotesSidebarSection: View {
                 presenting: branchToDelete
             ) { branch in
                 Button("Delete on Remote", role: .destructive) {
-                    Task { await viewModel.deleteRemoteBranch(branch) }
+                    Task { await viewModel.actions.deleteRemoteBranch(branch) }
                 }
             } message: { _ in
                 Text("The branch is removed from the server for everyone. This can't be undone from Grove.")
@@ -90,7 +90,7 @@ struct RemotesSidebarSection: View {
     }
 
     private func remoteBranchRow(_ branch: BranchInfo) -> some View {
-        let shortName = SidebarViewModel.shortName(of: branch)
+        let shortName = RefActionsViewModel.shortName(of: branch)
         let hasLocal = viewModel.localBranches.contains { $0.name == shortName }
         let pullRequest = viewModel.refs.pullRequest(for: branch)
         let ciStatus = viewModel.refs.ciStatus(for: branch)
@@ -104,7 +104,7 @@ struct RemotesSidebarSection: View {
             .contextMenu {
                 Button(hasLocal ? "Check Out \u{201C}\(shortName)\u{201D}" : "Check Out as Tracking Branch",
                        systemImage: "arrow.uturn.backward") {
-                    Task { await viewModel.checkout(remoteBranch: branch) }
+                    Task { await viewModel.actions.checkout(remoteBranch: branch) }
                 }
                 Button("New Branch from \u{201C}\(branch.name)\u{201D}…", systemImage: "arrow.triangle.branch") {
                     createFromRef = CreateBranchRequest(ref: branch.name)

@@ -85,8 +85,8 @@ struct SubmoduleActionTests {
     }
 
     @Test func suggestsPathFromURL() {
-        #expect(SidebarViewModel.suggestedSubmodulePath(for: "https://github.com/example/icons.git") == "icons")
-        #expect(SidebarViewModel.suggestedSubmodulePath(for: "git@github.com:example/analytics") == "analytics")
+        #expect(RefActionsViewModel.suggestedSubmodulePath(for: "https://github.com/example/icons.git") == "icons")
+        #expect(RefActionsViewModel.suggestedSubmodulePath(for: "git@github.com:example/analytics") == "analytics")
     }
 
     // MARK: Helpers

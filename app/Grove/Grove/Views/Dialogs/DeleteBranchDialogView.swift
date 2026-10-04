@@ -21,7 +21,7 @@ struct DeleteBranchDialogView: View {
     @State private var errorMessage: String?
 
     /// Read live, so it clears once the worktree is gone even if deleting the branch then fails.
-    private var worktree: WorktreeInfo? { viewModel.worktree(checkingOut: branch) }
+    private var worktree: WorktreeInfo? { viewModel.actions.worktree(checkingOut: branch) }
 
     /// "origin" and "feature/x" from an upstream like "origin/feature/x".
     private var upstreamParts: (remote: String, name: String)? {
@@ -93,11 +93,11 @@ struct DeleteBranchDialogView: View {
         Task {
             do {
                 if let worktree, removeWorktree {
-                    try await viewModel.removeWorktree(worktree, force: discardWorktreeChanges,
+                    try await viewModel.actions.removeWorktree(worktree, force: discardWorktreeChanges,
                                                        deleting: branch, forceBranch: forceDelete)
                 } else {
                     try await viewModel.repository.deleteBranch(name: branch.name, force: forceDelete)
-                    viewModel.recordBranchDeletion(branch)
+                    viewModel.actions.recordBranchDeletion(branch)
                 }
                 if deleteRemote, let upstreamParts {
                     try await viewModel.repository.deleteRemoteBranch(name: upstreamParts.name, remote: upstreamParts.remote)

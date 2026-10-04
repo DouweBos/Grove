@@ -23,7 +23,7 @@ struct ArchivedBranchesSidebarSection: View {
                         .contextMenu {
                             Button("Unarchive", systemImage: "tray.and.arrow.up") { viewModel.unarchive(branch: branch) }
                             Button("Check Out \u{201C}\(branch.name)\u{201D}", systemImage: "arrow.uturn.backward") {
-                                Task { await viewModel.checkout(branch: branch) }
+                                Task { await viewModel.actions.checkout(branch: branch) }
                             }
                             Divider()
                             Button("Delete…", systemImage: "trash", role: .destructive) { branchToDelete = branch }

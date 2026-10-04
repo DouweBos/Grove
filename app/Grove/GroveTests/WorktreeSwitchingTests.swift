@@ -23,7 +23,7 @@ struct WorktreeSwitchingTests {
         vm.onSwitchWorktree = { _ in switched = true }
         let branch = try #require(vm.localBranches.first { $0.name == "feature/auth" })
 
-        #expect(vm.worktree(checkingOut: branch)?.path == linkedPath)
+        #expect(vm.actions.worktree(checkingOut: branch)?.path == linkedPath)
         await vm.activate(branch: branch)
         #expect(openedInTab == linkedPath)
         #expect(!switched)
@@ -34,17 +34,17 @@ struct WorktreeSwitchingTests {
         await vm.refresh()
         var opened = false
         vm.onOpenWorktreeInNewTab = { _ in opened = true }
-        if let current = vm.worktrees.first(where: vm.isCurrent) { vm.openInNewTab(current) }
+        if let current = vm.worktrees.first(where: vm.actions.isCurrent) { vm.openInNewTab(current) }
         #expect(!opened)
     }
 
     @Test func currentWorktreeIsNotOfferedAsATarget() async {
         let vm = SidebarViewModel(repository: MockGitRepository(path: URL(fileURLWithPath: mainPath)))
         await vm.refresh()
-        #expect(vm.otherWorktrees.map(\.path) == [linkedPath])
+        #expect(vm.actions.otherWorktrees.map(\.path) == [linkedPath])
         var switched = false
         vm.onSwitchWorktree = { _ in switched = true }
-        if let current = vm.worktrees.first(where: vm.isCurrent) { vm.switchTo(current) }
+        if let current = vm.worktrees.first(where: vm.actions.isCurrent) { vm.switchTo(current) }
         #expect(!switched)
     }
 

@@ -31,7 +31,7 @@ struct SubmodulesSidebarSection: View {
                 isPresented: Binding(get: { submoduleToRemove != nil }, set: { if !$0 { submoduleToRemove = nil } }),
                 presenting: submoduleToRemove
             ) { submodule in
-                Button("Remove Submodule", role: .destructive) { Task { await viewModel.removeSubmodule(submodule) } }
+                Button("Remove Submodule", role: .destructive) { Task { await viewModel.actions.removeSubmodule(submodule) } }
             } message: { submodule in
                 Text("Deletes \(submodule.path) and its clone, and stages the removal from .gitmodules. Uncommitted work in it is lost.")
             }
@@ -65,14 +65,14 @@ struct SubmodulesSidebarSection: View {
         Divider()
         if isCloned {
             Button("Update to Recorded Commit", systemImage: "arrow.down.circle") {
-                Task { await viewModel.updateSubmodule(submodule, toRemote: false) }
+                Task { await viewModel.actions.updateSubmodule(submodule, toRemote: false) }
             }
             Button("Update to Latest Remote Commit", systemImage: "arrow.down.to.line.circle") {
-                Task { await viewModel.updateSubmodule(submodule, toRemote: true) }
+                Task { await viewModel.actions.updateSubmodule(submodule, toRemote: true) }
             }
-            Button("Fetch", systemImage: "arrow.clockwise") { Task { await viewModel.fetchSubmodule(submodule) } }
+            Button("Fetch", systemImage: "arrow.clockwise") { Task { await viewModel.actions.fetchSubmodule(submodule) } }
         } else {
-            Button("Initialize Submodule", systemImage: "arrow.down.circle") { Task { await viewModel.initSubmodule(submodule) } }
+            Button("Initialize Submodule", systemImage: "arrow.down.circle") { Task { await viewModel.actions.initSubmodule(submodule) } }
         }
         Divider()
         Button("Reveal in Finder", systemImage: "folder") {

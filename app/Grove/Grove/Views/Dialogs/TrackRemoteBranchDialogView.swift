@@ -17,10 +17,10 @@ struct TrackRemoteBranchDialogView: View {
     init(viewModel: SidebarViewModel, branch: BranchInfo) {
         self.viewModel = viewModel
         self.branch = branch
-        _remoteBranch = State(initialValue: viewModel.suggestedUpstream(for: branch) ?? viewModel.trackableRemoteBranches.first ?? "")
+        _remoteBranch = State(initialValue: viewModel.actions.suggestedUpstream(for: branch) ?? viewModel.actions.trackableRemoteBranches.first ?? "")
     }
 
-    private var candidates: [String] { viewModel.trackableRemoteBranches }
+    private var candidates: [String] { viewModel.actions.trackableRemoteBranches }
 
     var body: some View {
         DialogSheet(
@@ -51,7 +51,7 @@ struct TrackRemoteBranchDialogView: View {
         errorMessage = nil
         Task {
             do {
-                try await viewModel.track(branch, remoteBranch: remoteBranch)
+                try await viewModel.actions.track(branch, remoteBranch: remoteBranch)
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription
