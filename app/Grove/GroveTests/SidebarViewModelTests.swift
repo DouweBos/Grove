@@ -85,6 +85,7 @@ private final class FailingMockRepository: GitRepositoryProtocol {
     func diff(for entry: StatusEntry, staged: Bool, ignoreWhitespace: Bool) async throws -> DiffResult { try await backing.diff(for: entry, staged: staged, ignoreWhitespace: ignoreWhitespace) }
     func diffForCommit(_ sha: String) async throws -> [FileDiff] { try await backing.diffForCommit(sha) }
     func diff(from: String, to: String) async throws -> [FileDiff] { try await backing.diff(from: from, to: to) }
+    func trashFiles(_ paths: [String]) async throws { try await backing.trashFiles(paths) }
     @discardableResult func commit(message: String, body: String?, amend: Bool, sign: Bool) async throws -> CommitInfo {
         try await backing.commit(message: message, body: body, amend: amend, sign: sign)
     }

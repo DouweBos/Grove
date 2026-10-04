@@ -7,22 +7,35 @@ import Foundation
 import os
 
 #if os(macOS)
-public final class FileWatcher: Sendable {
+public nonisolated final class FileWatcher: FileWatch {
 
     private let paths: [String]
     private let latency: CFTimeInterval
     private let queue: DispatchQueue
     private let box: StreamBox
 
+    /// - Parameter isRelevant: Gets each changed path written under the folder as given in `paths`
+    ///   (FSEvents reports `/private/tmp` for `/tmp`); only accepted paths call `handler`.
     public init(
         paths: [String],
         latency: CFTimeInterval = 0.5,
+        isRelevant: (@Sendable (String) -> Bool)? = nil,
         handler: @escaping @Sendable () -> Void
     ) {
         self.paths = paths
         self.latency = latency
         self.queue = DispatchQueue(label: "grovekit.filewatcher", qos: .utility)
-        self.box = StreamBox(handler: handler)
+        let roots = paths.map { (real: Self.realPath($0), given: $0) }
+        self.box = StreamBox(handler: handler) { path in
+            let given = roots.first { path.hasPrefix($0.real) }.map { $0.given + path.dropFirst($0.real.count) } ?? path
+            return !Self.isGitHousekeeping(given) && (isRelevant?(given) ?? true)
+        }
+    }
+
+    private static func realPath(_ path: String) -> String {
+        guard let resolved = realpath(path, nil) else { return path }
+        defer { free(resolved) }
+        return String(cString: resolved)
     }
 
     deinit { box.stop() }
@@ -39,7 +52,7 @@ public final class FileWatcher: Sendable {
             guard let info else { return }
             let b = Unmanaged<StreamBox>.fromOpaque(info).takeUnretainedValue()
             let paths = Unmanaged<CFArray>.fromOpaque(eventPaths).takeUnretainedValue() as? [String] ?? []
-            guard paths.contains(where: { !FileWatcher.isGitHousekeeping($0) }) else { return }
+            guard paths.contains(where: b.isRelevant) else { return }
             Logger.fileWatcher.debug("FSEvents callback fired: \(numEvents, privacy: .public) event(s)")
             b.invokeHandler()
         }
@@ -91,13 +104,15 @@ public final class FileWatcher: Sendable {
     }
 }
 
-private final class StreamBox: @unchecked Sendable {
+private nonisolated final class StreamBox: @unchecked Sendable {
     private var stream: FSEventStreamRef?
     private let lock = NSLock()
     private let handler: @Sendable () -> Void
+    let isRelevant: @Sendable (String) -> Bool
 
-    init(handler: @escaping @Sendable () -> Void) {
+    init(handler: @escaping @Sendable () -> Void, isRelevant: @escaping @Sendable (String) -> Bool) {
         self.handler = handler
+        self.isRelevant = isRelevant
     }
 
     var isRunning: Bool { lock.withLock { stream != nil } }

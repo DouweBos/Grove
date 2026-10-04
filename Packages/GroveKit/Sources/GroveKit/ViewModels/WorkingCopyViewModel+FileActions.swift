@@ -97,10 +97,6 @@ extension WorkingCopyViewModel {
         pendingFileAction = nil
         let destination = newPath.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !destination.isEmpty, destination != entry.path else { return }
-        guard !FileManager.default.fileExists(atPath: repository.path.appendingPathComponent(destination).path) else {
-            errorMessage = "\u{201C}\(destination)\u{201D} already exists."
-            return
-        }
         let (repo, source) = (repository, entry.path)
         await mutate {
             try await repo.moveFile(from: source, to: destination)
@@ -114,11 +110,7 @@ extension WorkingCopyViewModel {
     /// The Trash keeps the files recoverable, unlike Discard.
     public func moveToTrash(_ entries: [StatusEntry]) async {
         pendingFileAction = nil
-        let root = repository.path
-        await mutate {
-            for entry in entries {
-                try FileManager.default.trashItem(at: root.appendingPathComponent(entry.path), resultingItemURL: nil)
-            }
-        }
+        let repo = repository
+        await mutate { try await repo.trashFiles(entries.map(\.path)) }
     }
 }

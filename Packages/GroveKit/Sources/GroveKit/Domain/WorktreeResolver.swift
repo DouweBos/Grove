@@ -36,42 +36,74 @@ public nonisolated enum WorktreeResolver {
         URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
     }
 
-    /// The main repository's working directory when `path` is a linked worktree, else nil.
-    public static func mainRepositoryPath(forWorktreeAt path: String) -> String? {
-        let dotGit = URL(fileURLWithPath: path).appendingPathComponent(".git")
-        guard let contents = try? String(contentsOf: dotGit, encoding: .utf8),
-              let gitDir = value(after: "gitdir:", in: contents) else { return nil }
-        let adminDir = resolve(gitDir, relativeTo: URL(fileURLWithPath: path))
-        guard let commonDir = commonDirectory(ofAdminDirectory: adminDir) else { return nil }
-        return workingDirectory(ofCommonDirectory: commonDir)
+    /// The main repository's working directory when `path` is a linked worktree, else nil, read through `runner`.
+    public static func mainRepositoryPath(forWorktreeAt path: String, runner: any GitRunner) async -> String? {
+        let worktree = URL(fileURLWithPath: path)
+        guard let gitDir = await runner.readString(at: worktree.appendingPathComponent(".git")).flatMap({ value(after: "gitdir:", in: $0) })
+        else { return nil }
+        let adminDir = resolve(gitDir, relativeTo: worktree)
+        let commondir = await runner.readString(at: adminDir.appendingPathComponent("commondir"))
+        return commonDirectory(ofAdminDirectory: adminDir, commondir: commondir).map(workingDirectory(ofCommonDirectory:))
     }
 
-    /// Worktrees linked to the repository at `repositoryPath`, sorted by name.
+    /// Worktrees linked to the repository at `repositoryPath`, sorted by name, read through `runner`.
+    public static func linkedWorktrees(ofRepositoryAt repositoryPath: String, runner: any GitRunner) async -> [LinkedWorktree] {
+        let worktreesDir = URL(fileURLWithPath: repositoryPath).appendingPathComponent(".git/worktrees")
+        guard let names = try? await runner.contentsOfDirectory(at: worktreesDir) else { return [] }
+        var linked: [LinkedWorktree] = []
+        for name in names {
+            let adminDir = worktreesDir.appendingPathComponent(name)
+            guard let pointer = await runner.readString(at: adminDir.appendingPathComponent("gitdir")) else { continue }
+            let path = worktreePath(pointer: pointer, adminDir: adminDir)
+            let head = await runner.readString(at: adminDir.appendingPathComponent("HEAD"))
+            linked.append(LinkedWorktree(path: path, mainRepositoryPath: repositoryPath,
+                                         branch: head.flatMap { value(after: "ref: refs/heads/", in: $0) },
+                                         isMissing: !(await runner.fileExists(at: URL(fileURLWithPath: path)))))
+        }
+        return sorted(linked)
+    }
+
+    #if os(macOS)
+    /// The main repository's working directory when `path`, on this Mac, is a linked worktree, else nil.
+    public static func mainRepositoryPath(forWorktreeAt path: String) -> String? {
+        let worktree = URL(fileURLWithPath: path)
+        guard let gitDir = LocalFiles.string(at: worktree.appendingPathComponent(".git")).flatMap({ value(after: "gitdir:", in: $0) })
+        else { return nil }
+        let adminDir = resolve(gitDir, relativeTo: worktree)
+        let commondir = LocalFiles.string(at: adminDir.appendingPathComponent("commondir"))
+        return commonDirectory(ofAdminDirectory: adminDir, commondir: commondir).map(workingDirectory(ofCommonDirectory:))
+    }
+
+    /// Worktrees linked to the repository at `repositoryPath` on this Mac, sorted by name.
     public static func linkedWorktrees(ofRepositoryAt repositoryPath: String) -> [LinkedWorktree] {
         let worktreesDir = URL(fileURLWithPath: repositoryPath).appendingPathComponent(".git/worktrees")
-        guard let names = try? FileManager.default.contentsOfDirectory(atPath: worktreesDir.path) else { return [] }
-        return names.compactMap { name -> LinkedWorktree? in
+        guard let names = LocalFiles.names(in: worktreesDir) else { return [] }
+        return sorted(names.compactMap { name -> LinkedWorktree? in
             let adminDir = worktreesDir.appendingPathComponent(name)
-            // `gitdir` holds the path of the worktree's own `.git` file.
-            guard let pointer = try? String(contentsOf: adminDir.appendingPathComponent("gitdir"), encoding: .utf8)
-            else { return nil }
-            let dotGit = resolve(pointer.trimmingCharacters(in: .whitespacesAndNewlines), relativeTo: adminDir)
-            let worktreePath = dotGit.deletingLastPathComponent().standardizedFileURL.path
-            let head = try? String(contentsOf: adminDir.appendingPathComponent("HEAD"), encoding: .utf8)
-            return LinkedWorktree(
-                path: worktreePath,
-                mainRepositoryPath: repositoryPath,
-                branch: head.flatMap { value(after: "ref: refs/heads/", in: $0) },
-                isMissing: !FileManager.default.fileExists(atPath: worktreePath)
-            )
-        }
-        .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            guard let pointer = LocalFiles.string(at: adminDir.appendingPathComponent("gitdir")) else { return nil }
+            let path = worktreePath(pointer: pointer, adminDir: adminDir)
+            let head = LocalFiles.string(at: adminDir.appendingPathComponent("HEAD"))
+            return LinkedWorktree(path: path, mainRepositoryPath: repositoryPath,
+                                  branch: head.flatMap { value(after: "ref: refs/heads/", in: $0) },
+                                  isMissing: !LocalFiles.exists(at: URL(fileURLWithPath: path)))
+        })
     }
+    #endif
 
     // MARK: - Private
 
-    private static func commonDirectory(ofAdminDirectory adminDir: URL) -> URL? {
-        guard let raw = try? String(contentsOf: adminDir.appendingPathComponent("commondir"), encoding: .utf8) else {
+    /// `gitdir` holds the path of the worktree's own `.git` file.
+    private static func worktreePath(pointer: String, adminDir: URL) -> String {
+        let dotGit = resolve(pointer.trimmingCharacters(in: .whitespacesAndNewlines), relativeTo: adminDir)
+        return dotGit.deletingLastPathComponent().standardizedFileURL.path
+    }
+
+    private static func sorted(_ worktrees: [LinkedWorktree]) -> [LinkedWorktree] {
+        worktrees.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
+    private static func commonDirectory(ofAdminDirectory adminDir: URL, commondir: String?) -> URL? {
+        guard let raw = commondir else {
             // Older git omits `commondir`; the admin dir then sits at `<common>/worktrees/<name>`.
             // A submodule's `.git/modules/<path>` has no commondir either, but isn't a worktree.
             let parent = adminDir.deletingLastPathComponent()

@@ -386,8 +386,10 @@ public protocol GitRepositoryProtocol: AnyObject, Observable, StackGitOperations
     func ignore(patterns: [String], localOnly: Bool) async throws
     /// Removes paths from the index but keeps them on disk (`git rm --cached`).
     func stopTracking(paths: [String]) async throws
-    /// Renames or moves a file: `git mv` when tracked, a plain move when untracked.
+    /// Renames or moves a file: `git mv` when tracked, a plain move when untracked. Refuses to overwrite.
     func moveFile(from source: String, to destination: String) async throws
+    /// Moves worktree files to the Trash, where they stay recoverable.
+    func trashFiles(_ paths: [String]) async throws
     /// Writes `revisionPath` as it was at `revision` into the working copy at `path`, leaving the index alone.
     func restoreFile(_ path: String, from revision: String, revisionPath: String) async throws
 

@@ -19,6 +19,10 @@ extension MockGitRepository {
         await simulateLatency()
     }
 
+    public func trashFiles(_ paths: [String]) async throws {
+        await simulateLatency()
+    }
+
     public func restoreFile(_ path: String, from revision: String, revisionPath: String) async throws {
         await simulateLatency()
     }

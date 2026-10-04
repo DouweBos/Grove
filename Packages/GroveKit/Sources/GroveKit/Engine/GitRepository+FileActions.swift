@@ -22,12 +22,19 @@ extension GitRepository {
 
     public func moveFile(from source: String, to destination: String) async throws {
         let target = path.appendingPathComponent(destination)
+        guard await !shell.runner.fileExists(at: target) else { throw GitRepositoryError.destinationExists(destination) }
         try await shell.runner.createParentDirectory(of: target)
         let isTracked = try await shell.runAllowingFailure(["ls-files", "--error-unmatch", "--", source]).isSuccess
         if isTracked {
             try await shell.run(["mv", "--", source, destination])
         } else {
             try await shell.runner.moveItem(at: path.appendingPathComponent(source), to: target)
+        }
+    }
+
+    public func trashFiles(_ paths: [String]) async throws {
+        for file in paths {
+            try await shell.runner.trashItem(at: path.appendingPathComponent(file))
         }
     }
 

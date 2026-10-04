@@ -45,9 +45,21 @@ public nonisolated protocol GitRunner: Sendable {
     func createDirectory(at url: URL) async throws
     func moveItem(at source: URL, to destination: URL) async throws
     func contentsOfDirectory(at url: URL) async throws -> [String]
+    /// Moves the item to the Trash where the machine has one.
+    func trashItem(at url: URL) async throws
+
+    /// Watches the folders in `paths` until the returned watch stops, calling `onChange` (debounced, on the main queue)
+    /// after changes to paths `isRelevant` accepts, written under the folder as given. Nil when the runner can't watch.
+    func watch(_ paths: [URL], latency: TimeInterval, isRelevant: @escaping @Sendable (String) -> Bool,
+               onChange: @escaping @Sendable () -> Void) -> (any FileWatch)?
 
     /// The same runner using another git executable (e.g. one with git-svn), or nil when it can't switch.
     func withGitExecutable(_ path: String) -> (any GitRunner)?
+}
+
+/// A running watch from ``GitRunner/watch(_:latency:isRelevant:onChange:)``.
+public nonisolated protocol FileWatch: AnyObject, Sendable {
+    func stop()
 }
 
 public nonisolated enum FileItemKind: Sendable {
@@ -57,6 +69,11 @@ public nonisolated enum FileItemKind: Sendable {
 // Nonisolated so conformers outside GroveKit get these defaults whatever their default isolation.
 nonisolated extension GitRunner {
     public func withGitExecutable(_ path: String) -> (any GitRunner)? { nil }
+
+    public func trashItem(at url: URL) async throws { throw CocoaError(.featureUnsupported) }
+
+    public func watch(_ paths: [URL], latency: TimeInterval, isRelevant: @escaping @Sendable (String) -> Bool,
+                      onChange: @escaping @Sendable () -> Void) -> (any FileWatch)? { nil }
 
     public func fileExists(at url: URL) async -> Bool { await itemKind(at: url) != nil }
 

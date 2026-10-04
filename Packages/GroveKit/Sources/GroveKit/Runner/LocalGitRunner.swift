@@ -116,6 +116,17 @@ public nonisolated struct LocalGitRunner: GitRunner {
         try FileManager.default.contentsOfDirectory(atPath: url.path)
     }
 
+    public func trashItem(at url: URL) async throws {
+        try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+    }
+
+    public func watch(_ paths: [URL], latency: TimeInterval, isRelevant: @escaping @Sendable (String) -> Bool,
+                      onChange: @escaping @Sendable () -> Void) -> (any FileWatch)? {
+        let watcher = FileWatcher(paths: paths.map(\.path), latency: latency, isRelevant: isRelevant, handler: onChange)
+        watcher.start()
+        return watcher
+    }
+
     // MARK: Git Path Resolution
 
     /// Apps launched from the Dock get a minimal PATH; Homebrew's git-lfs, gpg and hook tools live here.
@@ -138,5 +149,12 @@ public nonisolated struct LocalGitRunner: GitRunner {
         }
         return "/usr/bin/git"
     }
+}
+
+/// Synchronous reads of this Mac's disk, for path checks made before any repository or runner exists.
+nonisolated enum LocalFiles {
+    static func string(at url: URL) -> String? { try? String(contentsOf: url, encoding: .utf8) }
+    static func names(in url: URL) -> [String]? { try? FileManager.default.contentsOfDirectory(atPath: url.path) }
+    static func exists(at url: URL) -> Bool { FileManager.default.fileExists(atPath: url.path) }
 }
 #endif

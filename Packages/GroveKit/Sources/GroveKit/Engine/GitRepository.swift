@@ -31,9 +31,12 @@ public enum GitRepositoryError: LocalizedError {
     case applyPatchFailed(String)
     case historyRewriteConflict
     case rebaseStopped
+    case destinationExists(String)
 
     public var errorDescription: String? {
         switch self {
+        case .destinationExists(let path):
+            return "\u{201C}\(path)\u{201D} already exists."
         case .notAGitRepository(let url):
             return "'\(url.path)' is not a Git repository."
         case .invalidCommitMessage:

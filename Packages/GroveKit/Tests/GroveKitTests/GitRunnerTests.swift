@@ -82,6 +82,39 @@ struct GitRunnerTests {
         #expect(runner.reads.map(\.lastPathComponent).contains("a.txt"))
     }
 
+    @Test func fileActionsGoThroughTheRunner() async throws {
+        try await git(["init", "-q", "-b", "main"])
+        try "a\n".write(to: root.appendingPathComponent("a.txt"), atomically: true, encoding: .utf8)
+        try "b\n".write(to: root.appendingPathComponent("b.txt"), atomically: true, encoding: .utf8)
+        let viewModel = WorkingCopyViewModel(repository: try await GitRepository(path: root, runner: RecordingRunner()))
+        await viewModel.refresh()
+        let a = try #require(viewModel.statusEntries.first { $0.path == "a.txt" })
+
+        await viewModel.rename(a, to: "b.txt")
+        #expect(viewModel.errorMessage == "\u{201C}b.txt\u{201D} already exists.")
+
+        // This runner has no Trash, so the file stays and the failure shows.
+        await viewModel.moveToTrash([a])
+        #expect(viewModel.errorMessage != nil)
+        #expect(FileManager.default.fileExists(atPath: root.appendingPathComponent("a.txt").path))
+    }
+
+    @Test func worktreeLinksResolveThroughTheRunner() async throws {
+        try await git(["init", "-q", "-b", "main", "main"])
+        let main = root.appendingPathComponent("main")
+        try await GitShell(workingDirectory: main, runner: LocalGitRunner())
+            .run(["-c", "user.name=T", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"])
+        let linked = root.appendingPathComponent("linked").path
+        try await GitShell(workingDirectory: main, runner: LocalGitRunner()).run(["worktree", "add", "-q", "-b", "topic", linked])
+        let runner = RecordingRunner()
+
+        #expect(await WorktreeResolver.mainRepositoryPath(forWorktreeAt: linked, runner: runner) == main.standardizedFileURL.path)
+        #expect(runner.reads.map(\.lastPathComponent).contains(".git"))
+        let worktrees = await WorktreeResolver.linkedWorktrees(ofRepositoryAt: main.path, runner: runner)
+        #expect(worktrees.map(\.name) == ["topic"])
+        #expect(worktrees == WorktreeResolver.linkedWorktrees(ofRepositoryAt: main.path))
+    }
+
     @Test func localRunnerFileOperationsRoundTrip() async throws {
         let runner = LocalGitRunner()
         let file = root.appendingPathComponent("nested/dir/script.sh")
