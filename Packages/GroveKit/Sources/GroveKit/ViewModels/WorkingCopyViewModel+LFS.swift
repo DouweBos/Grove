@@ -42,7 +42,7 @@ extension WorkingCopyViewModel {
     public func trackWithLFS(_ entries: [StatusEntry], byExtension: Bool) async {
         let patterns = byExtension ? [Self.lfsExtensionPattern(for: entries)].compactMap { $0 } : entries.map(\.path)
         guard !patterns.isEmpty else { return }
-        await mutate {
+        await mutate(.fileAction) {
             for pattern in patterns {
                 try await self.repository.trackWithLFS(pattern: pattern, literal: !byExtension)
             }

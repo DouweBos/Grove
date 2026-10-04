@@ -15,12 +15,12 @@ extension WorkingCopyViewModel {
 
     public func resolveConflict(taking side: ConflictSide) async {
         guard let entry = selectedEntry, entry.isConflicted else { return }
-        await mutate { try await self.repository.resolveConflict(path: entry.path, side: side) }
+        await mutate(.resolveConflict) { try await self.repository.resolveConflict(path: entry.path, side: side) }
         if let next = conflictedFiles.first { await select(next) }
     }
 
     public func abortOperation() async {
-        await runOperation {
+        await runOperation(.abortOperation) {
             let repo = self.repository
             if self.pendingRestack != nil { return try await repo.abortRestack() }
             switch self.repositoryState {
@@ -33,7 +33,7 @@ extension WorkingCopyViewModel {
     }
 
     public func continueOperation() async {
-        await runOperation {
+        await runOperation(.continueOperation) {
             guard self.pendingRestack != nil else { return try await self.repository.continueOperation() }
             do {
                 try await self.repository.continueRestack()
@@ -43,9 +43,9 @@ extension WorkingCopyViewModel {
         }
     }
 
-    private func runOperation(_ work: @escaping () async throws -> Void) async {
+    private func runOperation(_ action: GroveKitAction, _ work: @escaping () async throws -> Void) async {
         isRunningOperation = true
         defer { isRunningOperation = false }
-        await mutate(work)
+        await mutate(action, work)
     }
 }

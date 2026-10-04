@@ -58,8 +58,10 @@ extension WorkingCopyViewModel {
             }
         } catch {
             errorMessage = error.localizedDescription
+            onAction?(isAmend ? .amend : .commit, false)
             return
         }
+        onAction?(isAmend ? .amend : .commit, true)
         commitSubject = ""
         commitBody = ""
         isAmend = false

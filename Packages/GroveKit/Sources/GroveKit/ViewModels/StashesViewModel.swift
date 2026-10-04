@@ -11,6 +11,13 @@ public final class StashesViewModel {
     public enum Operation: String, Identifiable {
         case apply, pop, drop
         public var id: String { rawValue }
+        var groveKitAction: GroveKitAction {
+            switch self {
+            case .apply: .stashApply
+            case .pop: .stashPop
+            case .drop: .stashDrop
+            }
+        }
         public var title: String {
             switch self {
             case .apply: "Apply"
@@ -40,6 +47,8 @@ public final class StashesViewModel {
 
     /// Set by the session so a mutation refreshes every view.
     public var onRepositoryChanged: (() async -> Void)?
+    /// Reports each action this view model runs, e.g. to the app's telemetry.
+    @ObservationIgnored public var onAction: GroveKitActionHandler?
     /// Set by the session to select a commit in History.
     public var onRevealInHistory: ((String) -> Void)?
 
@@ -120,8 +129,10 @@ public final class StashesViewModel {
             case .pop: try await repository.stashApply(index: pending.stash.id, drop: true)
             case .drop: try await repository.stashDrop(index: pending.stash.id)
             }
+            onAction?(pending.operation.groveKitAction, true)
         } catch {
             errorMessage = error.localizedDescription
+            onAction?(pending.operation.groveKitAction, false)
         }
         await refresh()
         await onRepositoryChanged?()

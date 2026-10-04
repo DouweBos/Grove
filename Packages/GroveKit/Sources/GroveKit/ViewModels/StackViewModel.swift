@@ -13,6 +13,8 @@ public final class StackViewModel {
     public let refs: RepositoryRefs
     public let repository: any GitRepositoryProtocol
     public var onRepositoryChanged: (() async -> Void)?
+    /// Reports each action this view model runs, e.g. to the app's telemetry.
+    @ObservationIgnored public var onAction: GroveKitActionHandler?
     /// A layer conflicted mid-cascade; the session switches to Changes, where the banner continues it.
     public var onRestackStopped: (() -> Void)?
     public var onCreatePullRequest: ((String) -> Void)?
@@ -141,10 +143,13 @@ public final class StackViewModel {
         let plan = RestackPlan.make(stack, mode: mode, trunkRef: await trunkRef(stack.trunk), headBranch: refs.headBranch?.name)
         do {
             try await repository.restack(plan)
+            onAction?(.restack, true)
         } catch RestackError.stopped {
+            onAction?(.restack, false)
             onRestackStopped?()
         } catch {
             errorMessage = error.localizedDescription
+            onAction?(.restack, false)
         }
         await onRepositoryChanged?()
     }

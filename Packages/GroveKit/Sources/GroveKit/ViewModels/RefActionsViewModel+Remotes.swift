@@ -25,9 +25,9 @@ extension RefActionsViewModel {
     /// Adds and fetches a remote. Throws when adding fails, for a sheet to show; a failed fetch keeps the remote.
     /// `onAdded` runs before the fetch, e.g. to close that sheet while the fetch shows as `activity`.
     public func addRemote(name: String, url: String, onAdded: () -> Void = {}) async throws {
-        try await repository.addRemote(name: name, url: url)
+        try await reporting(.remote) { try await repository.addRemote(name: name, url: url) }
         onAdded()
-        await perform("Fetching \(name)…") {
+        await perform(.remote, "Fetching \(name)…") {
             try await repository.fetch(remote: name, progress: nil)
             try await trackMatchingBranches(on: name)
         }
@@ -43,7 +43,7 @@ extension RefActionsViewModel {
     }
 
     public func removeRemote(_ remote: RemoteInfo) async {
-        await perform("Removing \(remote.name)…") { try await repository.removeRemote(name: remote.name) }
+        await perform(.remote, "Removing \(remote.name)…") { try await repository.removeRemote(name: remote.name) }
     }
 
     // MARK: - Tracking
@@ -63,38 +63,38 @@ extension RefActionsViewModel {
 
     /// Throws so a Track sheet can show the failure and stay open.
     public func track(_ branch: BranchInfo, remoteBranch: String) async throws {
-        try await repository.setUpstream(of: branch.name, to: remoteBranch)
+        try await reporting(.setUpstream) { try await repository.setUpstream(of: branch.name, to: remoteBranch) }
         await didChangeRepository()
     }
 
     public func stopTracking(_ branch: BranchInfo) async {
-        await perform("Untracking \(branch.name)…") { try await repository.setUpstream(of: branch.name, to: nil) }
+        await perform(.setUpstream, "Untracking \(branch.name)…") { try await repository.setUpstream(of: branch.name, to: nil) }
     }
 
     // MARK: - Submodules
 
     public func initSubmodule(_ submodule: SubmoduleInfo) async {
-        await perform("Cloning \(submodule.displayName)…") { try await repository.initSubmodule(path: submodule.path) }
+        await perform(.submodule, "Cloning \(submodule.displayName)…") { try await repository.initSubmodule(path: submodule.path) }
     }
 
     public func updateSubmodule(_ submodule: SubmoduleInfo, toRemote: Bool) async {
-        await perform("Updating \(submodule.displayName)…") {
+        await perform(.submodule, "Updating \(submodule.displayName)…") {
             try await repository.updateSubmodule(path: submodule.path, toRemote: toRemote)
         }
     }
 
     public func fetchSubmodule(_ submodule: SubmoduleInfo) async {
-        await perform("Fetching \(submodule.displayName)…") { try await repository.fetchSubmodule(path: submodule.path) }
+        await perform(.submodule, "Fetching \(submodule.displayName)…") { try await repository.fetchSubmodule(path: submodule.path) }
     }
 
     public func removeSubmodule(_ submodule: SubmoduleInfo) async {
-        await perform("Removing \(submodule.displayName)…") { try await repository.removeSubmodule(path: submodule.path) }
+        await perform(.submodule, "Removing \(submodule.displayName)…") { try await repository.removeSubmodule(path: submodule.path) }
     }
 
     /// Throws so an Add Submodule sheet can show the failure and stay open.
     public func addSubmodule(url: String, path: String, branch: String?) async throws {
         do {
-            try await repository.addSubmodule(url: url, path: path, branch: branch)
+            try await reporting(.submodule) { try await repository.addSubmodule(url: url, path: path, branch: branch) }
         } catch {
             await didChangeRepository()
             throw error
@@ -136,7 +136,7 @@ extension RefActionsViewModel {
 
     /// `git worktree remove`; `force` also discards its uncommitted changes. Throws for a dialog to show.
     public func removeWorktree(_ worktree: WorktreeInfo, force: Bool) async throws {
-        try await repository.removeWorktree(path: worktree.path, force: force)
+        try await reporting(.worktree) { try await repository.removeWorktree(path: worktree.path, force: force) }
         onWorktreeRemoved?(worktree.path, mainWorktreePath)
     }
 
@@ -148,11 +148,11 @@ extension RefActionsViewModel {
             try await removeWorktree(worktree, force: force)
         }
         guard let branch else { return }
-        try await repository.deleteBranch(name: branch.name, force: forceBranch)
+        try await reporting(.branchDelete) { try await repository.deleteBranch(name: branch.name, force: forceBranch) }
         recordBranchDeletion(branch)
     }
 
     public func pruneWorktrees() async {
-        await run { try await repository.pruneWorktrees() }
+        await run(.worktree) { try await repository.pruneWorktrees() }
     }
 }

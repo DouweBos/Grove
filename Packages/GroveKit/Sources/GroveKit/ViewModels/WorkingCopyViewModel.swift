@@ -36,6 +36,8 @@ public final class WorkingCopyViewModel {
 
     /// Set by the session so mutations refresh every view (sidebar badge, history), not just this one.
     public var onRepositoryChanged: (() async -> Void)?
+    /// Reports each action this view model runs, e.g. to the app's telemetry.
+    @ObservationIgnored public var onAction: GroveKitActionHandler?
     public var undoManager: GitUndoManager?
 
     // MARK: Status
@@ -318,7 +320,7 @@ public final class WorkingCopyViewModel {
 
     private func applyHunkAction(_ action: HunkAction, hunk: HunkData, lines: [DiffLine], path: String) async {
         let changed = lines.isEmpty ? hunk.lines.filter { $0.type != .context } : lines
-        await mutate {
+        await mutate(action.groveKitAction) {
             let repo = self.repository
             switch action {
             case .stageHunk: try await repo.stageHunk(hunk, in: path)
@@ -344,7 +346,7 @@ public final class WorkingCopyViewModel {
     /// Takes the entries explicitly: the dialog clears `pendingDiscard` before this task runs.
     public func discard(_ entries: [StatusEntry]) async {
         pendingDiscard = nil
-        await mutate { try await self.repository.discardChanges(paths: entries.map(\.path)) }
+        await mutate(.discard) { try await self.repository.discardChanges(paths: entries.map(\.path)) }
     }
 
     // MARK: - Helpers
@@ -353,11 +355,13 @@ public final class WorkingCopyViewModel {
         errorMessage = nil
     }
 
-    func mutate(_ work: () async throws -> Void) async {
+    func mutate(_ action: GroveKitAction, _ work: () async throws -> Void) async {
         do {
             try await work()
+            onAction?(action, true)
         } catch {
             errorMessage = error.localizedDescription
+            onAction?(action, false)
         }
         await repositoryChanged()
     }

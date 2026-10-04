@@ -99,7 +99,9 @@ extension WorkingCopyViewModel {
         do {
             try await repository.applyPatch(at: request.file, toIndex: request.toIndex, checkOnly: false)
             patchApply = nil
+            onAction?(.applyPatch, true)
         } catch {
+            onAction?(.applyPatch, false)
             patchApply?.isApplying = false
             patchApply?.check = .fails(Self.patchFailure(error))
         }

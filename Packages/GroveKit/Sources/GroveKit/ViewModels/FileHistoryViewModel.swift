@@ -33,6 +33,8 @@ public final class FileHistoryViewModel {
 
     /// Set by the presenter so a restore refreshes the Changes list and badges.
     public var onRepositoryChanged: (() async -> Void)?
+    /// Reports each action this view model runs, e.g. to the app's telemetry.
+    @ObservationIgnored public var onAction: GroveKitActionHandler?
 
     // MARK: - Configuration
 
@@ -150,8 +152,10 @@ public final class FileHistoryViewModel {
             if diff == nil { diff = try await loadFileDiff(at: commit) }
             try await repository.restoreFile(filePath, from: commit.id, revisionPath: diff?.filePath ?? filePath)
             restoredCommit = commit
+            onAction?(.restoreFile, true)
         } catch {
             errorMessage = "Restore failed: \(error.localizedDescription)"
+            onAction?(.restoreFile, false)
         }
         await onRepositoryChanged?()
     }

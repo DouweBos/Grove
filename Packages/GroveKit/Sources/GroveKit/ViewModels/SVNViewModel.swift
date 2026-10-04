@@ -16,6 +16,8 @@ public final class SVNViewModel {
 
     public let repository: any GitRepositoryProtocol
     public var onRepositoryChanged: (() async -> Void)?
+    /// Reports each action this view model runs, e.g. to the app's telemetry.
+    @ObservationIgnored public var onAction: GroveKitActionHandler?
 
     public private(set) var status = SVNStatus()
     public private(set) var sheet: Sheet?
@@ -56,8 +58,10 @@ public final class SVNViewModel {
         do {
             try await work()
             sheet = nil
+            onAction?(.svn, true)
         } catch {
             errorMessage = error.localizedDescription
+            onAction?(.svn, false)
         }
         await refresh()
         await onRepositoryChanged?()

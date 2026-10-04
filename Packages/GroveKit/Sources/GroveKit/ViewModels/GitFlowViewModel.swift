@@ -29,6 +29,8 @@ public final class GitFlowViewModel {
     /// Shared with the session so the sheets list branches without reading them again.
     public let refs: RepositoryRefs
     public var onRepositoryChanged: (() async -> Void)?
+    /// Reports each action this view model runs, e.g. to the app's telemetry.
+    @ObservationIgnored public var onAction: GroveKitActionHandler?
 
     public private(set) var config: GitFlowConfig?
     public private(set) var sheet: GitFlowSheet?
@@ -108,8 +110,10 @@ public final class GitFlowViewModel {
         do {
             try await work()
             sheet = nil
+            onAction?(.gitFlow, true)
         } catch {
             errorMessage = error.localizedDescription
+            onAction?(.gitFlow, false)
         }
         await refresh()
         await onRepositoryChanged?()

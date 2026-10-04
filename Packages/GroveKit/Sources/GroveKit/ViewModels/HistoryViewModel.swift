@@ -68,6 +68,8 @@ public final class HistoryViewModel {
     public private(set) var isPerformingAction = false
     /// Set by the session so mutations refresh every view, not just this list.
     public var onRepositoryChanged: (() async -> Void)?
+    /// Reports each action this view model runs, e.g. to the app's telemetry.
+    @ObservationIgnored public var onAction: GroveKitActionHandler?
     /// Set by the session to show Changes, where the conflict banner continues a stopped rebase.
     public var onRebaseStopped: (() -> Void)?
     public var undoManager: GitUndoManager?

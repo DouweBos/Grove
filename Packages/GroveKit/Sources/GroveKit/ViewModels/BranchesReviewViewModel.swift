@@ -82,6 +82,8 @@ public final class BranchesReviewViewModel {
     private var aheadBehindCache = AheadBehindCache()
 
     public var onRepositoryChanged: (() async -> Void)?
+    /// Reports each action this view model runs, e.g. to the app's telemetry.
+    @ObservationIgnored public var onAction: GroveKitActionHandler?
     public var undoManager: GitUndoManager?
 
     public let repository: any GitRepositoryProtocol
@@ -250,6 +252,7 @@ public final class BranchesReviewViewModel {
                                                              actions: deleted))
         }
         if !failures.isEmpty { errorMessage = failures.joined(separator: "\n") }
+        onAction?(.branchDelete, failures.isEmpty)
         await refresh()
         await onRepositoryChanged?()
     }

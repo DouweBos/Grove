@@ -18,6 +18,8 @@ public final class RefActionsViewModel {
 
     /// Refreshes every view after a mutation; without it only `refs` re-reads.
     @ObservationIgnored public var onRepositoryChanged: (() async -> Void)?
+    /// Reports each action this view model runs, e.g. to the app's telemetry.
+    @ObservationIgnored public var onAction: GroveKitActionHandler?
     @ObservationIgnored public var undoManager: GitUndoManager?
     /// A removed worktree's path, then the main worktree's, so views showing it can move.
     @ObservationIgnored public var onWorktreeRemoved: ((String, String?) -> Void)?
@@ -40,24 +42,40 @@ public final class RefActionsViewModel {
     }
 
     /// Runs a git mutation with `title` showing, then refreshes every view whether or not it failed.
-    public func perform(_ title: String, _ work: () async throws -> Void) async {
+    public func perform(_ action: GroveKitAction, _ title: String, _ work: () async throws -> Void) async {
         activity = title
         defer { activity = nil }
         do {
             try await work()
+            onAction?(action, true)
         } catch {
             errorMessage = error.localizedDescription
+            onAction?(action, false)
         }
         await didChangeRepository()
     }
 
     /// Runs `work`, refreshing every view when it succeeds and keeping its failure in `errorMessage`.
-    func run(_ work: () async throws -> Void) async {
+    func run(_ action: GroveKitAction, _ work: () async throws -> Void) async {
         do {
             try await work()
+            onAction?(action, true)
             await didChangeRepository()
         } catch {
             errorMessage = error.localizedDescription
+            onAction?(action, false)
+        }
+    }
+
+    /// Like `run`, for actions that throw to a dialog instead of setting `errorMessage`.
+    func reporting<T>(_ action: GroveKitAction, _ work: () async throws -> T) async throws -> T {
+        do {
+            let result = try await work()
+            onAction?(action, true)
+            return result
+        } catch {
+            onAction?(action, false)
+            throw error
         }
     }
 
@@ -78,8 +96,10 @@ public final class RefActionsViewModel {
         let previous = headName
         do {
             try await repository.checkout(branch: name)
+            onAction?(.checkout, true)
         } catch {
             errorMessage = error.localizedDescription
+            onAction?(.checkout, false)
             return
         }
         // Detached HEAD has no branch to return to, so it isn't recorded.
@@ -92,15 +112,17 @@ public final class RefActionsViewModel {
 
     /// Throws so a rename dialog can show the failure and stay open.
     public func renameBranch(_ branch: BranchInfo, to newName: String) async throws {
-        try await repository.renameBranch(oldName: branch.name, newName: newName)
+        try await reporting(.branchRename) { try await repository.renameBranch(oldName: branch.name, newName: newName) }
         await didChangeRepository()
     }
 
     public func deleteBranch(_ branch: BranchInfo, force: Bool = false) async {
         do {
             try await repository.deleteBranch(name: branch.name, force: force)
+            onAction?(.branchDelete, true)
         } catch {
             errorMessage = error.localizedDescription
+            onAction?(.branchDelete, false)
             return
         }
         recordBranchDeletion(branch)
@@ -115,31 +137,31 @@ public final class RefActionsViewModel {
 
     /// Merges `branch` into HEAD.
     public func merge(branch: BranchInfo) async {
-        await run { try await repository.merge(branch: branch.name) }
+        await run(.merge) { try await repository.merge(branch: branch.name) }
     }
 
     /// Rebases HEAD onto `branch`.
     public func rebase(onto branch: BranchInfo) async {
-        await run { try await repository.rebase(onto: branch.name) }
+        await run(.rebase) { try await repository.rebase(onto: branch.name) }
     }
 
     public func cherryPick(sha: String) async {
-        await run { try await repository.cherryPick(commit: sha) }
+        await run(.cherryPick) { try await repository.cherryPick(commit: sha) }
     }
 
     /// Applies the stash at `index`, keeping it in the list.
     public func stashApply(index: Int) async {
-        await run { try await repository.stashApply(index: index, drop: false) }
+        await run(.stashApply) { try await repository.stashApply(index: index, drop: false) }
     }
 
     public func deleteTag(_ tag: TagInfo) async {
-        await run { try await repository.deleteTag(name: tag.name) }
+        await run(.tagDelete) { try await repository.deleteTag(name: tag.name) }
     }
 
     /// Deletes a remote-tracking branch's branch on its remote.
     public func deleteRemoteBranch(_ branch: BranchInfo) async {
         guard let remote = branch.remoteName else { return }
-        await run { try await repository.deleteRemoteBranch(name: Self.shortName(of: branch), remote: remote) }
+        await run(.branchDelete) { try await repository.deleteRemoteBranch(name: Self.shortName(of: branch), remote: remote) }
     }
 
     /// Remote branch name without its "remote/" prefix.

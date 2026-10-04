@@ -84,6 +84,8 @@ public final class ReflogViewModel {
     let maxCount = 500
 
     public var onRepositoryChanged: (() async -> Void)?
+    /// Reports each action this view model runs, e.g. to the app's telemetry.
+    @ObservationIgnored public var onAction: GroveKitActionHandler?
     public var undoManager: GitUndoManager?
 
     public let repository: any GitRepositoryProtocol
@@ -153,8 +155,10 @@ public final class ReflogViewModel {
             if let previousHead, pending.mode != .hard {
                 recordResetUndo(from: previousHead, to: pending.entry.newSHA, mode: pending.mode)
             }
+            onAction?(.reset, true)
         } catch {
             errorMessage = error.localizedDescription
+            onAction?(.reset, false)
         }
         await refresh()
         await onRepositoryChanged?()
@@ -180,8 +184,10 @@ public final class ReflogViewModel {
             if !checkout {
                 undoManager?.record(GitUndoManager.createBranchAction(branchName: name, repository: repository))
             }
+            onAction?(.branchCreate, true)
         } catch {
             errorMessage = error.localizedDescription
+            onAction?(.branchCreate, false)
         }
         await onRepositoryChanged?()
     }

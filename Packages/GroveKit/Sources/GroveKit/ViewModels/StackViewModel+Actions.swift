@@ -34,11 +34,11 @@ extension StackViewModel {
             let expected = refs.remoteBranches.first { $0.name == "\(remote)/\(remoteName)" }?.targetSHA
             return StackPush(branch: layer.branch, remoteBranch: remoteName, expectedSHA: expected)
         }
-        await run(title) { try await self.repository.pushStack(pushes, to: remote) }
+        await run(.push, title) { try await self.repository.pushStack(pushes, to: remote) }
     }
 
     public func checkOut(_ layer: StackLayer) async {
-        await run("Checking out \(layer.branch)") { try await self.repository.checkout(branch: layer.branch) }
+        await run(.checkout, "Checking out \(layer.branch)") { try await self.repository.checkout(branch: layer.branch) }
     }
 
     public func createPullRequest(for layer: StackLayer) {
@@ -65,20 +65,22 @@ extension StackViewModel {
 
     public func fold(_ layer: StackLayer) async {
         guard canFold(layer), let parent = layer.parent, let parentLayer = stack?.layer(parent) else { return }
-        await run("Folding \(layer.branch) into \(parent)") {
+        await run(.stackFold, "Folding \(layer.branch) into \(parent)") {
             try await self.repository.fastForward(branch: parent, to: layer.tipSHA, worktreePath: parentLayer.worktreePath)
             if layer.isHEAD { try await self.repository.checkout(branch: parent) }
             try await self.repository.deleteBranch(name: layer.branch, force: true)
         }
     }
 
-    func run(_ title: String, _ work: @escaping () async throws -> Void) async {
+    func run(_ action: GroveKitAction, _ title: String, _ work: @escaping () async throws -> Void) async {
         activity = title
         defer { activity = nil }
         do {
             try await work()
+            onAction?(action, true)
         } catch {
             errorMessage = error.localizedDescription
+            onAction?(action, false)
         }
         await onRepositoryChanged?()
     }

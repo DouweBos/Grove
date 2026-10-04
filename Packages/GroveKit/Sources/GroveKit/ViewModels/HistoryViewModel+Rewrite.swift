@@ -92,38 +92,38 @@ extension HistoryViewModel {
     /// `plan` is oldest first. A conflict leaves the rebase stopped and hands over to the Changes banner.
     public func rebaseInteractively(onto base: CommitInfo, plan: [RebaseStep]) async {
         if let problem = RebasePlan.problem(with: plan) { return errorMessage = problem }
-        await performRewrite("Interactive Rebase") { try await $0.rebaseInteractive(onto: base.id, steps: plan) }
+        await performRewrite(.interactiveRebase, "Interactive Rebase") { try await $0.rebaseInteractive(onto: base.id, steps: plan) }
         guard repository.repositoryState != .normal else { return }
         dismissAction()
         onRebaseStopped?()
     }
 
     public func reword(_ commit: CommitInfo, message: String) async {
-        await performRewrite("Reword \(commit.shortSHA)") { try await $0.rewordCommit(commit.id, newMessage: message) }
+        await performRewrite(.reword, "Reword \(commit.shortSHA)") { try await $0.rewordCommit(commit.id, newMessage: message) }
     }
 
     public func squashWithParent(_ commit: CommitInfo, message: String) async {
         guard let parent = commit.parentIDs.first else { return }
-        await performRewrite("Squash \(commit.shortSHA)") { try await $0.squashCommits([parent, commit.id], message: message) }
+        await performRewrite(.squash, "Squash \(commit.shortSHA)") { try await $0.squashCommits([parent, commit.id], message: message) }
     }
 
     /// `commits` as listed, newest first; git squashes them oldest first.
     public func squash(_ commits: [CommitInfo], message: String) async {
         let oldestFirst = commits.reversed().map(\.id)
-        await performRewrite("Squash \(commits.count) Commits") { try await $0.squashCommits(oldestFirst, message: message) }
+        await performRewrite(.squash, "Squash \(commits.count) Commits") { try await $0.squashCommits(oldestFirst, message: message) }
     }
 
     public func drop(_ commit: CommitInfo) async {
-        await performRewrite("Delete \(commit.shortSHA)") { try await $0.dropCommit(commit.id) }
+        await performRewrite(.drop, "Delete \(commit.shortSHA)") { try await $0.dropCommit(commit.id) }
     }
 
     /// Undo resets --hard to the old HEAD, so it's only recorded when that can't lose uncommitted work.
-    func performRewrite(_ description: String,
+    func performRewrite(_ action: GroveKitAction, _ description: String,
                         _ operation: @escaping (any GitRepositoryProtocol) async throws -> Void) async {
         let repo = repository
         let oldHead = try? await repo.commitDetail("HEAD").id
         let wasClean = (try? await GitUndoManager.isWorkingTreeClean(repo)) ?? false
-        await perform { repo in
+        await perform(action) { repo in
             try await operation(repo)
             guard wasClean, let oldHead, let newHead = try? await repo.commitDetail("HEAD").id else { return }
             self.undoManager?.record(GitUndoManager.rewriteAction(

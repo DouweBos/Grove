@@ -52,15 +52,15 @@ extension HistoryViewModel {
     // MARK: - Mutations
 
     public func cherryPick(_ commit: CommitInfo) async {
-        await perform { try await $0.cherryPick(commit: commit.id) }
+        await perform(.cherryPick) { try await $0.cherryPick(commit: commit.id) }
     }
 
     public func revert(_ commit: CommitInfo) async {
-        await perform { try await $0.revert(commit: commit.id) }
+        await perform(.revert) { try await $0.revert(commit: commit.id) }
     }
 
     public func reset(to commit: CommitInfo, mode: ResetMode) async {
-        await perform { try await $0.resetToCommit(commit.id, mode: mode) }
+        await perform(.reset) { try await $0.resetToCommit(commit.id, mode: mode) }
     }
 
     /// Called by the create branch/tag sheets after they wrote the ref themselves.
@@ -69,14 +69,16 @@ extension HistoryViewModel {
         await repositoryChanged()
     }
 
-    func perform(_ operation: (any GitRepositoryProtocol) async throws -> Void) async {
+    func perform(_ action: GroveKitAction, _ operation: (any GitRepositoryProtocol) async throws -> Void) async {
         setPerforming(true)
         defer { setPerforming(false) }
         do {
             try await operation(repository)
             dismissAction()
+            onAction?(action, true)
         } catch {
             errorMessage = error.localizedDescription
+            onAction?(action, false)
         }
         await repositoryChanged()
     }

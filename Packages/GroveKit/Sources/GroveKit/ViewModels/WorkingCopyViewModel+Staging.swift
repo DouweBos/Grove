@@ -8,14 +8,14 @@ import Foundation
 extension WorkingCopyViewModel {
 
     public func stageFile(_ entry: StatusEntry) async {
-        await mutate {
+        await mutate(.stage) {
             try await self.repository.stage(paths: [entry.path])
             self.undoManager?.record(GitUndoManager.stageAction(paths: [entry.path], repository: self.repository))
         }
     }
 
     public func unstageFile(_ entry: StatusEntry) async {
-        await mutate {
+        await mutate(.unstage) {
             try await self.repository.unstage(paths: [entry.path])
             self.undoManager?.record(GitUndoManager.unstageAction(paths: [entry.path], repository: self.repository))
         }
@@ -23,7 +23,7 @@ extension WorkingCopyViewModel {
 
     public func stageAll() async {
         let paths = unstagedFiles.map(\.path)
-        await mutate {
+        await mutate(.stage) {
             try await self.repository.stageAll()
             self.undoManager?.record(GitUndoManager.stageAction(paths: paths, repository: self.repository))
         }
@@ -31,7 +31,7 @@ extension WorkingCopyViewModel {
 
     public func unstageAll() async {
         let paths = stagedFiles.map(\.path)
-        await mutate {
+        await mutate(.unstage) {
             try await self.repository.unstageAll()
             self.undoManager?.record(GitUndoManager.unstageAction(paths: paths, repository: self.repository))
         }
@@ -48,7 +48,7 @@ extension WorkingCopyViewModel {
         let toStage = rows.filter { $0.side == .unstaged }.map(\.path).sorted()
         let toUnstage = rows.filter { $0.side == .staged }.map(\.path).sorted()
         guard !toStage.isEmpty || !toUnstage.isEmpty else { return }
-        await mutate {
+        await mutate(toStage.isEmpty ? .unstage : .stage) {
             var actions: [GitUndoManager.GitAction] = []
             if !toStage.isEmpty {
                 try await self.repository.stage(paths: toStage)

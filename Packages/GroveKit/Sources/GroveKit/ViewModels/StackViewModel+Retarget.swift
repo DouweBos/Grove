@@ -36,7 +36,7 @@ extension StackViewModel {
             .filter { moved.contains($0.branch) && $0.hasUpstream && !$0.health.isDisjoint(with: [.unpushed, .diverged]) }
         if !published.isEmpty { await pushLayers(published, title: "Pushing retargeted branches") }
         guard errorMessage == nil else { return }
-        await run("Retargeting pull requests") {
+        await run(.stackRetarget, "Retargeting pull requests") {
             for child in merged.children {
                 guard let pr = child.pullRequest, !pr.isMerged, pr.baseBranch != trunk else { continue }
                 try await self.repository.updatePullRequestBase(number: pr.number, base: trunk)
@@ -52,7 +52,7 @@ extension StackViewModel {
     public func deleteMergedParent() async {
         guard let branch = retargetedParent else { return }
         retargetedParent = nil
-        await run("Deleting \(branch)") {
+        await run(.branchDelete, "Deleting \(branch)") {
             if self.refs.headBranch?.name == branch, let trunk = self.stack?.trunk {
                 try await self.repository.checkout(branch: trunk)
             }

@@ -52,7 +52,7 @@ extension WorkingCopyViewModel {
         case .fileExtension(let ext): patterns = [GitIgnoreFile.pattern(forExtension: ext)]
         case .folder(let folder): patterns = [GitIgnoreFile.pattern(forFolder: folder)]
         }
-        await mutate { try await self.repository.ignore(patterns: patterns, localOnly: localOnly) }
+        await mutate(.fileAction) { try await self.repository.ignore(patterns: patterns, localOnly: localOnly) }
     }
 
     /// Files git knows about; untracked ones have nothing to stop tracking.
@@ -64,7 +64,7 @@ extension WorkingCopyViewModel {
         let paths = trackedEntries(entries).map(\.path)
         guard !paths.isEmpty else { return }
         let repo = repository
-        await mutate {
+        await mutate(.fileAction) {
             try await repo.stopTracking(paths: paths)
             undoManager?.record(GitUndoManager.GitAction(
                 description: "Stop Tracking \(paths.count == 1 ? paths[0] : "\(paths.count) files")",
@@ -98,7 +98,7 @@ extension WorkingCopyViewModel {
         let destination = newPath.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !destination.isEmpty, destination != entry.path else { return }
         let (repo, source) = (repository, entry.path)
-        await mutate {
+        await mutate(.fileAction) {
             try await repo.moveFile(from: source, to: destination)
             undoManager?.record(GitUndoManager.GitAction(
                 description: "Rename \((source as NSString).lastPathComponent)",
@@ -111,6 +111,6 @@ extension WorkingCopyViewModel {
     public func moveToTrash(_ entries: [StatusEntry]) async {
         pendingFileAction = nil
         let repo = repository
-        await mutate { try await repo.trashFiles(entries.map(\.path)) }
+        await mutate(.fileAction) { try await repo.trashFiles(entries.map(\.path)) }
     }
 }
