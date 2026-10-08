@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1
+
+- In stack graphs the longest line of branches stays in the leftmost lane, with shorter side branches to its right.
+- Stacks in the sidebar draw as a lane graph instead of nesting each layer deeper, so branch names in long stacks stay readable.
+
 ## 0.6.0
 
 - The commit message box now has corners that fit inside its card.
