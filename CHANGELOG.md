@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0
+
+- A stack whose bottom branch gained new commits keeps that branch at the bottom instead of sometimes flipping it above the layers built on it.
+- The sidebar waits for stacks before listing branches, so a stacked branch never shows up loose in its folder first.
+- The `grove` command does more from Terminal, for you and for scripts and agents handing work over to Grove: - `grove history [branch]`, `grove blame <file>` and `grove stack [branch]` open Grove right on that view - `grove stacks`, `grove branches` and `grove prs` print the repository's stacks, branches and open pull requests, with `--json` for scripts - `grove -C <path>` runs it for another folder, and `grove help` lists everything
+- The `grove` command is now installed as a link to Grove, so it stays up to date with the app
+- Installing it no longer replaces a `grove` command from another program, and asks before replacing a link you made yourself
+- Settings > Advanced shows the command line tool, and updates an older copy or repairs one that broke when Grove was moved or renamed
+- A branch folder no longer stays open after the checked-out branch moves into a stack
+- Stacks in the sidebar start collapsed unless they hold the checked-out branch
+
 ## 0.6.1
 
 - In stack graphs the longest line of branches stays in the leftmost lane, with shorter side branches to its right.
