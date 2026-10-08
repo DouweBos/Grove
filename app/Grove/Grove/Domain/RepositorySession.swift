@@ -132,6 +132,11 @@ final class RepositorySession {
             self?.sidebarVM.select(.ci)
             Task { await self?.ciVM.reveal(runID: runID) }
         }
+        RepositoryURLRouter.setIntentHandler(for: repository.path.path) { [weak self] intent in
+            guard let self else { return false }
+            Task { await self.open(intent) }
+            return true
+        }
         sidebarVM.onShowRuns = { [weak self] branch in
             self?.sidebarVM.select(.ci)
             Task { await self?.ciVM.showRuns(for: branch) }

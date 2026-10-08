@@ -8,8 +8,7 @@ import SwiftUI
 
 // MARK: - GroveApp
 
-/// The application entry point: any number of windows, each browsing or showing one repository.
-@main
+/// The application, started from main.swift: any number of windows, each browsing or showing one repository.
 struct GroveApp: App {
     static let mainWindowID = "main"
 

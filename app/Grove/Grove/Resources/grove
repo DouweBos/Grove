@@ -1,0 +1,13 @@
+#!/bin/sh
+# Grove's command line tool. It's installed as a link to this file, so it follows Grove through every update;
+# everything past finding the app is done by Grove itself.
+link=$0
+while [ -L "$link" ]; do
+  target=$(readlink "$link")
+  case $target in
+    /*) link=$target ;;
+    *) link=$(dirname "$link")/$target ;;
+  esac
+done
+contents=$(cd "$(dirname "$link")/.." && pwd -P)
+exec "$contents/MacOS/Grove" --grove-cli "$@"

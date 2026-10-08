@@ -103,7 +103,7 @@ public final class RepositoryRefs {
     private var openPullRequests: [String: BranchPullRequest] { branchPullRequests.filter { !$0.value.isMerged } }
 
     /// Reads pull requests again right away and waits for them, e.g. after changing one on the host.
-    func refreshPullRequestsNow() async {
+    public func refreshPullRequestsNow() async {
         if let pullRequestTask { await pullRequestTask.value }
         refreshPullRequests(force: true)
         await pullRequestTask?.value
