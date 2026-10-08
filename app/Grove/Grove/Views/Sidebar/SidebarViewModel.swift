@@ -18,6 +18,8 @@ final class SidebarViewModel {
     /// Shared with the session's other views, so the sidebar never reads refs on its own.
     let refs: RepositoryRefs
     var localBranches: [BranchInfo] { refs.localBranches }
+    /// What Branches lists: held until stacks are read for them, so a stacked branch never shows loose first.
+    var listedBranches: [BranchInfo] { refs.localBranchesMatchingStacks }
     var remoteBranches: [BranchInfo] { refs.remoteBranches }
     var tags: [TagInfo] { refs.tags }
     var remotes: [RemoteInfo] { refs.remotes }
@@ -129,7 +131,7 @@ final class SidebarViewModel {
 
     /// Local branches whose names appear in ``pinnedBranchNames``, sorted alphabetically.
     var pinnedBranches: [BranchInfo] {
-        localBranches
+        listedBranches
             .filter { pinnedBranchNames.contains($0.name) && !archivedBranchNames.contains($0.name) }
             .sorted { $0.name < $1.name }
     }
@@ -167,7 +169,7 @@ final class SidebarViewModel {
     var archivedBranchNames: Set<String> = []
 
     var archivedBranches: [BranchInfo] {
-        localBranches.filter { archivedBranchNames.contains($0.name) }.sorted { $0.name < $1.name }
+        listedBranches.filter { archivedBranchNames.contains($0.name) }.sorted { $0.name < $1.name }
     }
 
     func archive(branch: BranchInfo) {
@@ -279,7 +281,7 @@ final class SidebarViewModel {
         var groups: [String: [BranchInfo]] = [:]
 
         let stacked = stackedBranchNames
-        for branch in localBranches where !archivedBranchNames.contains(branch.name) && !stacked.contains(branch.name) {
+        for branch in listedBranches where !archivedBranchNames.contains(branch.name) && !stacked.contains(branch.name) {
             if let slashIndex = branch.name.firstIndex(of: "/") {
                 let prefix = String(branch.name[branch.name.startIndex..<slashIndex])
                 groups[prefix, default: []].append(branch)

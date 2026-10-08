@@ -38,6 +38,9 @@ public final class RepositoryRefs {
     private(set) var generation = 0
     /// Stacked branches recognized from the graph, reflogs and pull requests after each read.
     public private(set) var stacks: [BranchStack] = []
+    /// Local branches as of the last stack read, which lags ``localBranches``; a list grouping branches by stack
+    /// shows these, so no branch appears loose before its stack is known.
+    public private(set) var localBranchesMatchingStacks: [BranchInfo] = []
     /// Branches whose patches all exist on another branch.
     private(set) var duplicateBranches: [DuplicateBranch] = []
     /// The branch stacks are measured against.
@@ -153,6 +156,7 @@ public final class RepositoryRefs {
     public func replace(localBranches: [BranchInfo]? = nil, remoteBranches: [BranchInfo]? = nil, tags: [TagInfo]? = nil,
                  remotes: [RemoteInfo]? = nil, worktrees: [WorktreeInfo]? = nil, stacks: [BranchStack]? = nil) {
         apply(local: localBranches, remote: remoteBranches, tags: tags)
+        if let localBranches { localBranchesMatchingStacks = localBranches }
         if let remotes { self.remotes = remotes }
         if let worktrees { self.worktrees = worktrees }
         if let stacks {
@@ -184,6 +188,7 @@ public final class RepositoryRefs {
                     stacks = result.stacks
                     duplicateBranches = result.duplicates
                 }
+                if snapshot.localBranches != localBranchesMatchingStacks { localBranchesMatchingStacks = snapshot.localBranches }
                 trunk = stackReader.trunk
             } while needsStackRead
             stackTask = nil

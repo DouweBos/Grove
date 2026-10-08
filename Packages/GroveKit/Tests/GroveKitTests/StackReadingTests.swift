@@ -107,4 +107,17 @@ struct StackReadingTests {
         #expect(b.base == (try repo.sha("a@{1}")))
         #expect(stack.trunkAhead == 1)
     }
+
+    @Test func branchesMatchingStacksFollowEachStackRead() async throws {
+        let repo = try buildStack()
+        let refs = try await refs(repo)
+        #expect(refs.localBranchesMatchingStacks == refs.localBranches)
+
+        try repo.git(["branch", "e", "c"])
+        try repo.git(["checkout", "-q", "e"])
+        try repo.commit("e.txt", "e\n", "e1")
+        await refs.refresh()
+        #expect(refs.localBranchesMatchingStacks.contains { $0.name == "e" })
+        #expect(refs.stack(containing: "e") != nil)
+    }
 }

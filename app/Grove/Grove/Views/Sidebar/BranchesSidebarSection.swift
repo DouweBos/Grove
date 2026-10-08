@@ -37,7 +37,7 @@ struct BranchesSidebarSection: View {
                 }
             }
         } header: {
-            SidebarSectionHeader(title: "Branches", count: viewModel.localBranches.count - viewModel.archivedBranches.count)
+            SidebarSectionHeader(title: "Branches", count: viewModel.listedBranches.count - viewModel.archivedBranches.count)
                 .dropDestination(for: String.self) { items, _ in
                     guard let ref = items.first, !ref.isEmpty else { return false }
                     sheets.createFromRef = CreateBranchRequest(ref: ref)
@@ -56,7 +56,7 @@ struct BranchesSidebarSection: View {
 
     @ViewBuilder
     private func stackRow(_ layer: StackLayer, lanes: StackSidebarLanes) -> some View {
-        if let branch = viewModel.localBranches.first(where: { $0.name == layer.branch }) {
+        if let branch = viewModel.listedBranches.first(where: { $0.name == layer.branch }) {
             actions(for: branch, isPinned: viewModel.pinnedBranchNames.contains(branch.name), inStack: true,
                     on: StackSidebarRow(layer: layer, lanes: lanes, branch: branch, worktree: viewModel.actions.worktree(checkingOut: branch)))
         }
