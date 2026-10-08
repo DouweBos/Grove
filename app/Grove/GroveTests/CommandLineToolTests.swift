@@ -1,7 +1,8 @@
 // CommandLineToolTests.swift
 // GroveTests
 //
-// The arguments `grove` takes and the URLs it turns into.
+// Installing `grove` as a link and telling Grove's own installs from other programs', the bundled script reaching
+// Grove's binary, and the arguments and URLs it turns into.
 
 import Foundation
 @testable import GroveKit
@@ -12,11 +13,77 @@ import Testing
 struct CommandLineToolTests {
 
     private let root: URL
+    private let script: URL
 
     init() throws {
         root = FileManager.default.temporaryDirectory
             .appendingPathComponent("grove-cli-\(UUID().uuidString)").resolvingSymlinksInPath()
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        script = root.appendingPathComponent("Grove.app/Contents/Resources/grove")
+        try FileManager.default.createDirectory(at: script.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("#!/bin/sh\n".utf8).write(to: script)
+    }
+
+    private var bin: URL { root.appendingPathComponent("bin") }
+    private var installed: URL { bin.appendingPathComponent("grove") }
+
+    // MARK: - Installing
+
+    @Test func installLinksToTheBundledScript() throws {
+        try CommandLineTool.install(in: bin, script: script)
+        #expect(try FileManager.default.destinationOfSymbolicLink(atPath: installed.path) == script.path)
+        #expect(CommandLineTool.installation(at: installed, script: script) == .current)
+    }
+
+    @Test func recognizesWhatIsAlreadyThere() throws {
+        try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+        #expect(CommandLineTool.installation(at: installed, script: script) == .missing)
+
+        try Data("#!/bin/sh\n\(CommandLineTool.legacyMarker), the current folder by default.\n".utf8).write(to: installed)
+        #expect(CommandLineTool.installation(at: installed, script: script) == .outdatedCopy)
+
+        try Data("#!/bin/sh\necho another grove\n".utf8).write(to: installed)
+        #expect(CommandLineTool.installation(at: installed, script: script) == .foreign)
+
+        try FileManager.default.removeItem(at: installed)
+        let moved = root.appendingPathComponent("Old Grove.app/Contents/Resources/grove")
+        try FileManager.default.createSymbolicLink(at: installed, withDestinationURL: moved)
+        #expect(CommandLineTool.installation(at: installed, script: script) == .otherGrove(target: moved.path, exists: false))
+
+        try FileManager.default.removeItem(at: installed)
+        try FileManager.default.createSymbolicLink(at: installed, withDestinationURL: URL(fileURLWithPath: "/usr/bin/true"))
+        #expect(CommandLineTool.installation(at: installed, script: script) == .userLink(target: "/usr/bin/true"))
+    }
+
+    @Test func replacesGrovesOwnButNotAnotherProgramsCommand() throws {
+        try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+        try Data("#!/bin/sh\n\(CommandLineTool.legacyMarker)\n".utf8).write(to: installed)
+        try CommandLineTool.install(in: bin, script: script)
+        #expect(CommandLineTool.installation(at: installed, script: script) == .current)
+
+        try FileManager.default.removeItem(at: installed)
+        try Data("#!/bin/sh\necho another grove\n".utf8).write(to: installed)
+        #expect(throws: CommandLineTool.InstallError.occupied(installed, .foreign)) {
+            try CommandLineTool.install(in: bin, script: script)
+        }
+        #expect(try String(contentsOf: installed, encoding: .utf8).contains("another grove"))
+    }
+
+    @Test func replacesAUsersOwnLinkOnlyWhenAsked() throws {
+        try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: installed, withDestinationURL: URL(fileURLWithPath: "/usr/bin/true"))
+        #expect(throws: CommandLineTool.InstallError.occupied(installed, .userLink(target: "/usr/bin/true"))) {
+            try CommandLineTool.install(in: bin, script: script)
+        }
+        try CommandLineTool.install(in: bin, script: script, replacing: true)
+        #expect(CommandLineTool.installation(at: installed, script: script) == .current)
+    }
+
+    @Test func bundledScriptRunsGrovesBinaryThroughTheLink() throws {
+        let bundled = try #require(CommandLineTool.bundledScript)
+        try CommandLineTool.install(in: bin, script: bundled)
+        let (status, output) = try run(installed.path, arguments: ["--version"])
+        #expect(status == 0)
+        #expect(output.hasPrefix("Grove "))
     }
 
     // MARK: - Arguments

@@ -23,6 +23,7 @@ struct AdvancedPreferencesTab: View {
     var body: some View {
         Form {
             environmentSection
+            CommandLineToolSection()
             towerImportSection
             dataManagementSection
             resetToDefaultsSection
