@@ -5,22 +5,22 @@ import GroveKit
 import SwiftUI
 
 /// A stack in the Branches section drawn as a lane graph, first layer on top; selecting it opens the Stack tab.
-/// It opens when it holds the checked-out branch or needs attention.
+/// It's open while it holds the checked-out branch, as a branch folder is.
 struct StackSidebarFolder<Row: View>: View {
     let stack: BranchStack
     let showStack: () -> Void
     @ViewBuilder let row: (StackLayer, StackSidebarLanes) -> Row
-    @State private var isExpanded: Bool
+    @State private var expansion: FolderExpansion
 
     init(stack: BranchStack, showStack: @escaping () -> Void, @ViewBuilder row: @escaping (StackLayer, StackSidebarLanes) -> Row) {
         self.stack = stack
         self.showStack = showStack
         self.row = row
-        _isExpanded = State(initialValue: stack.layers.contains(where: \.isHEAD) || stack.needsAttention)
+        _expansion = State(initialValue: FolderExpansion(containsHEAD: stack.layers.contains(where: \.isHEAD)))
     }
 
     var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
+        DisclosureGroup(isExpanded: Binding(get: { expansion.isExpanded }, set: { expansion.toggle(to: $0) })) {
             ForEach(StackSidebarLanes.rows(of: stack), id: \.layer.branch) { row($0.layer, $0.lanes) }
         } label: {
             SidebarRow(title: stack.name, symbol: "square.stack.3d.up",
@@ -33,9 +33,7 @@ struct StackSidebarFolder<Row: View>: View {
                 Button("Show Stack", systemImage: "square.stack.3d.up", action: showStack)
             }
         }
-        .onChange(of: stack.layers.contains(where: \.isHEAD)) { _, contains in
-            if contains { isExpanded = true }
-        }
+        .onChange(of: stack.layers.contains(where: \.isHEAD)) { _, contains in expansion.headChanged(contains: contains) }
     }
 }
 

@@ -28,6 +28,30 @@ struct StacksSidebarTests {
         #expect(rows.first?.lanes.segments == [.top(0)])
     }
 
+    @Test func folderOpenedForHEADClosesWhenHEADLeaves() {
+        var expansion = FolderExpansion(containsHEAD: true)
+        expansion.headChanged(contains: false)
+        #expect(!expansion.isExpanded)
+        expansion.headChanged(contains: true)
+        #expect(expansion.isExpanded)
+    }
+
+    @Test func folderTheUserToggledStaysAsLeft() {
+        var opened = FolderExpansion(containsHEAD: false)
+        opened.toggle(to: true)
+        opened.headChanged(contains: true)
+        opened.headChanged(contains: false)
+        #expect(opened.isExpanded)
+
+        var closed = FolderExpansion(containsHEAD: true)
+        closed.toggle(to: false)
+        closed.headChanged(contains: false)
+        closed.toggle(to: true)
+        closed.headChanged(contains: false)
+        #expect(closed.isExpanded)
+        #expect(!FolderExpansion(containsHEAD: false).isExpanded)
+    }
+
     @Test func splitStackSubtreesKeepTopologicalOrder() {
         let stack = MockData.splitStack
         #expect(stack.roots.map(\.branch) == ["auth-api"])

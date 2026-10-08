@@ -94,29 +94,26 @@ private struct BranchFolder<Row: View>: View {
     let prefix: String
     let branches: [BranchInfo]
     @ViewBuilder let row: (BranchInfo) -> Row
-    @State private var isExpanded: Bool
+    @State private var expansion: FolderExpansion
 
     init(prefix: String, branches: [BranchInfo], @ViewBuilder row: @escaping (BranchInfo) -> Row) {
         self.prefix = prefix
         self.branches = branches
         self.row = row
-        _isExpanded = State(initialValue: branches.contains(where: \.isHEAD))
+        _expansion = State(initialValue: FolderExpansion(containsHEAD: branches.contains(where: \.isHEAD)))
     }
 
     private var containsHEAD: Bool { branches.contains(where: \.isHEAD) }
 
     var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
+        DisclosureGroup(isExpanded: Binding(get: { expansion.isExpanded }, set: { expansion.toggle(to: $0) })) {
             ForEach(branches) { row($0) }
         } label: {
             SidebarRow(title: prefix, symbol: "folder", tint: Theme.textSecondary) {
                 Text("\(branches.count)").font(.system(size: 11, design: .monospaced))
             }
         }
-        // A checkout into this folder opens it; it never closes on its own, so manual toggles stick.
-        .onChange(of: containsHEAD) { _, contains in
-            if contains { isExpanded = true }
-        }
+        .onChange(of: containsHEAD) { _, contains in expansion.headChanged(contains: contains) }
     }
 }
 
