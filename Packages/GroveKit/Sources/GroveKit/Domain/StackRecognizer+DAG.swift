@@ -179,8 +179,11 @@ extension StackRecognizer {
             let ids = oldestFirst.map { input.patchIDs[$0] }
             let ownSet = Set(ids.compactMap { $0 })
             let above = above(name)
+            // A branch holding the oldest commit itself, not a copy, grew from an older tip of this layer.
+            let builtOn = index[oldestFirst[0]].map { Set(reaching($0)) } ?? []
             var best: (name: String, matched: Int, tipMatches: Bool, size: Int)?
-            for (candidate, other) in candidates.enumerated() where other != name && !above.contains(candidate) {
+            for (candidate, other) in candidates.enumerated()
+            where other != name && !above.contains(candidate) && !builtOn.contains(candidate) {
                 let patches = patchSets[candidate]
                 let matched = ids.prefix { $0.map(patches.contains) == true }.count
                 guard matched > 0 else { continue }

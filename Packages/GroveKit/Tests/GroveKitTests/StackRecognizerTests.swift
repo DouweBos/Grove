@@ -139,6 +139,23 @@ struct StackRecognizerTests {
         #expect(stack.layer("a")?.parent == nil)
     }
 
+    @Test func parentThatAdvancedStaysBelowOnceTheCommitsAreShared() {
+        var graph = Graph()
+        graph.commits(["p1", "p2", "p3"], on: "t0")
+        graph.commits(["c1", "c2"], on: "p2")
+        graph.branch("p", at: "p3")
+        graph.branch("c", at: "c2")
+        // c holds p's older commits themselves, not copies, so it sits above p whatever the patch-ids or names say.
+        let ids = ["p1": "P1", "p2": "P2", "p3": "P3", "c1": "PC1", "c2": "PC2"]
+        for formerTips in [[:], ["p": Set(["p2", "p3"])]] as [[String: Set<String>]] {
+            let stack = StackRecognizer.recognize(graph.input(formerTips: formerTips, patchIDs: ids)).stacks[0]
+            #expect(stack.layers.map(\.branch) == ["p", "c"])
+            #expect(stack.layer("p")?.parent == nil)
+            #expect(stack.layer("c")?.base == "p2")
+            #expect(stack.layer("c")?.health.contains(.needsRestack) == true)
+        }
+    }
+
     @Test func forkWithoutEvidencePutsTheShorterSideBelow() {
         var graph = Graph()
         graph.commits(["a1", "a2x"], on: "t0")
