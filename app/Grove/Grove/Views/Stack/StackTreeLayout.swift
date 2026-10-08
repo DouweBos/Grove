@@ -87,17 +87,23 @@ struct StackLaneGutter: View {
     let lane: Int?
     let laneCount: Int
     var isHEAD = false
+    /// Sidebar size: narrower lanes, a smaller node centred in the row, one colour for every lane.
+    var isCompact = false
     /// Node height from the row's top, level with the card's title.
     static let nodeY: CGFloat = 22
     static let laneWidth: CGFloat = 16
+    static let compactLaneWidth: CGFloat = 12
 
     var body: some View {
         Canvas { context, size in
-            func x(_ lane: Int) -> CGFloat { CGFloat(lane) * Self.laneWidth + Self.laneWidth / 2 }
+            let laneWidth = isCompact ? Self.compactLaneWidth : Self.laneWidth
+            func x(_ lane: Int) -> CGFloat { CGFloat(lane) * laneWidth + laneWidth / 2 }
+            func color(_ lane: Int) -> Color { isCompact ? Theme.textSecondary : Theme.laneColor(lane) }
             func stroke(_ path: Path, _ lane: Int) {
-                context.stroke(path, with: .color(Theme.laneColor(lane)), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                context.stroke(path, with: .color(color(lane)), style: StrokeStyle(lineWidth: 2, lineCap: .round))
             }
-            let y = Self.nodeY
+            let y = isCompact ? size.height / 2 : Self.nodeY
+            let radius: CGFloat = isCompact ? 4 : 5
             for segment in segments {
                 var path = Path()
                 switch segment {
@@ -112,20 +118,20 @@ struct StackLaneGutter: View {
                     stroke(path, lane)
                 case .join(let from, let to):
                     path.move(to: CGPoint(x: x(from), y: 0))
-                    path.addLine(to: CGPoint(x: x(from), y: y - 8))
+                    path.addLine(to: CGPoint(x: x(from), y: y - radius - 3))
                     path.addQuadCurve(to: CGPoint(x: x(to), y: y), control: CGPoint(x: x(from), y: y))
                     stroke(path, from)
                 }
             }
             if let lane {
-                let dot = CGRect(x: x(lane) - 5, y: y - 5, width: 10, height: 10)
-                context.fill(Path(ellipseIn: dot), with: .color(Theme.laneColor(lane)))
+                let dot = CGRect(x: x(lane) - radius, y: y - radius, width: radius * 2, height: radius * 2)
+                context.fill(Path(ellipseIn: dot), with: .color(color(lane)))
                 if isHEAD {
-                    context.stroke(Path(ellipseIn: dot.insetBy(dx: -3, dy: -3)), with: .color(Theme.laneColor(lane)), lineWidth: 1.5)
+                    context.stroke(Path(ellipseIn: dot.insetBy(dx: -3, dy: -3)), with: .color(color(lane)), lineWidth: 1.5)
                 }
             }
         }
-        .frame(width: CGFloat(laneCount) * Self.laneWidth)
+        .frame(width: CGFloat(laneCount) * (isCompact ? Self.compactLaneWidth : Self.laneWidth))
     }
 }
 

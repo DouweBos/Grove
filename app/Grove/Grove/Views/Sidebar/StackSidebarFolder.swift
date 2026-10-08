@@ -4,15 +4,15 @@
 import GroveKit
 import SwiftUI
 
-/// A stack in the Branches section, with each layer indented under its parent; selecting it opens the Stack tab.
+/// A stack in the Branches section drawn as a lane graph, first layer on top; selecting it opens the Stack tab.
 /// It opens when it holds the checked-out branch or needs attention.
 struct StackSidebarFolder<Row: View>: View {
     let stack: BranchStack
     let showStack: () -> Void
-    @ViewBuilder let row: (StackLayer) -> Row
+    @ViewBuilder let row: (StackLayer, StackSidebarLanes) -> Row
     @State private var isExpanded: Bool
 
-    init(stack: BranchStack, showStack: @escaping () -> Void, @ViewBuilder row: @escaping (StackLayer) -> Row) {
+    init(stack: BranchStack, showStack: @escaping () -> Void, @ViewBuilder row: @escaping (StackLayer, StackSidebarLanes) -> Row) {
         self.stack = stack
         self.showStack = showStack
         self.row = row
@@ -21,7 +21,7 @@ struct StackSidebarFolder<Row: View>: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
-            ForEach(stack.layers) { row($0) }
+            ForEach(StackSidebarLanes.rows(of: stack), id: \.layer.branch) { row($0.layer, $0.lanes) }
         } label: {
             SidebarRow(title: stack.name, symbol: "square.stack.3d.up",
                        tint: stack.needsAttention ? Theme.warning : Theme.textSecondary) {
@@ -42,11 +42,38 @@ struct StackSidebarFolder<Row: View>: View {
 #Preview {
     List {
         ForEach([MockData.linearStack, MockData.splitStack]) { stack in
-            StackSidebarFolder(stack: stack, showStack: {}) { layer in
-                StackSidebarRow(layer: layer, branch: MockData.stackBranches.first { $0.name == layer.branch }!)
+            StackSidebarFolder(stack: stack, showStack: {}) { layer, lanes in
+                StackSidebarRow(layer: layer, lanes: lanes, branch: MockData.stackBranches.first { $0.name == layer.branch }!)
             }
         }
     }
     .listStyle(.sidebar)
     .frame(width: 280, height: 360)
+}
+
+/// One sidebar row's slice of the stack's lane graph.
+struct StackSidebarLanes: Equatable {
+    var segments: [StackTreeLayout.Segment] = []
+    var lane = 0
+    var laneCount = 1
+
+    /// The Stack tab's graph upside down, so rows read in stack order; the gutter is flipped to match.
+    /// The root's lines stop at its node since no trunk row follows in the sidebar.
+    static func rows(of stack: BranchStack) -> [(layer: StackLayer, lanes: StackSidebarLanes)] {
+        let layout = StackTreeLayout(stack)
+        return layout.rows.enumerated().reversed().compactMap { index, row in
+            guard let layer = stack.layer(row.branch) else { return nil }
+            var segments = row.segments
+            if index == layout.rows.count - 1 {
+                segments = segments.compactMap { segment in
+                    switch segment {
+                    case .bottom: nil
+                    case .through(let lane): .top(lane)
+                    default: segment
+                    }
+                }
+            }
+            return (layer, StackSidebarLanes(segments: segments, lane: row.lane, laneCount: layout.laneCount))
+        }
+    }
 }

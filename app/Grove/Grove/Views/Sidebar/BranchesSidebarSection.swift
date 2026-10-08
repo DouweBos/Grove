@@ -31,7 +31,7 @@ struct BranchesSidebarSection: View {
                     }
                     ForEach(viewModel.stacks) { stack in
                         StackSidebarFolder(stack: stack, showStack: { viewModel.showStack(stack) }) {
-                            stackRow($0)
+                            stackRow($0, lanes: $1)
                         }
                     }
                 }
@@ -55,10 +55,10 @@ struct BranchesSidebarSection: View {
     }
 
     @ViewBuilder
-    private func stackRow(_ layer: StackLayer) -> some View {
+    private func stackRow(_ layer: StackLayer, lanes: StackSidebarLanes) -> some View {
         if let branch = viewModel.localBranches.first(where: { $0.name == layer.branch }) {
             actions(for: branch, isPinned: viewModel.pinnedBranchNames.contains(branch.name), inStack: true,
-                    on: StackSidebarRow(layer: layer, branch: branch, worktree: viewModel.actions.worktree(checkingOut: branch)))
+                    on: StackSidebarRow(layer: layer, lanes: lanes, branch: branch, worktree: viewModel.actions.worktree(checkingOut: branch)))
         }
     }
 

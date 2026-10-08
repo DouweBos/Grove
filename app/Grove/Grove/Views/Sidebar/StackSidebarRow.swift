@@ -4,20 +4,35 @@
 import GroveKit
 import SwiftUI
 
-/// One layer of a stack: its name indented by depth, PR label, health glyphs and ahead/behind.
+/// One layer of a stack: its lane graph node, name, PR label, health glyphs and ahead/behind.
 struct StackSidebarRow: View {
 
     let layer: StackLayer
+    var lanes = StackSidebarLanes()
     let branch: BranchInfo
     /// Another worktree that has this branch checked out.
     var worktree: WorktreeInfo?
 
     /// Health worth a glyph in a narrow row; the rest shows in the tooltip and the Stack tab.
+    private static let rowPadding: CGFloat = 6
+
     private static let shownHealth: [LayerHealth] = [.parentMerged, .needsRestack, .unpushed]
 
     private var displayName: String { layer.branch.split(separator: "/").last.map(String.init) ?? layer.branch }
 
     var body: some View {
+        HStack(spacing: 4) {
+            StackLaneGutter(segments: lanes.segments, lane: lanes.lane, laneCount: lanes.laneCount,
+                            isHEAD: branch.isHEAD, isCompact: true)
+                .scaleEffect(y: -1)
+                // Reaches into the list's row padding so lanes join up with the rows above and below.
+                .padding(.vertical, -Self.rowPadding)
+            row
+        }
+        .help(tooltip)
+    }
+
+    private var row: some View {
         SidebarRow(
             title: displayName,
             symbol: branch.isHEAD ? "checkmark.circle.fill" : "arrow.triangle.branch",
@@ -37,8 +52,6 @@ struct StackSidebarRow: View {
                 }
             }
         }
-        .padding(.leading, CGFloat(layer.depth) * 12)
-        .help(tooltip)
     }
 
     private var tooltip: String {
@@ -52,8 +65,8 @@ struct StackSidebarRow: View {
 
 #Preview {
     List {
-        ForEach(MockData.linearStack.layers) { layer in
-            StackSidebarRow(layer: layer, branch: MockData.stackBranches.first { $0.name == layer.branch }!)
+        ForEach(StackSidebarLanes.rows(of: MockData.splitStack), id: \.layer.branch) { layer, lanes in
+            StackSidebarRow(layer: layer, lanes: lanes, branch: MockData.stackBranches.first { $0.name == layer.branch }!)
         }
     }
     .listStyle(.sidebar)

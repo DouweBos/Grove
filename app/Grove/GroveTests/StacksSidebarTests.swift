@@ -21,6 +21,13 @@ struct StacksSidebarTests {
         #expect(vm.stacks.map(\.name) == ["companion", "auth"])
     }
 
+    @Test func stackRowsReadInStackOrderAndStartAtTheRoot() {
+        let rows = StackSidebarLanes.rows(of: MockData.splitStack)
+        #expect(rows.map(\.layer.branch) == ["auth-api", "auth-ui", "auth-ui-tests", "auth-docs"])
+        #expect(Set(rows.map(\.lanes.laneCount)) == [2])
+        #expect(rows.first?.lanes.segments == [.top(0)])
+    }
+
     @Test func splitStackSubtreesKeepTopologicalOrder() {
         let stack = MockData.splitStack
         #expect(stack.roots.map(\.branch) == ["auth-api"])
