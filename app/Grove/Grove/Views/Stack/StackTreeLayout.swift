@@ -102,7 +102,7 @@ struct StackLaneGutter: View {
     /// Node height from the row's top, level with the card's title.
     static let nodeY: CGFloat = 22
     static let laneWidth: CGFloat = 16
-    static let compactLaneWidth: CGFloat = 12
+    static let compactLaneWidth: CGFloat = 14
 
     var body: some View {
         Canvas { context, size in
@@ -137,7 +137,7 @@ struct StackLaneGutter: View {
                 let dot = CGRect(x: x(lane) - radius, y: y - radius, width: radius * 2, height: radius * 2)
                 context.fill(Path(ellipseIn: dot), with: .color(color(lane)))
                 if isHEAD {
-                    context.stroke(Path(ellipseIn: dot.insetBy(dx: -3, dy: -3)), with: .color(color(lane)), lineWidth: 1.5)
+                    context.stroke(Path(ellipseIn: dot.insetBy(dx: isCompact ? -2 : -3, dy: isCompact ? -2 : -3)), with: .color(color(lane)), lineWidth: 1.5)
                 }
             }
         }
