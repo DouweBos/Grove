@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1
+
+- Pull, Sync and dropping a remote branch on the checked-out one open on your configured pull strategy instead of showing Merge and then switching.
+
 ## 0.7.0
 
 - A stack whose bottom branch gained new commits keeps that branch at the bottom instead of sometimes flipping it above the layers built on it.
