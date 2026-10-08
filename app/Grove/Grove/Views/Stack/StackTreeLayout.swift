@@ -33,14 +33,24 @@ nonisolated struct StackTreeLayout: Equatable, Sendable {
     /// Lanes that carry on into the trunk row below the last layer.
     let trunkLanes: [Int]
 
-    /// The first child keeps its parent's lane; each further child opens the next free lane.
+    /// The child with the longest line of layers on it keeps its parent's lane, so the main line stays leftmost;
+    /// each further child opens the next free lane to the right.
     init(_ stack: BranchStack) {
+        var heights: [String: Int] = [:]
+        func height(_ branch: String) -> Int {
+            if let known = heights[branch] { return known }
+            let value = 1 + (stack.children(of: branch).map { height($0.branch) }.max() ?? 0)
+            heights[branch] = value
+            return value
+        }
         var lanes: [String: Int] = [:]
         var nextLane = 0
         for layer in stack.layers {
             if let parent = layer.parent, let parentLane = lanes[parent] {
                 let siblings = stack.children(of: parent)
-                if siblings.first?.branch == layer.branch {
+                // Ties go to the first child: max(by:) keeps the first of equals.
+                let main = siblings.max { height($0.branch) < height($1.branch) }
+                if main?.branch == layer.branch {
                     lanes[layer.branch] = parentLane
                 } else {
                     lanes[layer.branch] = nextLane
