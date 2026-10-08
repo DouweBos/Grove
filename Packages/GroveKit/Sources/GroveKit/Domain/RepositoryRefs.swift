@@ -29,6 +29,8 @@ public final class RepositoryRefs {
     public private(set) var branchCIStatuses: [String: BranchCIStatus] = [:]
     private var ciStatusesFetchedAt: Date?
     private var ciStatusTask: Task<Void, Never>?
+    /// What `pull.rebase` and `pull.ff` make a plain pull do, so pull dialogs open on it; nil until the first read.
+    public private(set) var defaultPullStrategy: PullStrategy?
     /// Staged or unstaged entries, for the Changes badge.
     public private(set) var changedCount = 0
     public private(set) var hasLoaded = false
@@ -210,6 +212,7 @@ public final class RepositoryRefs {
         async let worktreeList = attempt { try await repository.worktrees() }
         async let submoduleList = attempt { try await repository.submodules() }
         async let parentMap = attempt { try await repository.branchParents() }
+        async let pullStrategy = repository.defaultPullStrategy()
         let (locals, remoteRefs, tagRefs) = await (local, remote, tagList)
         let (newRemotes, entries, newWorktrees, newSubmodules) = await (remoteList, status, worktreeList, submoduleList)
 
@@ -218,6 +221,8 @@ public final class RepositoryRefs {
         if let newWorktrees, newWorktrees != worktrees { worktrees = newWorktrees }
         if let newSubmodules, newSubmodules != submodules { submodules = newSubmodules }
         if let newParents = await parentMap, newParents != parents { parents = newParents }
+        let newPullStrategy = await pullStrategy
+        if newPullStrategy != defaultPullStrategy { defaultPullStrategy = newPullStrategy }
         if let entries {
             changedCount = entries.filter { $0.indexStatus != .unmodified || $0.workdirStatus != .unmodified }.count
         }

@@ -215,7 +215,7 @@ struct RepositoryToolbarSheets<Content: View>: View {
                 FetchDialogView(repository: repository, remotes: refs.remotes, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isSyncPresented) {
-                SyncDialogView(repository: repository, remotes: refs.remotes, onComplete: onComplete)
+                SyncDialogView(repository: repository, remotes: refs.remotes, strategy: refs.defaultPullStrategy, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isBranchPresented) {
                 CreateBranchDialogView(repository: repository, localBranches: refs.localBranches) { _ in onComplete() }

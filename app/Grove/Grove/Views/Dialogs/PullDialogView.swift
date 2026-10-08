@@ -15,13 +15,21 @@ struct PullDialogView: View {
     let refs: RepositoryRefs
     var onComplete: () -> Void = {}
 
-    @State private var strategy: PullStrategy = .merge
+    /// nil until git says what a plain pull does; the picker waits for it rather than showing Merge first.
+    @State private var strategy: PullStrategy?
     @State private var autoStash = false
     @State private var options = PullOptions()
     /// Remote branch to pull, as `remote/branch`.
     @State private var source: String?
     @State private var progressTitle: String?
     @State private var errorMessage: String?
+
+    init(repository: any GitRepositoryProtocol, refs: RepositoryRefs, onComplete: @escaping () -> Void = {}) {
+        self.repository = repository
+        self.refs = refs
+        self.onComplete = onComplete
+        _strategy = State(initialValue: refs.defaultPullStrategy)
+    }
 
     private var remotes: [RemoteInfo] { refs.remotes }
     private var remoteBranches: [BranchInfo] { refs.remoteBranches }
@@ -36,7 +44,7 @@ struct PullDialogView: View {
             progress: progressTitle,
             errorMessage: errorMessage,
             primaryTitle: "Pull",
-            isPrimaryDisabled: source == nil,
+            isPrimaryDisabled: source == nil || strategy == nil,
             onCancel: { dismiss() },
             onPrimary: performPull
         ) {
@@ -88,7 +96,7 @@ struct PullDialogView: View {
         }
         .task {
             source = PullSourcePicker.defaultSource(for: branch, in: remoteBranches)
-            strategy = await repository.defaultPullStrategy()
+            if strategy == nil { strategy = await repository.defaultPullStrategy() }
         }
         .onChange(of: remoteBranches) { _, branches in
             if source == nil { source = PullSourcePicker.defaultSource(for: branch, in: branches) }
@@ -111,7 +119,7 @@ struct PullDialogView: View {
 
     /// Spells out a pull from something other than the upstream, since that changes what the branch becomes.
     private var outcome: String? {
-        guard let source, source != upstream else { return nil }
+        guard let source, source != upstream, let strategy else { return nil }
         let name = branch?.name ?? "HEAD"
         switch strategy {
         case .rebase: return "Rebases '\(name)' onto \(PullSourcePicker.displayName(source))."
@@ -129,7 +137,7 @@ struct PullDialogView: View {
     }
 
     private func performPull() {
-        guard let source else { return }
+        guard let source, let strategy else { return }
         run("Pulling from \(PullSourcePicker.displayName(source))…") {
             let didStash = autoStash ? try await stashIfDirty(repository, message: "Grove: auto-stash before pull") : false
             if source == upstream {
@@ -167,24 +175,32 @@ struct PullDialogView: View {
     }
 }
 
-/// Segmented merge / rebase / fast-forward picker shared by Pull and Sync.
+/// Segmented merge / rebase / fast-forward picker shared by Pull and Sync; a spinner until the default is known.
 struct PullStrategyField: View {
-    @Binding var strategy: PullStrategy
+    @Binding var strategy: PullStrategy?
 
     var body: some View {
         DialogField("Integrate") {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                Picker("Integrate", selection: $strategy) {
-                    ForEach(PullStrategy.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                Text(strategy.summary)
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            if let current = strategy {
+                picker(current)
+            } else {
+                ProgressView().controlSize(.small).frame(maxWidth: .infinity, alignment: .leading)
             }
+        }
+    }
+
+    private func picker(_ current: PullStrategy) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            Picker("Integrate", selection: Binding(get: { current }, set: { strategy = $0 })) {
+                ForEach(PullStrategy.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            Text(current.summary)
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

@@ -10,9 +10,16 @@ struct SidebarDropSheet: View {
     let viewModel: SidebarViewModel
     let action: SidebarDropAction
 
-    @State private var pullStrategy = PullStrategy.merge
+    /// nil until git says what a plain pull does; the picker waits for it rather than showing Merge first.
+    @State private var pullStrategy: PullStrategy?
     @State private var remoteBranchName = ""
     @State private var setUpstream = false
+
+    init(viewModel: SidebarViewModel, action: SidebarDropAction) {
+        self.viewModel = viewModel
+        self.action = action
+        _pullStrategy = State(initialValue: viewModel.refs.defaultPullStrategy)
+    }
 
     var body: some View {
         DialogSheet(
@@ -22,7 +29,7 @@ struct SidebarDropSheet: View {
             progress: viewModel.isRunningDrop ? progress : nil,
             errorMessage: viewModel.dropError,
             primaryTitle: primaryTitle,
-            isPrimaryDisabled: isPushWithoutName,
+            isPrimaryDisabled: isPushWithoutName || isPullWithoutStrategy,
             onCancel: viewModel.cancelDrop,
             onPrimary: confirm
         ) {
@@ -35,7 +42,7 @@ struct SidebarDropSheet: View {
                 let local = viewModel.localBranches.first { $0.name == branch }
                 setUpstream = local?.upstream == nil || local?.upstreamRemoteName == remote
             }
-            if case .pull = action { pullStrategy = await viewModel.repository.defaultPullStrategy() }
+            if case .pull = action, pullStrategy == nil { pullStrategy = await viewModel.repository.defaultPullStrategy() }
         }
     }
 
@@ -65,14 +72,18 @@ struct SidebarDropSheet: View {
                 DialogField("Into") { mono(target) }
                 if isHEAD(target) {
                     DialogField("Integrate") {
-                        Picker("Integrate", selection: $pullStrategy) {
-                            Text("Merge").tag(PullStrategy.merge)
-                            Text("Rebase").tag(PullStrategy.rebase)
-                            Text("Fast-Forward").tag(PullStrategy.fastForwardOnly)
+                        if pullStrategy == nil {
+                            ProgressView().controlSize(.small).frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            Picker("Integrate", selection: $pullStrategy) {
+                                Text("Merge").tag(PullStrategy?.some(.merge))
+                                Text("Rebase").tag(PullStrategy?.some(.rebase))
+                                Text("Fast-Forward").tag(PullStrategy?.some(.fastForwardOnly))
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                            .fixedSize()
                         }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .fixedSize()
                     }
                 }
             }
@@ -101,6 +112,12 @@ struct SidebarDropSheet: View {
 
     private func checkoutNote(_ branch: String) -> String {
         isHEAD(branch) ? "" : " \(branch) is checked out first."
+    }
+
+    /// Pulling into HEAD integrates by the strategy, so it waits until the default is known.
+    private var isPullWithoutStrategy: Bool {
+        if case .pull(_, let target) = action { return isHEAD(target) && pullStrategy == nil }
+        return false
     }
 
     private var isPushWithoutName: Bool {
@@ -168,7 +185,7 @@ struct SidebarDropSheet: View {
     }
 
     private func confirm() {
-        Task { await viewModel.confirmDrop(pullStrategy: pullStrategy, remoteBranchName: remoteBranchName, setUpstream: setUpstream) }
+        Task { await viewModel.confirmDrop(pullStrategy: pullStrategy ?? .merge, remoteBranchName: remoteBranchName, setUpstream: setUpstream) }
     }
 }
 

@@ -14,15 +14,18 @@ struct SyncDialogView: View {
     var onComplete: () -> Void = {}
 
     @State private var selectedRemote: String
-    @State private var strategy: PullStrategy = .merge
+    /// nil until git says what a plain pull does; the picker waits for it rather than showing Merge first.
+    @State private var strategy: PullStrategy?
     @State private var isSyncing = false
     @State private var progress: Double = 0
     @State private var errorMessage: String?
 
-    init(repository: any GitRepositoryProtocol, remotes: [RemoteInfo] = [], onComplete: @escaping () -> Void = {}) {
+    init(repository: any GitRepositoryProtocol, remotes: [RemoteInfo] = [], strategy: PullStrategy? = nil,
+         onComplete: @escaping () -> Void = {}) {
         self.repository = repository
         self.remotes = remotes
         self.onComplete = onComplete
+        _strategy = State(initialValue: strategy)
         let upstreamRemote = repository.currentBranch?.upstreamRemoteName
         _selectedRemote = State(initialValue: upstreamRemote ?? remotes.first?.name ?? "origin")
     }
@@ -45,7 +48,7 @@ struct SyncDialogView: View {
             fraction: isSyncing ? progress : nil,
             errorMessage: errorMessage,
             primaryTitle: "Sync",
-            isPrimaryDisabled: remotes.isEmpty || repository.currentBranch == nil,
+            isPrimaryDisabled: remotes.isEmpty || repository.currentBranch == nil || strategy == nil,
             onCancel: { dismiss() },
             onPrimary: performSync
         ) {
@@ -64,7 +67,7 @@ struct SyncDialogView: View {
                        message: "'\(branchName)' doesn't track \(selectedRemote) yet. Sync pushes it to \(selectedRemote)/\(branchName) and sets that as its upstream.")
             }
         }
-        .task { strategy = await repository.defaultPullStrategy() }
+        .task { if strategy == nil { strategy = await repository.defaultPullStrategy() } }
     }
 
     private var branchName: String { repository.currentBranch?.name ?? "HEAD" }
@@ -74,6 +77,7 @@ struct SyncDialogView: View {
     }
 
     private func performSync() {
+        guard let strategy else { return }
         isSyncing = true
         errorMessage = nil
         progress = 0

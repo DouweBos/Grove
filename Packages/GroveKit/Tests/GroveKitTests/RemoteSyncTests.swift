@@ -27,6 +27,21 @@ struct RemoteSyncTests {
 
     // MARK: Tests
 
+    @MainActor
+    @Test func refsCarryThePullDefaultSoDialogsOpenOnIt() async throws {
+        // Set locally either way, so the machine's global config doesn't decide the outcome.
+        try git(["config", "pull.rebase", "false"], in: "a")
+        let repo = try await GitRepository(path: root.appendingPathComponent("a"), runner: LocalGitRunner())
+        let refs = RepositoryRefs(repository: repo, readsStatus: false)
+        #expect(refs.defaultPullStrategy == nil)
+        await refs.refresh()
+        #expect(refs.defaultPullStrategy == .merge)
+
+        try git(["config", "pull.rebase", "true"], in: "a")
+        await refs.refresh()
+        #expect(refs.defaultPullStrategy == .rebase)
+    }
+
     @Test func mergeStrategyOverridesPullRebaseConfig() async throws {
         try commit("b", file: "theirs.txt", message: "from b")
         try git(["push", "-q", "origin", "main"], in: "b")
