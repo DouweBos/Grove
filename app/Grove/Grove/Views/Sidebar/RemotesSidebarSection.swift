@@ -4,7 +4,7 @@
 import GroveKit
 import SwiftUI
 
-/// Remote-tracking branches grouped by remote. Without remotes it offers to add one, once refs have loaded.
+/// Remote-tracking branches grouped by remote, then in "prefix/" folders as local branches are. Without remotes it offers to add one, once refs have loaded.
 struct RemotesSidebarSection: View {
 
     @Environment(SidebarViewModel.self) private var viewModel
@@ -25,12 +25,18 @@ struct RemotesSidebarSection: View {
                     .help("Connect this repository to a copy on GitHub or another server")
                 }
                 ForEach(viewModel.remotes) { remote in
-                    let branches = viewModel.remoteBranches.filter { $0.remoteName == remote.name && !$0.name.hasSuffix("/HEAD") }
+                    let groups = viewModel.remoteBranchGroups(of: remote)
                     DisclosureGroup {
-                        ForEach(branches) { remoteBranchRow($0) }
+                        ForEach(groups, id: \.prefix) { group in
+                            if let prefix = group.prefix {
+                                BranchFolder(prefix: prefix, branches: group.branches) { remoteBranchRow($0) }
+                            } else {
+                                ForEach(group.branches) { remoteBranchRow($0) }
+                            }
+                        }
                     } label: {
                         SidebarRow(title: remote.name, symbol: "cloud", tint: Theme.info) {
-                            Text("\(branches.count)").font(.system(size: 11, design: .monospaced))
+                            Text("\(groups.reduce(0) { $0 + $1.branches.count })").font(.system(size: 11, design: .monospaced))
                         }
                         .help(remote.url + "\nDrop a local branch here to push it")
                         .contentShape(Rectangle())

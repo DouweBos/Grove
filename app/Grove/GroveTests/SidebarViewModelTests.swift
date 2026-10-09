@@ -250,4 +250,18 @@ struct SidebarViewModelTests {
         #expect(allGroupedBranches.count == vm.localBranches.count,
                 "localBranchGroups should contain all local branches, not just active ones")
     }
+
+    @Test func remoteBranchGroups_foldersByPrefixWithoutTheRemote() {
+        let vm = SidebarViewModel(repository: MockGitRepository())
+        let remote = RemoteInfo(id: "origin", name: "origin", url: "git@example.com:a/b.git")
+        let branches = ["origin/HEAD", "origin/main", "origin/adam/ima", "origin/adam/mat", "origin/alex/oom"].map {
+            BranchInfo(id: "refs/remotes/\($0)", name: $0, isLocal: false, isRemote: true, isHEAD: false,
+                       targetSHA: "s", remoteName: "origin", upstream: nil, ahead: 0, behind: 0)
+        }
+        vm.refs.replace(remoteBranches: branches, remotes: [remote])
+
+        let groups = vm.remoteBranchGroups(of: remote)
+        #expect(groups.map(\.prefix) == [nil, "adam", "alex"])
+        #expect(groups.map { $0.branches.map(\.name) } == [["origin/main"], ["origin/adam/ima", "origin/adam/mat"], ["origin/alex/oom"]])
+    }
 }

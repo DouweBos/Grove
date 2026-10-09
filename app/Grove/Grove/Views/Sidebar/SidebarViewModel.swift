@@ -277,29 +277,29 @@ final class SidebarViewModel {
 
     /// Branch groups derived from "/" in branch names.
     var localBranchGroups: [(prefix: String?, branches: [BranchInfo])] {
+        let stacked = stackedBranchNames
+        let branches = listedBranches.filter { !archivedBranchNames.contains($0.name) && !stacked.contains($0.name) }
+        return Self.folderGroups(branches, name: \.name)
+    }
+
+    /// One remote's branches, grouped by "/" in their name without the remote.
+    func remoteBranchGroups(of remote: RemoteInfo) -> [(prefix: String?, branches: [BranchInfo])] {
+        let branches = remoteBranches.filter { $0.remoteName == remote.name && !$0.name.hasSuffix("/HEAD") }
+        return Self.folderGroups(branches) { RefActionsViewModel.shortName(of: $0) }
+    }
+
+    /// Names without a "/" first, then a group per first path component, sorted.
+    private static func folderGroups(_ branches: [BranchInfo], name: (BranchInfo) -> String) -> [(prefix: String?, branches: [BranchInfo])] {
         var ungrouped: [BranchInfo] = []
         var groups: [String: [BranchInfo]] = [:]
-
-        let stacked = stackedBranchNames
-        for branch in listedBranches where !archivedBranchNames.contains(branch.name) && !stacked.contains(branch.name) {
-            if let slashIndex = branch.name.firstIndex(of: "/") {
-                let prefix = String(branch.name[branch.name.startIndex..<slashIndex])
-                groups[prefix, default: []].append(branch)
+        for branch in branches {
+            let name = name(branch)
+            if let slashIndex = name.firstIndex(of: "/") {
+                groups[String(name[..<slashIndex]), default: []].append(branch)
             } else {
                 ungrouped.append(branch)
             }
         }
-
-        var result: [(prefix: String?, branches: [BranchInfo])] = []
-        result.append((prefix: nil, branches: ungrouped))
-        for key in groups.keys.sorted() {
-            result.append((prefix: key, branches: groups[key]!))
-        }
-        return result
-    }
-
-    /// Remote branches grouped by their remote name.
-    var remoteBranchGroups: [String: [BranchInfo]] {
-        Dictionary(grouping: remoteBranches) { $0.remoteName ?? "origin" }
+        return [(prefix: nil, branches: ungrouped)] + groups.keys.sorted().map { (prefix: $0, branches: groups[$0]!) }
     }
 }
