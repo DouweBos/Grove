@@ -94,6 +94,8 @@ public final class RefActionsViewModel {
 
     private func checkout(named name: String) async {
         let previous = headName
+        activity = "Checking out \(name)…"
+        defer { activity = nil }
         do {
             try await repository.checkout(branch: name)
             onAction?(.checkout, true)
