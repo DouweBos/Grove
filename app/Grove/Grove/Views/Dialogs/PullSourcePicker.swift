@@ -45,7 +45,8 @@ struct PullSourcePicker: View {
                 }
             }
         }
-        .fixedSize()
+        // Truncates rather than widening the dialog past the sheet for a long branch name.
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func item(_ name: String) -> some View {
