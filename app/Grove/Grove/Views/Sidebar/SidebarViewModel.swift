@@ -84,6 +84,17 @@ final class SidebarViewModel {
         }
     }
 
+    /// Double-click on a remote branch: its local branch if there is one, otherwise a new tracking branch.
+    /// Git refuses when local changes would be overwritten, which shows as the sidebar's error.
+    func activate(remoteBranch branch: BranchInfo) async {
+        let shortName = RefActionsViewModel.shortName(of: branch)
+        if let local = localBranches.first(where: { $0.name == shortName }) {
+            await activate(branch: local)
+        } else {
+            await actions.checkout(remoteBranch: branch)
+        }
+    }
+
     func select(_ item: SidebarItem) {
         selection = item
     }

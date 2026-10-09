@@ -48,8 +48,11 @@ struct RepositorySidebar: View {
         // Double-click / Return on a branch; a tap gesture on the row itself would eat the click that selects it.
         .contextMenu(forSelectionType: SidebarItem.self) { _ in
         } primaryAction: { items in
-            guard case .branch(let branch) = items.first else { return }
-            Task { await viewModel.activate(branch: branch) }
+            switch items.first {
+            case .branch(let branch): Task { await viewModel.activate(branch: branch) }
+            case .remoteBranch(let branch): Task { await viewModel.activate(remoteBranch: branch) }
+            default: break
+            }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let activity = viewModel.actions.activity {

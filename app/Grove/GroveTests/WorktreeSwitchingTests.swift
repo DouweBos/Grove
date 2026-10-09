@@ -29,6 +29,18 @@ struct WorktreeSwitchingTests {
         #expect(!switched)
     }
 
+    @Test func remoteBranchWithALocalBranchActivatesTheLocalOne() async {
+        let vm = SidebarViewModel(repository: MockGitRepository(path: URL(fileURLWithPath: mainPath)))
+        await vm.refresh()
+        var openedInTab: String?
+        vm.onOpenWorktreeInNewTab = { openedInTab = $0 }
+        let remote = BranchInfo(id: "refs/remotes/origin/feature/auth", name: "origin/feature/auth", isLocal: false, isRemote: true,
+                                isHEAD: false, targetSHA: "s", remoteName: "origin", upstream: nil, ahead: 0, behind: 0)
+
+        await vm.activate(remoteBranch: remote)
+        #expect(openedInTab == linkedPath)
+    }
+
     @Test func currentWorktreeIsNotOpenedInANewTab() async {
         let vm = SidebarViewModel(repository: MockGitRepository(path: URL(fileURLWithPath: mainPath)))
         await vm.refresh()
