@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.1
+
+- Folders under a remote open again.
+- Running actions count up their running time in the runs list.
+
 ## 0.8.0
 
 - Double-click a remote branch to check it out locally.
