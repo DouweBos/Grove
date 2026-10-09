@@ -20,6 +20,9 @@ struct CommitContextMenu: View {
             .disabled(!viewModel.canSavePatch(selected))
         Button("Export as ZIP\u{2026}") { exportArchive() }
         Divider()
+        Button("Check Out \u{201C}\(commit.shortSHA)\u{201D}") { Task { await viewModel.checkout(commit) } }
+            .disabled(commit.id == viewModel.headSHA)
+            .help("Detaches HEAD at this commit")
         Button("Create Branch from \u{201C}\(commit.shortSHA)\u{201D}\u{2026}") { viewModel.request(.createBranch(commit)) }
         Button("Create Tag at \u{201C}\(commit.shortSHA)\u{201D}\u{2026}") { viewModel.request(.createTag(commit)) }
         let comparable = viewModel.branches(at: commit).filter { !$0.isHEAD }
@@ -36,7 +39,7 @@ struct CommitContextMenu: View {
         Button("Revert \u{201C}\(commit.shortSHA)\u{201D}\u{2026}") { viewModel.request(.revert(commit)) }
         Divider()
         Button("Reset HEAD to \u{201C}\(commit.shortSHA)\u{201D}\u{2026}") { viewModel.request(.reset(commit)) }
-            .disabled(viewModel.filterBranch != nil)
+            .disabled(!viewModel.canReset)
         Divider()
         Button("Edit Commit Message\u{2026}") { viewModel.request(.reword(commit)) }
             .disabled(!viewModel.canRewrite(commit))

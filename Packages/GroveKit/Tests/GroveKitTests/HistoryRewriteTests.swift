@@ -128,6 +128,25 @@ struct HistoryRewriteTests {
 
     // MARK: Helpers
 
+    @Test func checkingOutACommitDetachesHEAD() async throws {
+        let vm = try await loadedHistory()
+        let target = vm.commits[2]
+        await vm.checkout(target)
+        #expect(vm.errorMessage == nil)
+        #expect(try git(["rev-parse", "HEAD"]).trimmingCharacters(in: .whitespacesAndNewlines) == target.id)
+        #expect(try git(["branch", "--show-current"]).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+
+    @Test func resetIsOfferedForHEADsBranchOnly() async throws {
+        try git(["branch", "other"])
+        let vm = try await loadedHistory()
+        #expect(vm.canReset)
+        vm.filterBranch = "main"
+        #expect(vm.canReset)
+        vm.filterBranch = "other"
+        #expect(!vm.canReset)
+    }
+
     private func write(_ file: String, _ text: String) throws {
         try Data(text.utf8).write(to: root.appendingPathComponent(file))
     }

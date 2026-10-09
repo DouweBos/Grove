@@ -59,6 +59,14 @@ extension HistoryViewModel {
         await perform(.revert) { try await $0.revert(commit: commit.id) }
     }
 
+    /// Detaches HEAD at the commit, e.g. a force-pushed remote tip to look at before resetting a branch to it.
+    public func checkout(_ commit: CommitInfo) async {
+        await perform(.checkout) { try await $0.checkout(branch: commit.id) }
+    }
+
+    /// Reset moves HEAD's branch, so it's offered only where the list shows that branch.
+    public var canReset: Bool { filterBranch == nil || filterBranch == headBranchName }
+
     public func reset(to commit: CommitInfo, mode: ResetMode) async {
         await perform(.reset) { try await $0.resetToCommit(commit.id, mode: mode) }
     }
