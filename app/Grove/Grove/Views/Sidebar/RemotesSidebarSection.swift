@@ -10,6 +10,8 @@ struct RemotesSidebarSection: View {
     @Environment(SidebarViewModel.self) private var viewModel
 
     @State private var isExpanded = true
+    /// Kept here: a folder's own state, nested in the remote's group, resets as soon as it's set.
+    @State private var expandedFolders: Set<String> = []
 
     var body: some View {
         if !viewModel.remotes.isEmpty || viewModel.refs.hasLoaded {
@@ -26,7 +28,7 @@ struct RemotesSidebarSection: View {
                     DisclosureGroup {
                         ForEach(groups, id: \.prefix) { group in
                             if let prefix = group.prefix {
-                                BranchFolder(prefix: prefix, branches: group.branches) { remoteBranchRow($0) }
+                                remoteFolder("\(remote.name)/\(prefix)", title: prefix, branches: group.branches)
                             } else {
                                 ForEach(group.branches) { remoteBranchRow($0) }
                             }
@@ -61,6 +63,19 @@ struct RemotesSidebarSection: View {
         Divider()
         Button("Add Remote\u{2026}", systemImage: "plus") { viewModel.requestAddRemote() }
         Button("Remove Remote\u{2026}", systemImage: "trash", role: .destructive) { viewModel.requestConfirmation(.removeRemote(remote)) }
+    }
+
+    private func remoteFolder(_ key: String, title: String, branches: [BranchInfo]) -> some View {
+        DisclosureGroup(isExpanded: Binding(
+            get: { expandedFolders.contains(key) },
+            set: { if $0 { expandedFolders.insert(key) } else { expandedFolders.remove(key) } }
+        )) {
+            ForEach(branches) { remoteBranchRow($0) }
+        } label: {
+            SidebarRow(title: title, symbol: "folder", tint: Theme.textSecondary) {
+                Text("\(branches.count)").font(.system(size: 11, design: .monospaced))
+            }
+        }
     }
 
     private func remoteBranchRow(_ branch: BranchInfo) -> some View {

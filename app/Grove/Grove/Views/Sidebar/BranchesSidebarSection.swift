@@ -87,7 +87,7 @@ struct BranchesSidebarSection: View {
 }
 
 /// A "prefix/" group of branches; it opens when it holds the checked-out branch, so HEAD is always visible.
-struct BranchFolder<Row: View>: View {
+private struct BranchFolder<Row: View>: View {
     let prefix: String
     let branches: [BranchInfo]
     @ViewBuilder let row: (BranchInfo) -> Row
