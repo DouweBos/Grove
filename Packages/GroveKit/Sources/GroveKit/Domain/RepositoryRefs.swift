@@ -45,8 +45,8 @@ public final class RepositoryRefs {
     public private(set) var localBranchesMatchingStacks: [BranchInfo] = []
     /// Branches whose patches all exist on another branch.
     private(set) var duplicateBranches: [DuplicateBranch] = []
-    /// The branch stacks are measured against.
-    private(set) var trunk: String?
+    /// The branch stacks are measured against: the remote's default branch, else the usual names.
+    public private(set) var trunk: String?
     private let stackReader = StackReader()
     private var stackTask: Task<Void, Never>?
     private var needsStackRead = false

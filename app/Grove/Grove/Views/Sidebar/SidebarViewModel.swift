@@ -293,17 +293,18 @@ final class SidebarViewModel {
     var localBranchGroups: [(prefix: String?, branches: [BranchInfo])] {
         let stacked = stackedBranchNames
         let branches = listedBranches.filter { !archivedBranchNames.contains($0.name) && !stacked.contains($0.name) }
-        return Self.folderGroups(branches, name: \.name)
+        return Self.folderGroups(branches, trunk: refs.trunk, name: \.name)
     }
 
     /// One remote's branches, grouped by "/" in their name without the remote.
     func remoteBranchGroups(of remote: RemoteInfo) -> [(prefix: String?, branches: [BranchInfo])] {
         let branches = remoteBranches.filter { $0.remoteName == remote.name && !$0.name.hasSuffix("/HEAD") }
-        return Self.folderGroups(branches) { RefActionsViewModel.shortName(of: $0) }
+        return Self.folderGroups(branches, trunk: refs.trunk) { RefActionsViewModel.shortName(of: $0) }
     }
 
-    /// Names without a "/" first, then a group per first path component, sorted.
-    private static func folderGroups(_ branches: [BranchInfo], name: (BranchInfo) -> String) -> [(prefix: String?, branches: [BranchInfo])] {
+    /// The trunk, then names without a "/", then a group per first path component, sorted.
+    private static func folderGroups(_ branches: [BranchInfo], trunk: String?,
+                                     name: (BranchInfo) -> String) -> [(prefix: String?, branches: [BranchInfo])] {
         var ungrouped: [BranchInfo] = []
         var groups: [String: [BranchInfo]] = [:]
         for branch in branches {
@@ -313,6 +314,9 @@ final class SidebarViewModel {
             } else {
                 ungrouped.append(branch)
             }
+        }
+        if let index = ungrouped.firstIndex(where: { name($0) == trunk }) {
+            ungrouped.insert(ungrouped.remove(at: index), at: 0)
         }
         return [(prefix: nil, branches: ungrouped)] + groups.keys.sorted().map { (prefix: $0, branches: groups[$0]!) }
     }

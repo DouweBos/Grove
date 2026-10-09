@@ -264,4 +264,15 @@ struct SidebarViewModelTests {
         #expect(groups.map(\.prefix) == [nil, "adam", "alex"])
         #expect(groups.map { $0.branches.map(\.name) } == [["origin/main"], ["origin/adam/ima", "origin/adam/mat"], ["origin/alex/oom"]])
     }
+
+    @Test func localBranchGroups_listTheTrunkFirst() {
+        let vm = SidebarViewModel(repository: MockGitRepository())
+        let branches = ["code-editor-plan", "main", "zeta"].map {
+            BranchInfo(id: "refs/heads/\($0)", name: $0, isLocal: true, isRemote: false, isHEAD: false,
+                       targetSHA: "s", remoteName: nil, upstream: nil, ahead: 0, behind: 0)
+        }
+        vm.refs.replace(localBranches: branches, stacks: [MockData.linearStack])
+
+        #expect(vm.localBranchGroups.first?.branches.map(\.name) == ["main", "code-editor-plan", "zeta"])
+    }
 }
