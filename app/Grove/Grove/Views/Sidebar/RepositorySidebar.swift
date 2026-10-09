@@ -207,7 +207,7 @@ private struct RepositorySummaryHeader: View {
         // Without an upstream there's nothing to compare against, so "up to date" would be a guess.
         let unpublished = head != nil && head?.upstream == nil
         if changes > 0 || ahead > 0 || behind > 0 || unpublished {
-            HStack(spacing: Theme.Spacing.xs) {
+            FlowRow {
                 if changes > 0 {
                     StatusBadge(title: "\(changes) changed", symbol: "pencil", tone: .caution)
                 }
