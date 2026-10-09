@@ -72,6 +72,7 @@ struct RepositorySidebar: View {
         .sheet(isPresented: Binding(get: { viewModel.isAddingRemote }, set: { if !$0 { viewModel.dismissAddRemote() } })) {
             AddRemoteDialogView(viewModel: viewModel)
         }
+        .sidebarPrompts(viewModel)
         .sheet(item: Binding(get: { viewModel.pendingDrop }, set: { if $0 == nil { viewModel.cancelDrop() } })) { action in
             SidebarDropSheet(viewModel: viewModel, action: action)
         }

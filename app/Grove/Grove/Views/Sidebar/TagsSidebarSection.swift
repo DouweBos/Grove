@@ -10,8 +10,6 @@ struct TagsSidebarSection: View {
     @Environment(SidebarViewModel.self) private var viewModel
 
     @State private var isExpanded = false
-    @State private var createFromRef: CreateBranchRequest?
-    @State private var tagToDelete: TagInfo?
 
     var body: some View {
         if !viewModel.tags.isEmpty {
@@ -19,26 +17,6 @@ struct TagsSidebarSection: View {
                 ForEach(viewModel.tags) { tagRow($0) }
             } header: {
                 SidebarSectionHeader(title: "Tags", count: viewModel.tags.count)
-            }
-            .sheet(item: $createFromRef) { request in
-                CreateBranchDialogView(
-                    repository: viewModel.repository,
-                    localBranches: viewModel.localBranches,
-                    fromRef: request.ref
-                ) { _ in
-                    Task { await viewModel.didChangeRepository() }
-                }
-            }
-            .confirmationDialog(
-                "Delete the tag \u{201C}\(tagToDelete?.name ?? "")\u{201D}?",
-                isPresented: Binding(get: { tagToDelete != nil }, set: { if !$0 { tagToDelete = nil } }),
-                presenting: tagToDelete
-            ) { tag in
-                Button("Delete Tag", role: .destructive) {
-                    Task { await viewModel.actions.deleteTag(tag) }
-                }
-            } message: { _ in
-                Text("Only the local tag is deleted; a pushed copy stays on the remote.")
             }
         }
     }
@@ -49,7 +27,7 @@ struct TagsSidebarSection: View {
             .draggable(tag.name)
             .contextMenu {
                 Button("New Branch from \u{201C}\(tag.name)\u{201D}…", systemImage: "arrow.triangle.branch") {
-                    createFromRef = CreateBranchRequest(ref: tag.name)
+                    viewModel.present(.createBranch(from: tag.name))
                 }
                 Button("Copy Name", systemImage: "doc.on.doc") {
                     GroveClipboard.copy(tag.name)
@@ -58,7 +36,7 @@ struct TagsSidebarSection: View {
                 ExportFilesButton(ref: tag.name)
                 Divider()
                 Button("Delete Tag…", systemImage: "trash", role: .destructive) {
-                    tagToDelete = tag
+                    viewModel.requestConfirmation(.deleteTag(tag))
                 }
             }
     }

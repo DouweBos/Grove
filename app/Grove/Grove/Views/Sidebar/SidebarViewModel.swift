@@ -267,6 +267,9 @@ final class SidebarViewModel {
 
     private(set) var isAddingSubmodule = false
     private(set) var isAddingRemote = false
+    /// Set through `present(_:)` and `requestConfirmation(_:)` in SidebarViewModel+Prompts.swift.
+    var sheet: SidebarSheet?
+    var confirmation: SidebarConfirmation?
 
     // MARK: - Drops (SidebarViewModel+Drops.swift)
 

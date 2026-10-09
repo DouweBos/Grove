@@ -10,7 +10,6 @@ struct ArchivedBranchesSidebarSection: View {
 
     @Environment(SidebarViewModel.self) private var viewModel
     @State private var isExpanded = false
-    @State private var branchToDelete: BranchInfo?
 
     var body: some View {
         let branches = viewModel.archivedBranches
@@ -26,14 +25,11 @@ struct ArchivedBranchesSidebarSection: View {
                                 Task { await viewModel.actions.checkout(branch: branch) }
                             }
                             Divider()
-                            Button("Delete…", systemImage: "trash", role: .destructive) { branchToDelete = branch }
+                            Button("Delete…", systemImage: "trash", role: .destructive) { viewModel.present(.deleteBranch(branch)) }
                         }
                 }
             } header: {
                 SidebarSectionHeader(title: "Archived", count: branches.count)
-            }
-            .sheet(item: $branchToDelete) { branch in
-                DeleteBranchDialogView(viewModel: viewModel, branch: branch)
             }
         }
     }

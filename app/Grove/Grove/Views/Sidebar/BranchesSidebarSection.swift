@@ -11,8 +11,6 @@ struct BranchesSidebarSection: View {
 
     @Environment(SidebarViewModel.self) private var viewModel
 
-    @State private var sheets = BranchSheetState()
-
     var body: some View {
         Section {
             if !viewModel.pinnedBranches.isEmpty {
@@ -40,11 +38,10 @@ struct BranchesSidebarSection: View {
             SidebarSectionHeader(title: "Branches", count: viewModel.listedBranches.count - viewModel.archivedBranches.count)
                 .dropDestination(for: String.self) { items, _ in
                     guard let ref = items.first, !ref.isEmpty else { return false }
-                    sheets.createFromRef = CreateBranchRequest(ref: ref)
+                    viewModel.present(.createBranch(from: ref))
                     return true
                 }
         }
-        .branchActionSheets($sheets)
     }
 
     private func branchRow(_ branch: BranchInfo, isPinned: Bool, showsFullName: Bool = false) -> some View {
@@ -80,10 +77,10 @@ struct BranchesSidebarSection: View {
                 BranchContextMenu(
                     branch: branch,
                     isPinned: isPinned,
-                    onCreateBranch: { sheets.createFromRef = CreateBranchRequest(ref: branch.name) },
-                    onRename: { sheets.branchToRename = branch },
-                    onTrack: { sheets.branchToTrack = branch },
-                    onDelete: { sheets.branchToDelete = branch }
+                    onCreateBranch: { viewModel.present(.createBranch(from: branch.name)) },
+                    onRename: { viewModel.present(.renameBranch(branch)) },
+                    onTrack: { viewModel.present(.trackRemoteBranch(branch)) },
+                    onDelete: { viewModel.present(.deleteBranch(branch)) }
                 )
             }
     }

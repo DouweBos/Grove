@@ -10,9 +10,6 @@ struct RemotesSidebarSection: View {
     @Environment(SidebarViewModel.self) private var viewModel
 
     @State private var isExpanded = true
-    @State private var createFromRef: CreateBranchRequest?
-    @State private var branchToDelete: BranchInfo?
-    @State private var remoteToRemove: RemoteInfo?
 
     var body: some View {
         if !viewModel.remotes.isEmpty || viewModel.refs.hasLoaded {
@@ -53,35 +50,6 @@ struct RemotesSidebarSection: View {
                         Button("Add Remote\u{2026}", systemImage: "plus") { viewModel.requestAddRemote() }
                     }
             }
-            .confirmationDialog(
-                "Remove remote \u{201C}\(remoteToRemove?.name ?? "")\u{201D}?",
-                isPresented: Binding(get: { remoteToRemove != nil }, set: { if !$0 { remoteToRemove = nil } }),
-                presenting: remoteToRemove
-            ) { remote in
-                Button("Remove Remote", role: .destructive) { Task { await viewModel.actions.removeRemote(remote) } }
-            } message: { remote in
-                Text("Grove forgets \(remote.url) and its remote branches. Nothing on the server changes.")
-            }
-            .sheet(item: $createFromRef) { request in
-                CreateBranchDialogView(
-                    repository: viewModel.repository,
-                    localBranches: viewModel.localBranches,
-                    fromRef: request.ref
-                ) { _ in
-                    Task { await viewModel.didChangeRepository() }
-                }
-            }
-            .confirmationDialog(
-                "Delete \u{201C}\(branchToDelete?.name ?? "")\u{201D} on the remote?",
-                isPresented: Binding(get: { branchToDelete != nil }, set: { if !$0 { branchToDelete = nil } }),
-                presenting: branchToDelete
-            ) { branch in
-                Button("Delete on Remote", role: .destructive) {
-                    Task { await viewModel.actions.deleteRemoteBranch(branch) }
-                }
-            } message: { _ in
-                Text("The branch is removed from the server for everyone. This can't be undone from Grove.")
-            }
         }
     }
 
@@ -92,7 +60,7 @@ struct RemotesSidebarSection: View {
         }
         Divider()
         Button("Add Remote\u{2026}", systemImage: "plus") { viewModel.requestAddRemote() }
-        Button("Remove Remote\u{2026}", systemImage: "trash", role: .destructive) { remoteToRemove = remote }
+        Button("Remove Remote\u{2026}", systemImage: "trash", role: .destructive) { viewModel.requestConfirmation(.removeRemote(remote)) }
     }
 
     private func remoteBranchRow(_ branch: BranchInfo) -> some View {
@@ -113,7 +81,7 @@ struct RemotesSidebarSection: View {
                     Task { await viewModel.actions.checkout(remoteBranch: branch) }
                 }
                 Button("New Branch from \u{201C}\(branch.name)\u{201D}…", systemImage: "arrow.triangle.branch") {
-                    createFromRef = CreateBranchRequest(ref: branch.name)
+                    viewModel.present(.createBranch(from: branch.name))
                 }
                 Button("Copy Name", systemImage: "doc.on.doc") {
                     GroveClipboard.copy(branch.name)
@@ -129,7 +97,7 @@ struct RemotesSidebarSection: View {
                 Button("Show Runs for Branch", systemImage: "play.circle") { viewModel.showRuns(for: branch) }
                 Divider()
                 Button("Delete on Remote…", systemImage: "trash", role: .destructive) {
-                    branchToDelete = branch
+                    viewModel.requestConfirmation(.deleteRemoteBranch(branch))
                 }
             }
     }

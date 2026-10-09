@@ -13,7 +13,6 @@ struct SubmodulesSidebarSection: View {
     @Environment(WindowStore.self) private var windows
     @Environment(\.openWindow) private var openWindow
     @State private var isExpanded = true
-    @State private var submoduleToRemove: SubmoduleInfo?
 
     var body: some View {
         let submodules = viewModel.submodules
@@ -25,15 +24,6 @@ struct SubmodulesSidebarSection: View {
                     .contextMenu {
                         Button("Add Submodule…", systemImage: "plus") { viewModel.requestAddSubmodule() }
                     }
-            }
-            .confirmationDialog(
-                "Remove submodule \u{201C}\(submoduleToRemove?.displayName ?? "")\u{201D}?",
-                isPresented: Binding(get: { submoduleToRemove != nil }, set: { if !$0 { submoduleToRemove = nil } }),
-                presenting: submoduleToRemove
-            ) { submodule in
-                Button("Remove Submodule", role: .destructive) { Task { await viewModel.actions.removeSubmodule(submodule) } }
-            } message: { submodule in
-                Text("Deletes \(submodule.path) and its clone, and stages the removal from .gitmodules. Uncommitted work in it is lost.")
             }
         }
     }
@@ -84,7 +74,7 @@ struct SubmodulesSidebarSection: View {
         }
         Divider()
         Button("Add Submodule…", systemImage: "plus") { viewModel.requestAddSubmodule() }
-        Button("Remove Submodule…", systemImage: "trash", role: .destructive) { submoduleToRemove = submodule }
+        Button("Remove Submodule…", systemImage: "trash", role: .destructive) { viewModel.requestConfirmation(.removeSubmodule(submodule)) }
     }
 
     private func tint(_ state: SubmoduleInfo.State) -> Color {
