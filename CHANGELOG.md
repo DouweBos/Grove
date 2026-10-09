@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.0
+
+- Checking out a branch from the sidebar shows progress while git works.
+- Deleting a local branch no longer asks to force it when a remote already has all its commits.
+- Drag across files in Changes to select them.
+- Check out any commit from its context menu in History, e.g. a remote tip after a force push.
+- Reset HEAD to a commit also works while History shows the checked-out branch.
+- The Pull dialog fits long branch names instead of spilling out of the sheet.
+- The sidebar status badges wrap onto a new line instead of truncating.
+
 ## 0.8.1
 
 - Folders under a remote open again.
