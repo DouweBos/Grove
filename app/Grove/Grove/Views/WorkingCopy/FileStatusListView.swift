@@ -4,13 +4,17 @@
 // File list panel: Conflicts / Staged / Changes sections. A partially
 // staged file appears in both Staged and Changes, each row acting on its own half.
 
-import AppKit
 import GroveKit
 import SwiftUI
 
 struct FileStatusListView: View {
     @Environment(WorkingCopyViewModel.self) private var viewModel
     @FocusState private var isListFocused: Bool
+    /// Row frames in the list's content, so a drag can tell which row it's over.
+    @State private var rowFrames: [FileRow: CGRect] = [:]
+    @State private var dragRow: FileRow?
+
+    static let coordinateSpace = "FileStatusList"
 
     var body: some View {
         VStack(spacing: 0) {
@@ -66,6 +70,8 @@ struct FileStatusListView: View {
                 LazyVStack(alignment: .leading, spacing: 2) {
                     sections
                 }
+                .coordinateSpace(name: Self.coordinateSpace)
+                .gesture(dragSelection)
                 .padding(Theme.Spacing.sm)
             }
             .focusable()
@@ -87,22 +93,55 @@ struct FileStatusListView: View {
     private var sections: some View {
         let conflicts = viewModel.conflictedFiles
         if !conflicts.isEmpty {
-            FileSection(title: "Conflicts", entries: conflicts, side: .unstaged, isStagedSection: nil, focusList: focusList)
+            FileSection(title: "Conflicts", entries: conflicts, side: .unstaged, isStagedSection: nil, focusList: focusList, recordFrame: recordFrame)
         }
         if !viewModel.showOnlyConflicts {
             let staged = viewModel.stagedFiles
             if !staged.isEmpty {
-                FileSection(title: "Staged", entries: staged, side: .staged, isStagedSection: true, focusList: focusList) {
+                FileSection(title: "Staged", entries: staged, side: .staged, isStagedSection: true, focusList: focusList, recordFrame: recordFrame) {
                     sectionButton("Unstage All") { await viewModel.unstageAll() }
                 }
             }
             let unstaged = viewModel.unstagedFiles
             if !unstaged.isEmpty {
-                FileSection(title: "Changes", entries: unstaged, side: .unstaged, isStagedSection: false, focusList: focusList) {
+                FileSection(title: "Changes", entries: unstaged, side: .unstaged, isStagedSection: false, focusList: focusList, recordFrame: recordFrame) {
                     sectionButton("Stage All") { await viewModel.stageAll() }
                 }
             }
         }
+    }
+
+    /// Dragging across rows selects from the row it started on to the one under the pointer, as in Finder.
+    private var dragSelection: some Gesture {
+        DragGesture(minimumDistance: 4, coordinateSpace: .named(Self.coordinateSpace))
+            .onChanged { drag in
+                guard let current = row(at: drag.location.y), current != dragRow else { return }
+                // The first change also selects the row the drag started on, which ranges then grow from.
+                let start = dragRow == nil ? row(at: drag.startLocation.y) : nil
+                dragRow = current
+                focusList()
+                Task {
+                    if let start, let entry = entry(for: start) {
+                        await viewModel.click(entry, side: start.side, extend: false, toggle: false)
+                    }
+                    if current != start, let entry = entry(for: current) {
+                        await viewModel.click(entry, side: current.side, extend: true, toggle: false)
+                    }
+                }
+            }
+            .onEnded { _ in dragRow = nil }
+    }
+
+    private func row(at y: CGFloat) -> FileRow? {
+        rowFrames.first { $0.value.minY - 1 <= y && y <= $0.value.maxY + 1 }?.key
+    }
+
+    private func entry(for row: FileRow) -> StatusEntry? {
+        viewModel.statusEntries.first { $0.path == row.path }
+    }
+
+    private func recordFrame(_ frame: CGRect, of row: FileRow) {
+        if rowFrames[row] != frame { rowFrames[row] = frame }
     }
 
     /// A click focuses the list so Space and the arrow keys reach it.
@@ -113,139 +152,6 @@ struct FileStatusListView: View {
             .buttonStyle(.borderless)
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(Theme.accent)
-    }
-}
-
-// MARK: - FileSection
-
-/// A labelled group of rows; flat or grouped by directory depending on the view mode.
-private struct FileSection<Accessory: View>: View {
-    @Environment(WorkingCopyViewModel.self) private var viewModel
-    @AppStorage(GrovePreferences.Key.diffToolPath) private var diffToolPath = ""
-    @AppStorage(GrovePreferences.Key.mergeToolPath) private var mergeToolPath = ""
-
-    let title: String
-    let entries: [StatusEntry]
-    let side: DiffSide
-    /// `nil` for conflicts, which are resolved rather than staged.
-    let isStagedSection: Bool?
-    let focusList: () -> Void
-    @ViewBuilder var accessory: () -> Accessory
-
-    /// Rows are direct children of the list's lazy stack, so only the visible ones are built.
-    var body: some View {
-        SectionLabel(title: title, count: entries.count, accessory: accessory)
-            .padding(.horizontal, Theme.Spacing.sm)
-            .padding(.bottom, Theme.Spacing.xs)
-        if viewModel.fileViewMode == .treeModified {
-            ForEach(viewModel.directoryGroups(entries), id: \.directory) { group in
-                if !group.directory.isEmpty {
-                    directoryHeader(group.directory)
-                }
-                ForEach(group.entries) { entry in
-                    row(entry, showsDirectory: false)
-                        .padding(.leading, group.directory.isEmpty ? 0 : Theme.Spacing.lg)
-                }
-            }
-        } else {
-            ForEach(entries) { row($0, showsDirectory: true) }
-        }
-        Color.clear.frame(height: Theme.Spacing.md - 2)
-    }
-
-    private func row(_ entry: StatusEntry, showsDirectory: Bool) -> some View {
-        let status = entry.isConflicted ? FileStatus.conflicted : (side == .staged ? entry.indexStatus : entry.workdirStatus)
-        return FileStatusRow(
-            entry: entry,
-            status: status,
-            isStaged: isStagedSection ?? false,
-            isSelected: viewModel.isSelected(entry, side: side),
-            showsDirectory: showsDirectory,
-            isLFS: viewModel.isLFS(entry),
-            onToggleStage: isStagedSection.map { staged in
-                { Task { staged ? await viewModel.unstageFile(entry) : await viewModel.stageFile(entry) } }
-            }
-        )
-        .onTapGesture {
-            focusList()
-            let modifiers = NSEvent.modifierFlags
-            Task {
-                await viewModel.click(entry, side: side, extend: modifiers.contains(.shift), toggle: modifiers.contains(.command))
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(entry.path)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction { Task { await viewModel.select(entry, side: side) } }
-        .contextMenu { contextMenu(for: entry) }
-    }
-
-    private func directoryHeader(_ directory: String) -> some View {
-        Label {
-            Text(directory).font(.monoCaption).lineLimit(1).truncationMode(.head)
-        } icon: {
-            Image(systemName: "folder").font(.system(size: 11))
-        }
-        .foregroundStyle(Theme.textSecondary)
-        .padding(.horizontal, Theme.Spacing.sm)
-        .padding(.top, Theme.Spacing.xs)
-    }
-
-    @ViewBuilder
-    private func contextMenu(for entry: StatusEntry) -> some View {
-        // Right-clicking inside a multi-selection acts on all of it.
-        let entries = viewModel.actionEntries(for: entry, side: side)
-        if let staged = isStagedSection {
-            let row = FileRow(path: entry.path, side: side)
-            // Right-clicking inside a multi-selection acts on this section's part of it.
-            let rows: Set<FileRow> = viewModel.fileSelection.contains(row) ? viewModel.fileSelection.rows.filter { $0.side == side } : [row]
-            Button(rows.count > 1 ? "\(staged ? "Unstage" : "Stage") \(rows.count) Files" : (staged ? "Unstage" : "Stage")) {
-                Task { await viewModel.toggleStage(rows) }
-            }
-            if !diffToolPath.isEmpty, entries.count == 1 {
-                Button("Open in Diff Tool") { Task { await viewModel.openInDiffTool(entry, side: side) } }
-            }
-            let patchEntries = viewModel.patchEntries(for: entry, side: side)
-            Button(patchEntries.count > 1 ? "Create Patch from \(patchEntries.count) Files\u{2026}" : "Create Patch\u{2026}") {
-                Task { await savePatch(patchEntries, side: side, viewModel: viewModel) }
-            }
-        } else if entries.count == 1 {
-            Button("Resolve…") { Task { await viewModel.select(entry) } }
-            if !mergeToolPath.isEmpty {
-                Button("Open in Merge Tool") { Task { await viewModel.openInMergeTool(entry) } }
-            }
-        }
-        let lfsCandidates = viewModel.lfsCandidates(entries)
-        if !lfsCandidates.isEmpty {
-            Menu("Track with Git LFS") {
-                Button(lfsCandidates.count > 1 ? "These \(lfsCandidates.count) Files" : "This File") {
-                    Task { await viewModel.trackWithLFS(lfsCandidates, byExtension: false) }
-                }
-                if let pattern = WorkingCopyViewModel.lfsExtensionPattern(for: lfsCandidates) {
-                    Button("All \(pattern) Files") { Task { await viewModel.trackWithLFS(lfsCandidates, byExtension: true) } }
-                }
-            }
-        }
-        Divider()
-        Button(entries.count > 1 ? "Copy \(entries.count) Paths" : "Copy Path") {
-            GroveClipboard.copy(entries.map(\.path).joined(separator: "\n"))
-        }
-        Button("Reveal in Finder") {
-            NSWorkspace.shared.activateFileViewerSelecting(entries.map { viewModel.repository.path.appendingPathComponent($0.path) })
-        }
-        Divider()
-        FileActionsMenu(entries: entries)
-        Divider()
-        Button(entries.count > 1 ? "Discard Changes in \(entries.count) Files…" : "Discard Changes…", role: .destructive) {
-            viewModel.requestDiscard(entries)
-        }
-    }
-
-}
-
-extension FileSection where Accessory == EmptyView {
-    init(title: String, entries: [StatusEntry], side: DiffSide, isStagedSection: Bool?, focusList: @escaping () -> Void) {
-        self.init(title: title, entries: entries, side: side, isStagedSection: isStagedSection, focusList: focusList) { EmptyView() }
     }
 }
 
