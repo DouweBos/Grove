@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0
+
+- Double-click a remote branch to check it out locally.
+- Remote branches are grouped into "prefix/" folders, like local branches.
+- Sidebar sheets and confirmations open right away and close on the first Cancel, instead of lagging and reopening in a loop.
+- The main branch is listed first in Branches and under each remote.
+
 ## 0.7.1
 
 - Pull, Sync and dropping a remote branch on the checked-out one open on your configured pull strategy instead of showing Merge and then switching.
