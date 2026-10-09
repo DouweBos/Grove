@@ -73,8 +73,16 @@ extension GitRepository {
     }
 
     public func deleteBranch(name: String, force: Bool) async throws {
-        let flag = force ? "-D" : "-d"
+        let skipMergeCheck = force ? true : await isOnRemote(branch: name)
+        let flag = skipMergeCheck ? "-D" : "-d"
         try await shell.run(["branch", flag, name])
+    }
+
+    /// Git's `-d` only checks HEAD and the configured upstream; a tip any remote branch contains loses nothing.
+    private func isOnRemote(branch: String) async -> Bool {
+        guard let result = try? await shell.runAllowingFailure(["branch", "-r", "--contains", "refs/heads/\(branch)"]),
+              result.isSuccess else { return false }
+        return !result.stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     public func deleteRemoteBranch(name: String, remote: String) async throws {

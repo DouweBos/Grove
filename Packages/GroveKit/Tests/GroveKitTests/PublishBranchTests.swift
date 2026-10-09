@@ -26,6 +26,22 @@ struct PublishBranchTests {
         #expect(!(try fixture.git(["branch", "--list", "grove-published"], in: fixture.origin)).isEmpty)
     }
 
+    @Test func deletingABranchWithoutUpstreamSucceedsWhenARemoteHasItsCommits() async throws {
+        let fixture = try fixture()
+        defer { fixture.remove() }
+        _ = try fixture.git(["checkout", "-q", "-b", "grove-pushed"])
+        _ = try fixture.git(["commit", "-q", "--allow-empty", "-m", "pushed"])
+        _ = try fixture.git(["push", "-q", "origin", "grove-pushed"])
+        _ = try fixture.git(["checkout", "-q", "-b", "grove-local"])
+        _ = try fixture.git(["commit", "-q", "--allow-empty", "-m", "local only"])
+        _ = try fixture.git(["checkout", "-q", "-"])
+        _ = try fixture.git(["checkout", "-q", "HEAD~1"])
+        let repo = try await GitRepository(path: fixture.repo, runner: LocalGitRunner())
+        try await repo.deleteBranch(name: "grove-pushed", force: false)
+        await #expect(throws: (any Error).self) { try await repo.deleteBranch(name: "grove-local", force: false) }
+        #expect(try fixture.git(["branch", "--list", "grove-pushed"]).isEmpty)
+    }
+
     @Test func defaultBranchFollowsTheRemoteHead() async throws {
         let fixture = try fixture()
         defer { fixture.remove() }
