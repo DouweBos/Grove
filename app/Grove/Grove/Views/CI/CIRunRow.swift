@@ -4,7 +4,7 @@
 import GroveKit
 import SwiftUI
 
-/// One workflow run in the list: status, title, then workflow, branch and age.
+/// One workflow run in the list: status, title, then workflow, branch and age, or running time while it runs.
 struct CIRunRow: View {
     let run: CIRun
     /// A notification is due when it finishes.
@@ -29,7 +29,11 @@ struct CIRunRow: View {
                     if isWatched {
                         Image(systemName: "bell.fill").help("Notifies when finished")
                     }
-                    Text(run.createdDate, format: .relative(presentation: .named)).lineLimit(1).fixedSize()
+                    if run.status.isActive, let start = run.startedDate {
+                        CIElapsedText(start: start, end: nil, isActive: true)
+                    } else {
+                        Text(run.createdDate, format: .relative(presentation: .named)).lineLimit(1).fixedSize()
+                    }
                 }
                 .font(.monoCaption)
                 .foregroundStyle(Theme.textSecondary)
