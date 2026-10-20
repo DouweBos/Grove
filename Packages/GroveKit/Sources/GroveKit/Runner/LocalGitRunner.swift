@@ -35,6 +35,12 @@ public nonisolated struct LocalGitRunner: GitRunner {
         env["PAGER"] = "cat"
         // Disable interactive prompts (prevents hanging in CI or when no TTY).
         env["GIT_TERMINAL_PROMPT"] = "0"
+        // git waits forever on a stalled HTTP response; give up after 30 s without a byte.
+        // Upload-pack's keepalives during a slow server-side pack keep the rate above 1 B/s.
+        if env["GIT_HTTP_LOW_SPEED_LIMIT"] == nil, env["GIT_HTTP_LOW_SPEED_TIME"] == nil {
+            env["GIT_HTTP_LOW_SPEED_LIMIT"] = "1"
+            env["GIT_HTTP_LOW_SPEED_TIME"] = "30"
+        }
         env["PATH"] = augmentedPath(env["PATH"])
         return env
     }

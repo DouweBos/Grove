@@ -56,6 +56,9 @@ public nonisolated enum GitErrorMessage {
         if has("could not resolve host", "failed to connect", "connection timed out", "network is unreachable") {
             return "Couldn't reach the remote. Check your internet connection."
         }
+        if has("operation too slow", "curl 28") {
+            return "The remote stopped responding. Check your internet connection and try again."
+        }
         return nil
     }
 

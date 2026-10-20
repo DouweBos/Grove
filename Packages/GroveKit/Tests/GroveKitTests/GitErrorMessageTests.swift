@@ -35,6 +35,12 @@ struct GitErrorMessageTests {
         #expect(GitErrorMessage.message(command: "switch", stderr: stderr) == "Invalid reference: nope")
     }
 
+    @Test func stalledTransferSaysTheRemoteStoppedResponding() {
+        let stderr = "error: RPC failed; curl 28 Operation too slow. Less than 1 bytes/sec transferred the last 30 seconds\n"
+        #expect(GitErrorMessage.message(command: "fetch", stderr: stderr)
+                == "The remote stopped responding. Check your internet connection and try again.")
+    }
+
     @Test func emptyStderrNamesTheCommand() {
         #expect(GitErrorMessage.message(command: "fetch", stderr: "hint: nothing\n") == "git fetch failed.")
     }
