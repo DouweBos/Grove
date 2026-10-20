@@ -58,6 +58,12 @@ struct LFSTests {
         }
     }
 
+    @Test func lsFilesMarksPointersWithAMinus() {
+        #expect(GitRepository.listsLFSPointers("4d7a214614 * cover.psd\n") == false)
+        #expect(GitRepository.listsLFSPointers("4d7a214614 * cover.psd\n9c1185a5c5 - my - video.mov\n"))
+        #expect(GitRepository.listsLFSPointers("") == false)
+    }
+
     @Test func pathGainsHomebrewDirectories() {
         let path = LocalGitRunner.augmentedPath("/usr/bin:/bin")
         #expect(path.hasPrefix("/usr/bin:/bin"))
@@ -99,6 +105,22 @@ struct LFSTests {
         try await repo.trackWithLFS(pattern: "video.mov", literal: true)
 
         #expect(try git(["cat-file", "-p", ":video.mov"]).hasPrefix(LFSPointer.versionPrefix))
+    }
+
+    @Test func onlyFilesLeftAsPointersNeedAnLFSPull() async throws {
+        let repo = try await GitRepository(path: root, runner: LocalGitRunner())
+        guard await GitRepository.isLFSInstalled(shell: repo.shell) else { return }
+        try git(["lfs", "install", "--local"])
+        try git(["lfs", "track", "*.psd"])
+        try Data("binary".utf8).write(to: root.appendingPathComponent("cover.psd"))
+        try git(["add", "."])
+        try git(["commit", "-q", "-m", "add cover"])
+        #expect(await repo.hasLFSPointersInWorktree() == false)
+
+        // What a checkout with GIT_LFS_SKIP_SMUDGE leaves behind.
+        let pointer = try git(["cat-file", "-p", "HEAD:cover.psd"])
+        try Data(pointer.utf8).write(to: root.appendingPathComponent("cover.psd"))
+        #expect(await repo.hasLFSPointersInWorktree())
     }
 
     // MARK: Helpers

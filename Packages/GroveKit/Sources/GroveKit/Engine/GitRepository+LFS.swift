@@ -31,13 +31,27 @@ extension GitRepository {
         }
     }
 
-    /// Downloads and checks out the LFS objects a pull brought in; nothing for repositories without LFS.
+    /// Downloads and checks out the LFS objects a pull left as pointers; nothing for repositories without LFS.
     func pullLFSObjectsIfNeeded(remote: String?) async throws {
         let status = await lfsStatus()
         guard status.usesLFS else { return }
         guard status.isInstalled else { throw GitShellError.lfsNotInstalled }
+        guard await hasLFSPointersInWorktree() else { return }
         Logger.gitRepository.info("Pulling LFS objects in \(self.displayName, privacy: .public)")
         try await shell.run(["lfs", "pull"] + (remote.map { [$0] } ?? []))
+    }
+
+    /// The checkout's smudge filter usually downloads everything; `lfs ls-files` marks files still a pointer with `-`.
+    func hasLFSPointersInWorktree() async -> Bool {
+        guard let result = try? await shell.runAllowingFailure(["lfs", "ls-files"]), result.isSuccess else { return true }
+        return Self.listsLFSPointers(result.stdout)
+    }
+
+    /// `<oid> * <path>` is checked out, `<oid> - <path>` is still a pointer.
+    nonisolated static func listsLFSPointers(_ lsFiles: String) -> Bool {
+        lsFiles.split(whereSeparator: \.isNewline).contains { line in
+            line.split(separator: " ", maxSplits: 2).dropFirst().first == "-"
+        }
     }
 
     /// The real content behind an LFS pointer blob, or the blob itself when it isn't one or git-lfs can't run.
