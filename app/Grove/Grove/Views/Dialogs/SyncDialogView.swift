@@ -16,8 +16,7 @@ struct SyncDialogView: View {
     @State private var selectedRemote: String
     /// nil until git says what a plain pull does; the picker waits for it rather than showing Merge first.
     @State private var strategy: PullStrategy?
-    @State private var isSyncing = false
-    @State private var progress: Double = 0
+    @State private var operation = DialogOperation()
     @State private var errorMessage: String?
 
     init(repository: any GitRepositoryProtocol, remotes: [RemoteInfo] = [], strategy: PullStrategy? = nil,
@@ -31,7 +30,7 @@ struct SyncDialogView: View {
     }
 
     private var phase: String {
-        switch progress {
+        switch operation.fraction {
         case ..<0.33: "Fetching…"
         case ..<0.66: "Pulling…"
         default: "Pushing…"
@@ -43,13 +42,13 @@ struct SyncDialogView: View {
             title: "Sync",
             message: "Fetches from the remote, integrates new commits into '\(repository.currentBranch?.name ?? "HEAD")', then pushes your local commits.",
             symbol: "arrow.triangle.2.circlepath",
-            progress: isSyncing ? phase : nil,
-            progressDetail: isSyncing ? selectedRemote : "",
-            fraction: isSyncing ? progress : nil,
+            progress: operation.isRunning ? phase : nil,
+            progressDetail: operation.isRunning ? selectedRemote : "",
+            fraction: operation.isRunning ? operation.fraction : nil,
             errorMessage: errorMessage,
             primaryTitle: "Sync",
             isPrimaryDisabled: remotes.isEmpty || repository.currentBranch == nil || strategy == nil,
-            onCancel: { dismiss() },
+            onCancel: cancel,
             onPrimary: performSync
         ) {
             DialogCard {
@@ -78,22 +77,23 @@ struct SyncDialogView: View {
 
     private func performSync() {
         guard let strategy else { return }
-        isSyncing = true
         errorMessage = nil
-        progress = 0
-        Task {
-            do {
-                try await repository.sync(remote: selectedRemote, strategy: strategy) { value in
-                    Task { @MainActor in progress = value }
-                }
-                onComplete()
-                dismiss()
-            } catch {
-                errorMessage = error.localizedDescription
-                isSyncing = false
-                onComplete()
+        let remote = selectedRemote
+        operation.run({ progress in
+            try await repository.sync(remote: remote, strategy: strategy, progress: progress)
+        }, completion: { result in
+            onComplete()
+            switch result {
+            case .success: dismiss()
+            case .failure(let error): errorMessage = error.localizedDescription
+            case nil: break
             }
-        }
+        })
+    }
+
+    private func cancel() {
+        operation.cancel()
+        dismiss()
     }
 }
 

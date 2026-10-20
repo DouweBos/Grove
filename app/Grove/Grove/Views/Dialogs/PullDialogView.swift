@@ -22,6 +22,7 @@ struct PullDialogView: View {
     /// Remote branch to pull, as `remote/branch`.
     @State private var source: String?
     @State private var progressTitle: String?
+    @State private var operation = DialogOperation()
     @State private var errorMessage: String?
 
     init(repository: any GitRepositoryProtocol, refs: RepositoryRefs, onComplete: @escaping () -> Void = {}) {
@@ -42,10 +43,11 @@ struct PullDialogView: View {
             message: "Fetches a remote branch and integrates it into '\(branch?.name ?? "HEAD")'.",
             symbol: "arrow.down.to.line",
             progress: progressTitle,
+            fraction: progressTitle == nil ? nil : operation.fraction,
             errorMessage: errorMessage,
             primaryTitle: "Pull",
             isPrimaryDisabled: source == nil || strategy == nil,
-            onCancel: { dismiss() },
+            onCancel: cancel,
             onPrimary: performPull
         ) {
             DialogCard {
@@ -138,13 +140,13 @@ struct PullDialogView: View {
 
     private func performPull() {
         guard let source, let strategy else { return }
-        run("Pulling from \(PullSourcePicker.displayName(source))…") {
+        run("Pulling from \(PullSourcePicker.displayName(source))…") { progress in
             let didStash = autoStash ? try await stashIfDirty(repository, message: "Grove: auto-stash before pull") : false
             if source == upstream {
-                try await repository.pull(remote: nil, branch: nil, strategy: strategy, options: options, progress: nil)
+                try await repository.pull(remote: nil, branch: nil, strategy: strategy, options: options, progress: progress)
             } else if let target = split(source) {
                 try await repository.pull(remote: target.remote, branch: target.branch, strategy: strategy,
-                                          options: options, progress: nil)
+                                          options: options, progress: progress)
             }
             if didStash {
                 try await repository.stashApply(index: 0, drop: true)
@@ -153,25 +155,28 @@ struct PullDialogView: View {
     }
 
     private func performPushSettingUpstream(remote: String) {
-        run("Pushing to \(remote)…") {
-            try await repository.push(remote: remote, forceWithLease: false, setUpstream: true, progress: nil)
+        run("Pushing to \(remote)…") { progress in
+            try await repository.push(remote: remote, forceWithLease: false, setUpstream: true, progress: progress)
         }
     }
 
-    private func run(_ title: String, _ operation: @escaping () async throws -> Void) {
+    private func run(_ title: String, _ work: @escaping (_ progress: @escaping @Sendable (Double) -> Void) async throws -> Void) {
         progressTitle = title
         errorMessage = nil
-        Task {
-            do {
-                try await operation()
-                onComplete()
-                dismiss()
-            } catch {
-                errorMessage = error.localizedDescription
-                progressTitle = nil
-                onComplete()
+        operation.run(work) { result in
+            onComplete()
+            switch result {
+            case .success: dismiss()
+            case .failure(let error): errorMessage = error.localizedDescription; progressTitle = nil
+            case nil: break
             }
         }
+    }
+
+    /// Stops git too. A pull cancelled while rebasing or merging leaves that in progress for the banner to resolve.
+    private func cancel() {
+        operation.cancel()
+        dismiss()
     }
 }
 

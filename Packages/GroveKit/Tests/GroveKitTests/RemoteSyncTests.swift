@@ -4,6 +4,7 @@
 // Pull / push / sync / comparison against a scratch bare remote and two clones in a temp directory.
 
 import Foundation
+import os
 import Testing
 @testable import GroveKit
 
@@ -54,6 +55,20 @@ struct RemoteSyncTests {
 
         let parents = try git(["log", "-1", "--format=%P"], in: "a").split(separator: " ")
         #expect(parents.count == 2)
+    }
+
+    @Test func pullReportsProgressUpToDone() async throws {
+        try commit("b", file: "theirs.txt", message: "from b")
+        try git(["push", "-q", "origin", "main"], in: "b")
+
+        let repo = try await GitRepository(path: root.appendingPathComponent("a"), runner: LocalGitRunner())
+        let values = OSAllocatedUnfairLock(initialState: [Double]())
+        try await repo.pull(remote: nil, strategy: .merge) { value in values.withLock { $0.append(value) } }
+
+        let reported = values.withLock { $0 }
+        #expect(reported.count > 2)
+        #expect(reported == reported.sorted())
+        #expect(reported.last == 1)
     }
 
     @Test func pullingAnotherBranchWithRebaseRebasesOntoIt() async throws {

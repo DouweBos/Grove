@@ -15,7 +15,7 @@ struct FetchDialogView: View {
 
     @State private var selectedRemote: String
     @State private var fetchAllRemotes = false
-    @State private var isFetching = false
+    @State private var operation = DialogOperation()
     @State private var errorMessage: String?
 
     init(repository: any GitRepositoryProtocol, remotes: [RemoteInfo] = [], onComplete: @escaping () -> Void = {}) {
@@ -33,11 +33,12 @@ struct FetchDialogView: View {
             title: "Fetch",
             message: "Downloads new commits, branches and tags without changing your working copy. Deleted remote branches are pruned.",
             symbol: "arrow.clockwise",
-            progress: isFetching ? "Fetching \(targets.joined(separator: ", "))…" : nil,
+            progress: operation.isRunning ? "Fetching \(targets.joined(separator: ", "))…" : nil,
+            fraction: operation.isRunning ? operation.fraction : nil,
             errorMessage: errorMessage,
             primaryTitle: "Fetch",
             isPrimaryDisabled: remotes.isEmpty,
-            onCancel: { dismiss() },
+            onCancel: cancel,
             onPrimary: performFetch
         ) {
             DialogCard {
@@ -56,21 +57,25 @@ struct FetchDialogView: View {
     }
 
     private func performFetch() {
-        isFetching = true
         errorMessage = nil
         let targets = targets
-        Task {
-            do {
-                for remote in targets {
-                    try await repository.fetch(remote: remote, progress: nil)
-                }
-                onComplete()
-                dismiss()
-            } catch {
-                errorMessage = error.localizedDescription
-                isFetching = false
+        operation.run({ progress in
+            for (index, remote) in targets.enumerated() {
+                try await repository.fetch(remote: remote) { progress((Double(index) + $0) / Double(targets.count)) }
             }
-        }
+        }, completion: { result in
+            switch result {
+            case .success: onComplete(); dismiss()
+            case .failure(let error): errorMessage = error.localizedDescription
+            case nil: onComplete()
+            }
+        })
+    }
+
+    /// Stops a running fetch too; git leaves the refs it already updated.
+    private func cancel() {
+        operation.cancel()
+        dismiss()
     }
 }
 

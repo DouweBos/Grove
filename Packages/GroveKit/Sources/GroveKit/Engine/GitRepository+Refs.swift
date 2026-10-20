@@ -114,9 +114,9 @@ extension GitRepository {
         Logger.gitRepository.info(
             "Fetching \(remote ?? "all remotes", privacy: .public) in \(self.displayName, privacy: .public)"
         )
-        var args = ["fetch", "--prune"]
+        var args = ["fetch", "--prune", "--progress"]
         if let remote { args.append(remote) }
-        try await shell.run(args)
+        try await runReportingProgress(args, progress: progress)
         progress?(1.0)
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
         Logger.gitRepository.info("Fetch complete in \(self.displayName, privacy: .public)")
@@ -136,7 +136,7 @@ extension GitRepository {
         Logger.gitRepository.info(
             "Pulling (\(strategy.rawValue, privacy: .public)) from \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
         )
-        var args = ["pull"]
+        var args = ["pull", "--progress"]
         switch strategy {
         // `--ff` overrides `pull.ff=only` so a diverged branch still gets a merge commit.
         case .merge: args += ["--no-rebase", "--ff"]
@@ -147,8 +147,8 @@ extension GitRepository {
         if options.skipHooks { args.append("--no-verify") }
         if let remote { args.append(remote) }
         if let branch { args.append(branch) }
-        try await shell.run(args)
-        progress?(0.8)
+        try await runReportingProgress(args, range: 0...0.9, progress: progress)
+        progress?(0.9)
         try await pullLFSObjectsIfNeeded(remote: remote)
         progress?(1.0)
         currentBranch   = try? await Self.loadCurrentBranch(shell: shell)
@@ -167,7 +167,7 @@ extension GitRepository {
         Logger.gitRepository.info(
             "Pushing\(flags, privacy: .public) to \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
         )
-        var args = ["push"]
+        var args = ["push", "--progress"]
         if forceWithLease { args.append("--force-with-lease") }
         let upstreamRemote = (try? await Self.loadCurrentBranch(shell: shell))?.upstreamRemoteName
         if setUpstream {
@@ -178,7 +178,7 @@ extension GitRepository {
         } else if let remote {
             args.append(remote)
         }
-        try await shell.run(args)
+        try await runReportingProgress(args, progress: progress)
         progress?(1.0)
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
         Logger.gitRepository.info("Push complete in \(self.displayName, privacy: .public)")
@@ -189,13 +189,13 @@ extension GitRepository {
         Logger.gitRepository.info(
             "Pushing to \(remote, privacy: .public)/\(branch, privacy: .public) in \(self.displayName, privacy: .public)"
         )
-        var args = ["push"]
+        var args = ["push", "--progress"]
         if forceWithLease { args.append("--force-with-lease") }
         if setUpstream { args.append("-u") }
         if let mode = options.recurseSubmodules { args.append("--recurse-submodules=\(mode.rawValue)") }
         if options.skipHooks { args.append("--no-verify") }
         args += [remote, "HEAD:refs/heads/\(branch)"]
-        try await shell.run(args)
+        try await runReportingProgress(args, progress: progress)
         progress?(1.0)
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)
         Logger.gitRepository.info("Push complete in \(self.displayName, privacy: .public)")
@@ -218,19 +218,21 @@ extension GitRepository {
         Logger.gitRepository.info(
             "Syncing with \(remote ?? "default", privacy: .public) in \(self.displayName, privacy: .public)"
         )
-        try await fetch(remote: remote, progress: nil)
+        try await fetch(remote: remote, progress: progress.map { report in { report($0 * 0.33) } })
         progress?(0.33)
         let branch = try? await Self.loadCurrentBranch(shell: shell)
         let target = remote ?? branch?.upstreamRemoteName ?? "origin"
         let tracksTarget = branch?.upstream != nil && branch?.upstreamRemoteName == target
+        let pullProgress = progress.map { report in { @Sendable in report(0.33 + $0 * 0.33) } }
         if tracksTarget {
-            try await pull(remote: nil, branch: nil, strategy: strategy, options: PullOptions(), progress: nil)
+            try await pull(remote: nil, branch: nil, strategy: strategy, options: PullOptions(), progress: pullProgress)
         } else if let name = branch?.name,
                   try await shell.runAllowingFailure(["rev-parse", "--verify", "--quiet", "refs/remotes/\(target)/\(name)"]).isSuccess {
-            try await pull(remote: target, branch: name, strategy: strategy, options: PullOptions(), progress: nil)
+            try await pull(remote: target, branch: name, strategy: strategy, options: PullOptions(), progress: pullProgress)
         }
         progress?(0.66)
-        try await push(remote: target, forceWithLease: false, setUpstream: !tracksTarget, progress: nil)
+        try await push(remote: target, forceWithLease: false, setUpstream: !tracksTarget,
+                       progress: progress.map { report in { report(0.66 + $0 * 0.34) } })
         progress?(1.0)
         Logger.gitRepository.info("Sync complete in \(self.displayName, privacy: .public)")
     }

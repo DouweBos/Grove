@@ -90,6 +90,13 @@ extension GitRepository {
         return .normal
     }
 
+    /// Runs a fetch, pull or push with `--progress`, mapping git's phases into `range` of `progress`.
+    func runReportingProgress(_ arguments: [String], range: ClosedRange<Double> = 0...1,
+                              progress: (@Sendable (Double) -> Void)?) async throws {
+        let reporter = progress.map { GitProgressReporter(range: range, report: $0) }
+        try await shell.runStreaming(arguments) { reporter?.consume($0) }
+    }
+
     /// A fresh path in the runner's temporary directory, e.g. `grovekit-todo-<uuid>`.
     func scratchURL(_ kind: String, suffix: String = "") -> URL {
         shell.runner.temporaryDirectory.appendingPathComponent("\(naming.scratchPrefix)\(kind)-\(UUID().uuidString)\(suffix)")

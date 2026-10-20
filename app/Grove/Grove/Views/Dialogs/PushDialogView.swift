@@ -22,7 +22,7 @@ struct PushDialogView: View {
     @State private var options = PushOptions()
     @State private var submoduleMode = SubmodulePushMode.check
     @State private var isConfirmingForce = false
-    @State private var isPushing = false
+    @State private var operation = DialogOperation()
     @State private var errorMessage: String?
 
     init(
@@ -82,12 +82,13 @@ struct PushDialogView: View {
             title: title,
             message: "Sends the commits on your local branch '\(branchName)' to the remote.",
             symbol: "arrow.up.to.line",
-            progress: isPushing ? "Pushing to \(selectedRemote)…" : nil,
+            progress: operation.isRunning ? "Pushing to \(selectedRemote)…" : nil,
+            fraction: operation.isRunning ? operation.fraction : nil,
             errorMessage: errorMessage,
             primaryTitle: forceWithLease ? "Force Push…" : "Push",
             isDestructive: forceWithLease,
             isPrimaryDisabled: remotes.isEmpty || branch == nil || trimmedTarget.isEmpty,
-            onCancel: { dismiss() },
+            onCancel: cancel,
             onPrimary: { forceWithLease ? isConfirmingForce = true : performPush() }
         ) {
             DialogCard {
@@ -169,23 +170,28 @@ struct PushDialogView: View {
     }
 
     private func performPush() {
-        isPushing = true
         errorMessage = nil
-        Task {
-            do {
-                try await repository.push(remote: selectedRemote, branch: trimmedTarget, forceWithLease: forceWithLease,
-                                          setUpstream: setUpstream, options: options, progress: nil)
-                if pushAllTags {
-                    try await repository.pushAllTags(remote: selectedRemote)
-                }
-                onComplete()
-                dismiss()
-            } catch {
-                errorMessage = error.localizedDescription
-                isPushing = false
-                onComplete()
+        let (remote, target, force, upstream, options, tags) = (selectedRemote, trimmedTarget, forceWithLease,
+                                                                setUpstream, options, pushAllTags)
+        operation.run({ progress in
+            try await repository.push(remote: remote, branch: target, forceWithLease: force,
+                                      setUpstream: upstream, options: options, progress: progress)
+            if tags {
+                try await repository.pushAllTags(remote: remote)
             }
-        }
+        }, completion: { result in
+            onComplete()
+            switch result {
+            case .success: dismiss()
+            case .failure(let error): errorMessage = error.localizedDescription
+            case nil: break
+            }
+        })
+    }
+
+    private func cancel() {
+        operation.cancel()
+        dismiss()
     }
 }
 

@@ -49,4 +49,22 @@ struct StalledRemoteTests {
         #expect(GitErrorMessage.message(command: "ls-remote", stderr: result.stderr)
                 == "The remote stopped responding. Check your internet connection and try again.")
     }
+
+    @Test nonisolated func cancellingAPullStopsGit() async throws {
+        let server = try SilentServer()
+        let runner = LocalGitRunner()
+        let directory = runner.temporaryDirectory.appendingPathComponent("grove-cancel-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let shell = GitShell(workingDirectory: runner.temporaryDirectory, runner: runner)
+        try await shell.run(["init", "-q", "-b", "main", directory.path])
+        try await shell.at(directory).run(["remote", "add", "origin", "http://127.0.0.1:\(server.port)/repo.git"])
+
+        let repo = try await GitRepository(path: directory, runner: runner)
+        let pull = Task { try await repo.pull(remote: "origin", branch: "main", strategy: .merge, options: PullOptions(), progress: nil) }
+        try await Task.sleep(for: .milliseconds(500))
+        let start = Date()
+        pull.cancel()
+        await #expect(throws: CancellationError.self) { try await pull.value }
+        #expect(Date().timeIntervalSince(start) < 5)
+    }
 }

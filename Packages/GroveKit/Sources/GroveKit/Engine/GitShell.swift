@@ -141,12 +141,17 @@ public final class GitShell: Sendable {
         return result
     }
 
-    /// Runs a long git command (clone), streaming stderr to `onStderr`; cancelling the task stops git.
+    /// Runs a long git command (clone, fetch, pull, push), streaming stderr to `onStderr`; cancelling the task stops git.
     public nonisolated func runStreaming(_ arguments: [String], onStderr: @escaping @Sendable (String) -> Void) async throws {
+        Logger.gitShell.debug("Running (streaming): git \(arguments.joined(separator: " "), privacy: .public)")
         let result = try await runner.runStreaming(invocation(arguments, environment: [:]), onStderr: onStderr)
         try Task.checkCancellation()
         guard result.isSuccess else {
-            throw GitShellError.nonZeroExit(command: arguments.first ?? "", exitCode: result.exitCode, stderr: result.stderr)
+            let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            Logger.gitShell.warning(
+                "git \(arguments.first ?? "", privacy: .public) exited \(result.exitCode, privacy: .public): \(stderr, privacy: .public)"
+            )
+            throw GitShellError.failure(arguments: arguments, result: result)
         }
     }
 
