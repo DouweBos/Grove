@@ -71,6 +71,18 @@ struct RemoteSyncTests {
         #expect(reported.last == 1)
     }
 
+    @Test func pullRetriesAFetchThatRacedAnotherFetch() async throws {
+        try commit("b", file: "theirs.txt", message: "from b")
+        try git(["push", "-q", "origin", "main"], in: "b")
+
+        let runner = RacingRunner()
+        let repo = try await GitRepository(path: root.appendingPathComponent("a"), runner: runner)
+        try await repo.pull(remote: nil, strategy: .merge, progress: nil)
+
+        #expect(runner.streamedCommands == 2)
+        #expect(try git(["log", "-1", "--format=%s"], in: "a").trimmingCharacters(in: .whitespacesAndNewlines) == "from b")
+    }
+
     @Test func pullingAnotherBranchWithRebaseRebasesOntoIt() async throws {
         // `feature` tracks origin/feature; main moves on in the other clone.
         try git(["checkout", "-q", "-b", "feature"], in: "a")
@@ -207,4 +219,29 @@ struct RemoteSyncTests {
         }
         return text
     }
+}
+
+/// Loses the first streamed command to another fetch, as when a tool fetches the same remote mid-pull.
+private nonisolated final class RacingRunner: GitRunner, @unchecked Sendable {
+    let local = LocalGitRunner()
+    private let streamed = OSAllocatedUnfairLock(initialState: 0)
+    var streamedCommands: Int { streamed.withLock { $0 } }
+
+    func run(_ invocation: GitInvocation) async throws -> ShellResult { try await local.run(invocation) }
+    func runStreaming(_ invocation: GitInvocation, onStderr: @escaping @Sendable (String) -> Void) async throws -> ShellResult {
+        let count = streamed.withLock { $0 += 1; return $0 }
+        guard count > 1 else {
+            return ShellResult(stdout: "", stderr: "error: cannot lock ref 'refs/remotes/origin/main': is at aaa but expected bbb\n",
+                               exitCode: 1)
+        }
+        return try await local.runStreaming(invocation, onStderr: onStderr)
+    }
+    var temporaryDirectory: URL { local.temporaryDirectory }
+    func itemKind(at url: URL) async -> FileItemKind? { await local.itemKind(at: url) }
+    func readFile(at url: URL) async throws -> Data { try await local.readFile(at: url) }
+    func writeFile(_ data: Data, to url: URL, executable: Bool) async throws { try await local.writeFile(data, to: url, executable: executable) }
+    func removeItem(at url: URL) async throws { try await local.removeItem(at: url) }
+    func createDirectory(at url: URL) async throws { try await local.createDirectory(at: url) }
+    func moveItem(at source: URL, to destination: URL) async throws { try await local.moveItem(at: source, to: destination) }
+    func contentsOfDirectory(at url: URL) async throws -> [String] { try await local.contentsOfDirectory(at: url) }
 }

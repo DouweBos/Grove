@@ -91,10 +91,16 @@ extension GitRepository {
     }
 
     /// Runs a fetch, pull or push with `--progress`, mapping git's phases into `range` of `progress`.
+    /// A fetch that lost a ref race with another git process runs once more: git stops before merging when it fails.
     func runReportingProgress(_ arguments: [String], range: ClosedRange<Double> = 0...1,
                               progress: (@Sendable (Double) -> Void)?) async throws {
         let reporter = progress.map { GitProgressReporter(range: range, report: $0) }
-        try await shell.runStreaming(arguments) { reporter?.consume($0) }
+        do {
+            try await shell.runStreaming(arguments) { reporter?.consume($0) }
+        } catch GitShellError.nonZeroExit(_, _, let stderr) where GitErrorMessage.isRefLockRace(stderr) {
+            Logger.gitRepository.notice("git \(arguments.first ?? "", privacy: .public) raced another fetch; retrying")
+            try await shell.runStreaming(arguments) { reporter?.consume($0) }
+        }
     }
 
     /// A fresh path in the runner's temporary directory, e.g. `grovekit-todo-<uuid>`.

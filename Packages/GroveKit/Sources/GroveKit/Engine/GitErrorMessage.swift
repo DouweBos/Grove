@@ -56,10 +56,18 @@ public nonisolated enum GitErrorMessage {
         if has("could not resolve host", "failed to connect", "connection timed out", "network is unreachable") {
             return "Couldn't reach the remote. Check your internet connection."
         }
+        if isRefLockRace(stderr) {
+            return "Another git process updated the remote branches at the same time. Try again."
+        }
         if has("operation too slow", "curl 28") {
             return "The remote stopped responding. Check your internet connection and try again."
         }
         return nil
+    }
+
+    /// A fetch found a remote-tracking ref moved by another fetch since it started; running it again succeeds.
+    static func isRefLockRace(_ stderr: String) -> Bool {
+        stderr.contains("cannot lock ref") && stderr.contains("but expected")
     }
 
     /// Drops hints, progress and ref summaries, and git's `error:`/`fatal:` prefixes.
@@ -67,7 +75,8 @@ public nonisolated enum GitErrorMessage {
         let lines = stderr.split(whereSeparator: { $0 == "\r" || $0 == "\n" }).compactMap { raw -> String? in
             var line = raw.trimmingCharacters(in: .whitespaces)
             if line.hasPrefix("hint:") || line.hasPrefix("To ") || line.hasPrefix("From ") || line.hasPrefix("!")
-                || line.hasPrefix("Cloning into") || line.contains("% (") || isTransferProgress(line) { return nil }
+                || line.hasPrefix("Cloning into") || line.contains("% (") || line.contains(" -> ")
+                || isTransferProgress(line) { return nil }
             for prefix in ["remote: ", "error: ", "fatal: "] where line.hasPrefix(prefix) {
                 line.removeFirst(prefix.count)
             }
