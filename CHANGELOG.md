@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.0
+
+- Pull and fetch try again on their own when another app fetched the same remote at the same moment, instead of failing with "cannot lock ref".
+- Git errors no longer list every updated remote branch.
+- Pulling in a Git LFS repository skips the extra LFS download when the checkout already fetched every file.
+- Fetch, Pull, Push and Sync show git's progress as a bar.
+- Cancel in those dialogs now stops git instead of leaving it running in the background.
+- Press Cmd-A in the Changes file list to select every changed file.
+- Fetch, pull and push give up with an error when the remote stops responding, instead of hanging.
+
 ## 0.9.0
 
 - Checking out a branch from the sidebar shows progress while git works.
