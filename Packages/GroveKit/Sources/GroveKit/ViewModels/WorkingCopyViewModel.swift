@@ -225,6 +225,12 @@ public final class WorkingCopyViewModel {
         await showSelectionFocus()
     }
 
+    /// Cmd-A in the Changes list.
+    public func selectAllFiles() async {
+        fileSelection.selectAll(in: fileRowOrder)
+        await showSelectionFocus()
+    }
+
     public func moveSelection(by offset: Int, extend: Bool) async {
         fileSelection.move(by: offset, in: fileRowOrder, extend: extend)
         await showSelectionFocus()

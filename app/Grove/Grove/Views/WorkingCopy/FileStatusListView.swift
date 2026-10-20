@@ -81,6 +81,10 @@ struct FileStatusListView: View {
                 Task { await viewModel.toggleStageOfSelection() }
                 return .handled
             }
+            // Edit > Select All, so Cmd-A reaches the list only while it has focus, not the commit message.
+            .onCommand(#selector(NSResponder.selectAll(_:))) {
+                Task { await viewModel.selectAllFiles() }
+            }
             .onKeyPress(keys: [.upArrow, .downArrow]) { press in
                 let offset = press.key == .upArrow ? -1 : 1
                 Task { await viewModel.moveSelection(by: offset, extend: press.modifiers.contains(.shift)) }

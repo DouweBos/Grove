@@ -48,6 +48,24 @@ struct FileSelectionTests {
         #expect(selection.rows == [order[3]])
     }
 
+    @Test func selectAllKeepsTheFocusedRow() {
+        var selection = FileSelection()
+        selection.click(order[2], in: order, extend: false, toggle: false)
+        selection.selectAll(in: order)
+        #expect(selection.rows == Set(order))
+        #expect(selection.focus == order[2])
+        // Shift-click still ranges from the row that was focused.
+        selection.click(order[3], in: order, extend: true, toggle: false)
+        #expect(selection.rows == Set(order[2...3]))
+    }
+
+    @Test func selectAllWithNothingSelectedFocusesTheFirstRow() {
+        var selection = FileSelection()
+        selection.selectAll(in: order)
+        #expect(selection.rows == Set(order))
+        #expect(selection.focus == order[0])
+    }
+
     @Test func reconcileFollowsAFileToItsOtherSide() {
         var selection = FileSelection()
         selection.click(order[0], in: order, extend: false, toggle: false)

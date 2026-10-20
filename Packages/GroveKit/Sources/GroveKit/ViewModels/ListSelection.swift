@@ -42,6 +42,14 @@ public struct ListSelection<Row: Hashable> {
         }
     }
 
+    /// Cmd-A: every row, keeping the focused file in the detail pane when it's still listed.
+    mutating func selectAll(in order: [Row]) {
+        guard !order.isEmpty else { return }
+        rows = Set(order)
+        if focus.map(rows.contains) != true { focus = order.first }
+        if anchor.map(rows.contains) != true { anchor = focus }
+    }
+
     /// Arrow keys: move the focus, or with Shift grow the range from the anchor.
     mutating func move(by offset: Int, in order: [Row], extend: Bool) {
         guard !order.isEmpty else { return }
