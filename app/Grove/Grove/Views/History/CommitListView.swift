@@ -174,11 +174,11 @@ struct CommitListView: View {
     static func groups(_ commits: [CommitInfo]) -> [DayGroup] {
         var result: [DayGroup] = []
         for commit in commits {
-            let day = Calendar.current.dateComponents([.year, .month, .day], from: commit.authorDate)
+            let day = Calendar.current.dateComponents([.year, .month, .day], from: commit.committerDate)
             if result.last?.day == day {
                 result[result.count - 1].commits.append(commit)
             } else {
-                result.append(DayGroup(id: commit.id, day: day, date: commit.authorDate, commits: [commit]))
+                result.append(DayGroup(id: commit.id, day: day, date: commit.committerDate, commits: [commit]))
             }
         }
         return result

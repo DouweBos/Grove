@@ -76,7 +76,7 @@ extension GitRepository {
     }
 
     public func log(maxCount: Int, skip: Int, revisions: [String]) async throws -> [CommitInfo] {
-        let args = ["log", "--format=\(LogParser.formatString)", "--author-date-order", "-\(maxCount)", "--skip=\(skip)"]
+        let args = ["log", "--format=\(LogParser.formatString)", "--date-order", "-\(maxCount)", "--skip=\(skip)"]
             + revisions + ["--"]
         let result = try await shell.run(args)
         return LogParser.parse(result.stdout)
