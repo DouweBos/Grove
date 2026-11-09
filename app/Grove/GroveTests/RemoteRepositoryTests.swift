@@ -9,12 +9,12 @@ import Testing
 struct RemoteRepositoryTests {
 
     @Test func remoteURLsNormalizeToTheSameKey() {
-        let key = "github.com/plexinc/react-native-client"
-        #expect(RemoteURLKey.make("git@github.com:plexinc/react-native-client.git") == key)
-        #expect(RemoteURLKey.make("https://DouweBos@github.com/plexinc/react-native-client.git") == key)
-        #expect(RemoteURLKey.make("https://github.com/plexinc/react-native-client") == key)
-        #expect(RemoteURLKey.make("ssh://git@github.com/plexinc/React-Native-Client/") == key)
-        #expect(RemoteURLKey.make("ssh://git@github.com:22/plexinc/react-native-client.git") == key)
+        let key = "github.com/acme/app"
+        #expect(RemoteURLKey.make("git@github.com:acme/app.git") == key)
+        #expect(RemoteURLKey.make("https://DouweBos@github.com/acme/app.git") == key)
+        #expect(RemoteURLKey.make("https://github.com/acme/app") == key)
+        #expect(RemoteURLKey.make("ssh://git@github.com/acme/App/") == key)
+        #expect(RemoteURLKey.make("ssh://git@github.com:22/acme/app.git") == key)
         #expect(RemoteURLKey.make("/Users/me/local/path") == nil)
     }
 

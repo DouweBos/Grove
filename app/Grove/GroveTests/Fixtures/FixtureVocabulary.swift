@@ -60,7 +60,7 @@ enum FixtureVocabulary {
                           "livetv", "profile", "onboarding", "network", "storage", "ui", "analytics", "core"]
     static let folders = ["components", "screens", "hooks", "utils", "services", "state", "styles", "__tests__"]
     static let extensions = ["tsx", "ts", "ts", "tsx", "js", "json", "swift", "kt"]
-    static let branchPrefixes = ["feature", "fix", "chore", "release", "spike", "hotfix", "douwe", "anna", "ravi"]
+    static let branchPrefixes = ["feature", "fix", "chore", "release", "spike", "hotfix", "sam", "anna", "ravi"]
 
     static func author(_ index: Int) -> (name: String, email: String) {
         let first = firstNames[index % firstNames.count]

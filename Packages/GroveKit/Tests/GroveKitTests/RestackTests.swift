@@ -150,8 +150,8 @@ struct RestackPlanTests {
 
     @Test func driftedMovesTheDriftedLayerAndEverythingAbove() {
         let plan = RestackPlan.make(MockData.linearStack, mode: .drifted, trunkRef: "refs/heads/main", headBranch: nil)
-        #expect(plan.steps.map(\.branch) == ["douwe/companion-20-music", "douwe/companion-21-ota", "douwe/companion-22-streams"])
-        #expect(plan.steps.first?.onto == "douwe/companion-19-cast-connect")
+        #expect(plan.steps.map(\.branch) == ["sam/onboarding-20-profile", "sam/onboarding-21-permissions", "sam/onboarding-22-tour"])
+        #expect(plan.steps.first?.onto == "sam/onboarding-19-sign-in")
     }
 
     @Test func ontoTrunkMovesEveryLayerRootFirst() {

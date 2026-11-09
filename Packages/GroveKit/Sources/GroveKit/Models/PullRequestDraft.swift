@@ -31,7 +31,7 @@ public nonisolated struct PullRequestDraft: Equatable, Sendable {
         return (title(fromBranch: head), body)
     }
 
-    /// "douwe/fix-login_flow" → "Fix login flow".
+    /// "sam/fix-login_flow" → "Fix login flow".
     public static func title(fromBranch branch: String) -> String {
         let last = branch.split(separator: "/").last.map(String.init) ?? branch
         let words = last.replacingOccurrences(of: "-", with: " ").replacingOccurrences(of: "_", with: " ")

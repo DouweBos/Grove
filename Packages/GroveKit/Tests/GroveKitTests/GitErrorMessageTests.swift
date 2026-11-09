@@ -44,7 +44,7 @@ struct GitErrorMessageTests {
     @Test func refRaceDropsTheRefSummaries() {
         let stderr = """
         error: cannot lock ref 'refs/remotes/origin/main': is at 136dd83a939b0c6679a4c7469ce6a7ba621e8d65 but expected 149529122725eb7a3e2403b329534a4fcc1c1c2a
-        From https://github.com/plexinc/react-native-client
+        From https://github.com/acme/app
          ! 1495291227..95cf1f02a7  main       -> origin/main  (unable to update local ref)
            2e5367a6a7..9c18d5ef57  chore/transifex_f62f419cbb -> origin/chore/transifex_f62f419cbb
          + e7f55233c6...8fcd04ae34 george/disco-8885-import-upsell -> origin/george/disco-8885-import-upsell  (forced update)

@@ -176,7 +176,7 @@ nonisolated enum StackRecognizer {
         URL(fileURLWithPath: path).resolvingSymlinksInPath().standardizedFileURL.path
     }
 
-    /// The shared leading words of the branch names (`douwe/companion-18-…` → "companion"), else the root's name.
+    /// The shared leading words of the branch names (`sam/onboarding-18-…` → "onboarding"), else the root's name.
     static func stackName(_ names: [String]) -> String {
         guard let first = names.first else { return "" }
         let tokenized = names.map(words)
@@ -188,12 +188,12 @@ nonisolated enum StackRecognizer {
         while let last = common.last, isSeparator(last) { common.removeLast() }
         let name = common.split(separator: "/").last.map { $0.joined() } ?? ""
         let rootName = first.split(separator: "/").last.map(String.init) ?? first
-        // An owner folder alone (`douwe/`) or a bare number isn't a name.
+        // An owner folder alone (`sam/`) or a bare number isn't a name.
         guard !endsAtFolder, !name.isEmpty, !name.allSatisfy({ $0.isNumber || isSeparator(String($0)) }) else { return rootName }
         return name
     }
 
-    /// `douwe/companion-18` → ["douwe", "/", "companion", "-", "18"].
+    /// `sam/onboarding-18` → ["sam", "/", "onboarding", "-", "18"].
     private static func words(_ name: String) -> [String] {
         var tokens: [String] = []
         var word = ""

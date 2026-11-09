@@ -82,7 +82,7 @@ struct FixtureSpec: Sendable {
         case .medium:
             (commits, branches, remoteBranches, tags, worktrees, submodules, files) = (2_000, 50, 80, 200, 2, 1, 600)
         case .large:
-            // Modeled on react-native-client.
+            // Modeled on a large React Native monorepo.
             (commits, branches, remoteBranches, tags, worktrees, submodules, files) = (10_000, 30, 700, 5_000, 7, 3, 3_000)
         }
     }

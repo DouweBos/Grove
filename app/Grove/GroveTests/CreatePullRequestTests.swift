@@ -23,7 +23,7 @@ struct CreatePullRequestTests {
     }
 
     @Test func severalCommitsListOldestFirstUnderABranchTitle() {
-        let prefill = PullRequestDraft.prefill(head: "douwe/add-login_screen",
+        let prefill = PullRequestDraft.prefill(head: "sam/add-login_screen",
                                                commits: [commit("Validate email"), commit("Add login view")])
         #expect(prefill.title == "Add login screen")
         #expect(prefill.body == "- Add login view\n- Validate email")

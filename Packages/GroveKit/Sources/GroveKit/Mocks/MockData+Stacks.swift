@@ -18,20 +18,20 @@ extension MockData {
             pullRequest: pr.map { BranchPullRequest(number: $0, title: branch, headBranch: branch, isDraft: true, url: "",
                                                     baseBranch: parent ?? "main", checks: $0 % 2 == 0 ? .passing : .failing) },
             mergedParent: health.contains(.parentMerged)
-                ? BranchPullRequest(number: 6300, title: "Chromecast", headBranch: parent ?? "", isDraft: false, url: "", isMerged: true)
+                ? BranchPullRequest(number: 6300, title: "Welcome", headBranch: parent ?? "", isDraft: false, url: "", isMerged: true)
                 : nil,
             ahead: ahead, behind: 0, hasUpstream: pr != nil, isHEAD: isHEAD, worktreePath: worktree, depth: depth)
     }
 
-    /// `18-chromecast → 19-cast-connect → 20-music → 21-ota → 22-streams`, 54 commits behind main.
-    public static let linearStack = BranchStack(name: "companion", trunk: "main", layers: [
-        layer("douwe/companion-18-chromecast", parent: nil, commits: 9, depth: 0, pr: 6329),
-        layer("douwe/companion-19-cast-connect", parent: "douwe/companion-18-chromecast", commits: 3, depth: 1, pr: 6330, isHEAD: true),
-        layer("douwe/companion-20-music", parent: "douwe/companion-19-cast-connect", commits: 7, depth: 2,
+    /// `18-welcome → 19-sign-in → 20-profile → 21-permissions → 22-tour`, 54 commits behind main.
+    public static let linearStack = BranchStack(name: "onboarding", trunk: "main", layers: [
+        layer("sam/onboarding-18-welcome", parent: nil, commits: 9, depth: 0, pr: 6329),
+        layer("sam/onboarding-19-sign-in", parent: "sam/onboarding-18-welcome", commits: 3, depth: 1, pr: 6330, isHEAD: true),
+        layer("sam/onboarding-20-profile", parent: "sam/onboarding-19-sign-in", commits: 7, depth: 2,
               health: [.needsRestack], pr: 6338),
-        layer("douwe/companion-21-ota", parent: "douwe/companion-20-music", commits: 1, depth: 3, pr: 6443),
-        layer("douwe/companion-22-streams", parent: "douwe/companion-21-ota", commits: 2, depth: 4,
-              health: [.noPR, .unpushed], ahead: 2, worktree: "/tmp/companion-streams")
+        layer("sam/onboarding-21-permissions", parent: "sam/onboarding-20-profile", commits: 1, depth: 3, pr: 6443),
+        layer("sam/onboarding-22-tour", parent: "sam/onboarding-21-permissions", commits: 2, depth: 4,
+              health: [.noPR, .unpushed], ahead: 2, worktree: "/tmp/onboarding-tour")
     ], trunkAhead: 54)
 
     /// `a → b → c` plus `b → d`, with `a` merged.

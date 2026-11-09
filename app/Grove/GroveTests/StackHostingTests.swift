@@ -29,21 +29,21 @@ struct StackHostingTests {
     @Test func githubReadsOpenAndMergedRowsInOneQuery() async throws {
         let response = """
         {"data":{"repository":{
-          "open":{"nodes":[{"number":6330,"title":"Cast connect","headRefName":"19-cast","baseRefName":"18-chromecast",
+          "open":{"nodes":[{"number":6330,"title":"Sign in","headRefName":"19-sign-in","baseRefName":"18-welcome",
             "headRefOid":"bbb","state":"OPEN","isDraft":true,"url":"u1",
             "commits":{"nodes":[{"commit":{"statusCheckRollup":{"state":"SUCCESS"}}}]}}]},
-          "merged":{"nodes":[{"number":6329,"title":"Chromecast","headRefName":"18-chromecast","baseRefName":"main",
+          "merged":{"nodes":[{"number":6329,"title":"Welcome","headRefName":"18-welcome","baseRefName":"main",
             "headRefOid":"aaa","state":"MERGED","isDraft":false,"url":"u0","commits":{"nodes":[]}}]}}}}
         """
         let http = FakeHTTPClient { [response] _ in (200, response) }
         let rows = try await github(http).branchPullRequests()
         #expect(rows.map(\.number) == [6330, 6329])
-        #expect(rows[0].baseBranch == "18-chromecast" && rows[0].headSHA == "bbb" && rows[0].checks == .passing)
+        #expect(rows[0].baseBranch == "18-welcome" && rows[0].headSHA == "bbb" && rows[0].checks == .passing)
         #expect(rows[1].isMerged && rows[1].headSHA == "aaa")
         let query = body(http.requests.first)["query"] as? String ?? ""
         #expect(query.contains("states: [MERGED]") && query.contains("headRefOid"))
         let index = BranchPullRequest.index(rows)
-        #expect(index["19-cast"]?.isMerged == false && index["18-chromecast"]?.isMerged == true)
+        #expect(index["19-sign-in"]?.isMerged == false && index["18-welcome"]?.isMerged == true)
     }
 
     @Test func everyHostRetargetsABase() async throws {

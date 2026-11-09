@@ -66,16 +66,16 @@ struct StackRecognizerTests {
         graph.commits(["a1", "a2"], on: "t0")
         graph.commits(["b1"], on: "a2")
         graph.commits(["c1", "c2"], on: "b1")
-        graph.branch("douwe/companion-18-chromecast", at: "a2")
-        graph.branch("douwe/companion-19-cast-connect", at: "b1")
-        graph.branch("douwe/companion-20-music", at: "c2")
+        graph.branch("sam/onboarding-18-welcome", at: "a2")
+        graph.branch("sam/onboarding-19-sign-in", at: "b1")
+        graph.branch("sam/onboarding-20-profile", at: "c2")
         let result = StackRecognizer.recognize(graph.input())
 
         #expect(result.stacks.count == 1)
         let stack = result.stacks[0]
-        #expect(stack.name == "companion")
-        #expect(stack.layers.map(\.branch) == ["douwe/companion-18-chromecast", "douwe/companion-19-cast-connect", "douwe/companion-20-music"])
-        #expect(stack.layers.map(\.parent) == [nil, "douwe/companion-18-chromecast", "douwe/companion-19-cast-connect"])
+        #expect(stack.name == "onboarding")
+        #expect(stack.layers.map(\.branch) == ["sam/onboarding-18-welcome", "sam/onboarding-19-sign-in", "sam/onboarding-20-profile"])
+        #expect(stack.layers.map(\.parent) == [nil, "sam/onboarding-18-welcome", "sam/onboarding-19-sign-in"])
         #expect(stack.layers.map(\.commits.count) == [2, 1, 2])
         #expect(stack.layers.map(\.base) == ["t0", "a2", "b1"])
         #expect(stack.layers.map(\.depth) == [0, 1, 2])
@@ -299,8 +299,8 @@ struct StackRecognizerTests {
     }
 
     @Test func stackNamesUseSharedWords() {
-        #expect(StackRecognizer.stackName(["douwe/companion-18-chromecast", "douwe/companion-19-cast"]) == "companion")
-        #expect(StackRecognizer.stackName(["douwe/one", "douwe/two"]) == "one")
+        #expect(StackRecognizer.stackName(["sam/onboarding-18-welcome", "sam/onboarding-19-sign-in"]) == "onboarding")
+        #expect(StackRecognizer.stackName(["sam/one", "sam/two"]) == "one")
         #expect(StackRecognizer.stackName(["feature-1", "feature-2"]) == "feature")
         #expect(StackRecognizer.stackName(["a", "b"]) == "a")
         #expect(StackRecognizer.stackName(["auth", "auth-tests"]) == "auth")

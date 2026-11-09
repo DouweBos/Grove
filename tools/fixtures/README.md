@@ -16,7 +16,7 @@ The first run compiles the generator (~10 s, cached in `$TMPDIR/grove-fixtures/b
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `small` | 200 | 6 | 8 | 10 | 0 | 0 | 60 | ~0.2 s |
 | `medium` | 2k | 50 | 80 | 200 | 2 | 1 | 600 | ~1 s |
-| `large` (like react-native-client) | 10k | 30 | 700 | 5k | 7 | 3 | 3k | ~6 s |
+| `large` (like a large React Native monorepo) | 10k | 30 | 700 | 5k | 7 | 3 | 3k | ~6 s |
 
 Counts: `--commits --branches --remote-branches --tags --worktrees --submodules --files`.
 

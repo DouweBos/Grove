@@ -14,7 +14,7 @@ struct RepositoryLinkParserTests {
 
         worktree /wt/feature
         HEAD 2222222222222222222222222222222222222222
-        branch refs/heads/douwe/feature
+        branch refs/heads/sam/feature
 
         worktree /wt/gone
         HEAD 3333333333333333333333333333333333333333
@@ -30,7 +30,7 @@ struct RepositoryLinkParserTests {
         let worktrees = WorktreeParser.parse(output)
         #expect(worktrees.map(\.path) == ["/repo", "/wt/feature", "/wt/gone", "/wt/locked"])
         #expect(worktrees.map(\.isMain) == [true, false, false, false])
-        #expect(worktrees[1].branch == "douwe/feature")
+        #expect(worktrees[1].branch == "sam/feature")
         #expect(worktrees[2].branch == nil && worktrees[2].isPrunable)
         #expect(worktrees[3].isLocked && !worktrees[3].isPrunable)
     }

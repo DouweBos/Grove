@@ -18,7 +18,7 @@ struct StacksSidebarTests {
         let listed = vm.localBranchGroups.flatMap(\.branches).map(\.name)
         #expect(listed == ["solo"])
         #expect(vm.stackedBranchNames.count == 9)
-        #expect(vm.stacks.map(\.name) == ["companion", "auth"])
+        #expect(vm.stacks.map(\.name) == ["onboarding", "auth"])
     }
 
     @Test func stackRowsReadInStackOrderAndStartAtTheRoot() {
