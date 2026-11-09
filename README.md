@@ -15,20 +15,36 @@ A native macOS Git client built with SwiftUI.
 - Quick actions command palette
 - Import repositories from Tower
 
+## Download
+
+Signed, notarized builds with automatic updates are at [houwert.dev/grove](https://houwert.dev/grove).
+
 ## Requirements
 
-- macOS 14+
-- Xcode 16+
+- macOS 15+
+- Xcode 26+ to build (Swift tools 6.2)
+- `git` on your `PATH`
 
-## Building
+## Building from source
 
-Open `app/Grove/Grove.xcodeproj` in Xcode and build the `Grove` scheme. It pulls in GroveKit from `Packages/GroveKit` as a local package.
+```sh
+git clone https://github.com/DouweBos/Grove.git && cd Grove
+swift build && swift test   # GroveKit
+cd app/Grove
+xcodebuild -project Grove.xcodeproj -scheme Grove -derivedDataPath build \
+  -destination 'platform=macOS,arch=arm64' build CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=
+open build/Build/Products/Debug/Grove.app
+```
+
+Or open `app/Grove/Grove.xcodeproj` in Xcode, pick your own team under Signing & Capabilities, and run the `Grove` scheme. It pulls in GroveKit from `Packages/GroveKit` as a local package; the only remote dependency is [Sparkle](https://github.com/sparkle-project/Sparkle).
+
+Grove uses no private Apple frameworks and needs no paid Apple Developer account to build and run locally: a free Apple ID or ad-hoc signing (as above) is enough. A paid account is only needed to sign with a Developer ID and notarize for distribution, which the maintainer's release workflow does. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## GroveKit
 
 GroveKit is Grove's git engine as a Swift package, for other apps that need a lighter git integration than all of Grove (Argus first). It has the engine (`GitRepository`, `GitShell`, parsers), the git models, and Grove's headless view models (history, working copy, stashes, blame, reflog, branches review, stacks, git-flow, svn) built on Observation. There is no UI in it: no SwiftUI or AppKit, and each app keeps its own views.
 
-Other apps depend on this repository by URL, pinned to a Grove release tag, and `import GroveKit`:
+GroveKit has no dependencies of its own, so it resolves as a plain public SwiftPM package. Other apps depend on this repository by URL, pinned to a Grove release tag, and `import GroveKit`:
 
 ```swift
 dependencies: [
@@ -99,3 +115,11 @@ Git CLI  →  GitRunner  →  GitShell  →  Parsers  →  Domain Types  →  Vi
 2. Raw output is parsed into domain types (`CommitInfo`, `DiffResult`, etc.) by dedicated parsers.
 3. ViewModels hold parsed data and expose it as `@Observable` state.
 4. SwiftUI views bind to ViewModel properties and trigger actions back through the protocol.
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to build, test and sign Grove yourself, and for the commit conventions. Please follow the [Code of Conduct](CODE_OF_CONDUCT.md), and report security issues privately as described in [SECURITY.md](SECURITY.md).
+
+## License
+
+Grove is released under the [MIT License](LICENSE). Copyright (c) 2026 Douwe Bos.
