@@ -6,7 +6,7 @@ default_platform(:mac)
 TEAM_ID  = "CKZT75PN5T"
 REPO     = "DouweBos/Grove"
 PROJECT  = "app/Grove/Grove.xcodeproj"
-# The houwert.dev proxy serves the appcast and archives from this private repo's releases.
+# The houwert.dev proxy serves the appcast and archives from this repo's releases.
 DOWNLOADS = "https://houwert.dev/grove/updates/"
 ROOT     = File.expand_path("..", __dir__)
 DIST     = File.join(ROOT, "dist")
