@@ -10,6 +10,7 @@ struct FileSection<Accessory: View>: View {
     @Environment(WorkingCopyViewModel.self) private var viewModel
     @AppStorage(GrovePreferences.Key.diffToolPath) private var diffToolPath = ""
     @AppStorage(GrovePreferences.Key.mergeToolPath) private var mergeToolPath = ""
+    @Environment(\.stashFiles) private var stashFiles
 
     let title: String
     let entries: [StatusEntry]
@@ -100,6 +101,9 @@ struct FileSection<Accessory: View>: View {
             Button(patchEntries.count > 1 ? "Create Patch from \(patchEntries.count) Files\u{2026}" : "Create Patch\u{2026}") {
                 Task { await savePatch(patchEntries, side: side, viewModel: viewModel) }
             }
+            Button(entries.count > 1 ? "Stash \(entries.count) Files" : "Stash") {
+                stashFiles(entries.map(\.path))
+            }
         } else if entries.count == 1 {
             Button("Resolve…") { Task { await viewModel.select(entry) } }
             if !mergeToolPath.isEmpty {
@@ -132,6 +136,11 @@ struct FileSection<Accessory: View>: View {
         }
     }
 
+}
+
+extension EnvironmentValues {
+    /// Opens the Stash sheet with these paths ticked.
+    @Entry var stashFiles: ([String]) -> Void = { _ in }
 }
 
 extension FileSection where Accessory == EmptyView {

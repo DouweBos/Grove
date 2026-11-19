@@ -22,6 +22,8 @@ final class RepositoryToolbarState {
     var isBranchPresented = false
     var isTagPresented = false
     var isStashPresented = false
+    /// Files the Stash sheet opens with ticked; `nil` stashes everything.
+    var stashPaths: Set<String>?
     var isSnapshotPresented = false
     var isMergePresented = false
     var isRebasePresented = false
@@ -55,12 +57,17 @@ final class RepositoryToolbarState {
         case .sync: isSyncPresented = true
         case .branch: isBranchPresented = true
         case .tag: isTagPresented = true
-        case .stash: isStashPresented = true
+        case .stash: stashPaths = nil; isStashPresented = true
         case .snapshot: isSnapshotPresented = true
         case .merge: isMergePresented = true
         case .rebase: isRebasePresented = true
         }
         if !refs.hasLoaded { Task { await refs.loadIfNeeded() } }
+    }
+
+    func presentStash(paths: [String]) {
+        stashPaths = Set(paths)
+        isStashPresented = true
     }
 }
 
@@ -224,7 +231,7 @@ struct RepositoryToolbarSheets<Content: View>: View {
                 CreateTagDialogView(repository: repository) { _ in onComplete() }
             }
             .sheet(isPresented: $toolbarState.isStashPresented) {
-                StashDialogView(repository: repository, onComplete: onComplete)
+                StashDialogView(repository: repository, initialPaths: toolbarState.stashPaths, onComplete: onComplete)
             }
             .sheet(isPresented: $toolbarState.isSnapshotPresented) {
                 SnapshotDialogView(repository: repository, onComplete: onComplete)

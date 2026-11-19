@@ -10,6 +10,8 @@ struct StashDialogView: View {
     @Environment(\.dismiss) private var dismiss
 
     let repository: any GitRepositoryProtocol
+    /// Opens in select-files mode with these ticked.
+    var initialPaths: Set<String>?
     var onComplete: () -> Void = {}
 
     @State private var message = ""
@@ -118,7 +120,13 @@ struct StashDialogView: View {
             statusEntries = try await repository.status().filter {
                 $0.indexStatus != .unmodified || $0.workdirStatus != .unmodified
             }
-            selectedPaths = Set(statusEntries.map(\.path))
+            let all = Set(statusEntries.map(\.path))
+            if let initialPaths, !initialPaths.isEmpty {
+                selectedPaths = initialPaths.intersection(all)
+                selectFiles = true
+            } else {
+                selectedPaths = all
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
