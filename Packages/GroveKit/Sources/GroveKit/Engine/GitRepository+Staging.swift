@@ -24,26 +24,6 @@ extension GitRepository {
         }
     }
 
-    public func stageHunk(_ hunk: HunkData, in file: String) async throws {
-        let patch = DiffParser.buildPatch(from: hunk, filePath: file)
-        try await applyPatch(patch, cached: true)
-    }
-
-    public func unstageHunk(_ hunk: HunkData, in file: String) async throws {
-        let patch = DiffParser.buildPatch(from: hunk, filePath: file)
-        try await applyPatch(patch, cached: true, reverse: true)
-    }
-
-    public func stageLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
-        let patch = DiffParser.buildPatch(from: lines, in: hunk, filePath: file)
-        try await applyPatch(patch, cached: true)
-    }
-
-    public func unstageLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
-        let patch = DiffParser.buildPatch(from: lines, in: hunk, filePath: file)
-        try await applyPatch(patch, cached: true, reverse: true)
-    }
-
     public func stageAll() async throws {
         try await shell.run(["add", "-A"])
     }
@@ -67,42 +47,12 @@ extension GitRepository {
         }
     }
 
-    public func discardHunk(_ hunk: HunkData, in file: String) async throws {
-        // Apply a reverse patch to the working tree (no --cached).
-        let patch = DiffParser.buildReversePatch(from: hunk, filePath: file)
-        try await applyPatch(patch, cached: false, reverse: false)
-    }
-
-    public func discardLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws {
-        // Apply a reverse patch for the selected lines to the working tree.
-        let patch = DiffParser.buildPatch(from: lines, in: hunk, filePath: file)
-        try await applyPatch(patch, cached: false, reverse: true)
-    }
-
     // MARK: - Diff
 
     public func diff(for entry: StatusEntry, staged: Bool, ignoreWhitespace: Bool = false) async throws -> DiffResult {
-        var args: [String]
-        if staged {
-            // diff HEAD → index (what would be committed)
-            args = ["diff", "--cached", "-U3"]
-        } else {
-            // diff index → working tree (unstaged changes)
-            args = ["diff", "-U3"]
-        }
-        if ignoreWhitespace { args.append("-w") }
-        let output: String
-        if !staged && entry.workdirStatus == .untracked {
-            // Untracked files are invisible to `git diff`; compare against an empty file. Exit 1 means "differs".
-            let result = try await shell.runAllowingFailure(args + ["--no-index", "--", "/dev/null", entry.path])
-            guard result.exitCode <= 1 else {
-                throw GitShellError.nonZeroExit(command: "git diff --no-index", exitCode: result.exitCode, stderr: result.stderr)
-            }
-            output = result.stdout
-        } else {
-            output = try await shell.run(args + ["--", entry.path]).stdout
-        }
-        return DiffParser.parseSingleFile(output) ?? DiffResult(
+        let untracked = !staged && entry.workdirStatus == .untracked
+        let output = try await workingDiff(entry.path, staged: staged, untracked: untracked, ignoreWhitespace: ignoreWhitespace)
+        return Self.section(for: entry.path, in: DiffParser.parse(output.stdout)) ?? DiffResult(
             filePath: entry.path,
             oldPath: nil,
             isBinary: false,
@@ -149,6 +99,6 @@ extension GitRepository {
 
     public func filesInCommit(_ sha: String) async throws -> [String] {
         let result = try await shell.run(["ls-tree", "-r", "--name-only", "--full-tree", sha])
-        return result.stdout.split(separator: "\n").map(String.init)
+        return result.stdout.split(separator: "\n").map { GitPathQuoting.unquote(String($0)) }
     }
 }

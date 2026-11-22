@@ -82,7 +82,7 @@ extension GitRepository {
         output.split(separator: "\n").compactMap { line in
             let parts = line.split(separator: "\t", maxSplits: 2).map(String.init)
             guard parts.count == 3 else { return nil }
-            return ChangedFileStat(path: parts[2], additions: Int(parts[0]), deletions: Int(parts[1]))
+            return ChangedFileStat(path: GitPathQuoting.unquote(parts[2]), additions: Int(parts[0]), deletions: Int(parts[1]))
         }
     }
 

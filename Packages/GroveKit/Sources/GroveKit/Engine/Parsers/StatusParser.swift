@@ -56,7 +56,7 @@ enum StatusParser {
         guard parts.count >= 9, parts[0] == "1" else { return nil }
 
         let xy   = parts[1]
-        let path = parts[8...].joined(separator: " ")
+        let path = GitPathQuoting.unquote(parts[8...].joined(separator: " "))
 
         let indexStatus  = fileStatus(from: xy.first)
         let workdirStatus = fileStatus(from: xy.dropFirst().first)
@@ -75,7 +75,7 @@ enum StatusParser {
         // Fields 9..end contain "path\torigPath"
         let pathField = parts[9...].joined(separator: " ")
         // The destination path comes before the tab.
-        let path  = pathField.components(separatedBy: "\t").first ?? pathField
+        let path  = GitPathQuoting.unquote(pathField.components(separatedBy: "\t").first ?? pathField)
 
         let indexStatus  = fileStatus(from: xy.first)
         let workdirStatus = fileStatus(from: xy.dropFirst().first)
@@ -90,7 +90,7 @@ enum StatusParser {
         let parts = line.components(separatedBy: " ")
         guard parts.count >= 11, parts[0] == "u" else { return nil }
 
-        let path = parts[10...].joined(separator: " ")
+        let path = GitPathQuoting.unquote(parts[10...].joined(separator: " "))
 
         // Both index and workdir are treated as conflicted for unmerged entries.
         return StatusEntry(id: path, path: path, indexStatus: .conflicted, workdirStatus: .conflicted)
@@ -100,7 +100,7 @@ enum StatusParser {
 
     nonisolated private static func parseUntracked(_ line: String, status: FileStatus) -> StatusEntry? {
         guard line.count > 2 else { return nil }
-        let path = String(line.dropFirst(2))
+        let path = GitPathQuoting.unquote(String(line.dropFirst(2)))
         guard !path.isEmpty else { return nil }
         return StatusEntry(id: path, path: path, indexStatus: .unmodified, workdirStatus: status)
     }

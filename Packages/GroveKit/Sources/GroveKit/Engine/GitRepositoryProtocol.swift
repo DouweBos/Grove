@@ -40,6 +40,7 @@ public protocol GitRepositoryProtocol: AnyObject, Observable, StackGitOperations
 
     func stage(paths: [String]) async throws
     func unstage(paths: [String]) async throws
+    /// Hunk and line actions take what `diff(for:staged:ignoreWhitespace:)` returned and throw once that is out of date.
     func stageHunk(_ hunk: HunkData, in file: String) async throws
     func unstageHunk(_ hunk: HunkData, in file: String) async throws
     func stageLines(_ lines: [DiffLine], in hunk: HunkData, file: String) async throws

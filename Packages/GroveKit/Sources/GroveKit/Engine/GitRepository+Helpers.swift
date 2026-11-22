@@ -135,7 +135,8 @@ extension GitRepository {
         var args = ["apply"]
         if cached { args.append("--cached") }
         if reverse { args.append("--reverse") }
-        args += ["--whitespace=nowarn", "-"]
+        // apply.ignoreWhitespace would let a patch land on content it didn't show.
+        args += ["--whitespace=nowarn", "--no-ignore-whitespace", "-"]
 
         do {
             try await shell.runWithInput(args, input: patch)
@@ -196,7 +197,7 @@ extension GitRepository {
             let parts = line.components(separatedBy: "\t")
             guard parts.count >= 2 else { continue }
             let statusChar = parts[0].prefix(1)
-            let path       = parts.last ?? parts[1]
+            let path       = GitPathQuoting.unquote(parts.last ?? parts[1])
             let status: FileStatus
             switch statusChar {
             case "A": status = .added

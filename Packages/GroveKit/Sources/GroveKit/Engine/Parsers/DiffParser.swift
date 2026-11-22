@@ -7,6 +7,7 @@
 // Unified diff reference:
 //   https://www.gnu.org/software/diffutils/manual/html_node/Unified-Format.html
 
+import CryptoKit
 import Foundation
 
 // MARK: - DiffParser
@@ -31,7 +32,8 @@ public enum DiffParser {
 
         var results: [DiffResult] = []
         // Split into per-file sections at "diff --git" boundaries.
-        let lines = output.components(separatedBy: "\n")
+        // On bytes: as Characters "\r\n" is one, and "+" joins a combining mark after it.
+        let lines = output.utf8.split(separator: 0x0A, omittingEmptySubsequences: false).map { String(decoding: $0, as: UTF8.self) }
         var i = 0
 
         while i < lines.count {
@@ -58,7 +60,7 @@ public enum DiffParser {
             let parts = line.split(separator: "\t").map(String.init)
             guard parts.count >= 2, let code = parts[0].first,
                   let status = FileStatus(rawValue: String(code)) else { continue }
-            statuses[parts[parts.count - 1]] = status
+            statuses[GitPathQuoting.unquote(parts[parts.count - 1])] = status
         }
         return parse(patch).map { diff in
             FileDiff(path: diff.filePath, status: statuses[diff.filePath] ?? inferStatus(diff),
@@ -98,6 +100,7 @@ public enum DiffParser {
         i += 1
 
         var isBinary = false
+        var change = FileChange.content
         var newFilePath = filePath
         var renamedOldPath: String? = oldPath != filePath ? oldPath : nil
 
@@ -110,25 +113,30 @@ public enum DiffParser {
             if line.hasPrefix("Binary files") || line.hasPrefix("GIT binary patch") {
                 isBinary = true
             }
+            if line.hasPrefix("new file mode ") {
+                change = .added(mode: String(line.dropFirst("new file mode ".count)))
+            }
+            if line.hasPrefix("deleted file mode ") {
+                change = .deleted(mode: String(line.dropFirst("deleted file mode ".count)))
+            }
             if line.hasPrefix("rename to ") {
-                newFilePath = String(line.dropFirst("rename to ".count))
+                newFilePath = GitPathQuoting.unquote(String(line.dropFirst("rename to ".count)))
+                change = .renamed
             }
             if line.hasPrefix("rename from ") {
-                renamedOldPath = String(line.dropFirst("rename from ".count))
-            }
-            if line.hasPrefix("+++ b/") {
-                newFilePath = String(line.dropFirst("+++ b/".count))
+                renamedOldPath = GitPathQuoting.unquote(String(line.dropFirst("rename from ".count)))
             }
             i += 1
         }
 
         // Skip `---` and `+++` header lines if not yet consumed.
         while i < lines.count && (lines[i].hasPrefix("--- ") || lines[i].hasPrefix("+++ ")) {
-            if lines[i].hasPrefix("+++ b/") {
-                newFilePath = String(lines[i].dropFirst("+++ b/".count))
+            if let path = headerPath(lines[i], marker: "+++ ", side: "b/") {
+                newFilePath = path
             }
             i += 1
         }
+        let identity = "\(change)\n\(renamedOldPath ?? "")\n\(newFilePath)\n"
 
         // Parse hunks.
         var hunks: [HunkData] = []
@@ -137,7 +145,7 @@ public enum DiffParser {
 
         while i < lines.count && !lines[i].hasPrefix("diff --git ") {
             if lines[i].hasPrefix("@@ ") {
-                if let (hunk, next) = parseHunk(lines: lines, startIndex: i) {
+                if let (hunk, next) = parseHunk(lines: lines, startIndex: i, file: identity) {
                     additions += hunk.lines.filter { $0.type == .addition }.count
                     deletions += hunk.lines.filter { $0.type == .deletion }.count
                     hunks.append(hunk)
@@ -150,7 +158,7 @@ public enum DiffParser {
             }
         }
 
-        let result = DiffResult(
+        var result = DiffResult(
             filePath: newFilePath,
             oldPath: renamedOldPath,
             isBinary: isBinary,
@@ -158,6 +166,7 @@ public enum DiffParser {
             stats: DiffStats(additions: additions, deletions: deletions)
         )
 
+        result.change = change
         return (result, i)
     }
 
@@ -168,7 +177,8 @@ public enum DiffParser {
     /// - Returns: A `(HunkData, nextLineIndex)` tuple, or `nil` on parse failure.
     nonisolated private static func parseHunk(
         lines: [String],
-        startIndex: Int
+        startIndex: Int,
+        file: String
     ) -> (HunkData, Int)? {
         let headerLine = lines[startIndex]
         guard headerLine.hasPrefix("@@ ") else { return nil }
@@ -177,46 +187,34 @@ public enum DiffParser {
             return nil
         }
 
-        let hunkID = "\(headerLine.hashValue)"
+        var end = startIndex + 1
+        while end < lines.count, !lines[end].hasPrefix("@@ "), !lines[end].hasPrefix("diff --git ") { end += 1 }
+        let next = end
+        // The output's trailing newline leaves an empty last element; it is not a context line.
+        if end == lines.count, end > startIndex + 1, lines[end - 1].isEmpty { end -= 1 }
+
+        let hunkID = hunkID(file: file, lines: lines[startIndex..<end])
         var diffLines: [DiffLine] = []
         var oldLine = oldStart
         var newLine = newStart
-        var i = startIndex + 1
 
-        while i < lines.count {
-            let line = lines[i]
-
-            // Stop at next hunk or next file diff.
-            if line.hasPrefix("@@ ") || line.hasPrefix("diff --git ") { break }
-
-            // Some diffs include a `\ No newline at end of file` marker.
-            if line.hasPrefix("\\ ") { i += 1; continue }
-
-            // The output's trailing newline leaves an empty last element; it is not a context line.
-            if line.isEmpty && i == lines.count - 1 { i += 1; continue }
-
-            let lineType: DiffLineType
-            let content: String
-
-            if let first = line.first {
-                switch first {
-                case "+":
-                    lineType = .addition
-                    content = String(line.dropFirst())
-                case "-":
-                    lineType = .deletion
-                    content = String(line.dropFirst())
-                default:
-                    lineType = .context
-                    // Context lines start with a space; strip it.
-                    content = line.hasPrefix(" ") ? String(line.dropFirst()) : line
-                }
-            } else {
-                lineType = .context
-                content = ""
+        for line in lines[(startIndex + 1)..<end] {
+            let marker = line.utf8.first
+            if marker == UInt8(ascii: "\\") {
+                // `\ No newline at end of file` belongs to the line above it.
+                if !diffLines.isEmpty { diffLines[diffLines.count - 1].endsWithoutNewline = true }
+                continue
             }
 
-            let lineID = "\(hunkID)-\(i)"
+            let lineType: DiffLineType = switch marker {
+            case UInt8(ascii: "+"): .addition
+            case UInt8(ascii: "-"): .deletion
+            default: .context
+            }
+            // An empty context line may come without its leading space (diff.suppressBlankEmpty).
+            let hasPrefix = lineType != .context || marker == UInt8(ascii: " ")
+            let content = hasPrefix ? String(decoding: line.utf8.dropFirst(), as: UTF8.self) : line
+            let lineID = "\(hunkID)-\(diffLines.count)"
             let diffLine: DiffLine
 
             switch lineType {
@@ -236,11 +234,10 @@ public enum DiffParser {
             }
 
             diffLines.append(diffLine)
-            i += 1
         }
 
         let hunk = HunkData(
-            id: "\(headerLine.hashValue)",
+            id: hunkID,
             header: headerLine,
             oldStart: oldStart,
             oldCount: oldCount,
@@ -249,7 +246,18 @@ public enum DiffParser {
             lines: diffLines
         )
 
-        return (hunk, i)
+        return (hunk, next)
+    }
+
+    /// Covers the file's change and every byte of the hunk, so an id never outlives what it showed.
+    nonisolated private static func hunkID(file: String, lines: ArraySlice<String>) -> String {
+        var hasher = SHA256()
+        hasher.update(data: Data(file.utf8))
+        for line in lines {
+            hasher.update(data: Data(line.utf8))
+            hasher.update(data: Data([0x0A]))
+        }
+        return hasher.finalize().prefix(16).map { ($0 < 16 ? "0" : "") + String($0, radix: 16) }.joined()
     }
 
     // MARK: Header Parsing Helpers
@@ -286,19 +294,35 @@ public enum DiffParser {
         return (oldStart, oldCount, newStart, newCount)
     }
 
+    /// The path of a `--- a/…` or `+++ b/…` line, or nil for another kind of name.
+    nonisolated private static func headerPath(_ line: String, marker: String, side: String) -> String? {
+        guard line.hasPrefix(marker) else { return nil }
+        var field = String(line.dropFirst(marker.count))
+        // git ends names containing spaces with a tab.
+        if field.hasSuffix("\t") { field.removeLast() }
+        let name = GitPathQuoting.unquote(field)
+        return name.hasPrefix(side) ? String(name.dropFirst(side.count)) : nil
+    }
+
     /// Extract the destination and source file paths from a `diff --git a/... b/...` line.
     nonisolated private static func extractPaths(from diffLine: String) -> (filePath: String, oldPath: String) {
-        // Format: `diff --git a/path/to/file b/path/to/file`
-        // The paths may contain spaces, which makes naive splitting unreliable.
-        // Strategy: strip prefix, then find the split point where ` b/` occurs.
-        let prefix = "diff --git a/"
-        guard diffLine.hasPrefix(prefix) else {
-            return (diffLine, diffLine)
+        // Format: `diff --git a/path/to/file b/path/to/file`, either name possibly quoted.
+        let names = String(diffLine.dropFirst("diff --git ".count))
+        if let old = GitPathQuoting.leadingToken(of: names) {
+            let new = GitPathQuoting.unquote(String(old.rest.dropFirst()))
+            return (String(new.dropFirst(2)), String(old.path.dropFirst(2)))
         }
+        guard names.hasPrefix("a/") else { return (diffLine, diffLine) }
 
-        let rest = String(diffLine.dropFirst(prefix.count))
+        let rest = String(names.dropFirst(2))
+        // Without a rename both names are the same, which settles paths that contain ` b/`.
+        let half = rest.prefix(max(0, (rest.count - 3) / 2))
+        if rest == "\(half) b/\(half)" { return (String(half), String(half)) }
+        if let separatorRange = rest.range(of: " \"b/", options: .backwards) {
+            let new = GitPathQuoting.unquote(String(rest[rest.index(after: separatorRange.lowerBound)...]))
+            return (String(new.dropFirst(2)), String(rest[..<separatorRange.lowerBound]))
+        }
         // Find ` b/` — the separator between old and new path.
-        // We look for the LAST occurrence to handle paths containing ` b/`.
         if let separatorRange = rest.range(of: " b/", options: .backwards) {
             let oldPath = String(rest[rest.startIndex..<separatorRange.lowerBound])
             let newPath = String(rest[separatorRange.upperBound...])
@@ -306,130 +330,5 @@ public enum DiffParser {
         }
 
         return (rest, rest)
-    }
-
-    // MARK: Patch Construction
-
-    /// Build a minimal unified diff patch from a single hunk.
-    ///
-    /// Used by ``GitRepository`` when applying or reversing individual hunks via
-    /// `git apply --cached`.
-    ///
-    /// - Parameters:
-    ///   - hunk: The hunk to wrap into a patch.
-    ///   - filePath: Destination file path (relative to repo root).
-    ///   - oldPath: Source file path; defaults to `filePath`.
-    /// - Returns: A complete patch string suitable for `git apply`.
-    nonisolated static func buildPatch(
-        from hunk: HunkData,
-        filePath: String,
-        oldPath: String? = nil
-    ) -> String {
-        let src = oldPath ?? filePath
-        var patch = ""
-        patch += "diff --git a/\(src) b/\(filePath)\n"
-        patch += "--- a/\(src)\n"
-        patch += "+++ b/\(filePath)\n"
-        patch += hunk.header + "\n"
-        for line in hunk.lines {
-            switch line.type {
-            case .addition: patch += "+\(line.content)\n"
-            case .deletion: patch += "-\(line.content)\n"
-            case .context:  patch += " \(line.content)\n"
-            }
-        }
-        return patch
-    }
-
-    /// Build a reverse patch from a hunk (for unstaging or discarding).
-    ///
-    /// Swaps `+` and `-` lines and adjusts the hunk header accordingly.
-    nonisolated static func buildReversePatch(
-        from hunk: HunkData,
-        filePath: String,
-        oldPath: String? = nil
-    ) -> String {
-        let src = oldPath ?? filePath
-        // Reverse header: swap old/new line numbers.
-        let reverseHeader = "@@ -\(hunk.newStart),\(hunk.newCount) +\(hunk.oldStart),\(hunk.oldCount) @@"
-
-        var patch = ""
-        patch += "diff --git a/\(src) b/\(filePath)\n"
-        patch += "--- a/\(src)\n"
-        patch += "+++ b/\(filePath)\n"
-        patch += reverseHeader + "\n"
-        for line in hunk.lines {
-            switch line.type {
-            case .addition: patch += "-\(line.content)\n"
-            case .deletion: patch += "+\(line.content)\n"
-            case .context:  patch += " \(line.content)\n"
-            }
-        }
-        return patch
-    }
-
-    /// Build a patch from a specific subset of lines within a hunk.
-    ///
-    /// Lines not in `selectedLines` are converted to context lines.
-    nonisolated static func buildPatch(
-        from selectedLines: [DiffLine],
-        in hunk: HunkData,
-        filePath: String,
-        oldPath: String? = nil
-    ) -> String {
-        let src = oldPath ?? filePath
-        let selectedIDs = Set(selectedLines.map(\.id))
-
-        // Build the effective line list: selected changes become real +/-, others become context.
-        var patchLines: [(DiffLineType, String)] = []
-        var newOldCount = 0
-        var newNewCount = 0
-
-        for line in hunk.lines {
-            let effectiveType: DiffLineType
-            let effectiveContent: String
-
-            if selectedIDs.contains(line.id) {
-                effectiveType    = line.type
-                effectiveContent = line.content
-            } else {
-                switch line.type {
-                case .addition:
-                    // Unselected additions are skipped entirely (do not appear in patch).
-                    continue
-                case .deletion:
-                    // Unselected deletions become context lines.
-                    effectiveType    = .context
-                    effectiveContent = line.content
-                case .context:
-                    effectiveType    = .context
-                    effectiveContent = line.content
-                }
-            }
-
-            patchLines.append((effectiveType, effectiveContent))
-
-            switch effectiveType {
-            case .addition: newNewCount += 1
-            case .deletion: newOldCount += 1
-            case .context:  newOldCount += 1; newNewCount += 1
-            }
-        }
-
-        let header = "@@ -\(hunk.oldStart),\(newOldCount) +\(hunk.newStart),\(newNewCount) @@"
-
-        var patch = ""
-        patch += "diff --git a/\(src) b/\(filePath)\n"
-        patch += "--- a/\(src)\n"
-        patch += "+++ b/\(filePath)\n"
-        patch += header + "\n"
-        for (type, content) in patchLines {
-            switch type {
-            case .addition: patch += "+\(content)\n"
-            case .deletion: patch += "-\(content)\n"
-            case .context:  patch += " \(content)\n"
-            }
-        }
-        return patch
     }
 }

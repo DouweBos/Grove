@@ -15,6 +15,8 @@ public struct DiffResult: Sendable {
     public let isBinary: Bool
     public let hunks: [HunkData]
     public let stats: DiffStats
+    /// What happens to the file itself, which a patch for part of it has to restate.
+    var change: FileChange = .content
 
     public nonisolated init(filePath: String, oldPath: String? = nil, isBinary: Bool = false, hunks: [HunkData], stats: DiffStats) {
         self.filePath = filePath
@@ -23,6 +25,15 @@ public struct DiffResult: Sendable {
         self.hunks = hunks
         self.stats = stats
     }
+}
+
+// MARK: - FileChange
+
+nonisolated enum FileChange: Hashable, Sendable {
+    case content
+    case added(mode: String)
+    case deleted(mode: String)
+    case renamed
 }
 
 // MARK: - DiffStats
@@ -42,7 +53,7 @@ public struct DiffStats: Hashable, Sendable {
 
 /// One contiguous changed region inside a diff.
 public struct HunkData: Identifiable, Hashable, Sendable {
-    /// Derived from the hunk header string; stable within a diff result.
+    /// Derived from the file's change and the hunk's content, so it changes whenever either does.
     public let id: String
     /// Raw hunk header, e.g. `@@ -10,6 +10,8 @@ func foo() {`.
     public let header: String
@@ -75,6 +86,8 @@ public struct DiffLine: Identifiable, Hashable, Sendable {
     public let oldLineNumber: Int?
     /// Line number in the new file; `nil` for deletion lines.
     public let newLineNumber: Int?
+    /// The file ends after this line, without a newline.
+    var endsWithoutNewline = false
 
     public init(id: String, type: DiffLineType, content: String, oldLineNumber: Int? = nil, newLineNumber: Int? = nil) {
         self.id = id

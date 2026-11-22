@@ -86,6 +86,8 @@ public final class GitRepository: GitRepositoryProtocol {
     // MARK: Private
 
     let shell: GitShell
+    /// The newest hunk action, which the next one waits for.
+    @ObservationIgnored var lastHunkChange: Task<Void, Never>?
     /// Where pull requests and CI runs come from.
     let hosting: any RepositoryHosting
     /// Names of the scratch files, state and config GroveKit writes.
@@ -153,7 +155,7 @@ public final class GitRepository: GitRepositoryProtocol {
         let result = try await shell.run(["ls-files"])
         return result.stdout
             .split(separator: "\n")
-            .map(String.init)
+            .map { GitPathQuoting.unquote(String($0)) }
             .filter { !$0.isEmpty }
     }
 }
