@@ -205,6 +205,29 @@ struct DiffTableTests {
         #expect(try probe.table.selectedRowIndexes == [2])
     }
 
+    @Test func aChangedWordIsPaintedInTheWordFillOverItsLines() throws {
+        let probe = DiffTableProbe()
+        defer { probe.close() }
+        var style = GitUIStyle.system
+        style.success = Color(.sRGB, red: 0, green: 0, blue: 1, opacity: 1)
+        probe.show(DiffFixture.diff(["-+"]) { $0 == 0 ? "let a = 1" : "let a = 22" }, style: style)
+        let view = try probe.cell(2, DiffLineView.self)
+        probe.layout()
+        let bitmap = try #require(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        let scale = CGFloat(bitmap.pixelsWide) / view.bounds.width
+        let geometry = probe.coordinator.geometry
+        func opacity(column: CGFloat) -> CGFloat {
+            // Above the glyphs, so only the fills are there.
+            let x = geometry.textX + column * geometry.metrics.characterWidth
+            return bitmap.colorAt(x: Int(x * scale), y: 0)?.alphaComponent ?? -1
+        }
+        let line = 0.12
+        let word = 0.3 + line * (1 - 0.3)
+        #expect(abs(opacity(column: 1.5) - line) < 0.02, "an unchanged word has only the line's fill")
+        #expect(abs(opacity(column: 8.5) - word) < 0.02, "the changed word has the word fill over it")
+    }
+
     @Test func zoomResizesLiveRows() throws {
         let probe = DiffTableProbe()
         defer { probe.close() }
