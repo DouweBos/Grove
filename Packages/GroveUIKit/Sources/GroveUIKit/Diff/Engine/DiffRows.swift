@@ -67,10 +67,11 @@ nonisolated enum DiffRowBuilder {
 
     /// The rows, and where each hunk's begin.
     static func build(_ diff: DiffResult, layout: GitDiffLayout,
-                      placements: [DiffPlacement] = []) -> (rows: [DiffRow], starts: [Int]) {
+                      placements: [DiffPlacement] = []) -> (rows: [DiffRow], starts: [Int], annotated: IndexSet) {
         let hunks = diff.hunks
         var rows: [DiffRow] = []
         var starts: [Int] = []
+        var annotated = IndexSet()
         var capacity = placements.count + hunks.count
         for hunk in hunks { capacity += hunk.lines.count }
         rows.reserveCapacity(capacity)
@@ -80,16 +81,22 @@ nonisolated enum DiffRowBuilder {
             starts.append(rows.count)
             rows.append(DiffRow(hunk: h, kind: .header))
             let under = byHunk[h].map { Dictionary(grouping: $0, by: \.line) }
+            // Looked up per line: a dictionary's hashing would double a big diff's build.
+            var hasAnnotation = under == nil ? [] : [Bool](repeating: false, count: hunk.lines.count)
+            if let under { for line in under.keys where hasAnnotation.indices.contains(line) { hasAnnotation[line] = true } }
             func addAnnotations(_ line: Int?) {
-                guard let line, let placed = under?[line] else { return }
-                for placement in placed { rows.append(DiffRow(hunk: h, kind: .annotation(placement.annotation))) }
+                guard let line, hasAnnotation[line], let placed = under?[line] else { return }
+                for placement in placed {
+                    annotated.insert(rows.count)
+                    rows.append(DiffRow(hunk: h, kind: .annotation(placement.annotation)))
+                }
             }
             switch layout {
             case .inline:
                 var index = 0
                 while index < hunk.lines.count {
                     rows.append(DiffRow(hunk: h, kind: .line(index)))
-                    if under != nil { addAnnotations(index) }
+                    if under != nil, hasAnnotation[index] { addAnnotations(index) }
                     index += 1
                 }
             case .split:
@@ -102,7 +109,7 @@ nonisolated enum DiffRowBuilder {
                 }
             }
         }
-        return (rows, starts)
+        return (rows, starts, annotated)
     }
 
     /// Context lines sit on both sides; a run of deletions pairs up with the run of additions after it,

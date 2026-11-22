@@ -5,6 +5,7 @@
 
 #if os(macOS)
 import AppKit
+import CoreText
 import GroveKit
 
 struct DiffHunkButton: Equatable {
@@ -27,6 +28,7 @@ final class DiffHunkHeaderView: NSView, DiffRowContent {
     private var items: [DiffHunkButton] = []
     private(set) var buttons: [DiffActionButton] = []
     private var perform: ((HunkAction) -> Void)?
+    private var headerLine: CTLine?
 
     override var isFlipped: Bool { true }
 
@@ -36,6 +38,7 @@ final class DiffHunkHeaderView: NSView, DiffRowContent {
         self.palette = palette
         self.metrics = metrics
         self.perform = perform
+        headerLine = nil
         setButtons(items)
         for button in buttons { button.configure(palette: palette, metrics: metrics) }
         layoutButtons()
@@ -96,21 +99,33 @@ final class DiffHunkHeaderView: NSView, DiffRowContent {
         guard let palette, let metrics else { return }
         palette.headerFill.setFill()
         bounds.fill()
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.lineBreakMode = .byTruncatingTail
+        guard let context = NSGraphicsContext.current?.cgContext else { return }
         let end = (buttons.first?.frame.minX ?? bounds.width) - GitMetrics.Spacing.sm
-        let height = ceil(metrics.font.ascender - metrics.font.descender + metrics.font.leading)
-        let rect = NSRect(x: GitMetrics.Spacing.md, y: ((bounds.height - height) / 2).rounded(),
-                          width: max(0, end - GitMetrics.Spacing.md), height: height)
-        (header as NSString).draw(
-            with: rect, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
-            attributes: [.font: metrics.font, .foregroundColor: palette.secondary, .paragraphStyle: paragraph])
+        let room = max(0, end - GitMetrics.Spacing.md)
+        // Core Text, kept: laying the string out again on every step of a resize is a stutter.
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: metrics.font, NSAttributedString.Key(kCTForegroundColorFromContextAttributeName as String): true,
+        ]
+        let line = headerLine ?? CTLineCreateWithAttributedString(NSAttributedString(string: header, attributes: attributes))
+        headerLine = line
+        var shown: CTLine? = line
+        if CTLineGetTypographicBounds(line, nil, nil, nil) > Double(room) {
+            let ellipsis = CTLineCreateWithAttributedString(NSAttributedString(string: "\u{2026}", attributes: attributes))
+            shown = CTLineCreateTruncatedLine(line, Double(room), .end, ellipsis)
+        }
+        guard let shown else { return }
+        context.setFillColor(palette.secondary.cgColor)
+        context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
+        let top = ((bounds.height - metrics.lineHeight) / 2).rounded()
+        context.textPosition = CGPoint(x: GitMetrics.Spacing.md, y: top + metrics.baseline)
+        CTLineDraw(shown, context)
     }
 }
 
 final class DiffActionButton: NSButton {
     let item: DiffHunkButton
     private var palette: DiffPalette?
+    private var textSize = NSSize.zero
 
     init(_ item: DiffHunkButton) {
         self.item = item
@@ -126,18 +141,16 @@ final class DiffActionButton: NSButton {
 
     func configure(palette: DiffPalette, metrics: DiffMetrics) {
         self.palette = palette
-        font = metrics.buttonFont
-        invalidateIntrinsicContentSize()
+        // Setting the font re-lays out a button's cell, so only when it changed.
+        if font != metrics.buttonFont || textSize == .zero {
+            font = metrics.buttonFont
+            textSize = (title as NSString).size(withAttributes: [.font: metrics.buttonFont])
+        }
         needsDisplay = true
     }
 
-    private var textSize: NSSize {
-        (title as NSString).size(withAttributes: font.map { [.font: $0] } ?? [:])
-    }
-
     override var intrinsicContentSize: NSSize {
-        let size = textSize
-        return NSSize(width: ceil(size.width) + GitMetrics.Spacing.sm * 2, height: ceil(size.height) + 6)
+        NSSize(width: ceil(textSize.width) + GitMetrics.Spacing.sm * 2, height: ceil(textSize.height) + 6)
     }
 
     override func resetCursorRects() {
@@ -147,11 +160,19 @@ final class DiffActionButton: NSButton {
 
     override func draw(_ dirtyRect: NSRect) {
         guard let palette, let font, let context = NSGraphicsContext.current?.cgContext else { return }
-        context.saveGState()
-        defer { context.restoreGState() }
-        if isHighlighted { context.setAlpha(0.6) }
-        context.beginTransparencyLayer(auxiliaryInfo: nil)
-        defer { context.endTransparencyLayer() }
+        // Only a pressed button pays for a layer to fade as one.
+        let dims = isHighlighted
+        if dims {
+            context.saveGState()
+            context.setAlpha(0.6)
+            context.beginTransparencyLayer(auxiliaryInfo: nil)
+        }
+        defer {
+            if dims {
+                context.endTransparencyLayer()
+                context.restoreGState()
+            }
+        }
         let destructive = item.action.isDestructive
         let shape = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.25, dy: 0.25),
                                  xRadius: GitMetrics.Radius.tile, yRadius: GitMetrics.Radius.tile)

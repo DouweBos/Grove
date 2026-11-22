@@ -11,6 +11,7 @@ final class DiffEmbeddedView: NSView {
     private let scroll: NSScrollView
     private var observed: [NSView] = []
     private var isSyncing = false
+    private var pendingShift: CGFloat = 0
     var onSync: (() -> Void)?
 
     init(scroll: NSScrollView) {
@@ -18,6 +19,7 @@ final class DiffEmbeddedView: NSView {
         super.init(frame: .zero)
         clipsToBounds = true
         addSubview(scroll)
+        (scroll.contentView as? DiffClipView)?.onShift = { [weak self] shift in self?.contentShifted(by: shift) }
     }
 
     @available(*, unavailable)
@@ -71,6 +73,29 @@ final class DiffEmbeddedView: NSView {
 
     @objc func sync() {
         guard !isSyncing else { return }
+        followScreen()
+        followShift()
+    }
+
+    /// The lines above turned out taller or shorter: the app's scroll view moves as much.
+    private func followShift() {
+        guard pendingShift != 0, let outer = enclosingScrollView else { return }
+        let shift = pendingShift
+        pendingShift = 0
+        let origin = outer.contentView.bounds.origin
+        outer.contentView.scroll(to: NSPoint(x: origin.x, y: max(0, origin.y + shift)))
+        outer.reflectScrolledClipView(outer.contentView)
+    }
+
+    private func contentShifted(by shift: CGFloat) {
+        // Off screen there's nothing to hold still.
+        guard scroll.frame.height > 0 else { return }
+        pendingShift += shift
+        if !isSyncing { followShift() }
+    }
+
+    /// Puts the table on what's on screen.
+    private func followScreen() {
         isSyncing = true
         defer { isSyncing = false }
         let onScreen = window == nil ? NSRect.zero : visibleRect.intersection(bounds)

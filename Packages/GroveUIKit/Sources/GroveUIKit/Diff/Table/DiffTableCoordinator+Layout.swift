@@ -20,6 +20,7 @@ extension DiffTableCoordinator {
         geometry.viewport = clip.bounds.width
         fitColumn()
         if geometry.wrapColumns != columns {
+            (scroll?.contentView as? DiffClipView)?.forgetAnchor()
             invalidateHeights()
             configureVisible()
             if let anchor { restore(anchor) }

@@ -72,6 +72,52 @@ struct DiffLayoutTests {
         #expect(probe.coordinator.heights.measuredThisTurn < 5_000)
     }
 
+    /// Lines of every height, as lazily sized rows are hardest with.
+    private func uneven(_ lines: Int) -> DiffResult {
+        DiffFixture.diff([String(repeating: " ", count: lines)]) { index in
+            "line \(index) " + String(repeating: "word ", count: (index * 7919) % 13 == 0 ? 120 : (index * 31) % 5 == 0 ? 30 : 0)
+        }
+    }
+
+    // Not by wheel events: those stop the run loop swift test's main sits in, which ends the run as a success.
+    @Test(arguments: GitDiffLayout.allCases)
+    func scrollingUpThroughLinesNotMeasuredYetDoesNotJump(layout: GitDiffLayout) throws {
+        let probe = DiffTableProbe()
+        defer { probe.close() }
+        let body = uneven(100_000)
+        // A change at each end, or split would show one column.
+        let changed = DiffFixture.diff([" -+ "])
+        probe.show(DiffResult(filePath: body.filePath, hunks: [changed.hunks[0], body.hunks[0]], stats: body.stats),
+                   layout: layout, wraps: true)
+        let table = try probe.table
+        let clip = try #require(table.enclosingScrollView?.contentView)
+        clip.scroll(to: NSPoint(x: 0, y: table.frame.height / 2))
+        probe.layout()
+        var worst: CGFloat = 0
+        for _ in 0..<150 {
+            let from = clip.bounds.minY
+            let row = table.row(at: NSPoint(x: 1, y: from + 1))
+            let onScreen = table.rect(ofRow: row).minY - from
+            clip.scroll(to: NSPoint(x: 0, y: from - 120))
+            probe.layout()
+            worst = max(worst, abs(table.rect(ofRow: row).minY - clip.bounds.minY - onScreen - 120))
+        }
+        #expect(worst < 2, "the line on screen moved \(worst)pt more than the scroll")
+    }
+
+    @Test func selectAllTakesEveryLineAndNoHeader() throws {
+        let probe = DiffTableProbe()
+        defer { probe.close() }
+        let diff = DiffFixture.diff([" -+", "++"])
+        let note = note("first", line: 1)
+        probe.show(diff, side: .unstaged, annotations: GitDiffAnnotations([note], addTitle: "Add Comment") { _, _ in nil })
+        try probe.table.selectAll(nil)
+        #expect(try probe.table.selectedRowIndexes == [1, 2, 4, 6, 7])
+        let edited = DiffResult(filePath: diff.filePath, hunks: [diff.hunks[1]], stats: diff.stats)
+        probe.show(edited, side: .unstaged)
+        #expect(try probe.table.selectedRowIndexes == [1, 2])
+    }
+
     @Test func gutterAndHeaderStayWhileCodeScrollsSideways() throws {
         let probe = DiffTableProbe(size: NSSize(width: 500, height: 400))
         defer { probe.close() }
@@ -180,6 +226,41 @@ struct DiffLayoutTests {
         var made = 0
         table.enumerateAvailableRowViews { _, _ in made += 1 }
         #expect(made < 400)
+    }
+
+    @Test func aFittedDiffDoesNotJumpScrollingUp() async throws {
+        let probe = DiffTableProbe(size: NSSize(width: 600, height: 400), fitsContent: true)
+        defer { probe.close() }
+        var height: CGFloat = 400_000
+        probe.coordinator.onHeight = { height = $0 }
+        let outer = NSScrollView(frame: NSRect(x: 0, y: 0, width: 600, height: 400))
+        let document = FlippedView(frame: NSRect(x: 0, y: 0, width: 600, height: height))
+        outer.documentView = document
+        probe.root.frame = document.bounds
+        document.addSubview(probe.root)
+        probe.window.contentView = outer
+        probe.show(uneven(10_000), wraps: true)
+        func settle() async {
+            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(2))
+            document.setFrameSize(NSSize(width: 600, height: height))
+            probe.root.setFrameSize(NSSize(width: 600, height: height))
+            probe.layout()
+        }
+        await settle()
+        outer.contentView.scroll(to: NSPoint(x: 0, y: height / 2))
+        await settle()
+        let table = try probe.table
+        var worst: CGFloat = 0
+        for _ in 0..<80 {
+            let from = outer.contentView.bounds.minY
+            let row = table.row(at: NSPoint(x: 1, y: from + 1))
+            let onScreen = table.rect(ofRow: row).minY - from
+            outer.contentView.scroll(to: NSPoint(x: 0, y: from - 120))
+            await settle()
+            worst = max(worst, abs(table.rect(ofRow: row).minY - outer.contentView.bounds.minY - onScreen - 120))
+        }
+        #expect(worst < 2, "the line on screen moved \(worst)pt more than the scroll")
     }
 
     @Test func aFittedDiffsLastLineCanBeScrolledTo() async throws {

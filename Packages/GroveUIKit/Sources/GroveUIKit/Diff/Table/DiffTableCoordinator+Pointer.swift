@@ -108,8 +108,12 @@ extension DiffTableCoordinator {
         guard let table else { return }
         let range = IndexSet(integersIn: min(start, end)...max(start, end))
         textSelection = nil
-        table.selectRowIndexes(range.filteredIndexSet { rows.indices.contains($0) && rows[$0].kind.isSelectable },
-                               byExtendingSelection: false)
+        table.selectRowIndexes(range.intersection(selectableRows), byExtendingSelection: false)
+    }
+
+    func selectAllLines() {
+        textSelection = nil
+        table?.selectRowIndexes(selectableRows, byExtendingSelection: false)
     }
 
     /// A click selects the line; on the only selected line, it takes that back.

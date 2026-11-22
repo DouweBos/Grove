@@ -98,6 +98,25 @@ final class DiffNSTableView: GitDiffTableView {
         coordinator?.setHover(nil)
     }
 
+    override func setFrameSize(_ newSize: NSSize) {
+        guard newSize.height != frame.height, let clip = superview as? DiffClipView else { return super.setFrameSize(newSize) }
+        clip.holdLines(resizing: true) { super.setFrameSize(newSize) }
+    }
+
+    override func layout() {
+        guard let clip = superview as? DiffClipView else { return super.layout() }
+        clip.holdLines { super.layout() }
+    }
+
+    override func prepareContent(in rect: NSRect) {
+        guard let clip = superview as? DiffClipView else { return super.prepareContent(in: rect) }
+        clip.holdLines { super.prepareContent(in: rect) }
+    }
+
+    override func selectAll(_ sender: Any?) {
+        coordinator?.selectAllLines()
+    }
+
     @objc func copy(_ sender: Any?) {
         coordinator?.copyToHost()
     }

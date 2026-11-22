@@ -80,7 +80,7 @@ struct DiffGeometry {
     /// Unwrapped lines draw a little past the screen so a drag of the pane doesn't redraw every row each step.
     var lineWidth: CGFloat {
         guard layout == .inline, !wraps else { return viewport }
-        return ceil(viewport / 256) * 256
+        return ceil(viewport / 512) * 512
     }
 }
 #endif

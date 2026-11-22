@@ -41,6 +41,7 @@ final class DiffTableCoordinator: NSObject {
     /// Where each hunk's rows begin.
     private(set) var hunkStarts: [Int] = []
     private(set) var annotationRows = IndexSet()
+    private(set) var selectableRows = IndexSet()
     private(set) var annotations: GitDiffAnnotations?
     private(set) var staging: GitDiffStaging?
     private(set) var host = GitUIHost.system
@@ -105,6 +106,7 @@ final class DiffTableCoordinator: NSObject {
             rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: table))
 
         let scroll = fitsContent ? DiffEmbeddedScrollView() : NSScrollView()
+        scroll.contentView = DiffClipView()
         scroll.documentView = table
         scroll.hasVerticalScroller = !fitsContent
         scroll.hasHorizontalScroller = true
@@ -195,6 +197,9 @@ final class DiffTableCoordinator: NSObject {
         geometry.gutterWidth = geometry.metrics.gutterWidth(digits: numberDigits)
 
         guard let table else { return }
+        if rowsChanged || scaleChanged || wrapChanged {
+            (scroll?.contentView as? DiffClipView)?.forgetAnchor()
+        }
         if rowsChanged {
             heights.reset()
             buildRows(input.diff)
@@ -219,12 +224,11 @@ final class DiffTableCoordinator: NSObject {
                   diff.hunks[anchor.hunk].lines.indices.contains(anchor.line) else { return nil }
             return DiffPlacement(annotation: index, hunk: anchor.hunk, line: anchor.line)
         }
-        (rows, hunkStarts) = DiffRowBuilder.build(diff, layout: geometry.layout, placements: placements)
-        annotationRows = IndexSet()
-        guard !placements.isEmpty else { return }
-        for (index, row) in rows.enumerated() {
-            if case .annotation = row.kind { annotationRows.insert(index) }
-        }
+        (rows, hunkStarts, annotationRows) = DiffRowBuilder.build(diff, layout: geometry.layout, placements: placements)
+        // As a set: asking row by row is a stall on Select All in a 100k-line diff.
+        selectableRows = IndexSet(integersIn: 0..<rows.count)
+        for start in hunkStarts { selectableRows.remove(start) }
+        selectableRows.subtract(annotationRows)
     }
 
     /// The document is as wide as the longest line, or as what's on screen.

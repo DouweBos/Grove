@@ -109,26 +109,47 @@ extension DiffTableCoordinator {
     func selectedLines(movedTo next: DiffResult) -> [Int: IndexSet] {
         guard let diff, let table, !table.selectedRowIndexes.isEmpty else { return [:] }
         let indices = Dictionary(next.hunks.indices.map { (next.hunks[$0].id, $0) }, uniquingKeysWith: { first, _ in first })
-        var moved: [Int: Int?] = [:]
+        var targets: [Int: Int?] = [:]
         var kept: [Int: IndexSet] = [:]
-        for row in table.selectedRowIndexes where rows.indices.contains(row) && rows[row].kind.isSelectable {
-            let hunk = rows[row].hunk
-            if moved[hunk] == nil {
-                let found = indices[diff.hunks[hunk].id].flatMap { next.hunks[$0] == diff.hunks[hunk] ? $0 : nil }
-                moved.updateValue(found, forKey: hunk)
+        // By runs: set operations per hunk make Select All in a 2,000-hunk diff quadratic.
+        for run in table.selectedRowIndexes.rangeView {
+            var row = run.lowerBound
+            let end = min(run.upperBound, rows.count)
+            while row < end {
+                let hunk = rows[row].hunk
+                guard let range = rowRange(ofHunk: hunk) else { break }
+                let picked = row..<min(end, range.upperBound)
+                row = picked.upperBound
+                if targets[hunk] == nil {
+                    let found = indices[diff.hunks[hunk].id].flatMap { next.hunks[$0] == diff.hunks[hunk] ? $0 : nil }
+                    targets.updateValue(found, forKey: hunk)
+                }
+                guard let target = targets[hunk] ?? nil else { continue }
+                if picked.lowerBound <= range.lowerBound + 1, picked.upperBound == range.upperBound {
+                    kept[target] = IndexSet(integersIn: diff.hunks[hunk].lines.indices)
+                } else {
+                    for index in picked {
+                        for line in rows[index].lineIndices() { kept[target, default: IndexSet()].insert(line) }
+                    }
+                }
             }
-            guard let target = moved[hunk] ?? nil else { continue }
-            for line in rows[row].lineIndices() { kept[target, default: IndexSet()].insert(line) }
         }
         return kept
     }
 
     func rowsShowing(_ lines: [Int: IndexSet]) -> IndexSet {
+        guard !lines.isEmpty, let diff else { return IndexSet() }
         var selected = IndexSet()
-        for hunk in lines.keys {
-            guard let range = rowRange(ofHunk: hunk), let wanted = lines[hunk] else { continue }
-            for row in range where rows[row].lineIndices().contains(where: wanted.contains) { selected.insert(row) }
+        // In order, so each range is added at the end.
+        for hunk in lines.keys.sorted() {
+            guard let range = rowRange(ofHunk: hunk), let wanted = lines[hunk], diff.hunks.indices.contains(hunk) else { continue }
+            if wanted.count == diff.hunks[hunk].lines.count {
+                selected.insert(integersIn: (range.lowerBound + 1)..<range.upperBound)
+            } else {
+                for row in range where rows[row].lineIndices().contains(where: wanted.contains) { selected.insert(row) }
+            }
         }
+        selected.subtract(annotationRows)
         return selected
     }
 
