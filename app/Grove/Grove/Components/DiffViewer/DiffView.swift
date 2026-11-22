@@ -7,6 +7,7 @@
 
 import AppKit
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 // MARK: - DiffView
@@ -58,7 +59,7 @@ struct DiffView: View {
         } else if !showsLFSPointer, let pointers = LFSPointer.sides(of: diff) {
             LFSPointerDiffView(old: pointers.old, new: pointers.new) { showsLFSPointer = true }
         } else if diff.hunks.isEmpty {
-            EmptyStateView(
+            GitEmptyState(
                 systemImage: "checkmark.circle",
                 title: "No Changes",
                 subtitle: "This file has no differences to display."
@@ -110,7 +111,7 @@ struct DiffView: View {
     // MARK: Binary Placeholder
 
     private var binaryPlaceholder: some View {
-        EmptyStateView(
+        GitEmptyState(
             systemImage: "doc.zipper",
             title: "Binary File",
             subtitle: "Diff is not available for binary files."

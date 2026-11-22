@@ -4,6 +4,7 @@
 // Every tracked file grouped by directory; changed files carry their status letter.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct AllFilesTreeView: View {
@@ -54,7 +55,7 @@ struct AllFilesTreeView: View {
     private func fileRow(_ path: String, entry: StatusEntry?, indented: Bool) -> some View {
         let isSelected = entry != nil && viewModel.selectedEntry?.path == path
         return HStack(spacing: Theme.Spacing.sm) {
-            StatusIcon(status: entry.map { $0.workdirStatus != .unmodified ? $0.workdirStatus : $0.indexStatus } ?? .unmodified)
+            GitStatusIcon(status: entry.map { $0.workdirStatus != .unmodified ? $0.workdirStatus : $0.indexStatus } ?? .unmodified)
             Text((path as NSString).lastPathComponent)
                 .font(.monoBody)
                 .foregroundStyle(entry == nil ? Theme.textSecondary : Theme.textPrimary)

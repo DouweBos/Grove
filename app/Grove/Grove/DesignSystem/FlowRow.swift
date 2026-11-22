@@ -1,6 +1,7 @@
 // DesignSystem/FlowRow.swift
 // Grove
 
+import GroveUIKit
 import SwiftUI
 
 /// Wraps its children onto new lines when they don't fit.
@@ -45,9 +46,9 @@ struct FlowRow: Layout {
 
 #Preview {
     FlowRow {
-        StatusBadge(title: "12 changed", symbol: "pencil", tone: .caution)
-        StatusBadge(title: "3 to push", symbol: "arrow.up", tone: .neutral)
-        StatusBadge(title: "6 to pull", symbol: "arrow.down", tone: .caution)
+        GitStatusBadge(title: "12 changed", symbol: "pencil", tone: .caution)
+        GitStatusBadge(title: "3 to push", symbol: "arrow.up", tone: .neutral)
+        GitStatusBadge(title: "6 to pull", symbol: "arrow.down", tone: .caution)
     }
     .padding()
     .frame(width: 220)

@@ -45,7 +45,7 @@ struct FileHistoryView: View {
             if viewModel.isLoading && viewModel.commits.isEmpty {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.commits.isEmpty {
-                EmptyStateView(systemImage: "clock", title: "No History",
+                GitEmptyState(systemImage: "clock", title: "No History",
                                subtitle: "No commits touch this file.")
             } else {
                 ScrollView {
@@ -127,12 +127,12 @@ struct FileHistoryView: View {
                     DiffScrollView { DiffView(diff: diff) }
                         .id(commit.id)
                 } else {
-                    EmptyStateView(systemImage: "doc.text", title: "No Diff",
+                    GitEmptyState(systemImage: "doc.text", title: "No Diff",
                                    subtitle: "This commit has no textual changes for the file.")
                 }
             }
         } else {
-            EmptyStateView(systemImage: "clock.arrow.circlepath", title: "No Commit Selected",
+            GitEmptyState(systemImage: "clock.arrow.circlepath", title: "No Commit Selected",
                            subtitle: "Pick a commit to see how the file changed.")
         }
     }

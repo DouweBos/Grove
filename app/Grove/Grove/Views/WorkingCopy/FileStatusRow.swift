@@ -4,6 +4,7 @@
 // One file in the Staged / Changes sections: stage checkbox, status letter, path.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct FileStatusRow: View {
@@ -32,7 +33,7 @@ struct FileStatusRow: View {
                 .help(isStaged ? "Unstage" : "Stage")
                 .accessibilityLabel(isStaged ? "Unstage \(entry.fileName)" : "Stage \(entry.fileName)")
             }
-            StatusIcon(status: status)
+            GitStatusIcon(status: status)
             pathLabel
             Spacer(minLength: 0)
             if isLFS {

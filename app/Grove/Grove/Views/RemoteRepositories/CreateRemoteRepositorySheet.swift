@@ -124,7 +124,7 @@ struct CreateRemoteRepositorySheet: View {
                 }
             }
             if let added = viewModel.addedRemote {
-                StatusBadge(title: "Added as \u{201C}\(added)\u{201D}", symbol: "checkmark.circle.fill", tone: .positive)
+                GitStatusBadge(title: "Added as \u{201C}\(added)\u{201D}", symbol: "checkmark.circle.fill", tone: .positive)
                     .padding(.leading, 96 + Theme.Spacing.md)
             }
             if let error = viewModel.remoteError {

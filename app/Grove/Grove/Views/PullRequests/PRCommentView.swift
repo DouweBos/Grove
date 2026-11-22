@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// One comment or review in a pull request conversation.
@@ -16,7 +17,7 @@ struct PRCommentView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.textPrimary)
                 if comment.isReview {
-                    StatusBadge(title: "Review", symbol: "checkmark.seal.fill", tone: .neutral)
+                    GitStatusBadge(title: "Review", symbol: "checkmark.seal.fill", tone: .neutral)
                 }
                 Spacer()
                 Text(comment.createdDate, format: .relative(presentation: .named))

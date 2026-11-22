@@ -4,6 +4,7 @@
 // Searchable gitmoji list shown from the commit composer; picking one prefixes the summary.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct GitmojiPicker: View {
@@ -16,7 +17,7 @@ struct GitmojiPicker: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelSearchField(placeholder: "Search gitmoji", text: query, onChange: { query = $0 }, focus: $isSearchFocused)
+            GitSearchField(placeholder: "Search gitmoji", text: query, onChange: { query = $0 }, focus: $isSearchFocused)
                 .padding(Theme.Spacing.sm)
                 .onSubmit { if let first = results.first { onPick(first) } }
             Rectangle().fill(Theme.border).frame(height: 0.5)

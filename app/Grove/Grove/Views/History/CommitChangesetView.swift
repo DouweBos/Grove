@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Changed files of the selected commit; each row expands into its diff.
@@ -13,7 +14,7 @@ struct CommitChangesetView: View {
         if viewModel.isLoadingDiff {
             ProgressView().controlSize(.small).frame(maxWidth: .infinity).padding(Theme.Spacing.xl)
         } else if viewModel.commitDiffs.isEmpty {
-            EmptyStateView(systemImage: "doc", title: "No File Changes",
+            GitEmptyState(systemImage: "doc", title: "No File Changes",
                            subtitle: "This commit doesn't change any files.")
                 .frame(height: 220)
         } else {

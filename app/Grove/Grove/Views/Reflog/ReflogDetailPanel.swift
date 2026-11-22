@@ -23,7 +23,7 @@ struct ReflogDetailPanel: View {
                     }
                 }
             } else {
-                EmptyStateView(systemImage: "clock.arrow.circlepath", title: "No Entry Selected",
+                GitEmptyState(systemImage: "clock.arrow.circlepath", title: "No Entry Selected",
                                subtitle: "Select a reflog entry to inspect it or restore HEAD to that point.")
             }
         }
@@ -127,7 +127,7 @@ struct ReflogDetailPanel: View {
                 if commit.isSigned {
                     GridRow {
                         Text("Signature").foregroundStyle(Theme.textSecondary)
-                        StatusBadge(title: "Verified", symbol: "checkmark.seal.fill", tone: .positive)
+                        GitStatusBadge(title: "Verified", symbol: "checkmark.seal.fill", tone: .positive)
                     }
                 }
             }

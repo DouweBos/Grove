@@ -5,6 +5,7 @@
 // Displays background activity (fetch progress, current operation state).
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 // MARK: - StatusBarView
@@ -72,15 +73,15 @@ struct StatusBarView: View {
         case .normal:
             EmptyView()
         case .merge:
-            StatusBadge(title: "Merging", symbol: "arrow.triangle.merge", tone: .caution)
+            GitStatusBadge(title: "Merging", symbol: "arrow.triangle.merge", tone: .caution)
         case .rebase, .rebaseInteractive:
-            StatusBadge(title: "Rebasing", symbol: "arrow.triangle.pull", tone: .caution)
+            GitStatusBadge(title: "Rebasing", symbol: "arrow.triangle.pull", tone: .caution)
         case .revert:
-            StatusBadge(title: "Reverting", symbol: "arrow.uturn.backward", tone: .caution)
+            GitStatusBadge(title: "Reverting", symbol: "arrow.uturn.backward", tone: .caution)
         case .cherrypick:
-            StatusBadge(title: "Cherry-picking", symbol: "arrow.right.doc.on.clipboard", tone: .caution)
+            GitStatusBadge(title: "Cherry-picking", symbol: "arrow.right.doc.on.clipboard", tone: .caution)
         case .bisect:
-            StatusBadge(title: "Bisecting", symbol: "scope", tone: .caution)
+            GitStatusBadge(title: "Bisecting", symbol: "scope", tone: .caution)
         }
     }
 }

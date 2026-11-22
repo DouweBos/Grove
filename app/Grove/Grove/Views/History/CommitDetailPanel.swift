@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Right panel of History: commit header, then its changeset or tree.
@@ -36,7 +37,7 @@ struct CommitDetailPanel: View {
                     .id(commit.id)
                 }
             } else {
-                EmptyStateView(systemImage: "clock.arrow.circlepath", title: "No Commit Selected",
+                GitEmptyState(systemImage: "clock.arrow.circlepath", title: "No Commit Selected",
                                subtitle: "Pick a commit on the left to see its changes.")
             }
         }

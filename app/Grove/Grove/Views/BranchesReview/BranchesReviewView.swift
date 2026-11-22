@@ -91,7 +91,7 @@ struct BranchesReviewView: View {
             if viewModel.branches.isEmpty && viewModel.isLoading {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.visibleBranches.isEmpty {
-                EmptyStateView(systemImage: "checkmark.seal", title: "Nothing Here",
+                GitEmptyState(systemImage: "checkmark.seal", title: "Nothing Here",
                                subtitle: viewModel.categoryFilter == nil ? "No local branches." : "No branches in this group.")
             } else {
                 ScrollView {
@@ -164,22 +164,22 @@ private struct BranchReviewRow: View {
     private var badges: some View {
         HStack(spacing: Theme.Spacing.xs) {
             if branch.isCurrentBranch {
-                StatusBadge(title: "Current", symbol: "checkmark", tone: .neutral)
+                GitStatusBadge(title: "Current", symbol: "checkmark", tone: .neutral)
             }
             if let worktreePath = branch.worktreePath {
-                StatusBadge(title: "In Worktree", symbol: "tree", tone: .neutral)
+                GitStatusBadge(title: "In Worktree", symbol: "tree", tone: .neutral)
                     .help("Checked out in \(abbreviatingHome(worktreePath)); remove that worktree to delete it.")
             }
             switch branch.category {
-            case .merged: StatusBadge(title: "Merged", symbol: "checkmark.circle.fill", tone: .positive)
-            case .stale: StatusBadge(title: "Stale \(branch.daysSinceLastCommit ?? staleDays)d", symbol: "moon.zzz.fill", tone: .caution)
+            case .merged: GitStatusBadge(title: "Merged", symbol: "checkmark.circle.fill", tone: .positive)
+            case .stale: GitStatusBadge(title: "Stale \(branch.daysSinceLastCommit ?? staleDays)d", symbol: "moon.zzz.fill", tone: .caution)
             case .active: EmptyView()
             }
             if branch.ahead > 0 {
-                StatusBadge(title: "Ahead \(branch.ahead)", symbol: "arrow.up", tone: .neutral)
+                GitStatusBadge(title: "Ahead \(branch.ahead)", symbol: "arrow.up", tone: .neutral)
             }
             if branch.behind > 0 {
-                StatusBadge(title: "Behind \(branch.behind)", symbol: "arrow.down", tone: branch.behind > 50 ? .caution : .neutral)
+                GitStatusBadge(title: "Behind \(branch.behind)", symbol: "arrow.down", tone: branch.behind > 50 ? .caution : .neutral)
             }
         }
     }

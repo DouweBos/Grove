@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// A run's jobs on the left; on the right, the run's summary or the selected job's steps and log.
@@ -13,10 +14,10 @@ struct CIJobsView: View {
         if viewModel.isLoadingJobs {
             ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.jobsError, viewModel.jobs.isEmpty {
-            EmptyStateView(systemImage: "exclamationmark.triangle", title: "Couldn't Load Jobs", subtitle: error,
+            GitEmptyState(systemImage: "exclamationmark.triangle", title: "Couldn't Load Jobs", subtitle: error,
                            actionTitle: "Try Again") { Task { await viewModel.reload() } }
         } else if viewModel.jobs.isEmpty {
-            EmptyStateView(systemImage: "square.stack.3d.up.slash", title: "No Jobs",
+            GitEmptyState(systemImage: "square.stack.3d.up.slash", title: "No Jobs",
                            subtitle: "This run hasn't started any jobs.")
         } else {
             HStack(spacing: 0) {

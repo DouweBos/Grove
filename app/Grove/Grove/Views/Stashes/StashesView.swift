@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Stash list panel on the left, selected stash's changes on the right.
@@ -80,7 +81,7 @@ private struct StashListPanel: View {
             if viewModel.isLoading && viewModel.stashes.isEmpty {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.stashes.isEmpty {
-                EmptyStateView(systemImage: "tray.2", title: "No Stashes",
+                GitEmptyState(systemImage: "tray.2", title: "No Stashes",
                                subtitle: "Stash your changes to set work aside without committing.",
                                actionTitle: "Stash Changes\u{2026}") { GroveAction.stash.post() }
             } else {
@@ -156,7 +157,7 @@ private struct StashDetailPanel: View {
                     }
                 }
             } else {
-                EmptyStateView(systemImage: "tray.2", title: "No Stash Selected",
+                GitEmptyState(systemImage: "tray.2", title: "No Stash Selected",
                                subtitle: "Select a stash to see the changes it holds.")
             }
         }

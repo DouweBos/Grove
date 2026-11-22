@@ -45,7 +45,7 @@ struct CILogView: View {
 
     @ViewBuilder
     private var search: some View {
-        PanelSearchField(placeholder: "Search log", text: viewModel.searchText) { text in Task { await viewModel.setSearchText(text) } }
+        GitSearchField(placeholder: "Search log", text: viewModel.searchText) { text in Task { await viewModel.setSearchText(text) } }
             .frame(minWidth: 110, maxWidth: 200)
             .onSubmit { viewModel.nextMatch() }
         if !viewModel.searchText.isEmpty {
@@ -73,7 +73,7 @@ struct CILogView: View {
             if viewModel.isLoading {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                EmptyStateView(systemImage: "text.alignleft",
+                GitEmptyState(systemImage: "text.alignleft",
                                title: viewModel.isWaitingForJob ? "Waiting for a Runner" : "No Log",
                                subtitle: viewModel.isWaitingForJob ? nil : "This job didn't produce any output.")
             }

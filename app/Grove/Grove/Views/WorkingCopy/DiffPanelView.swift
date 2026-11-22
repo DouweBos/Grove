@@ -5,6 +5,7 @@
 // or the conflict resolver when the file is conflicted.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct DiffPanelView: View {
@@ -17,7 +18,7 @@ struct DiffPanelView: View {
                 header(entry)
                 content(entry)
             } else {
-                EmptyStateView(
+                GitEmptyState(
                     systemImage: viewModel.statusEntries.isEmpty ? "checkmark.seal" : "doc.text.magnifyingglass",
                     title: viewModel.statusEntries.isEmpty ? "Nothing to Commit" : "Select a File",
                     subtitle: viewModel.statusEntries.isEmpty
@@ -34,7 +35,7 @@ struct DiffPanelView: View {
 
     private func header(_ entry: StatusEntry) -> some View {
         HStack(spacing: Theme.Spacing.sm) {
-            StatusIcon(status: entry.isConflicted ? .conflicted : (viewModel.showingStaged ? entry.indexStatus : entry.workdirStatus))
+            GitStatusIcon(status: entry.isConflicted ? .conflicted : (viewModel.showingStaged ? entry.indexStatus : entry.workdirStatus))
             Text(entry.fileName)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
@@ -93,7 +94,7 @@ struct DiffPanelView: View {
             .controlSize(.small)
             .fixedSize()
         } else {
-            StatusBadge(title: viewModel.showingStaged ? "Staged" : "Unstaged",
+            GitStatusBadge(title: viewModel.showingStaged ? "Staged" : "Unstaged",
                         symbol: viewModel.showingStaged ? "checkmark.circle" : "pencil",
                         tone: .neutral)
                 .fixedSize()
@@ -140,7 +141,7 @@ struct DiffPanelView: View {
         } else if viewModel.isDiffLoading {
             ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            EmptyStateView(systemImage: "doc.questionmark", title: "No Diff Available",
+            GitEmptyState(systemImage: "doc.questionmark", title: "No Diff Available",
                            subtitle: "The diff for this file could not be loaded.")
         }
     }

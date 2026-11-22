@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// One layer of the Stack tab: branch, PR and checks, its own commits and diff size, sync state and health.
@@ -33,7 +34,7 @@ struct StackLayerCard: View {
             .buttonStyle(.plain)
             .disabled(layer.commits.isEmpty)
             .help(isExpanded ? "Hide commits" : "Show this layer's commits")
-            BranchLabel(name: layer.branch, kind: .localBranch(isHEAD: layer.isHEAD), maxNameWidth: 280)
+            GitBranchLabel(name: layer.branch, kind: .localBranch(isHEAD: layer.isHEAD), maxNameWidth: 280)
             pullRequestBadge
             if let checks = layer.pullRequest?.checks, checks != .none {
                 Image(systemName: checks.symbol)
@@ -60,12 +61,12 @@ struct StackLayerCard: View {
     @ViewBuilder
     private var pullRequestBadge: some View {
         if let pr = layer.pullRequest {
-            StatusBadge(title: "\(pr.label) \(pr.isMerged ? "merged" : pr.isDraft ? "draft" : "review")",
+            GitStatusBadge(title: "\(pr.label) \(pr.isMerged ? "merged" : pr.isDraft ? "draft" : "review")",
                         symbol: pr.isMerged ? "arrow.merge" : "arrow.triangle.pull",
                         tone: pr.isMerged ? .positive : .neutral)
                 .help(pr.tooltip)
         } else if layer.health.contains(.noPR) {
-            StatusBadge(title: "No PR", symbol: "arrow.triangle.pull", tone: .neutral)
+            GitStatusBadge(title: "No PR", symbol: "arrow.triangle.pull", tone: .neutral)
             if let onCreatePullRequest {
                 Button("Create PR", action: onCreatePullRequest)
                     .controlSize(.small)
@@ -77,11 +78,11 @@ struct StackLayerCard: View {
     @ViewBuilder
     private var markers: some View {
         ForEach(LayerHealth.allCases.filter { layer.health.contains($0) && $0 != .noPR }, id: \.self) { health in
-            StatusBadge(title: health.title, symbol: health.symbol,
+            GitStatusBadge(title: health.title, symbol: health.symbol,
                         tone: health == .unpushed ? .neutral : .caution)
         }
         if layer.isHEAD {
-            StatusBadge(title: "HEAD", symbol: "location.fill", tone: .positive)
+            GitStatusBadge(title: "HEAD", symbol: "location.fill", tone: .positive)
         }
         if let worktree = layer.worktreePath {
             Image(systemName: "tree.circle.fill")

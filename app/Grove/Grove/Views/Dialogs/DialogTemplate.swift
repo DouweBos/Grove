@@ -16,7 +16,7 @@ struct DialogSheet<Content: View>: View {
     var message: String?
     var symbol: String?
     var width: CGFloat = 460
-    /// Non-nil while the operation runs; shown as a ProgressStrip title.
+    /// Non-nil while the operation runs; shown as a GitProgressStrip title.
     var progress: String?
     var progressDetail = ""
     var fraction: Double?
@@ -37,7 +37,7 @@ struct DialogSheet<Content: View>: View {
             header
             content()
             if let progress {
-                ProgressStrip(title: progress, detail: progressDetail, fraction: fraction)
+                GitProgressStrip(title: progress, detail: progressDetail, fraction: fraction)
                     .transition(.opacity)
             }
             if let errorMessage, errorMessage != dismissedError {

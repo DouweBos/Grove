@@ -4,6 +4,7 @@
 // Searchable list of the repository's stacks, shown from the Stack tab's title like the repository switcher.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct StackSwitcher: View {
@@ -24,7 +25,7 @@ struct StackSwitcher: View {
                 .foregroundStyle(Theme.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding([.horizontal, .top], Theme.Spacing.md)
-            PanelSearchField(placeholder: "Search stacks", text: query, onChange: setQuery, focus: $isSearchFocused)
+            GitSearchField(placeholder: "Search stacks", text: query, onChange: setQuery, focus: $isSearchFocused)
                 .padding(Theme.Spacing.sm)
                 .onSubmit { if let pick = highlighted(in: results) { show(pick) } }
                 .onKeyPress(.downArrow) { moveHighlight(by: 1, in: results) }

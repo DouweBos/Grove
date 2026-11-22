@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Subject, body and metadata of the selected commit.
@@ -50,8 +51,8 @@ struct CommitDetailHeader: View {
             if !refs.isEmpty || !tags.isEmpty {
                 row("Refs") {
                     FlowRow {
-                        ForEach(refs) { BranchLabel(branch: $0) }
-                        ForEach(tags) { BranchLabel(tag: $0) }
+                        ForEach(refs) { GitBranchLabel(branch: $0) }
+                        ForEach(tags) { GitBranchLabel(tag: $0) }
                     }
                 }
             }

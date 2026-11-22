@@ -4,6 +4,7 @@
 // Accounts: Grove's own sign-ins to GitHub, GitLab, Bitbucket and Azure DevOps, with tokens in the Keychain.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct ServicesPreferencesTab: View {
@@ -111,9 +112,9 @@ private struct AccountRow: View {
         case .checking, nil:
             ProgressView().controlSize(.small)
         case .signedIn:
-            StatusBadge(title: "Signed in", symbol: "checkmark.circle.fill", tone: .positive)
+            GitStatusBadge(title: "Signed in", symbol: "checkmark.circle.fill", tone: .positive)
         case .failed(let message):
-            StatusBadge(title: "Sign in again", symbol: "exclamationmark.triangle.fill", tone: .caution)
+            GitStatusBadge(title: "Sign in again", symbol: "exclamationmark.triangle.fill", tone: .caution)
                 .help(message)
         }
     }

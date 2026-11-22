@@ -113,13 +113,13 @@ struct BranchComparisonView: View {
             ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let source, let target {
             if isIdentical {
-                EmptyStateView(systemImage: "checkmark.circle", title: "Branches Match",
+                GitEmptyState(systemImage: "checkmark.circle", title: "Branches Match",
                                subtitle: "\(source.name) and \(target.name) have the same commits.")
             } else {
                 comparisonList(source: source, target: target)
             }
         } else {
-            EmptyStateView(systemImage: "arrow.left.arrow.right", title: "Choose Two Branches",
+            GitEmptyState(systemImage: "arrow.left.arrow.right", title: "Choose Two Branches",
                            subtitle: "See which commits each branch has that the other doesn't.")
         }
     }

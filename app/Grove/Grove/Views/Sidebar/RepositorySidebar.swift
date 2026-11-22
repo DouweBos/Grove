@@ -57,7 +57,7 @@ struct RepositorySidebar: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let activity = viewModel.actions.activity {
-                ProgressStrip(title: activity, detail: "", fraction: nil)
+                GitProgressStrip(title: activity, detail: "", fraction: nil)
                     .padding(Theme.Spacing.sm)
             } else if let message = viewModel.errorMessage {
                 GitBanner(symbol: "xmark.octagon", message: message, tone: .negative) { viewModel.dismissError() }
@@ -210,20 +210,20 @@ private struct RepositorySummaryHeader: View {
         if changes > 0 || ahead > 0 || behind > 0 || unpublished {
             FlowRow {
                 if changes > 0 {
-                    StatusBadge(title: "\(changes) changed", symbol: "pencil", tone: .caution)
+                    GitStatusBadge(title: "\(changes) changed", symbol: "pencil", tone: .caution)
                 }
                 if unpublished {
-                    StatusBadge(title: "Not published", symbol: "icloud.slash", tone: .neutral)
+                    GitStatusBadge(title: "Not published", symbol: "icloud.slash", tone: .neutral)
                 }
                 if ahead > 0 {
-                    StatusBadge(title: "\(ahead) to push", symbol: "arrow.up", tone: .neutral)
+                    GitStatusBadge(title: "\(ahead) to push", symbol: "arrow.up", tone: .neutral)
                 }
                 if behind > 0 {
-                    StatusBadge(title: "\(behind) to pull", symbol: "arrow.down", tone: .caution)
+                    GitStatusBadge(title: "\(behind) to pull", symbol: "arrow.down", tone: .caution)
                 }
             }
         } else {
-            StatusBadge(title: "Up to date", symbol: "checkmark.circle.fill", tone: .positive)
+            GitStatusBadge(title: "Up to date", symbol: "checkmark.circle.fill", tone: .positive)
         }
     }
 }

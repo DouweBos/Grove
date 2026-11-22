@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Opens a pull request from a head branch into a base branch on the host.
@@ -84,9 +85,9 @@ struct CreatePullRequestSheet: View {
             case .published:
                 EmptyView()
             case .unpublished:
-                StatusBadge(title: "Not on \(viewModel.remote) yet", symbol: "icloud.slash", tone: .caution)
+                GitStatusBadge(title: "Not on \(viewModel.remote) yet", symbol: "icloud.slash", tone: .caution)
             case .unpushed(let count):
-                StatusBadge(title: "\(count) unpushed", symbol: "arrow.up.circle", tone: .caution)
+                GitStatusBadge(title: "\(count) unpushed", symbol: "arrow.up.circle", tone: .caution)
             }
         }
         .padding(.leading, 96 + Theme.Spacing.md)

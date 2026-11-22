@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Detail card for the selected pull request: header, actions, and Overview / Commits / Files tabs.
@@ -18,7 +19,7 @@ struct PullRequestDetailView: View {
                     tabContent(pr)
                 }
             } else {
-                EmptyStateView(systemImage: "arrow.triangle.pull", title: "No Pull Request Selected",
+                GitEmptyState(systemImage: "arrow.triangle.pull", title: "No Pull Request Selected",
                                subtitle: "Select a pull request to read its description, commits and changes.")
             }
         }
@@ -45,11 +46,11 @@ struct PullRequestDetailView: View {
                             .fixedSize()
                     }
                     HStack(spacing: Theme.Spacing.xs) {
-                        BranchLabel(name: pr.sourceBranch, kind: .localBranch(isHEAD: false))
+                        GitBranchLabel(name: pr.sourceBranch, kind: .localBranch(isHEAD: false))
                         Image(systemName: "arrow.right")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(Theme.textSecondary)
-                        BranchLabel(name: pr.targetBranch, kind: .remoteBranch)
+                        GitBranchLabel(name: pr.targetBranch, kind: .remoteBranch)
                     }
                 }
                 Spacer(minLength: Theme.Spacing.md)
@@ -70,13 +71,13 @@ struct PullRequestDetailView: View {
     }
 
     private func stateBadge(_ pr: PullRequestInfo) -> some View {
-        let tone: StatusBadge.Tone = switch pr.state {
+        let tone: GitStatusBadge.Tone = switch pr.state {
         case .open: pr.isDraft ? .neutral : .positive
         case .merged: .neutral
         case .closed: .negative
         }
         let title = pr.isDraft && pr.state == .open ? "Draft" : pr.state.rawValue.capitalized
-        return StatusBadge(title: title, symbol: pr.stateSymbol, tone: tone)
+        return GitStatusBadge(title: title, symbol: pr.stateSymbol, tone: tone)
     }
 
     private func actions(_ pr: PullRequestInfo) -> some View {
@@ -143,7 +144,7 @@ struct PullRequestDetailView: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                         SectionLabel(title: "Labels")
                         HStack(spacing: Theme.Spacing.xs) {
-                            ForEach(pr.labels) { StatusBadge(title: $0.name, symbol: "tag", tone: .neutral) }
+                            ForEach(pr.labels) { GitStatusBadge(title: $0.name, symbol: "tag", tone: .neutral) }
                         }
                     }
                 }
@@ -166,7 +167,7 @@ struct PullRequestDetailView: View {
         if viewModel.isLoadingPRCommits {
             ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.prCommits.isEmpty {
-            EmptyStateView(systemImage: "clock", title: "No Commits")
+            GitEmptyState(systemImage: "clock", title: "No Commits")
         } else {
             ScrollView {
                 LazyVStack(spacing: 2) {

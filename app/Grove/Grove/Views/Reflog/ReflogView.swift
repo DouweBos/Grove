@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Reflog entries on the left, the selected entry's commit and restore actions on the right.
@@ -70,7 +71,7 @@ private struct ReflogListPanel: View {
             if viewModel.isLoading && viewModel.entries.isEmpty {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.entries.isEmpty {
-                EmptyStateView(systemImage: "clock.arrow.circlepath", title: "No Reflog Entries",
+                GitEmptyState(systemImage: "clock.arrow.circlepath", title: "No Reflog Entries",
                                subtitle: "HEAD movements such as commits, checkouts and resets appear here.")
             } else {
                 SelectableList(items: indexedEntries, selection: viewModel.selectedEntry?.id,

@@ -4,6 +4,7 @@
 // Read-only file list + diff, shared by the Stashes and Pull Request detail cards.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct ChangesetBrowser: View {
@@ -19,7 +20,7 @@ struct ChangesetBrowser: View {
         if isLoading {
             ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if files.isEmpty {
-            EmptyStateView(systemImage: "doc.text.magnifyingglass", title: emptyTitle)
+            GitEmptyState(systemImage: "doc.text.magnifyingglass", title: emptyTitle)
         } else {
             VStack(spacing: 0) {
                 fileList
@@ -56,11 +57,11 @@ struct ChangesetBrowser: View {
                 DiffScrollView { DiffView(diff: diff) }
                     .id(file.path)
             } else {
-                EmptyStateView(systemImage: "doc.zipper", title: "No Diff Available",
+                GitEmptyState(systemImage: "doc.zipper", title: "No Diff Available",
                                subtitle: "Binary or unchanged file.")
             }
         } else {
-            EmptyStateView(systemImage: "doc.text", title: "Select a File",
+            GitEmptyState(systemImage: "doc.text", title: "Select a File",
                            subtitle: "Choose a file above to see its changes.")
         }
     }

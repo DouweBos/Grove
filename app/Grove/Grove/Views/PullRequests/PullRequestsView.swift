@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Pull request list on the left, the selected PR on the right. Data comes from the remote's hosting service.
@@ -75,7 +76,7 @@ private struct PullRequestListPanel: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                PanelSearchField(placeholder: "Filter by title, author, branch", text: viewModel.searchText,
+                GitSearchField(placeholder: "Filter by title, author, branch", text: viewModel.searchText,
                                  onChange: viewModel.setSearchText)
             }
             .padding([.horizontal, .top], Theme.Spacing.sm)
@@ -90,9 +91,9 @@ private struct PullRequestListPanel: View {
         if !viewModel.hasLoaded {
             ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.loadFailure != nil && viewModel.pullRequests.isEmpty {
-            EmptyStateView(systemImage: "exclamationmark.triangle", title: "Not Available")
+            GitEmptyState(systemImage: "exclamationmark.triangle", title: "Not Available")
         } else if viewModel.filteredPullRequests.isEmpty {
-            EmptyStateView(systemImage: "arrow.triangle.pull", title: emptyTitle,
+            GitEmptyState(systemImage: "arrow.triangle.pull", title: emptyTitle,
                            subtitle: viewModel.pullRequests.isEmpty ? "This repository has no pull requests on \(viewModel.serviceName)." : nil)
         } else {
             SelectableList(items: viewModel.filteredPullRequests, selection: viewModel.selectedPR?.id,

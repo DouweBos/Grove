@@ -17,7 +17,7 @@ struct StackView: View {
             if let stack = viewModel.stack {
                 header(stack)
                 if let activity = viewModel.activity {
-                    ProgressStrip(title: activity, detail: "", fraction: nil)
+                    GitProgressStrip(title: activity, detail: "", fraction: nil)
                 }
                 ForEach(viewModel.mergedParents(stack)) { merged in
                     GitBanner(symbol: "arrow.merge", message: retargetMessage(merged, trunk: stack.trunk), tone: .positive,
@@ -37,7 +37,7 @@ struct StackView: View {
                         .padding(.bottom, Theme.Spacing.lg)
                 }
             } else {
-                EmptyStateView(systemImage: "square.stack.3d.up", title: "No Stacks",
+                GitEmptyState(systemImage: "square.stack.3d.up", title: "No Stacks",
                                subtitle: "Branches built on other unmerged branches show up here as a stack.")
             }
         }
@@ -148,7 +148,7 @@ private struct StackTree: View {
                 StackLaneGutter(segments: layout.trunkLanes.map { .top($0) }, lane: nil, laneCount: layout.laneCount)
                     .frame(height: StackLaneGutter.nodeY)
                 HStack(spacing: Theme.Spacing.sm) {
-                    BranchLabel(name: stack.trunk, kind: .localBranch(isHEAD: false))
+                    GitBranchLabel(name: stack.trunk, kind: .localBranch(isHEAD: false))
                     if stack.trunkAhead > 0 {
                         Text("\(stack.trunkAhead) new commit\(stack.trunkAhead == 1 ? "" : "s") since the stack's base")
                             .font(.monoCaption)

@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Detail card for the selected run: what ran, where, how it went, and its jobs.
@@ -19,7 +20,7 @@ struct CIRunDetailView: View {
                     CIJobsView()
                 }
             } else {
-                EmptyStateView(systemImage: "play.circle", title: "No Run Selected",
+                GitEmptyState(systemImage: "play.circle", title: "No Run Selected",
                                subtitle: "Select a workflow run to see its jobs.")
             }
         }
@@ -42,14 +43,14 @@ struct CIRunDetailView: View {
                     .foregroundStyle(Theme.textPrimary)
                     .textSelection(.enabled)
                 HStack(spacing: Theme.Spacing.sm) {
-                    StatusBadge(title: run.status.title, symbol: run.status.symbol, tone: run.status.badgeTone).fixedSize()
+                    GitStatusBadge(title: run.status.title, symbol: run.status.symbol, tone: run.status.badgeTone).fixedSize()
                     Text(summary(run))
                         .font(.monoCaption)
                         .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
                 }
                 HStack(spacing: Theme.Spacing.xs) {
-                    if let branch = run.branch { BranchLabel(name: branch, kind: .remoteBranch) }
+                    if let branch = run.branch { GitBranchLabel(name: branch, kind: .remoteBranch) }
                     Text(run.shortSHA).font(.monoCaption).foregroundStyle(Theme.accent)
                     CopyButton(value: run.headSHA, help: "Copy SHA", confirmation: "Copied SHA")
                 }

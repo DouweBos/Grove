@@ -3,6 +3,7 @@
 //
 // Searchable list of bookmarked repositories shown from the sidebar title, like GitHub's repository dropdown.
 
+import GroveUIKit
 import SwiftUI
 
 struct RepositorySwitcher: View {
@@ -24,7 +25,7 @@ struct RepositorySwitcher: View {
                 .foregroundStyle(Theme.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding([.horizontal, .top], Theme.Spacing.md)
-            PanelSearchField(placeholder: "Search repositories", text: query, onChange: setQuery, focus: $isSearchFocused)
+            GitSearchField(placeholder: "Search repositories", text: query, onChange: setQuery, focus: $isSearchFocused)
                 .padding(Theme.Spacing.sm)
                 .onSubmit { if let pick = highlighted(in: results) { viewModel.switchRepository(to: pick) } }
                 .onKeyPress(.downArrow) { moveHighlight(by: 1, in: results) }

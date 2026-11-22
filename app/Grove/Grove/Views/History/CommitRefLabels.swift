@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Ref labels before a commit's subject: a local branch and its same-named remote branch
@@ -17,7 +18,7 @@ struct CommitRefLabels: View {
         if !refs.isEmpty {
             HStack(spacing: Theme.Spacing.xs) {
                 ForEach(refs.prefix(Self.maxShown)) { ref in
-                    BranchLabel(name: ref.name, kind: ref.kind, isOnRemote: ref.isOnRemote, maxNameWidth: 140)
+                    GitBranchLabel(name: ref.name, kind: ref.kind, isOnRemote: ref.isOnRemote, maxNameWidth: 140)
                 }
                 if refs.count > Self.maxShown {
                     Text("+\(refs.count - Self.maxShown)")
@@ -38,7 +39,7 @@ struct CommitRefLabels: View {
         let id: String
         let name: String
         let fullName: String
-        let kind: BranchLabel.Kind
+        let kind: GitBranchLabel.Kind
         let isOnRemote: Bool
     }
 

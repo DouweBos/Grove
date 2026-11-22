@@ -4,6 +4,7 @@
 // How a run, job or step status looks everywhere it shows.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 extension CIRunStatus {
@@ -28,7 +29,7 @@ extension CIRunStatus {
         }
     }
 
-    var badgeTone: StatusBadge.Tone {
+    var badgeTone: GitStatusBadge.Tone {
         switch self {
         case .queued, .inProgress: .caution
         case .success: .positive
@@ -59,7 +60,7 @@ struct CIStatusIcon: View {
                 CIStatusIcon(status: status)
                 Text(status.title).font(.rowTitle)
                 Spacer()
-                StatusBadge(title: status.title, symbol: status.symbol, tone: status.badgeTone)
+                GitStatusBadge(title: status.title, symbol: status.symbol, tone: status.badgeTone)
             }
         }
     }

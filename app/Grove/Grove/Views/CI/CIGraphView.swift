@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// The run's jobs in columns by `needs`, framed like GitHub's workflow card; a job opens its steps and log.
@@ -18,7 +19,7 @@ struct CIGraphView: View {
                 if viewModel.isLoadingGraph || viewModel.isLoadingJobs {
                     ProgressView().controlSize(.small)
                 } else {
-                    EmptyStateView(systemImage: "point.3.connected.trianglepath.dotted", title: "No Jobs")
+                    GitEmptyState(systemImage: "point.3.connected.trianglepath.dotted", title: "No Jobs")
                 }
             }
             .frame(maxWidth: .infinity, minHeight: 160)

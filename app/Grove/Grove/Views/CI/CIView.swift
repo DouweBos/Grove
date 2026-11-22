@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Workflow runs on the left, the selected run on the right. Data comes from the remote's hosting service.
@@ -102,13 +103,13 @@ private struct CIRunListPanel: View {
         if !viewModel.hasLoaded {
             ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if isUnavailable {
-            EmptyStateView(systemImage: "exclamationmark.triangle", title: "Not Available")
+            GitEmptyState(systemImage: "exclamationmark.triangle", title: "Not Available")
         } else if viewModel.runs.isEmpty {
             if viewModel.query.isEmpty {
-                EmptyStateView(systemImage: "play.circle", title: "No Workflow Runs",
+                GitEmptyState(systemImage: "play.circle", title: "No Workflow Runs",
                                subtitle: "This repository has no workflow runs on \(viewModel.serviceName).")
             } else {
-                EmptyStateView(systemImage: "line.3.horizontal.decrease.circle", title: "No Matching Runs",
+                GitEmptyState(systemImage: "line.3.horizontal.decrease.circle", title: "No Matching Runs",
                                actionTitle: "Clear Filters") { Task { await viewModel.clearFilters() } }
             }
         } else {

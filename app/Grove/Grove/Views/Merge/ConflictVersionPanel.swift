@@ -5,6 +5,7 @@
 // content on that side, and a button to keep it.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct ConflictVersionPanel: View {
@@ -21,7 +22,7 @@ struct ConflictVersionPanel: View {
                 Text(side == .ours ? "Current" : "Incoming")
                     .font(.sectionLabel)
                     .foregroundStyle(Theme.textSecondary)
-                BranchLabel(name: branchName, kind: .localBranch(isHEAD: side == .ours))
+                GitBranchLabel(name: branchName, kind: .localBranch(isHEAD: side == .ours))
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, Theme.Spacing.md)
@@ -47,7 +48,7 @@ struct ConflictVersionPanel: View {
         case .none:
             ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
         case .some(.none):
-            EmptyStateView(systemImage: "trash", title: "Deleted", subtitle: "This side removed the file.")
+            GitEmptyState(systemImage: "trash", title: "Deleted", subtitle: "This side removed the file.")
         case .some(.some(let text)):
             CanvasScrollView {
                 Text(verbatim: text)

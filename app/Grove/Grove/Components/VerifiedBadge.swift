@@ -5,6 +5,7 @@
 // Shown in commit detail headers and history list rows.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 // MARK: - VerifiedBadge
@@ -30,9 +31,9 @@ struct VerifiedBadge: View {
         case .unsigned:
             EmptyView()
         case .verified:
-            StatusBadge(title: "Verified", symbol: "checkmark.seal.fill", tone: .positive)
+            GitStatusBadge(title: "Verified", symbol: "checkmark.seal.fill", tone: .positive)
         case .unverified:
-            StatusBadge(title: "Unverified", symbol: "exclamationmark.triangle.fill", tone: .caution)
+            GitStatusBadge(title: "Unverified", symbol: "exclamationmark.triangle.fill", tone: .caution)
         }
     }
 }

@@ -4,6 +4,7 @@
 // Cloud browser detail: the selected hosted repository with Clone / Open, or the account state.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct RemoteRepositoriesContent: View {
@@ -15,7 +16,7 @@ struct RemoteRepositoriesContent: View {
         Group {
             switch viewModel.account {
             case .unavailable(let message):
-                EmptyStateView(
+                GitEmptyState(
                     systemImage: "person.crop.circle.badge.exclamationmark",
                     title: "No Accounts",
                     subtitle: "\(message) Add a GitHub, GitLab, Bitbucket or Azure DevOps account in Settings > Accounts.",
@@ -27,7 +28,7 @@ struct RemoteRepositoriesContent: View {
                 if let repository = viewModel.selected {
                     RemoteRepositoryDetail(repository: repository)
                 } else {
-                    EmptyStateView(systemImage: "cloud", title: "Remote Repositories",
+                    GitEmptyState(systemImage: "cloud", title: "Remote Repositories",
                                    subtitle: "Repositories on your accounts and their organizations. Select one to clone or open it.")
                 }
             }
@@ -97,11 +98,11 @@ struct RemoteRepositoryDetail: View {
                     .truncationMode(.middle)
                 Text(repository.nameWithOwner).font(.monoCaption).foregroundStyle(Theme.textSecondary).textSelection(.enabled)
                 HStack(spacing: Theme.Spacing.xs) {
-                    StatusBadge(title: repository.isPrivate ? "Private" : "Public",
+                    GitStatusBadge(title: repository.isPrivate ? "Private" : "Public",
                                 symbol: repository.isPrivate ? "lock.fill" : "globe", tone: .neutral)
-                    if repository.isFork { StatusBadge(title: "Fork", symbol: "tuningfork", tone: .neutral) }
-                    if repository.isArchived { StatusBadge(title: "Archived", symbol: "archivebox.fill", tone: .caution) }
-                    if localPath != nil { StatusBadge(title: "On this Mac", symbol: "internaldrive.fill", tone: .positive) }
+                    if repository.isFork { GitStatusBadge(title: "Fork", symbol: "tuningfork", tone: .neutral) }
+                    if repository.isArchived { GitStatusBadge(title: "Archived", symbol: "archivebox.fill", tone: .caution) }
+                    if localPath != nil { GitStatusBadge(title: "On this Mac", symbol: "internaldrive.fill", tone: .positive) }
                 }
             }
             Spacer(minLength: Theme.Spacing.md)

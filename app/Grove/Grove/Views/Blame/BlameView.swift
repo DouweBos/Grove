@@ -33,12 +33,12 @@ private struct BlameFileListPanel: View {
                     .buttonStyle(.borderless)
                     .help("Reload File List")
             }
-            PanelSearchField(placeholder: "Filter files", text: viewModel.filterText, onChange: viewModel.setFilter)
+            GitSearchField(placeholder: "Filter files", text: viewModel.filterText, onChange: viewModel.setFilter)
                 .padding([.horizontal, .top], Theme.Spacing.sm)
             if viewModel.isLoadingFiles && viewModel.trackedFiles.isEmpty {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.filteredFiles.isEmpty {
-                EmptyStateView(systemImage: "doc.text.magnifyingglass", title: "No Matching Files",
+                GitEmptyState(systemImage: "doc.text.magnifyingglass", title: "No Matching Files",
                                subtitle: viewModel.trackedFiles.isEmpty ? "This repository has no tracked files." : nil)
             } else {
                 SelectableList(items: viewModel.filteredFiles.map(BlameFileItem.init), selection: viewModel.selectedFile,
@@ -82,7 +82,7 @@ private struct BlameFilePanel: View {
                     content
                 }
             } else {
-                EmptyStateView(systemImage: "text.line.first.and.arrowtriangle.forward", title: "Blame a File",
+                GitEmptyState(systemImage: "text.line.first.and.arrowtriangle.forward", title: "Blame a File",
                                subtitle: "Pick a file to see who last changed each line, and in which commit.")
             }
         }

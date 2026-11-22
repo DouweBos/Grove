@@ -112,7 +112,7 @@ private struct CIArtifactRow: View {
 
     @ViewBuilder private var action: some View {
         if artifact.isExpired {
-            StatusBadge(title: "Expired", symbol: "clock.badge.xmark", tone: .neutral).fixedSize()
+            GitStatusBadge(title: "Expired", symbol: "clock.badge.xmark", tone: .neutral).fixedSize()
         } else {
             switch download {
             case .running:

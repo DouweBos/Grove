@@ -57,7 +57,7 @@ struct PullDialogView: View {
                         PullSourcePicker(branches: remoteBranches, upstream: upstream,
                                          parent: branch.flatMap { refs.parents[$0.name] }, selection: $source)
                         if let branch, source == upstream, branch.behind > 0 {
-                            StatusBadge(title: "\(branch.behind) behind", symbol: "arrow.down", tone: .caution).fixedSize()
+                            GitStatusBadge(title: "\(branch.behind) behind", symbol: "arrow.down", tone: .caution).fixedSize()
                         }
                     }
                 }

@@ -43,7 +43,7 @@ struct RepositoryInfoPanel: View {
                     if !snapshot.remotes.isEmpty { RemotesCard(remotes: snapshot.remotes) }
                 } else if isRefreshing {
                     // Only the first read of a repository has nothing to show yet.
-                    ProgressStrip(title: "Reading repository…", detail: "")
+                    GitProgressStrip(title: "Reading repository…", detail: "")
                 }
             }
             .padding(Theme.Spacing.xl)
@@ -116,26 +116,26 @@ struct RepositoryInfoPanel: View {
             HStack(spacing: Theme.Spacing.xs) {
                 if let worktree, let mainRepositoryName {
                     Button { viewModel.selectRepository(atPath: worktree.mainRepositoryPath) } label: {
-                        StatusBadge(title: "Worktree of \(mainRepositoryName)", symbol: "tree", tone: .neutral)
+                        GitStatusBadge(title: "Worktree of \(mainRepositoryName)", symbol: "tree", tone: .neutral)
                     }
                     .buttonStyle(.plain)
                     .help("Show \(mainRepositoryName)")
                 }
                 if let branch = snapshot.branch {
-                    BranchLabel(name: branch.name, kind: .localBranch(isHEAD: true))
+                    GitBranchLabel(name: branch.name, kind: .localBranch(isHEAD: true))
                 } else {
-                    StatusBadge(title: "Detached HEAD", symbol: "exclamationmark.triangle.fill", tone: .caution)
+                    GitStatusBadge(title: "Detached HEAD", symbol: "exclamationmark.triangle.fill", tone: .caution)
                 }
                 if snapshot.changedCount == 0 {
-                    StatusBadge(title: "Clean", symbol: "checkmark.circle.fill", tone: .positive)
+                    GitStatusBadge(title: "Clean", symbol: "checkmark.circle.fill", tone: .positive)
                 } else {
-                    StatusBadge(title: "\(snapshot.changedCount) changed", symbol: "pencil.circle.fill", tone: .caution)
+                    GitStatusBadge(title: "\(snapshot.changedCount) changed", symbol: "pencil.circle.fill", tone: .caution)
                 }
                 if let branch = snapshot.branch, branch.ahead > 0 {
-                    StatusBadge(title: "\(branch.ahead) to push", symbol: "arrow.up", tone: .neutral)
+                    GitStatusBadge(title: "\(branch.ahead) to push", symbol: "arrow.up", tone: .neutral)
                 }
                 if let branch = snapshot.branch, branch.behind > 0 {
-                    StatusBadge(title: "\(branch.behind) to pull", symbol: "arrow.down", tone: .caution)
+                    GitStatusBadge(title: "\(branch.behind) to pull", symbol: "arrow.down", tone: .caution)
                 }
             }
         }

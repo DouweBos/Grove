@@ -33,10 +33,10 @@ struct CommitListView: View {
         let visible = viewModel.filteredCommits
         if visible.isEmpty && !viewModel.isLoading {
             if viewModel.isFiltering {
-                EmptyStateView(systemImage: "magnifyingglass", title: "No Matching Commits",
+                GitEmptyState(systemImage: "magnifyingglass", title: "No Matching Commits",
                                subtitle: "Nothing in the loaded history matches \u{201C}\(viewModel.searchText)\u{201D}.")
             } else {
-                EmptyStateView(systemImage: "clock", title: "No Commits Yet",
+                GitEmptyState(systemImage: "clock", title: "No Commits Yet",
                                subtitle: "Commits you make will show up here.")
             }
         } else {
