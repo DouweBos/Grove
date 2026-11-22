@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Pulls a remote branch into the checked-out branch: its upstream by default, or another one,
@@ -109,12 +110,12 @@ struct PullDialogView: View {
     private var noUpstreamBanner: some View {
         let name = branch?.name ?? "HEAD"
         if let remote = remotes.first?.name, branch != nil {
-            Banner(symbol: "exclamationmark.triangle",
+            GitBanner(symbol: "exclamationmark.triangle",
                    message: "'\(name)' doesn't track a remote branch yet. You can still pull any branch; push it to \(remote) to start tracking.",
                    actionTitle: "Push to \(remote)",
                    action: { performPushSettingUpstream(remote: remote) })
         } else {
-            Banner(symbol: "exclamationmark.triangle",
+            GitBanner(symbol: "exclamationmark.triangle",
                    message: "'\(name)' doesn't track a remote branch, and there's no remote to push it to.")
         }
     }

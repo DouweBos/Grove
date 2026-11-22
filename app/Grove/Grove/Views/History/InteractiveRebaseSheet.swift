@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Plans an interactive rebase: an action per commit above `base`, reordered by drag.
@@ -38,9 +39,9 @@ struct InteractiveRebaseSheet: View {
                 Spacer(minLength: 0)
             }
             if let problem = planner.problem {
-                Banner(symbol: "exclamationmark.triangle", message: problem, tone: .negative)
+                GitBanner(symbol: "exclamationmark.triangle", message: problem, tone: .negative)
             } else if let warning = viewModel.pushedWarning(for: planner.steps.compactMap { planner.commit(for: $0) }) {
-                Banner(symbol: "exclamationmark.triangle", message: warning, tone: .caution)
+                GitBanner(symbol: "exclamationmark.triangle", message: warning, tone: .caution)
             }
             HistorySheetFooter(primaryTitle: "Start Rebase", isDisabled: planner.problem != nil || planner.isUnchanged) {
                 await viewModel.rebaseInteractively(onto: planner.base, plan: planner.plan)

@@ -4,6 +4,7 @@
 // Application entry point.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 // MARK: - GroveApp
@@ -38,6 +39,7 @@ struct GroveApp: App {
         WindowGroup("Grove", id: Self.mainWindowID, for: RepositoryReference.self) { $reference in
             WindowRoot(store: windows, reference: $reference)
                 .environment(windows)
+                .gitUIStyle(Theme.gitUI)
                 .onAppear {
                     AppAppearance.applyStored()
                     appDelegate.windows = windows
@@ -56,6 +58,7 @@ struct GroveApp: App {
         Settings {
             PreferencesView(manager: manager)
                 .environment(updater)
+                .gitUIStyle(Theme.gitUI)
         }
     }
 }

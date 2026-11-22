@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Fetch, pull, then push in one round-trip.
@@ -62,7 +63,7 @@ struct SyncDialogView: View {
                 PullStrategyField(strategy: $strategy)
             }
             if !tracksSelectedRemote {
-                Banner(symbol: "arrow.up.to.line",
+                GitBanner(symbol: "arrow.up.to.line",
                        message: "'\(branchName)' doesn't track \(selectedRemote) yet. Sync pushes it to \(selectedRemote)/\(branchName) and sets that as its upstream.")
             }
         }

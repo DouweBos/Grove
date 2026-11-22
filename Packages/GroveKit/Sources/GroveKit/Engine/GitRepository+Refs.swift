@@ -194,6 +194,11 @@ extension GitRepository {
         if setUpstream { args.append("-u") }
         if let mode = options.recurseSubmodules { args.append("--recurse-submodules=\(mode.rawValue)") }
         if options.skipHooks { args.append("--no-verify") }
+        switch options.tags {
+        case .none: break
+        case .follow: args.append("--follow-tags")
+        case .all: args.append("--tags")
+        }
         args += [remote, "HEAD:refs/heads/\(branch)"]
         try await runReportingProgress(args, progress: progress)
         progress?(1.0)

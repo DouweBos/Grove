@@ -4,6 +4,7 @@
 // Settings scoped to the open repository, backed by `git config --local`.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct RepositorySettingsView: View {
@@ -32,7 +33,7 @@ struct RepositorySettingsView: View {
             }
             .controlSize(.small)
             if let error = viewModel.errorMessage {
-                Banner(symbol: "xmark.octagon", message: error, tone: .negative, onDismiss: viewModel.dismissError)
+                GitBanner(symbol: "xmark.octagon", message: error, tone: .negative, onDismiss: viewModel.dismissError)
                     .padding([.horizontal, .top], Theme.Spacing.md)
             }
             form

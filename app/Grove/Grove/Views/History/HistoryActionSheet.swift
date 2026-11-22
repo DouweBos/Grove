@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Presents the sheet for whatever ``HistoryAction`` the view model has pending.
@@ -95,7 +96,7 @@ struct CommitActionSheet: View {
                 }
             }
             if let warning {
-                Banner(symbol: "exclamationmark.triangle", message: warning, tone: .caution)
+                GitBanner(symbol: "exclamationmark.triangle", message: warning, tone: .caution)
             }
             if initialText != nil {
                 TextEditor(text: $text)
@@ -140,7 +141,7 @@ struct ResetCommitSheet: View {
             .pickerStyle(.radioGroup)
             .labelsHidden()
             if mode == .hard {
-                Banner(symbol: "exclamationmark.triangle", message: "Uncommitted changes and later commits will be lost.", tone: .negative)
+                GitBanner(symbol: "exclamationmark.triangle", message: "Uncommitted changes and later commits will be lost.", tone: .negative)
             }
             HistorySheetFooter(primaryTitle: mode == .hard ? "Reset and Discard" : "Reset",
                                isDestructive: mode == .hard) {

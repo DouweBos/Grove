@@ -24,6 +24,21 @@ extension GitRepositoryProtocol {
     public func filePaths(inHistoryOf path: String, maxCount: Int) async throws -> [String: String] { [:] }
     public func archive(revision: String, to url: URL) async throws {}
 
+    // These throw rather than fall back, which would quietly do something other than asked.
+    public func merge(branch: String, squash: Bool) async throws {
+        guard !squash else { throw CocoaError(.featureUnsupported) }
+        try await merge(branch: branch)
+    }
+
+    public func stashCreate(message: String?, includeUntracked: Bool, keepIndex: Bool, paths: [String]?) async throws {
+        guard !keepIndex else { throw CocoaError(.featureUnsupported) }
+        try await stashCreate(message: message, includeUntracked: includeUntracked, paths: paths)
+    }
+
+    public func stashBranch(index: Int, name: String) async throws { throw CocoaError(.featureUnsupported) }
+    public func renameRemote(from old: String, to new: String) async throws { throw CocoaError(.featureUnsupported) }
+    public func pruneRemote(name: String) async throws { throw CocoaError(.featureUnsupported) }
+
     @discardableResult
     public func commit(message: String, body: String?, amend: Bool, sign: Bool, signOff: Bool) async throws -> CommitInfo {
         try await commit(message: message, body: body, amend: amend, sign: sign)

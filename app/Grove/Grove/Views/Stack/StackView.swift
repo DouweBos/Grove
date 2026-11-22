@@ -4,6 +4,7 @@
 // The Stack tab: the stack HEAD or the sidebar's branch belongs to, tips on top and trunk at the bottom.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct StackView: View {
@@ -19,17 +20,17 @@ struct StackView: View {
                     ProgressStrip(title: activity, detail: "", fraction: nil)
                 }
                 ForEach(viewModel.mergedParents(stack)) { merged in
-                    Banner(symbol: "arrow.merge", message: retargetMessage(merged, trunk: stack.trunk), tone: .positive,
+                    GitBanner(symbol: "arrow.merge", message: retargetMessage(merged, trunk: stack.trunk), tone: .positive,
                            actionTitle: "Retarget", action: { Task { await viewModel.retarget(merged) } })
                         .disabled(viewModel.isBusy)
                 }
                 if let merged = viewModel.retargetedParent {
-                    Banner(symbol: "trash", message: "Retargeted. Delete the merged branch \(merged)?", tone: .caution,
+                    GitBanner(symbol: "trash", message: "Retargeted. Delete the merged branch \(merged)?", tone: .caution,
                            actionTitle: "Delete \(merged)", action: { Task { await viewModel.deleteMergedParent() } },
                            onDismiss: { viewModel.keepMergedParent() })
                 }
                 if let message = viewModel.errorMessage {
-                    Banner(symbol: "xmark.octagon", message: message, tone: .negative) { viewModel.dismissError() }
+                    GitBanner(symbol: "xmark.octagon", message: message, tone: .negative) { viewModel.dismissError() }
                 }
                 ScrollView {
                     StackTree(stack: stack) { newBranchFrom = CreateBranchRequest(ref: $0.branch) }

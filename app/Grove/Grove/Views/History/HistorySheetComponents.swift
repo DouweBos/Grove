@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct HistorySheetHeader: View {
@@ -56,7 +57,7 @@ struct HistorySheetFooter: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             if let error = viewModel.errorMessage {
-                Banner(symbol: "xmark.octagon", message: error, tone: .negative, onDismiss: viewModel.dismissError)
+                GitBanner(symbol: "xmark.octagon", message: error, tone: .negative, onDismiss: viewModel.dismissError)
             }
             HStack {
                 if viewModel.isPerformingAction { ProgressView().controlSize(.small) }

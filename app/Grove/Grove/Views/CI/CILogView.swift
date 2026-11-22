@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// The selected job's steps, each opening to its log lines.
@@ -63,7 +64,7 @@ struct CILogView: View {
     private var content: some View {
         if let error = viewModel.errorMessage, viewModel.document?.lineCount ?? 0 == 0 {
             VStack(spacing: 0) {
-                Banner(symbol: "exclamationmark.triangle", message: "Couldn't load the log: \(error)", actionTitle: "Try Again",
+                GitBanner(symbol: "exclamationmark.triangle", message: "Couldn't load the log: \(error)", actionTitle: "Try Again",
                        action: { Task { await viewModel.reload() } }, onDismiss: viewModel.dismissError)
                     .padding(Theme.Spacing.sm)
                 rows
@@ -79,7 +80,7 @@ struct CILogView: View {
         } else {
             VStack(spacing: 0) {
                 if viewModel.isWaitingForJob {
-                    Banner(symbol: "clock", message: "The log appears when the job finishes.")
+                    GitBanner(symbol: "clock", message: "The log appears when the job finishes.")
                         .padding(Theme.Spacing.sm)
                 }
                 rows

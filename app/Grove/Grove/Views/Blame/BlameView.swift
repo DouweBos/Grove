@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Tracked files on the left; the chosen file annotated line by line on the right.
@@ -115,7 +116,7 @@ private struct BlameFilePanel: View {
             ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.errorMessage {
             VStack {
-                Banner(symbol: "exclamationmark.triangle", message: error, tone: .negative,
+                GitBanner(symbol: "exclamationmark.triangle", message: error, tone: .negative,
                        actionTitle: viewModel.isAtWorkingTree ? "Retry" : "Latest",
                        action: { Task { viewModel.isAtWorkingTree ? await viewModel.reload() : await viewModel.goToWorkingTree() } },
                        onDismiss: viewModel.dismissError)

@@ -5,6 +5,7 @@
 // progress / error status, and a Cancel + primary footer.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 // MARK: - DialogSheet
@@ -40,7 +41,7 @@ struct DialogSheet<Content: View>: View {
                     .transition(.opacity)
             }
             if let errorMessage, errorMessage != dismissedError {
-                Banner(symbol: "xmark.octagon", message: errorMessage, tone: .negative,
+                GitBanner(symbol: "xmark.octagon", message: errorMessage, tone: .negative,
                        onDismiss: { dismissedError = errorMessage })
                     .transition(.opacity)
             }

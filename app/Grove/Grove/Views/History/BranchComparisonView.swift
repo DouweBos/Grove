@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Both sides of `base...compare`: commits only in each branch, plus the files `compare` changed, with Merge / Rebase actions.
@@ -34,7 +35,7 @@ struct BranchComparisonView: View {
         VStack(spacing: 0) {
             pickerBar
             if let errorMessage {
-                Banner(symbol: "xmark.octagon", message: errorMessage, tone: .negative,
+                GitBanner(symbol: "xmark.octagon", message: errorMessage, tone: .negative,
                        onDismiss: { self.errorMessage = nil })
                     .padding(Theme.Spacing.sm)
             }

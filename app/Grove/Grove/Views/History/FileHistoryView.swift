@@ -3,6 +3,7 @@
 
 import AppKit
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Commits that touched one file (left card) and the file's diff at the selected commit (right card).
@@ -141,10 +142,10 @@ struct FileHistoryView: View {
     @ViewBuilder
     private var notices: some View {
         if let error = viewModel.errorMessage {
-            Banner(symbol: "xmark.octagon", message: error, tone: .negative, onDismiss: viewModel.dismissError)
+            GitBanner(symbol: "xmark.octagon", message: error, tone: .negative, onDismiss: viewModel.dismissError)
                 .padding(Theme.Spacing.sm)
         } else if let restored = viewModel.restoredCommit {
-            Banner(symbol: "clock.arrow.circlepath",
+            GitBanner(symbol: "clock.arrow.circlepath",
                    message: "Restored the version from \(restored.shortSHA) into the working copy. Review it in Changes.",
                    tone: .positive, onDismiss: { viewModel.dismissRestoreNotice() })
                 .padding(Theme.Spacing.sm)

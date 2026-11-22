@@ -5,6 +5,7 @@
 // a merge/rebase is in progress) above the file list.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct WorkingCopyLeftColumn: View {
@@ -29,7 +30,7 @@ struct WorkingCopyLeftColumn: View {
     @ViewBuilder
     private var composer: some View {
         if viewModel.showsLFSWarning {
-            Banner(symbol: "externaldrive.badge.exclamationmark", message: LFSStatus.missingMessage,
+            GitBanner(symbol: "externaldrive.badge.exclamationmark", message: LFSStatus.missingMessage,
                    onDismiss: viewModel.dismissLFSWarning)
         }
         if viewModel.isInOperation {

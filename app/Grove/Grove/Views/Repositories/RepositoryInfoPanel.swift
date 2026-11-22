@@ -6,6 +6,7 @@
 
 import AppKit
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct RepositoryInfoPanel: View {
@@ -25,15 +26,15 @@ struct RepositoryInfoPanel: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                 header
                 if !exists, let worktree, let mainRepositoryName {
-                    Banner(symbol: "questionmark.folder",
+                    GitBanner(symbol: "questionmark.folder",
                            message: "This worktree's folder is gone. Pruning removes the stale entry from \(mainRepositoryName).",
                            actionTitle: "Prune Worktrees",
                            action: { Task { await viewModel.pruneWorktrees(ofRepositoryAt: worktree.mainRepositoryPath) } })
                 } else if !exists {
-                    Banner(symbol: "questionmark.folder", message: "This folder no longer exists. It may have been moved or deleted.",
+                    GitBanner(symbol: "questionmark.folder", message: "This folder no longer exists. It may have been moved or deleted.",
                            actionTitle: "Remove from List", action: { viewModel.removeBookmark(bookmark) })
                 } else if let loadError {
-                    Banner(symbol: "exclamationmark.triangle", message: loadError,
+                    GitBanner(symbol: "exclamationmark.triangle", message: loadError,
                            onDismiss: { viewModel.dismissSnapshotError(for: bookmark.path) })
                 }
                 facts

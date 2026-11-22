@@ -189,11 +189,22 @@ public struct PushOptions: Sendable, Equatable {
     public var recurseSubmodules: SubmodulePushMode?
     /// `--no-verify`: skip the pre-push hook.
     public var skipHooks = false
+    /// Which tags go along with the commits.
+    public var tags = PushTags.none
 
-    public init(recurseSubmodules: SubmodulePushMode? = nil, skipHooks: Bool = false) {
+    public init(recurseSubmodules: SubmodulePushMode? = nil, skipHooks: Bool = false, tags: PushTags = .none) {
         self.recurseSubmodules = recurseSubmodules
         self.skipHooks = skipHooks
+        self.tags = tags
     }
+}
+
+public enum PushTags: String, CaseIterable, Sendable {
+    case none
+    /// `--follow-tags`: annotated tags on the pushed commits.
+    case follow
+    /// `--tags`.
+    case all
 }
 
 public enum SubmodulePushMode: String, CaseIterable, Sendable {

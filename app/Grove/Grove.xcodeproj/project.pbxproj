@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		D9F0A0032F90000000C0FFEE /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = D9F0A0022F90000000C0FFEE /* Sparkle */; };
 		D9F0A0062F90000000C0FFEE /* GroveKit in Frameworks */ = {isa = PBXBuildFile; productRef = D9F0A0052F90000000C0FFEE /* GroveKit */; };
+		D9F0A0092F90000000C0FFEE /* GroveUIKit in Frameworks */ = {isa = PBXBuildFile; productRef = D9F0A0082F90000000C0FFEE /* GroveUIKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +60,7 @@
 			files = (
 				D9F0A0032F90000000C0FFEE /* Sparkle in Frameworks */,
 				D9F0A0062F90000000C0FFEE /* GroveKit in Frameworks */,
+				D9F0A0092F90000000C0FFEE /* GroveUIKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -121,6 +123,7 @@
 			packageProductDependencies = (
 				D9F0A0022F90000000C0FFEE /* Sparkle */,
 				D9F0A0052F90000000C0FFEE /* GroveKit */,
+				D9F0A0082F90000000C0FFEE /* GroveUIKit */,
 			);
 			productName = Grove;
 			productReference = D9AC148D2F6D84D200DE8FDD /* Grove.app */;
@@ -207,6 +210,7 @@
 			packageReferences = (
 				D9F0A0012F90000000C0FFEE /* XCRemoteSwiftPackageReference "Sparkle" */,
 				D9F0A0042F90000000C0FFEE /* XCLocalSwiftPackageReference "../../Packages/GroveKit" */,
+				D9F0A0072F90000000C0FFEE /* XCLocalSwiftPackageReference "../../Packages/GroveUIKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D9AC148E2F6D84D200DE8FDD /* Products */;
@@ -594,6 +598,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/GroveKit;
 		};
+		D9F0A0072F90000000C0FFEE /* XCLocalSwiftPackageReference "../../Packages/GroveUIKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/GroveUIKit;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -611,6 +619,10 @@
 		D9F0A0052F90000000C0FFEE /* GroveKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = GroveKit;
+		};
+		D9F0A0082F90000000C0FFEE /* GroveUIKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GroveUIKit;
 		};
 		D9F0A0022F90000000C0FFEE /* Sparkle */ = {
 			isa = XCSwiftPackageProductDependency;

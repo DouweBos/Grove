@@ -22,6 +22,15 @@ A macOS Git client built with SwiftUI. Its design language follows our disk anal
 - Fix bugs found through Grove in GroveKit itself, not around it in the app, so every app gets the fix.
 - GroveKit's `Package.swift` and the root one must keep the same targets and settings.
 
+## GroveUIKit
+
+`Packages/GroveUIKit` is the git UI Grove and other apps render from, exposed from the root `Package.swift` next to GroveKit. macOS only.
+
+- The app brings the look (`GitUIStyle`) and what a repository supports (`GitFeatures`); spacing and radii are the kit's.
+- No resources, app singletons or `Theme`. Every file is inside `#if os(macOS)`.
+- Public types are prefixed `Git`; everything else is internal. `GroveUIKitConsumerTests` builds as an importing app does, in Swift 6.
+- Mutations other apps may run their own way go through `GitCommandPerforming`.
+
 ## Design system
 
 1. All colors come from `Theme` (asset catalog tokens, light and dark). No `Color.red`, `Color(red:)`, hex, or `Color(nsColor:)` in views.

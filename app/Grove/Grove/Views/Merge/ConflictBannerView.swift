@@ -5,6 +5,7 @@
 // in progress: what is happening, how many conflicts remain, and Abort / Resolve / Continue.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct ConflictBannerView: View {
@@ -15,7 +16,7 @@ struct ConflictBannerView: View {
         let remaining = viewModel.conflictedFiles.count
 
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            Banner(symbol: remaining == 0 ? "checkmark.circle" : "exclamationmark.triangle",
+            GitBanner(symbol: remaining == 0 ? "checkmark.circle" : "exclamationmark.triangle",
                    message: title)
 
             HStack(spacing: Theme.Spacing.sm) {

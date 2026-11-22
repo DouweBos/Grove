@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Creates an empty repository on a service, then offers to clone it or add it as a remote.
@@ -127,7 +128,7 @@ struct CreateRemoteRepositorySheet: View {
                     .padding(.leading, 96 + Theme.Spacing.md)
             }
             if let error = viewModel.remoteError {
-                Banner(symbol: "xmark.octagon", message: error, tone: .negative, onDismiss: viewModel.dismissRemoteError)
+                GitBanner(symbol: "xmark.octagon", message: error, tone: .negative, onDismiss: viewModel.dismissRemoteError)
             }
         }
     }

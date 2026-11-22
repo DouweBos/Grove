@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Summary tiles (merged / stale / active) above a checklist of local branches.
@@ -21,7 +22,7 @@ struct BranchesReviewView: View {
                 }
             }
             if let mergeStatusError = viewModel.mergeStatusWarning {
-                Banner(symbol: "exclamationmark.triangle",
+                GitBanner(symbol: "exclamationmark.triangle",
                        message: "Couldn't check which branches are merged into \(viewModel.primaryBranch), so deleting is disabled. \(mergeStatusError)",
                        tone: .negative, actionTitle: "Retry", action: { Task { await viewModel.refresh() } },
                        onDismiss: viewModel.dismissMergeStatusWarning)

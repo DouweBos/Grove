@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Starts a workflow by hand on a branch or tag, with the inputs its definition asks for.
@@ -55,7 +56,7 @@ struct DispatchWorkflowSheet: View {
                 Text("Reading the workflow\u{2019}s inputs\u{2026}").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
             }
         case .notDispatchable:
-            Banner(symbol: "hand.raised", message: viewModel.workflows.isEmpty
+            GitBanner(symbol: "hand.raised", message: viewModel.workflows.isEmpty
                    ? "This repository has no workflows to run."
                    : "This workflow can\u{2019}t be started by hand: it has no workflow_dispatch trigger on \(viewModel.ref).")
         case .inputs(let inputs):

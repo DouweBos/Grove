@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Detail card for the selected reflog entry: what happened, the commit it points at, restore actions.
@@ -87,7 +88,7 @@ struct ReflogDetailPanel: View {
             } else if let commit = viewModel.selectedCommit {
                 commitCard(commit)
             } else {
-                Banner(symbol: "questionmark.circle",
+                GitBanner(symbol: "questionmark.circle",
                        message: "Commit \(entry.newSHA.prefix(7)) is no longer in the object database.")
             }
         }

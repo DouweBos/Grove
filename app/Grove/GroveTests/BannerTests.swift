@@ -5,14 +5,14 @@
 
 import SwiftUI
 import Testing
-@testable import Grove
+@testable import GroveUIKit
 
 @MainActor
 struct BannerTests {
 
     @Test func aTrailingClosureAfterAButtonTitleIsThatButtonsAction() {
         var retried = false
-        let banner = Banner(symbol: "x", message: "Failed", actionTitle: "Retry") { retried = true }
+        let banner = GitBanner(symbol: "x", message: "Failed", actionTitle: "Retry") { retried = true }
 
         #expect(banner.onDismiss == nil)
         banner.action?()
@@ -21,7 +21,7 @@ struct BannerTests {
 
     @Test func aTrailingClosureWithoutAButtonDismisses() {
         var dismissed = false
-        let banner = Banner(symbol: "x", message: "Failed", tone: .negative) { dismissed = true }
+        let banner = GitBanner(symbol: "x", message: "Failed", tone: .negative) { dismissed = true }
 
         #expect(banner.action == nil)
         banner.onDismiss?()

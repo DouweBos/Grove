@@ -5,6 +5,7 @@
 
 import AppKit
 import GroveKit
+import GroveUIKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -88,7 +89,7 @@ private struct ApplyPatchSheet: View {
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.success)
         case .fails(let message):
-            Banner(symbol: "xmark.octagon", message: message, tone: .negative)
+            GitBanner(symbol: "xmark.octagon", message: message, tone: .negative)
         }
     }
 }

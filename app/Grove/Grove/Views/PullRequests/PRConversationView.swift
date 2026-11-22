@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// The pull request's comments and line comments, with a composer for a new comment.
@@ -37,7 +38,7 @@ struct PRConversationView: View {
             MultilineField(text: viewModel.commentDraft, placeholder: "Write a comment (Markdown)", height: 90,
                            onChange: viewModel.setCommentDraft)
             if let error = viewModel.commentError {
-                Banner(symbol: "xmark.octagon", message: error, tone: .negative, onDismiss: viewModel.dismissCommentError)
+                GitBanner(symbol: "xmark.octagon", message: error, tone: .negative, onDismiss: viewModel.dismissCommentError)
             }
             HStack(spacing: Theme.Spacing.sm) {
                 Spacer()

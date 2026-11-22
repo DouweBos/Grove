@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Saves local changes to a new stash, either everything or selected files.
@@ -50,7 +51,7 @@ struct StashDialogView: View {
             if selectFiles {
                 fileList
             } else if !isLoadingStatus && statusEntries.isEmpty {
-                Banner(symbol: "checkmark.circle", message: "There are no local changes to stash.")
+                GitBanner(symbol: "checkmark.circle", message: "There are no local changes to stash.")
             }
         }
         .task { await loadStatus() }

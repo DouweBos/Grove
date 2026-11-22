@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Confirms deleting a local branch, optionally forcing it, removing its remote counterpart,
@@ -74,9 +75,9 @@ struct DeleteBranchDialogView: View {
                 }
             }
             if branch.isHEAD {
-                Banner(symbol: "exclamationmark.triangle", message: "You can't delete the checked-out branch. Check out another branch first.")
+                GitBanner(symbol: "exclamationmark.triangle", message: "You can't delete the checked-out branch. Check out another branch first.")
             } else if let worktree {
-                Banner(symbol: "tree",
+                GitBanner(symbol: "tree",
                        message: "Checked out in the worktree at \(abbreviatingHome(worktree.path)). Git can't delete it while it's checked out there.",
                        actionTitle: "Open Worktree",
                        action: {

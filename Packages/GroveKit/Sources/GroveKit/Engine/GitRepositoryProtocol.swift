@@ -402,4 +402,15 @@ public protocol GitRepositoryProtocol: AnyObject, Observable, StackGitOperations
     func patch(paths: [String], staged: Bool) async throws -> String
     /// `git apply` of a patch file; `toIndex` also stages it, `checkOnly` only reports whether it applies.
     func applyPatch(at file: URL, toIndex: Bool, checkOnly: Bool) async throws
+
+    // MARK: Options (implemented in GitRepository+Options.swift)
+
+    /// With `squash`, the branch's changes land staged instead of as a merge.
+    func merge(branch: String, squash: Bool) async throws
+    /// With `keepIndex`, what's staged also stays in the working copy.
+    func stashCreate(message: String?, includeUntracked: Bool, keepIndex: Bool, paths: [String]?) async throws
+    /// A new branch at the stash's commit with the stash applied, and dropped.
+    func stashBranch(index: Int, name: String) async throws
+    func renameRemote(from old: String, to new: String) async throws
+    func pruneRemote(name: String) async throws
 }

@@ -4,6 +4,7 @@
 // The "can't reach the host" state shared by every tab that reads from the hosting service.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Why a host-backed list couldn't load, so the view can offer the right fix.
@@ -111,9 +112,9 @@ struct HostUnavailableView: View {
     @ViewBuilder
     private func banner(_ message: String) -> some View {
         if opensAccounts {
-            Banner(symbol: "exclamationmark.triangle", message: message, actionTitle: "Open Accounts", action: openAccounts)
+            GitBanner(symbol: "exclamationmark.triangle", message: message, actionTitle: "Open Accounts", action: openAccounts)
         } else {
-            Banner(symbol: "exclamationmark.triangle", message: message)
+            GitBanner(symbol: "exclamationmark.triangle", message: message)
         }
     }
 

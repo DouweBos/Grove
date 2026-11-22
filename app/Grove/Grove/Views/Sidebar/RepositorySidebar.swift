@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// In-repository sidebar: a summary of the repository, then its refs.
@@ -59,7 +60,7 @@ struct RepositorySidebar: View {
                 ProgressStrip(title: activity, detail: "", fraction: nil)
                     .padding(Theme.Spacing.sm)
             } else if let message = viewModel.errorMessage {
-                Banner(symbol: "xmark.octagon", message: message, tone: .negative) { viewModel.dismissError() }
+                GitBanner(symbol: "xmark.octagon", message: message, tone: .negative) { viewModel.dismissError() }
                     .padding(Theme.Spacing.sm)
             }
         }

@@ -3,6 +3,7 @@
 
 import AppKit
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Left panel of History: header with filter, date-grouped commit rows, infinite scroll.
@@ -18,7 +19,7 @@ struct CommitListView: View {
                 layoutPicker
             }
             if let error = viewModel.errorMessage, viewModel.pendingAction == nil {
-                Banner(symbol: "exclamationmark.triangle", message: error, tone: .negative,
+                GitBanner(symbol: "exclamationmark.triangle", message: error, tone: .negative,
                        onDismiss: { viewModel.dismissError() })
                     .padding(Theme.Spacing.sm)
             }
