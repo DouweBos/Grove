@@ -33,7 +33,8 @@ struct RepositoryInfoPanel: View {
                     Banner(symbol: "questionmark.folder", message: "This folder no longer exists. It may have been moved or deleted.",
                            actionTitle: "Remove from List", action: { viewModel.removeBookmark(bookmark) })
                 } else if let loadError {
-                    Banner(symbol: "exclamationmark.triangle", message: loadError)
+                    Banner(symbol: "exclamationmark.triangle", message: loadError,
+                           onDismiss: { viewModel.dismissSnapshotError(for: bookmark.path) })
                 }
                 facts
                 if let snapshot {

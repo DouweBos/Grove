@@ -116,9 +116,9 @@ private struct BlameFilePanel: View {
         } else if let error = viewModel.errorMessage {
             VStack {
                 Banner(symbol: "exclamationmark.triangle", message: error, tone: .negative,
-                       actionTitle: viewModel.isAtWorkingTree ? "Retry" : "Latest") {
-                    Task { viewModel.isAtWorkingTree ? await viewModel.reload() : await viewModel.goToWorkingTree() }
-                }
+                       actionTitle: viewModel.isAtWorkingTree ? "Retry" : "Latest",
+                       action: { Task { viewModel.isAtWorkingTree ? await viewModel.reload() : await viewModel.goToWorkingTree() } },
+                       onDismiss: viewModel.dismissError)
                 Spacer()
             }
             .padding(Theme.Spacing.lg)

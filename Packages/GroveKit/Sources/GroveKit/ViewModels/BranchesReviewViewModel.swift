@@ -78,6 +78,9 @@ public final class BranchesReviewViewModel {
     /// Set when the merged-branches check failed; deleting stays off so unmerged branches aren't force-deleted as merged.
     // TODO: Check this error state and the grouped-delete undo in the running app; only unit tests cover them.
     public private(set) var mergeStatusError: String?
+    /// `mergeStatusError` until it's dismissed; dismissing doesn't turn deleting back on.
+    public var mergeStatusWarning: String? { mergeStatusError == dismissedMergeStatusError ? nil : mergeStatusError }
+    private var dismissedMergeStatusError: String?
     public var pendingDelete: PendingDelete?
     private var aheadBehindCache = AheadBehindCache()
 
@@ -163,6 +166,7 @@ public final class BranchesReviewViewModel {
         do {
             fresh = try await repository.aheadBehind(branches: aheadBehindCache.missing(keyed), base: primary)
             mergeStatusError = nil
+            dismissedMergeStatusError = nil
         } catch {
             mergeStatusError = error.localizedDescription
         }
@@ -259,6 +263,10 @@ public final class BranchesReviewViewModel {
 
     public func dismissError() {
         errorMessage = nil
+    }
+
+    public func dismissMergeStatusWarning() {
+        dismissedMergeStatusError = mergeStatusError
     }
 
     // MARK: - Helpers

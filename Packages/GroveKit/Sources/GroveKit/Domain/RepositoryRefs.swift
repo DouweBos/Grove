@@ -92,7 +92,11 @@ public final class RepositoryRefs {
         if let inFlight { await inFlight.value } else if !hasLoaded { await refresh() }
     }
 
-    public func dismissError() { errorMessage = nil }
+    /// The error stays gone through the refreshes that would repeat it, until a read works or fails differently.
+    public func dismissError() {
+        if let errorMessage { dismissedError = errorMessage }
+        errorMessage = nil
+    }
 
     /// The pull request whose head is `branch`; remote branches match on the part after the remote name.
     public func pullRequest(for branch: BranchInfo) -> BranchPullRequest? {
@@ -226,12 +230,14 @@ public final class RepositoryRefs {
         if let entries {
             changedCount = entries.filter { $0.indexStatus != .unmodified || $0.workdirStatus != .unmodified }.count
         }
-        errorMessage = readError
+        if readError != dismissedError { dismissedError = nil }
+        errorMessage = dismissedError == nil ? readError : nil
         hasLoaded = true
         await readStacks()
     }
 
     private var readError: String?
+    @ObservationIgnored private var dismissedError: String?
     private var pullRequestsLoaded = false
 
     private func attempt<T>(_ body: @Sendable () async throws -> T) async -> T? {

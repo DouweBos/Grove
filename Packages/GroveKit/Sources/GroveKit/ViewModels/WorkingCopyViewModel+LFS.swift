@@ -19,6 +19,13 @@ public struct WorkingCopyLFS: Equatable {
 
 extension WorkingCopyViewModel {
 
+    /// Git LFS is needed but missing, and the warning about it hasn't been dismissed.
+    public var showsLFSWarning: Bool { lfs.status.isMissing && !isLFSWarningDismissed }
+
+    public func dismissLFSWarning() {
+        isLFSWarningDismissed = true
+    }
+
     public func isLFS(_ entry: StatusEntry) -> Bool { lfs.paths.contains(entry.path) }
 
     /// `*.psd` for `art/cover.psd`; nil for files without an extension.

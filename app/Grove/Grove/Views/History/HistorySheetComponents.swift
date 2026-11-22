@@ -56,7 +56,7 @@ struct HistorySheetFooter: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             if let error = viewModel.errorMessage {
-                Banner(symbol: "xmark.octagon", message: error, tone: .negative)
+                Banner(symbol: "xmark.octagon", message: error, tone: .negative, onDismiss: viewModel.dismissError)
             }
             HStack {
                 if viewModel.isPerformingAction { ProgressView().controlSize(.small) }
@@ -101,10 +101,8 @@ struct HistoryToolSheet<Content: View>: View {
 struct FileHistorySheet: View {
     @State private var viewModel: FileHistoryViewModel
 
-    init(repository: any GitRepositoryProtocol, path: String, onRepositoryChanged: (() async -> Void)? = nil) {
-        let viewModel = FileHistoryViewModel(repository: repository, filePath: path)
-        viewModel.onRepositoryChanged = onRepositoryChanged
-        _viewModel = State(initialValue: viewModel)
+    init(history: HistoryViewModel, path: String) {
+        _viewModel = State(initialValue: history.fileHistory(path: path))
     }
 
     var body: some View {

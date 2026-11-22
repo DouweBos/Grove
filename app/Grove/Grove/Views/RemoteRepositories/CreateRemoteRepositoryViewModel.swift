@@ -113,6 +113,8 @@ final class CreateRemoteRepositoryViewModel: Identifiable {
     func selectTarget(_ path: String) { targetPath = path; remoteError = nil }
     func setRemoteName(_ text: String) { remoteName = text; remoteError = nil }
 
+    func dismissRemoteError() { remoteError = nil }
+
     var canAddRemote: Bool {
         guard case .created = phase else { return false }
         return targetPath != nil && !remoteName.trimmingCharacters(in: .whitespaces).isEmpty && !isAddingRemote && addedRemote == nil

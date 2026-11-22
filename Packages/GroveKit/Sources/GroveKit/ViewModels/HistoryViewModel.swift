@@ -39,6 +39,8 @@ public final class HistoryViewModel {
     public private(set) var searchText = ""
     public var filterBranch: String?
     public var errorMessage: String?
+    /// Not shown again by a reload until one works.
+    @ObservationIgnored var dismissedError: String?
     /// The shown branch's upstream, logged alongside it so commits waiting to be pulled appear too.
     public private(set) var upstreamName: String?
     /// Commits on the upstream the branch doesn't have yet.
@@ -68,6 +70,8 @@ public final class HistoryViewModel {
     public private(set) var isPerformingAction = false
     /// Set by the session so mutations refresh every view, not just this list.
     public var onRepositoryChanged: (() async -> Void)?
+    /// Shows Blame for a file at a revision, asked for from File History.
+    @ObservationIgnored public var onOpenBlame: ((_ file: String, _ revision: String) async -> Void)?
     /// Reports each action this view model runs, e.g. to the app's telemetry.
     @ObservationIgnored public var onAction: GroveKitActionHandler?
     /// Set by the session to show Changes, where the conflict banner continues a stopped rebase.
@@ -147,6 +151,7 @@ public final class HistoryViewModel {
         do {
             let count = max(commits.count, pageSize)
             let page = try await repository.log(maxCount: count, skip: 0, revisions: revisions)
+            dismissedError = nil
             guard page.map(\.id) != commits.map(\.id) else { return }
             commits = page
             hasMore = page.count == count
@@ -157,7 +162,7 @@ public final class HistoryViewModel {
             if kept.focus == nil, let first = page.first { kept.select(first.id) }
             applySelection(kept)
         } catch {
-            errorMessage = error.localizedDescription
+            if error.localizedDescription != dismissedError { errorMessage = error.localizedDescription }
         }
     }
 

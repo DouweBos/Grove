@@ -224,6 +224,10 @@ final class PullRequestsViewModel {
         }
     }
 
+    func dismissCommentError() {
+        commentError = nil
+    }
+
     private func loadTabContent(force: Bool = false) async {
         guard let pr = selectedPR else { return }
         let cached = detailCache.peek(PRDetailKey(pr))

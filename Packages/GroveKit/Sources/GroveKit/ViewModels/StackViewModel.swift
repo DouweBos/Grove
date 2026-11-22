@@ -31,6 +31,8 @@ public final class StackViewModel {
     public private(set) var stats: [String: DiffStats] = [:]
     private(set) var layerCommits: [String: [CommitInfo]] = [:]
     public var errorMessage: String?
+    /// Not shown again by a refresh until a read works.
+    @ObservationIgnored private var dismissedError: String?
 
     public init(repository: any GitRepositoryProtocol, refs: RepositoryRefs) {
         self.repository = repository
@@ -95,12 +97,16 @@ public final class StackViewModel {
         let range = layer.base.isEmpty ? [layer.tipSHA] : [layer.tipSHA, "^\(layer.base)"]
         do {
             layerCommits[key] = try await repository.log(maxCount: 200, skip: 0, revisions: range)
+            dismissedError = nil
         } catch {
-            errorMessage = error.localizedDescription
+            if error.localizedDescription != dismissedError { errorMessage = error.localizedDescription }
         }
     }
 
-    public func dismissError() { errorMessage = nil }
+    public func dismissError() {
+        if let errorMessage { dismissedError = errorMessage }
+        errorMessage = nil
+    }
 
     // MARK: - Restack
 

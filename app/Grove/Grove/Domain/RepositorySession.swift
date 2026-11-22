@@ -107,6 +107,7 @@ final class RepositorySession {
         historyVM.onRepositoryChanged = refresh
         historyVM.undoManager = gitUndoManager
         historyVM.onRebaseStopped = { [weak self] in self?.sidebarVM.select(.workingCopy) }
+        historyVM.onOpenBlame = { [weak self] file, revision in await self?.showBlame(file: file, revision: revision) }
         sidebarVM.onRevealInHistory = { [weak self] sha, fallback in Task { await self?.revealInHistory(sha, fallback: fallback) } }
         stashesVM.onRevealInHistory = { [weak self] sha in Task { await self?.revealInHistory(sha) } }
         stashesVM.onRepositoryChanged = refresh

@@ -79,6 +79,10 @@ final class CILogViewModel {
         await load(job)
     }
 
+    func dismissError() {
+        errorMessage = nil
+    }
+
     private func load(_ job: CIJob) async {
         loadingJobID = job.id
         defer { if loadingJobID == job.id { loadingJobID = nil } }

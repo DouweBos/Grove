@@ -114,6 +114,15 @@ public final class BlameViewModel {
         await loadBlame()
     }
 
+    /// Closes the file that couldn't be blamed, back to picking one.
+    public func dismissError() {
+        guard errorMessage != nil else { return }
+        errorMessage = nil
+        selectedFile = nil
+        revision = nil
+        revisionStack = []
+    }
+
     public func reload() async {
         await loadBlame()
     }

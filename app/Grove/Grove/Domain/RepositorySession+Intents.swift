@@ -21,8 +21,7 @@ extension RepositorySession {
                 sidebarVM.select(.history)
             }
         case .blame(let file):
-            sidebarVM.select(.blame)
-            await blameVM.open(file: file)
+            await showBlame(file: file)
         case .stack(let name):
             if let name, refs.stack(containing: name) != nil {
                 sidebarVM.showStack(containing: name)
@@ -30,5 +29,10 @@ extension RepositorySession {
                 sidebarVM.select(.stack)
             }
         }
+    }
+
+    func showBlame(file: String, revision: String? = nil) async {
+        sidebarVM.select(.blame)
+        await blameVM.open(file: file, revision: revision)
     }
 }

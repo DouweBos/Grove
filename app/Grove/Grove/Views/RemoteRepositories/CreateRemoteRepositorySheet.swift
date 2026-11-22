@@ -127,7 +127,7 @@ struct CreateRemoteRepositorySheet: View {
                     .padding(.leading, 96 + Theme.Spacing.md)
             }
             if let error = viewModel.remoteError {
-                Banner(symbol: "xmark.octagon", message: error, tone: .negative)
+                Banner(symbol: "xmark.octagon", message: error, tone: .negative, onDismiss: viewModel.dismissRemoteError)
             }
         }
     }

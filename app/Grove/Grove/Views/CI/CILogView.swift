@@ -64,7 +64,7 @@ struct CILogView: View {
         if let error = viewModel.errorMessage, viewModel.document?.lineCount ?? 0 == 0 {
             VStack(spacing: 0) {
                 Banner(symbol: "exclamationmark.triangle", message: "Couldn't load the log: \(error)", actionTitle: "Try Again",
-                       action: { Task { await viewModel.reload() } })
+                       action: { Task { await viewModel.reload() } }, onDismiss: viewModel.dismissError)
                     .padding(Theme.Spacing.sm)
                 rows
             }

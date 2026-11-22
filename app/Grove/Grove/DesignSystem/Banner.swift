@@ -10,10 +10,30 @@ struct Banner: View {
 
     let symbol: String
     let message: String
-    var tone: Tone = .caution
-    var actionTitle: String?
-    var action: (() -> Void)?
-    var onDismiss: (() -> Void)?
+    let tone: Tone
+    let actionTitle: String?
+    let action: (() -> Void)?
+    let onDismiss: (() -> Void)?
+
+    init(symbol: String, message: String, tone: Tone = .caution, onDismiss: (() -> Void)? = nil) {
+        self.symbol = symbol
+        self.message = message
+        self.tone = tone
+        self.actionTitle = nil
+        self.action = nil
+        self.onDismiss = onDismiss
+    }
+
+    /// `action` is required, so a trailing closure after a title can't be taken for `onDismiss`.
+    init(symbol: String, message: String, tone: Tone = .caution, actionTitle: String,
+         action: @escaping () -> Void, onDismiss: (() -> Void)? = nil) {
+        self.symbol = symbol
+        self.message = message
+        self.tone = tone
+        self.actionTitle = actionTitle
+        self.action = action
+        self.onDismiss = onDismiss
+    }
 
     private var color: Color {
         switch tone {

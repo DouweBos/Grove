@@ -136,7 +136,8 @@ public final class WorkingCopyViewModel {
     // MARK: Misc
 
     public private(set) var hasLoadedStatus = false
-    public private(set) var lfs = WorkingCopyLFS()
+    public internal(set) var lfs = WorkingCopyLFS()
+    var isLFSWarningDismissed = false
     public private(set) var pendingDiscard: [StatusEntry]?
     public private(set) var pendingHunkDiscard: PendingHunkDiscard?
     public var pendingFileAction: PendingFileAction?

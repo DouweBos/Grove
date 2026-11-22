@@ -28,8 +28,9 @@ struct WorkingCopyLeftColumn: View {
 
     @ViewBuilder
     private var composer: some View {
-        if viewModel.lfs.status.isMissing {
-            Banner(symbol: "externaldrive.badge.exclamationmark", message: LFSStatus.missingMessage)
+        if viewModel.showsLFSWarning {
+            Banner(symbol: "externaldrive.badge.exclamationmark", message: LFSStatus.missingMessage,
+                   onDismiss: viewModel.dismissLFSWarning)
         }
         if viewModel.isInOperation {
             ConflictBannerView()

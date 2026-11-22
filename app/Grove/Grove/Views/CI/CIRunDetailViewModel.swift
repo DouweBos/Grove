@@ -34,6 +34,9 @@ final class CIRunDetailViewModel {
     private var graphDefinitions: (source: String, jobs: [WorkflowJobDefinition])?
     private var loadingGraphSource: String?
     private(set) var graphError: String?
+    // Polling would report a dismissed failure again, so it's remembered by what failed.
+    @ObservationIgnored private var dismissedArtifactsRunID: Int?
+    @ObservationIgnored private var dismissedGraphSource: String?
     private(set) var graphZoom: CGFloat = 1
     /// How far the graph is dragged from its top-left; the view clamps it to what the graph's size allows.
     private(set) var graphPan: CGSize = .zero
@@ -100,6 +103,7 @@ final class CIRunDetailViewModel {
         let cached = cache.value(for: key)
         if previous?.id != run.id {
             graphPan = .zero
+            graphError = nil
             artifacts = cached?.artifacts ?? []
             if cached?.jobs == nil {
                 jobs = []
@@ -122,6 +126,7 @@ final class CIRunDetailViewModel {
     /// Reads the shown run again, e.g. after a failed read.
     func reload() async {
         guard let run else { return }
+        dismissedArtifactsRunID = nil
         async let jobsRead: Void = loadJobs(for: run)
         async let artifactsRead: Void = loadArtifacts(for: run)
         _ = await (jobsRead, artifactsRead)
@@ -142,8 +147,18 @@ final class CIRunDetailViewModel {
             graphError = nil
         } catch {
             guard graphSource == source else { return }
-            graphError = error.localizedDescription
+            if source != dismissedGraphSource { graphError = error.localizedDescription }
         }
+    }
+
+    func dismissGraphError() {
+        dismissedGraphSource = graphSource
+        graphError = nil
+    }
+
+    func dismissArtifactsError() {
+        dismissedArtifactsRunID = run?.id
+        artifactsError = nil
     }
 
     /// From the graph: shows the node's job's steps and log.
@@ -177,6 +192,7 @@ final class CIRunDetailViewModel {
         selectedJobID = nil
         jobsError = nil
         artifactsError = nil
+        graphError = nil
         Task { await log.show(nil) }
     }
 
@@ -212,9 +228,10 @@ final class CIRunDetailViewModel {
             cache.update(key, default: CIRunDetails()) { $0.artifacts = loaded }
             guard self.run.map(CIRunDetailKey.init) == key else { return }
             artifactsError = nil
+            dismissedArtifactsRunID = nil
             if loaded != artifacts { artifacts = loaded }
         } catch {
-            guard self.run?.id == run.id else { return }
+            guard self.run?.id == run.id, dismissedArtifactsRunID != run.id else { return }
             artifactsError = error.localizedDescription
         }
     }

@@ -14,7 +14,8 @@ struct CIRunSummaryView: View {
             VStack(spacing: Theme.Spacing.md) {
                 if let error = viewModel.graphError {
                     Banner(symbol: "exclamationmark.triangle",
-                           message: "Couldn\u{2019}t read the workflow file, so jobs aren\u{2019}t linked: \(error)")
+                           message: "Couldn\u{2019}t read the workflow file, so jobs aren\u{2019}t linked: \(error)",
+                           onDismiss: viewModel.dismissGraphError)
                 }
                 CIGraphView()
                 if !viewModel.annotations.isEmpty { CIAnnotationsView() }

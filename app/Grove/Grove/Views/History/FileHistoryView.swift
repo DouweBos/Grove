@@ -87,7 +87,7 @@ struct FileHistoryView: View {
             Button("Copy Commit SHA") {
                 GroveClipboard.copy(commit.id)
             }
-            Button("Open Blame at This Revision") { openBlame(commit) }
+            Button("Open Blame at This Revision") { Task { await viewModel.openBlame(commit) } }
             Button("Export File at This Revision\u{2026}") { Task { await export(commit) } }
             Divider()
             Button("Restore This Version") { Task { await viewModel.requestRestore(commit) } }
@@ -104,7 +104,7 @@ struct FileHistoryView: View {
                 PanelHeader(title: commit.summary, detail: commit.shortSHA) {
                     if let diff = viewModel.fileDiff { DiffStatsLabel(stats: diff.stats) }
                     if !isImage { WrapLinesToggle() }
-                    Button { openBlame(commit) } label: { Image(systemName: "person.text.rectangle") }
+                    Button { Task { await viewModel.openBlame(commit) } } label: { Image(systemName: "person.text.rectangle") }
                         .buttonStyle(.borderless)
                         .help("Open Blame at This Revision")
                     Button { Task { await export(commit) } } label: { Image(systemName: "square.and.arrow.down") }
@@ -141,7 +141,7 @@ struct FileHistoryView: View {
     @ViewBuilder
     private var notices: some View {
         if let error = viewModel.errorMessage {
-            Banner(symbol: "xmark.octagon", message: error, tone: .negative)
+            Banner(symbol: "xmark.octagon", message: error, tone: .negative, onDismiss: viewModel.dismissError)
                 .padding(Theme.Spacing.sm)
         } else if let restored = viewModel.restoredCommit {
             Banner(symbol: "clock.arrow.circlepath",
@@ -153,11 +153,6 @@ struct FileHistoryView: View {
 
     // MARK: - Actions
 
-    private func openBlame(_ commit: CommitInfo) {
-        NotificationCenter.default.post(name: .fileHistoryOpenBlame, object: nil,
-                                        userInfo: ["filePath": viewModel.filePath, "revision": commit.id])
-    }
-
     private func export(_ commit: CommitInfo) async {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = (viewModel.filePath as NSString).lastPathComponent
@@ -166,11 +161,6 @@ struct FileHistoryView: View {
         guard await panel.begin() == .OK, let url = panel.url else { return }
         await viewModel.exportFile(to: url)
     }
-}
-
-extension Notification.Name {
-    /// userInfo: `"filePath"` (repository-relative) and `"revision"` (full SHA).
-    static let fileHistoryOpenBlame = Notification.Name("com.grove.fileHistoryOpenBlame")
 }
 
 #Preview {

@@ -28,6 +28,9 @@ struct DialogSheet<Content: View>: View {
     let onPrimary: () -> Void
     @ViewBuilder var content: () -> Content
 
+    /// Hidden until the message changes or the primary action runs again.
+    @State private var dismissedError: String?
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
             header
@@ -36,8 +39,9 @@ struct DialogSheet<Content: View>: View {
                 ProgressStrip(title: progress, detail: progressDetail, fraction: fraction)
                     .transition(.opacity)
             }
-            if let errorMessage {
-                Banner(symbol: "xmark.octagon", message: errorMessage, tone: .negative)
+            if let errorMessage, errorMessage != dismissedError {
+                Banner(symbol: "xmark.octagon", message: errorMessage, tone: .negative,
+                       onDismiss: { dismissedError = errorMessage })
                     .transition(.opacity)
             }
             footer
@@ -48,6 +52,8 @@ struct DialogSheet<Content: View>: View {
         .foregroundStyle(Theme.textPrimary)
         .animation(.easeInOut(duration: 0.15), value: progress)
         .animation(.easeInOut(duration: 0.15), value: errorMessage)
+        .animation(.easeInOut(duration: 0.15), value: dismissedError)
+        .onChange(of: errorMessage) { dismissedError = nil }
     }
 
     private var header: some View {
@@ -78,13 +84,18 @@ struct DialogSheet<Content: View>: View {
             Spacer()
             Button(cancelTitle, action: onCancel)
                 .keyboardShortcut(.cancelAction)
-            Button(primaryTitle, action: onPrimary)
+            Button(primaryTitle, action: submit)
                 .buttonStyle(.borderedProminent)
                 .tint(isDestructive ? Theme.danger : Theme.accent)
                 .keyboardShortcut(.defaultAction)
                 .disabled(isPrimaryDisabled || progress != nil)
         }
         .controlSize(.large)
+    }
+
+    private func submit() {
+        dismissedError = nil
+        onPrimary()
     }
 }
 

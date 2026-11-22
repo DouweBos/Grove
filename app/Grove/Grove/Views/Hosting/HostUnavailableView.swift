@@ -97,8 +97,7 @@ struct HostUnavailableView: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
             } else if let bannerMessage {
-                Banner(symbol: "exclamationmark.triangle", message: bannerMessage, actionTitle: opensAccounts ? "Open Accounts" : nil,
-                       action: opensAccounts ? { openAccounts() } : nil)
+                banner(bannerMessage)
                     .frame(maxWidth: 560)
             }
             if canRetry {
@@ -107,6 +106,15 @@ struct HostUnavailableView: View {
             }
         }
         .padding(Theme.Spacing.xl)
+    }
+
+    @ViewBuilder
+    private func banner(_ message: String) -> some View {
+        if opensAccounts {
+            Banner(symbol: "exclamationmark.triangle", message: message, actionTitle: "Open Accounts", action: openAccounts)
+        } else {
+            Banner(symbol: "exclamationmark.triangle", message: message)
+        }
     }
 
     private func openAccounts() {

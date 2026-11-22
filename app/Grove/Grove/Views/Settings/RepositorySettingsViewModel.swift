@@ -55,6 +55,8 @@ final class RepositorySettingsViewModel {
     private(set) var hasLoaded = false
     private(set) var isSaving = false
     private(set) var errorMessage: String?
+    /// Not shown again by a refresh until a read works.
+    @ObservationIgnored private var dismissedError: String?
     private(set) var didSave = false
 
     var hasChanges: Bool { saved != draft }
@@ -92,8 +94,9 @@ final class RepositorySettingsViewModel {
             saved = snapshot
             hasLoaded = true
             errorMessage = nil
+            dismissedError = nil
         } catch {
-            errorMessage = error.localizedDescription
+            if error.localizedDescription != dismissedError { errorMessage = error.localizedDescription }
         }
     }
 
@@ -148,6 +151,7 @@ final class RepositorySettingsViewModel {
     // MARK: - Saving
 
     func save() async {
+        dismissedError = nil
         isSaving = true
         defer { isSaving = false }
         let target = draft
@@ -198,6 +202,7 @@ final class RepositorySettingsViewModel {
     }
 
     func dismissError() {
+        if let errorMessage { dismissedError = errorMessage }
         errorMessage = nil
     }
 

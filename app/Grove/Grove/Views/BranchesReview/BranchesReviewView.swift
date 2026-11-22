@@ -20,10 +20,11 @@ struct BranchesReviewView: View {
                     }
                 }
             }
-            if let mergeStatusError = viewModel.mergeStatusError {
+            if let mergeStatusError = viewModel.mergeStatusWarning {
                 Banner(symbol: "exclamationmark.triangle",
                        message: "Couldn't check which branches are merged into \(viewModel.primaryBranch), so deleting is disabled. \(mergeStatusError)",
-                       tone: .negative, actionTitle: "Retry", action: { Task { await viewModel.refresh() } })
+                       tone: .negative, actionTitle: "Retry", action: { Task { await viewModel.refresh() } },
+                       onDismiss: viewModel.dismissMergeStatusWarning)
             }
             listPanel
         }

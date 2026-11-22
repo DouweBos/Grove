@@ -79,13 +79,22 @@ final class WindowViewModel {
     private(set) var repositorySnapshots: [String: RepositorySnapshot] = [:]
     private(set) var refreshingSnapshotPaths: Set<String> = []
     private(set) var snapshotErrors: [String: String] = [:]
+    /// Dismissed errors, which reselecting the repository doesn't show again until a read works.
+    private var dismissedSnapshotErrors: [String: String] = [:]
 
     func storeSnapshot(_ snapshot: RepositorySnapshot, for path: String) {
         repositorySnapshots[path] = snapshot
         snapshotErrors[path] = nil
+        dismissedSnapshotErrors[path] = nil
     }
 
-    func storeSnapshotError(_ message: String, for path: String) { snapshotErrors[path] = message }
+    func storeSnapshotError(_ message: String, for path: String) {
+        snapshotErrors[path] = message == dismissedSnapshotErrors[path] ? nil : message
+    }
+
+    func dismissSnapshotError(for path: String) {
+        dismissedSnapshotErrors[path] = snapshotErrors.removeValue(forKey: path)
+    }
 
     func setSnapshotRefreshing(_ refreshing: Bool, for path: String) {
         if refreshing { refreshingSnapshotPaths.insert(path) } else { refreshingSnapshotPaths.remove(path) }

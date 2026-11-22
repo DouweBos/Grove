@@ -15,9 +15,8 @@ struct CIArtifactsView: View {
                 .padding([.horizontal, .top], Theme.Spacing.xl)
                 .padding(.bottom, Theme.Spacing.md)
             if let error = viewModel.artifactsError, viewModel.artifacts.isEmpty {
-                Banner(symbol: "exclamationmark.triangle", message: "Couldn\u{2019}t load the artifacts: \(error)", actionTitle: "Try Again") {
-                    Task { await viewModel.reload() }
-                }
+                Banner(symbol: "exclamationmark.triangle", message: "Couldn\u{2019}t load the artifacts: \(error)", actionTitle: "Try Again",
+                       action: { Task { await viewModel.reload() } }, onDismiss: viewModel.dismissArtifactsError)
                 .padding([.horizontal, .bottom], Theme.Spacing.xl)
             } else {
                 VStack(spacing: 0) {

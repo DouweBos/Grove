@@ -45,7 +45,21 @@ extension HistoryViewModel {
         setPendingAction(nil)
     }
 
+    /// The File History of `path`, wired to this list's hooks.
+    public func fileHistory(path: String) -> FileHistoryViewModel {
+        let history = FileHistoryViewModel(repository: repository, filePath: path)
+        history.onRepositoryChanged = onRepositoryChanged
+        history.onAction = onAction
+        history.onOpenBlame = { [weak self] file, revision in
+            // Blame replaces History, whose sheet would come back on returning to it.
+            self?.dismissAction()
+            await self?.onOpenBlame?(file, revision)
+        }
+        return history
+    }
+
     public func dismissError() {
+        if let errorMessage { dismissedError = errorMessage }
         errorMessage = nil
     }
 

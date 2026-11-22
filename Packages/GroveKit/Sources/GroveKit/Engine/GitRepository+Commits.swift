@@ -105,6 +105,24 @@ extension GitRepository {
         return LogParser.parse(result.stdout)
     }
 
+    public func filePaths(inHistoryOf path: String, maxCount: Int) async throws -> [String: String] {
+        // The marker can't start a path: git quotes names with control characters.
+        let args = ["log", "--format=%x01%H", "--name-only", "--no-color", "-\(maxCount)", "--follow", "--", path]
+        var paths: [String: String] = [:]
+        var commit = ""
+        var name = path
+        for line in try await shell.run(args).stdout.split(separator: "\n").map(String.init) {
+            if line.hasPrefix("\u{1}") {
+                commit = String(line.dropFirst())
+            } else {
+                name = GitPathQuoting.unquote(line)
+            }
+            // A commit listing no file, like a merge, has it under the next newer one's name.
+            paths[commit] = name
+        }
+        return paths
+    }
+
     public func commitDetail(_ sha: String) async throws -> CommitInfo {
         let result = try await shell.run(
             ["log", "--format=\(LogParser.verifiedFormatString)", "-1", sha]

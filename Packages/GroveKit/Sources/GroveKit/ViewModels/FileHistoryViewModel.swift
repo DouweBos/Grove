@@ -33,6 +33,8 @@ public final class FileHistoryViewModel {
 
     /// Set by the presenter so a restore refreshes the Changes list and badges.
     public var onRepositoryChanged: (() async -> Void)?
+    /// Shows Blame for a file, named as it was at that revision.
+    @ObservationIgnored public var onOpenBlame: ((_ file: String, _ revision: String) async -> Void)?
     /// Reports each action this view model runs, e.g. to the app's telemetry.
     @ObservationIgnored public var onAction: GroveKitActionHandler?
 
@@ -109,6 +111,18 @@ public final class FileHistoryViewModel {
         let match = allDiffs.first { $0.path == filePath || $0.diff?.oldPath == filePath }
             ?? (allDiffs.count == 1 ? allDiffs.first : nil)
         return match?.diff ?? limited.first?.diff
+    }
+
+    public func dismissError() {
+        errorMessage = nil
+    }
+
+    // MARK: - Blame
+
+    /// Opens Blame at `commit`, under the name the file had there.
+    public func openBlame(_ commit: CommitInfo) async {
+        let paths = try? await repository.filePaths(inHistoryOf: filePath, maxCount: maxCount)
+        await onOpenBlame?(paths?[commit.id] ?? filePath, commit.id)
     }
 
     // MARK: - Restore

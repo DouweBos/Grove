@@ -64,6 +64,7 @@ extension RepositorySession {
         vm.filterBranch = branch
         vm.onRepositoryChanged = { [weak self] in await self?.refreshAll() }
         vm.undoManager = gitUndoManager
+        vm.onOpenBlame = { [weak self] file, revision in await self?.showBlame(file: file, revision: revision) }
         filteredHistoryVMs[branch] = vm
         while filteredHistoryOrder.count > Self.filteredHistoryLimit {
             filteredHistoryVMs[filteredHistoryOrder.removeFirst()] = nil
