@@ -90,7 +90,7 @@ struct CILogView: View {
 
     private var rows: some View {
         ScrollViewReader { proxy in
-            DiffScrollView {
+            CILogScrollView {
                 CILogRows(rows: viewModel.rows, longestLine: viewModel.document?.longestLine ?? 0)
             }
             .onChange(of: viewModel.currentMatch) { _, match in
@@ -104,7 +104,7 @@ struct CILogView: View {
 /// Lazy rows sized like a diff: as wide as the longest line, or the viewport when that's wider or lines wrap.
 private struct CILogRows: View {
     @Environment(CILogViewModel.self) private var viewModel
-    @Environment(\.diffViewportWidth) private var viewportWidth
+    @Environment(\.logViewportWidth) private var viewportWidth
     let rows: [CILogRow]
     let longestLine: Int
 

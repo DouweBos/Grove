@@ -40,6 +40,7 @@ struct GroveApp: App {
             WindowRoot(store: windows, reference: $reference)
                 .environment(windows)
                 .gitUIStyle(Theme.gitUI)
+                .gitUIHost(.grove)
                 .onAppear {
                     AppAppearance.applyStored()
                     appDelegate.windows = windows
@@ -59,6 +60,7 @@ struct GroveApp: App {
             PreferencesView(manager: manager)
                 .environment(updater)
                 .gitUIStyle(Theme.gitUI)
+                .gitUIHost(.grove)
         }
     }
 }

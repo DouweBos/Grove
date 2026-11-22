@@ -9,6 +9,7 @@ import SwiftUI
 /// Emits rows directly so the enclosing LazyVStack can render them lazily.
 struct CommitChangesetView: View {
     @Environment(HistoryViewModel.self) private var viewModel
+    private var settings = DiffSettings()
 
     var body: some View {
         if viewModel.isLoadingDiff {
@@ -40,7 +41,7 @@ struct CommitChangesetView: View {
                 .fixedSize()
             DiffStatsLabel(stats: stats)
             Spacer()
-            WrapLinesToggle()
+            DiffToggles()
             Button(allExpanded ? "Collapse All" : "Expand All") { viewModel.setAllFilesExpanded(!allExpanded) }
                 .buttonStyle(.borderless)
                 .font(.system(size: 12))
@@ -53,12 +54,12 @@ struct CommitChangesetView: View {
     @ViewBuilder
     private func expandedDiff(_ file: FileDiff) -> some View {
         Group {
-            if ImageDiffView.supports(path: file.path), let sha = viewModel.selectedCommit?.id {
-                RepositoryImageDiffView(source: .commit(sha, in: viewModel.repository),
-                                        path: file.path, oldPath: file.diff?.oldPath)
+            if GitImageDiffView.supports(path: file.path), let sha = viewModel.selectedCommit?.id {
+                GitImageDiffView(.commit(sha, in: viewModel.repository), path: file.path, oldPath: file.diff?.oldPath,
+                                 mode: settings.options.imageMode)
                     .frame(height: 360)
             } else if let diff = file.diff, diff.isBinary || !diff.hunks.isEmpty {
-                DiffHorizontalScroll { DiffView(diff: diff) }
+                GitDiffView(diff: diff, options: settings.options, fitsContent: true)
             } else {
                 Text(file.status == .renamed ? "Renamed without content changes." : "No textual changes.")
                     .font(.system(size: 12))

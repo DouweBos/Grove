@@ -13,8 +13,9 @@ struct ChangesetBrowser: View {
     var isLoading = false
     var emptyTitle = "No Changes"
     /// Lets image files render as pictures; without it they show the binary placeholder.
-    var imageSource: ImageDiffSource?
+    var imageSource: GitDiffImages?
     let onSelect: (FileDiff) -> Void
+    private let settings = DiffSettings()
 
     var body: some View {
         if isLoading {
@@ -36,7 +37,7 @@ struct ChangesetBrowser: View {
                 Text("+\(totals.additions)  \u{2212}\(totals.deletions)")
                     .font(.monoCaption)
                     .foregroundStyle(Theme.textSecondary)
-                WrapLinesToggle()
+                DiffToggles()
             }
             .padding(.horizontal, Theme.Spacing.lg)
             .padding(.top, Theme.Spacing.md)
@@ -51,10 +52,10 @@ struct ChangesetBrowser: View {
     @ViewBuilder
     private var diffArea: some View {
         if let file = files.first(where: { $0.path == selectedPath }) {
-            if let imageSource, ImageDiffView.supports(path: file.path) {
-                RepositoryImageDiffView(source: imageSource, path: file.path, oldPath: file.diff?.oldPath)
+            if let imageSource, GitImageDiffView.supports(path: file.path) {
+                GitImageDiffView(imageSource, path: file.path, oldPath: file.diff?.oldPath, mode: settings.options.imageMode)
             } else if let diff = file.diff {
-                DiffScrollView { DiffView(diff: diff) }
+                GitDiffView(diff: diff, options: settings.options)
                     .id(file.path)
             } else {
                 GitEmptyState(systemImage: "doc.zipper", title: "No Diff Available",

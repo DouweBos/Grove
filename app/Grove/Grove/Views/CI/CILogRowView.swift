@@ -10,8 +10,8 @@ struct CILogStepHeader: View {
     let isExpanded: Bool
     let onToggle: () -> Void
 
-    @Environment(\.diffViewportWidth) private var viewportWidth
-    @Environment(\.diffScrollOffset) private var scrollOffset
+    @Environment(\.logViewportWidth) private var viewportWidth
+    @Environment(\.logScrollOffset) private var scrollOffset
 
     var body: some View {
         Button(action: onToggle) {
@@ -50,8 +50,8 @@ struct CILogRowView: View {
     var isCurrentMatch = false
     var onToggleGroup: () -> Void = {}
 
-    @Environment(\.diffViewportWidth) private var viewportWidth
-    @Environment(\.diffScrollOffset) private var scrollOffset
+    @Environment(\.logViewportWidth) private var viewportWidth
+    @Environment(\.logScrollOffset) private var scrollOffset
 
     static let numberWidth: CGFloat = 44
     static let gutterWidth = numberWidth + Theme.Spacing.md + 14

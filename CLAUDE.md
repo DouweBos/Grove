@@ -30,6 +30,7 @@ A macOS Git client built with SwiftUI. Its design language follows our disk anal
 - No resources, app singletons or `Theme`. Every file is inside `#if os(macOS)`.
 - Public types are prefixed `Git`; everything else is internal. `GroveUIKitConsumerTests` builds as an importing app does, in Swift 6.
 - Mutations other apps may run their own way go through `GitCommandPerforming`.
+- The diff is an AppKit table. Highlights keep kinds and ranges, never colors, and an update that changes nothing never reads the whole diff.
 
 ## Design system
 

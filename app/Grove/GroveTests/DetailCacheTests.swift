@@ -5,6 +5,7 @@
 
 import Foundation
 @testable import GroveKit
+import GroveUIKit
 import Testing
 @testable import Grove
 
@@ -36,7 +37,7 @@ struct DetailCacheTests {
         let repo = MockGitRepository()
         let vm = WorkingCopyViewModel(repository: repo)
         await vm.refresh()
-        let files = vm.statusEntries.filter { !$0.isConflicted && !ImageDiffView.supports(path: $0.path) }
+        let files = vm.statusEntries.filter { !$0.isConflicted && !GitImageDiffView.supports(path: $0.path) }
         await vm.select(files[0])
         let task = Task { await vm.select(files[1]) }
         try await waitUntil { vm.isDiffLoading }

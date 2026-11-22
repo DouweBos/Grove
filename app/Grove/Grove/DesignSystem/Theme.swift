@@ -50,9 +50,6 @@ enum Theme {
 
     static let addedFill = success.opacity(0.12)
     static let deletedFill = danger.opacity(0.12)
-    static let addedWordFill = success.opacity(0.3)
-    static let deletedWordFill = danger.opacity(0.3)
-    static let hunkHeaderFill = info.opacity(0.08)
     static let selectionFill = accent.opacity(0.16)
     static let searchMatchFill = warning.opacity(0.35)
     static let subtleFill = textSecondary.opacity(0.12)

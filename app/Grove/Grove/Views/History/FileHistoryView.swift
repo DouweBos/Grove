@@ -9,6 +9,7 @@ import SwiftUI
 /// Commits that touched one file (left card) and the file's diff at the selected commit (right card).
 struct FileHistoryView: View {
     @Environment(FileHistoryViewModel.self) private var viewModel
+    private var settings = DiffSettings()
 
     var body: some View {
         HStack(spacing: Theme.Spacing.md) {
@@ -104,7 +105,7 @@ struct FileHistoryView: View {
             VStack(spacing: 0) {
                 GitPanelHeader(title: commit.summary, detail: commit.shortSHA) {
                     if let diff = viewModel.fileDiff { DiffStatsLabel(stats: diff.stats) }
-                    if !isImage { WrapLinesToggle() }
+                    if !isImage { DiffToggles() }
                     Button { Task { await viewModel.openBlame(commit) } } label: { Image(systemName: "person.text.rectangle") }
                         .buttonStyle(.borderless)
                         .help("Open Blame at This Revision")
@@ -119,12 +120,12 @@ struct FileHistoryView: View {
                 }
                 notices
                 if isImage {
-                    RepositoryImageDiffView(source: .commit(commit.id, in: viewModel.repository),
-                                            path: viewModel.filePath, oldPath: viewModel.fileDiff?.oldPath)
+                    GitImageDiffView(.commit(commit.id, in: viewModel.repository), path: viewModel.filePath,
+                                     oldPath: viewModel.fileDiff?.oldPath, mode: settings.options.imageMode)
                 } else if viewModel.isLoadingDiff {
                     ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let diff = viewModel.fileDiff {
-                    DiffScrollView { DiffView(diff: diff) }
+                    GitDiffView(diff: diff, options: settings.options)
                         .id(commit.id)
                 } else {
                     GitEmptyState(systemImage: "doc.text", title: "No Diff",
@@ -137,7 +138,7 @@ struct FileHistoryView: View {
         }
     }
 
-    private var isImage: Bool { ImageDiffView.supports(path: viewModel.filePath) }
+    private var isImage: Bool { GitImageDiffView.supports(path: viewModel.filePath) }
 
     @ViewBuilder
     private var notices: some View {
