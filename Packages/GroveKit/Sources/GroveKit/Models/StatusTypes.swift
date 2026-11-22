@@ -33,3 +33,13 @@ public enum FileStatus: String, Hashable, Sendable, CaseIterable {
     case conflicted = "U"
     case typeChange = "T"
 }
+
+extension FileStatus {
+    /// Whether parts of such a change can be staged, unstaged and discarded. A type change or a conflict is all or nothing.
+    public var supportsHunkActions: Bool {
+        switch self {
+        case .modified, .added, .deleted, .renamed, .copied, .untracked: true
+        case .unmodified, .ignored, .conflicted, .typeChange: false
+        }
+    }
+}

@@ -8,7 +8,7 @@ import Foundation
 // MARK: - DiffResult
 
 /// Complete diff output for a single file, containing one or more hunks.
-public struct DiffResult: Sendable {
+public nonisolated struct DiffResult: Sendable {
     public let filePath: String
     /// Original path before a rename, `nil` otherwise.
     public let oldPath: String?
@@ -39,7 +39,7 @@ nonisolated enum FileChange: Hashable, Sendable {
 // MARK: - DiffStats
 
 /// Aggregate line-change counts for a diff.
-public struct DiffStats: Hashable, Sendable {
+public nonisolated struct DiffStats: Hashable, Sendable {
     public let additions: Int
     public let deletions: Int
 
@@ -52,7 +52,7 @@ public struct DiffStats: Hashable, Sendable {
 // MARK: - HunkData
 
 /// One contiguous changed region inside a diff.
-public struct HunkData: Identifiable, Hashable, Sendable {
+public nonisolated struct HunkData: Identifiable, Hashable, Sendable {
     /// Derived from the file's change and the hunk's content, so it changes whenever either does.
     public let id: String
     /// Raw hunk header, e.g. `@@ -10,6 +10,8 @@ func foo() {`.
@@ -77,7 +77,7 @@ public struct HunkData: Identifiable, Hashable, Sendable {
 // MARK: - DiffLine
 
 /// A single line inside a ``HunkData``.
-public struct DiffLine: Identifiable, Hashable, Sendable {
+public nonisolated struct DiffLine: Identifiable, Hashable, Sendable {
     public let id: String
     public let type: DiffLineType
     /// Raw line content, without the leading `+`/`-`/` ` prefix.
@@ -101,7 +101,7 @@ public struct DiffLine: Identifiable, Hashable, Sendable {
 // MARK: - DiffLineType
 
 /// Whether a diff line is context, an addition, or a deletion.
-public enum DiffLineType: String, Hashable, Sendable {
+public nonisolated enum DiffLineType: String, Hashable, Sendable {
     case context = " "
     case addition = "+"
     case deletion = "-"
@@ -110,7 +110,7 @@ public enum DiffLineType: String, Hashable, Sendable {
 // MARK: - FileDiff
 
 /// Pairs a file's status entry with its optional computed diff.
-public struct FileDiff: Sendable {
+public nonisolated struct FileDiff: Sendable {
     public let path: String
     public let status: FileStatus
     /// `nil` for binary files or when the diff hasn't been loaded yet.
