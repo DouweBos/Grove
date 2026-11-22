@@ -53,7 +53,7 @@ struct ConsumerTests {
                                              .frame(width: context.width)
                                      })
         let annotations = GitDiffAnnotations([note], addTitle: "Add Comment", maxWidth: 480) { picked, close in
-            picked.indices.isEmpty ? nil : AnyView(Button(picked.side == .new ? "New" : picked.hunk.header, action: close))
+            picked.indices.isEmpty || picked.filePath.isEmpty ? nil : AnyView(Button(picked.side == .new ? "New" : picked.hunk.header, action: close))
         }
         let host = GitUIHost(copy: { _ in }, toast: { _ in }, openFile: { _, _ in })
         let staging = FileStatus.added.supportsHunkActions

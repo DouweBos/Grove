@@ -77,7 +77,7 @@ extension DiffTableCoordinator {
                 .flatMap { rows[$0].lineIndices(side.lineSide) }
         }
         guard !indices.isEmpty else { return nil }
-        return GitDiffPickedLines(hunk: diff.hunks[hunk], indices: indices.sorted(), side: side.lineSide)
+        return GitDiffPickedLines(filePath: diff.filePath, hunk: diff.hunks[hunk], indices: indices.sorted(), side: side.lineSide)
     }
 
     func startAnnotation(row: Int, side: DiffHoverSide) {

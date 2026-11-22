@@ -15,6 +15,7 @@ public struct GitDiffFileHeader<Leading: View, Trailing: View>: View {
     private let status: FileStatus?
     private let leading: () -> Leading
     private let trailing: () -> Trailing
+    @State private var width: CGFloat = .infinity
 
     /// - Parameters:
     ///   - title: Shown instead of the path's name and folder.
@@ -40,6 +41,7 @@ public struct GitDiffFileHeader<Leading: View, Trailing: View>: View {
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
         .frame(height: 44 * style.fontScale)
         .clipped()
+        .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
         .overlay(alignment: .bottom) { Rectangle().fill(style.border).frame(height: 0.5) }
     }
 
@@ -51,7 +53,8 @@ public struct GitDiffFileHeader<Leading: View, Trailing: View>: View {
             let split = Self.split(path)
             HStack(spacing: GitMetrics.Spacing.sm) {
                 primary(split.name).layoutPriority(1)
-                if !split.directory.isEmpty {
+                // Narrower, the folder would be a letter's sliver beside the name.
+                if !split.directory.isEmpty, width >= 420 * style.fontScale {
                     Text(split.directory)
                         .font(style.monoCaption)
                         .foregroundStyle(style.textSecondary)

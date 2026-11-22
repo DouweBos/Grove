@@ -25,6 +25,7 @@ public struct GitWrapLinesToggle: View {
 
 /// Unified or split.
 public struct GitDiffLayoutPicker: View {
+    @Environment(\.gitStyle) private var style
     private let layout: Binding<GitDiffLayout>
 
     public init(layout: Binding<GitDiffLayout>) {
@@ -38,6 +39,10 @@ public struct GitDiffLayoutPicker: View {
                                isOn: option == layout.wrappedValue) {
                     if option != layout.wrappedValue { layout.wrappedValue = option }
                 }
+                .padding(.horizontal, 2)
+                // Tint alone doesn't show the pick where the accent is the text's grey.
+                .background(option == layout.wrappedValue ? style.subtleFill : .clear,
+                            in: RoundedRectangle(cornerRadius: GitMetrics.Radius.tile, style: .continuous))
             }
         }
         .fixedSize()
@@ -52,6 +57,31 @@ struct IgnoreWhitespaceToggle: View {
                        help: isOn.wrappedValue ? "Show Whitespace Changes" : "Ignore Whitespace Changes", isOn: isOn.wrappedValue) {
             isOn.wrappedValue.toggle()
         }
+    }
+}
+
+struct DiffOptionsMenu: View {
+    @Environment(\.gitStyle) private var style
+    let options: GitDiffOptions
+    let ignoresWhitespace: Binding<Bool>?
+
+    var body: some View {
+        Menu {
+            Picker("Layout", selection: options.layout) {
+                ForEach(GitDiffLayout.allCases) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.inline)
+            Toggle("Wrap Lines", isOn: options.wrapsLines)
+            if let ignoresWhitespace { Toggle("Ignore Whitespace", isOn: ignoresWhitespace) }
+        } label: {
+            Image(systemName: "ellipsis").font(style.font(13))
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .gitClickable()
+        .fixedSize()
+        .help("Diff Options")
+        .accessibilityLabel("Diff Options")
     }
 }
 

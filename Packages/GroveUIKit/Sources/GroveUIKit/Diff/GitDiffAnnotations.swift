@@ -20,6 +20,8 @@ public nonisolated struct GitDiffLineAnchor: Hashable, Sendable {
 
 /// The lines an annotation starts from.
 public struct GitDiffPickedLines {
+    /// The file of the diff they were picked in, which can still be the last one while the next loads.
+    public let filePath: String
     public let hunk: HunkData
     /// Indices into `hunk.lines`.
     public let indices: [Int]

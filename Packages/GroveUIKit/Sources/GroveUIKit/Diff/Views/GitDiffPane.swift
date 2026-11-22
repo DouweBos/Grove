@@ -23,6 +23,7 @@ public struct GitDiffPane<Leading: View, Accessory: View>: View {
     private let leading: () -> Leading
     private let accessory: () -> Accessory
     @State private var width: CGFloat = .infinity
+    @State private var accessoryWidth: CGFloat = 0
 
     /// - Parameters:
     ///   - title: Shown instead of the path's name and folder.
@@ -73,14 +74,29 @@ public struct GitDiffPane<Leading: View, Accessory: View>: View {
     /// The counts and the side's badge give way before the controls do.
     private var isCompact: Bool { width < 520 * style.fontScale }
 
+    /// Too narrow for every toggle beside the app's controls: they move into a menu, none is cut off.
+    private var isNarrow: Bool {
+        var needed = 260 * style.fontScale + accessoryWidth
+        if sideSwitch?.select != nil { needed += 140 * style.fontScale }
+        return width < needed
+    }
+
     private var controls: some View {
         HStack(spacing: GitMetrics.Spacing.sm) {
             if !isCompact, !showsImage, let stats = diff?.stats, stats.additions + stats.deletions > 0 {
                 DiffCounts(stats: stats)
             }
             if let sideSwitch { side(sideSwitch) }
-            accessory()
-            if !showsImage {
+            HStack(spacing: GitMetrics.Spacing.sm) { accessory() }
+                .fixedSize()
+                .onGeometryChange(for: CGFloat.self, of: \.size.width) { accessoryWidth = $0 }
+                // With nothing in it, it takes no gap either.
+                .padding(.leading, accessoryWidth == 0 ? -GitMetrics.Spacing.sm : 0)
+            if showsImage {
+                EmptyView()
+            } else if isNarrow {
+                DiffOptionsMenu(options: options, ignoresWhitespace: ignoresWhitespace)
+            } else {
                 if let ignoresWhitespace { IgnoreWhitespaceToggle(isOn: ignoresWhitespace) }
                 GitWrapLinesToggle(isOn: options.wrapsLines)
                 GitDiffLayoutPicker(layout: options.layout)
