@@ -168,7 +168,7 @@ struct RepositoryInfoPanel: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .card()
+        .gitCard()
     }
 
     private func fact<Value: View>(_ title: String, @ViewBuilder value: () -> Value) -> some View {

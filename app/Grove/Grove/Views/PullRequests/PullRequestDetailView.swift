@@ -24,7 +24,7 @@ struct PullRequestDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .panel()
+        .gitPanel()
     }
 
     // MARK: - Header
@@ -118,7 +118,7 @@ struct PullRequestDetailView: View {
     private func overview(_ pr: PullRequestInfo) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                SectionLabel(title: "Description")
+                GitSectionLabel(title: "Description")
                 if let body = pr.body, !body.isEmpty {
                     MarkdownRenderer(markdown: body, fontSize: 13)
                         .fixedSize(horizontal: false, vertical: true)
@@ -129,20 +129,20 @@ struct PullRequestDetailView: View {
             }
             HStack(alignment: .top, spacing: Theme.Spacing.xl) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                    SectionLabel(title: "Checks")
+                    GitSectionLabel(title: "Checks")
                     Label(checksText(pr.checksStatus), systemImage: pr.checksStatus.symbol)
                         .font(.system(size: 13))
                         .foregroundStyle(pr.checksStatus.color)
                 }
                 if !pr.reviewers.isEmpty {
                     VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                        SectionLabel(title: "Review Requested")
+                        GitSectionLabel(title: "Review Requested")
                         Text(pr.reviewers.joined(separator: ", ")).font(.system(size: 13))
                     }
                 }
                 if !pr.labels.isEmpty {
                     VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                        SectionLabel(title: "Labels")
+                        GitSectionLabel(title: "Labels")
                         HStack(spacing: Theme.Spacing.xs) {
                             ForEach(pr.labels) { GitStatusBadge(title: $0.name, symbol: "tag", tone: .neutral) }
                         }

@@ -4,6 +4,7 @@
 // Two-axis scroll view whose content is pinned top-leading and fills the viewport,
 // for code and diffs (a plain two-axis ScrollView centers short content).
 
+import GroveUIKit
 import SwiftUI
 
 struct CanvasScrollView<Content: View>: View {
@@ -24,7 +25,7 @@ struct CanvasScrollView<Content: View>: View {
         Text("let answer = 42\nprint(answer)").font(.monoBody).padding()
     }
     .frame(width: 400, height: 200)
-    .panel()
+    .gitPanel()
     .padding()
     .background(Theme.background)
 }

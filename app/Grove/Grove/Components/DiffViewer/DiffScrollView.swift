@@ -5,6 +5,7 @@
 // driven by one shared "Wrap Lines" preference.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 enum DiffPreferences {
@@ -94,7 +95,7 @@ struct WrapLinesToggle: View {
         }
     }
     .frame(width: 420, height: 320)
-    .panel()
+    .gitPanel()
     .padding()
     .background(Theme.background)
 }

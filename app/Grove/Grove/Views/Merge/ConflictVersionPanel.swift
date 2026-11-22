@@ -39,7 +39,7 @@ struct ConflictVersionPanel: View {
             .padding(Theme.Spacing.md)
             .disabled(content == nil)
         }
-        .panel()
+        .gitPanel()
     }
 
     @ViewBuilder

@@ -90,7 +90,7 @@ struct AllFilesTreeView: View {
     AllFilesTreeView()
         .environment(vm)
         .frame(width: 320, height: 480)
-        .panel()
+        .gitPanel()
         .padding()
         .background(Theme.background)
         .task { await vm.refresh() }

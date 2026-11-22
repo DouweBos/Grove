@@ -3,6 +3,7 @@
 
 import AppKit
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// A labelled group of rows; flat or grouped by directory depending on the view mode.
@@ -23,7 +24,7 @@ struct FileSection<Accessory: View>: View {
 
     /// Rows are direct children of the list's lazy stack, so only the visible ones are built.
     var body: some View {
-        SectionLabel(title: title, count: entries.count, accessory: accessory)
+        GitSectionLabel(title: title, count: entries.count, accessory: accessory)
             .padding(.horizontal, Theme.Spacing.sm)
             .padding(.bottom, Theme.Spacing.xs)
         if viewModel.fileViewMode == .treeModified {

@@ -4,6 +4,7 @@
 // Browser welcome state: a folder drop target, the three ways to add
 // a repository, and recently opened repositories.
 
+import GroveUIKit
 import SwiftUI
 
 struct RepositoryDropZoneView: View {
@@ -91,7 +92,7 @@ struct RepositoryDropZoneView: View {
 
     private var recentCard: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: "Recently Opened")
+            GitPanelHeader(title: "Recently Opened")
             ForEach(recent) { bookmark in
                 Button { viewModel.openBookmark(bookmark) } label: {
                     HStack(spacing: Theme.Spacing.md) {
@@ -118,7 +119,7 @@ struct RepositoryDropZoneView: View {
                 .help(abbreviatingHome(bookmark.path))
             }
         }
-        .panel()
+        .gitPanel()
     }
 }
 

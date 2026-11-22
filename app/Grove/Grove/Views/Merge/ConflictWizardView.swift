@@ -6,6 +6,7 @@
 
 import AppKit
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct ConflictWizardView: View {
@@ -57,7 +58,7 @@ struct ConflictWizardView: View {
         onResolve: { _ in }
     )
     .frame(width: 720, height: 480)
-    .panel()
+    .gitPanel()
     .padding()
     .background(Theme.background)
 }

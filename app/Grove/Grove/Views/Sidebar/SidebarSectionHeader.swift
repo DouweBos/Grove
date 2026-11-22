@@ -1,6 +1,7 @@
 // Views/Sidebar/SidebarSectionHeader.swift
 // Grove
 
+import GroveUIKit
 import SwiftUI
 
 /// Muted section label with an optional count capsule (Branches, Remotes, Tags).
@@ -10,7 +11,7 @@ struct SidebarSectionHeader: View {
     var count: Int?
 
     var body: some View {
-        SectionLabel(title: title, count: count)
+        GitSectionLabel(title: title, count: count)
     }
 }
 

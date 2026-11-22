@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Every file in the repository as of the selected commit, with this commit's changes marked.
@@ -17,7 +18,7 @@ struct CommitTreeTab: View {
             let tree = FileTreeNode.build(from: viewModel.treeFiles)
             let changed = Dictionary(viewModel.commitDiffs.map { ($0.path, $0.status) }, uniquingKeysWith: { a, _ in a })
             HStack {
-                SectionLabel(title: "\(viewModel.treeFiles.count) file\(viewModel.treeFiles.count == 1 ? "" : "s")")
+                GitSectionLabel(title: "\(viewModel.treeFiles.count) file\(viewModel.treeFiles.count == 1 ? "" : "s")")
                 Text("\(changed.count) changed").font(.monoCaption).foregroundStyle(Theme.textSecondary)
             }
             .padding(.horizontal, Theme.Spacing.lg)
@@ -137,7 +138,7 @@ struct FileTreeNode {
     return ScrollView { LazyVStack(spacing: 0) { CommitTreeTab() } }
         .environment(vm)
         .frame(width: 480, height: 500)
-        .panel()
+        .gitPanel()
         .padding()
         .background(Theme.background)
         .task {

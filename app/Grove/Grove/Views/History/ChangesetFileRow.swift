@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// A changed file in a commit: disclosure chevron, status badge, path, and line stats.
@@ -84,7 +85,7 @@ struct CommitFileStatusBadge: View {
         }
     }
     .frame(width: 520)
-    .panel()
+    .gitPanel()
     .padding()
     .background(Theme.background)
 }

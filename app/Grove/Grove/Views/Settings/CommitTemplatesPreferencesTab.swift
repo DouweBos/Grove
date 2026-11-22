@@ -4,6 +4,7 @@
 // Templates: add, edit, reorder and delete the commit message templates the composer offers.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct CommitTemplatesPreferencesTab: View {
@@ -19,7 +20,7 @@ struct CommitTemplatesPreferencesTab: View {
         HStack(spacing: 0) {
             templateList
                 .frame(width: 210)
-                .panel()
+                .gitPanel()
                 .padding([.leading, .vertical], Theme.Spacing.lg)
             editor
         }

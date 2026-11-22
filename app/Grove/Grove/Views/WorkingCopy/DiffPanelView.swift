@@ -28,7 +28,7 @@ struct DiffPanelView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .panel()
+        .gitPanel()
     }
 
     // MARK: Header

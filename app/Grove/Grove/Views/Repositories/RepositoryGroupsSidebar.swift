@@ -5,6 +5,7 @@
 // Bookmarks move between groups via the context menu or drag and drop.
 
 import AppKit
+import GroveUIKit
 import SwiftUI
 
 struct RepositoryGroupsSidebar: View {
@@ -18,7 +19,7 @@ struct RepositoryGroupsSidebar: View {
                 Section {
                     ForEach(viewModel.clones.jobs) { CloneJobRow(job: $0).selectionDisabled() }
                 } header: {
-                    SectionLabel(title: "Cloning", count: viewModel.clones.jobs.count)
+                    GitSectionLabel(title: "Cloning", count: viewModel.clones.jobs.count)
                 }
             }
             let ungrouped = viewModel.ungroupedBookmarks
@@ -26,7 +27,7 @@ struct RepositoryGroupsSidebar: View {
                 Section {
                     RepositoryBookmarksList(bookmarks: ungrouped)
                 } header: {
-                    SectionLabel(title: "Repositories", count: ungrouped.count)
+                    GitSectionLabel(title: "Repositories", count: ungrouped.count)
                 }
                 .dropDestination(for: RepositoryBookmarkData.self) { items, _ in
                     items.forEach { viewModel.moveBookmark($0, toGroup: nil) }
@@ -41,7 +42,7 @@ struct RepositoryGroupsSidebar: View {
                         RepositoryGroupSection(group: group)
                     }
                 } header: {
-                    SectionLabel(title: "Groups")
+                    GitSectionLabel(title: "Groups")
                 }
             }
 

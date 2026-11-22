@@ -5,6 +5,7 @@
 
 import AppKit
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Where a changeset's image files are read from; one pair of revisions covers every file.
@@ -74,7 +75,7 @@ struct RepositoryImageDiffView: View {
 #Preview {
     RepositoryImageDiffView(repository: MockGitRepository(), path: "logo.png", old: .index, new: .workingTree)
         .frame(width: 600, height: 400)
-        .panel()
+        .gitPanel()
         .padding()
         .background(Theme.background)
 }

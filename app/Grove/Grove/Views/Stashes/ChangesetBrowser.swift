@@ -32,7 +32,7 @@ struct ChangesetBrowser: View {
 
     private var fileList: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            SectionLabel(title: "Changed Files", count: files.count) {
+            GitSectionLabel(title: "Changed Files", count: files.count) {
                 Text("+\(totals.additions)  \u{2212}\(totals.deletions)")
                     .font(.monoCaption)
                     .foregroundStyle(Theme.textSecondary)
@@ -127,7 +127,7 @@ struct ChangesetFileLine: View {
 #Preview {
     ChangesetBrowser(files: MockData.commitFileDiffs, selectedPath: MockData.commitFileDiffs.first?.path) { _ in }
         .frame(width: 560, height: 520)
-        .panel()
+        .gitPanel()
         .padding()
         .background(Theme.background)
 }

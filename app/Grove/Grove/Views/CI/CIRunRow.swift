@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// One workflow run in the list: status, title, then workflow, branch and age, or running time while it runs.
@@ -48,7 +49,7 @@ struct CIRunRow: View {
     }
     .padding(Theme.Spacing.sm)
     .frame(width: 360)
-    .panel()
+    .gitPanel()
     .padding()
     .background(Theme.background)
 }

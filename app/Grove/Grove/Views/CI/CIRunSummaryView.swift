@@ -58,7 +58,7 @@ struct CISummaryHeader: View {
     return CIRunSummaryView()
         .environment(vm)
         .frame(width: 760, height: 640)
-        .panel()
+        .gitPanel()
         .padding()
         .background(Theme.background)
         .task { await vm.show(MockData.ciRuns[3]) }

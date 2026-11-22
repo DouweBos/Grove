@@ -34,9 +34,9 @@ A macOS Git client built with SwiftUI. Its design language follows our disk anal
 ## Design system
 
 1. All colors come from `Theme` (asset catalog tokens, light and dark). No `Color.red`, `Color(red:)`, hex, or `Color(nsColor:)` in views.
-2. Content sits in cards (`.card()`, or `.panel()` for edge-to-edge lists) on `Theme.background`.
+2. Content sits in cards (`.gitCard()`, or `.gitPanel()` for edge-to-edge lists) on `Theme.background`.
 3. SF Symbols only, no emoji. Hashes, paths, counts and dates use `.monoCaption`.
-4. Reusable components live in `DesignSystem/`, each with a `#Preview`. Check there before building a one-off.
+4. Reusable components live in GroveUIKit's `Primitives/` when the git UI needs them, else in `DesignSystem/`, each with a `#Preview`. Check both before building a one-off.
 5. Top-level navigation is the pill bar in the toolbar (`RepositoryTab`); the sidebar holds refs only.
 
 ## Build and test

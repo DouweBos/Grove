@@ -75,7 +75,7 @@ struct StackView: View {
                 .help("Push every changed layer at once, each only if its remote branch hasn't moved")
         }
         .disabled(viewModel.isBusy)
-        .card(padding: Theme.Spacing.md)
+        .gitCard(padding: Theme.Spacing.md)
     }
 
     private func retargetMessage(_ merged: MergedParent, trunk: String) -> String {

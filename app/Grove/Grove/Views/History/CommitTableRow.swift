@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 
@@ -94,7 +95,7 @@ struct CommitTableRow: View {
         }
     }
     .frame(width: 560)
-    .panel()
+    .gitPanel()
     .padding()
     .background(Theme.background)
 }

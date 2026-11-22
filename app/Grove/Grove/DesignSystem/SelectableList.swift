@@ -3,6 +3,7 @@
 //
 // Panel list with rounded selection rows and arrow-key navigation.
 
+import GroveUIKit
 import SwiftUI
 
 extension View {
@@ -67,7 +68,7 @@ struct SelectableList<Item: Identifiable, Row: View>: View {
         }
     }
     .frame(width: 320, height: 300)
-    .panel()
+    .gitPanel()
     .padding()
     .background(Theme.background)
 }

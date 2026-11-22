@@ -3,6 +3,7 @@
 
 import AppKit
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct ComparisonCommitRow: View {
@@ -74,7 +75,7 @@ struct ComparisonSectionHeader: View {
                 Image(systemName: symbol)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.textSecondary)
-                SectionLabel(title: title, count: count)
+                GitSectionLabel(title: title, count: count)
             }
             .contentShape(Rectangle())
         }
@@ -93,7 +94,7 @@ struct ComparisonSectionHeader: View {
         ComparisonFileRow(file: ChangedFileStat(path: "Assets/icon.png", additions: nil, deletions: nil))
     }
     .frame(width: 520)
-    .panel()
+    .gitPanel()
     .padding()
     .background(Theme.background)
 }

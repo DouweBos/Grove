@@ -154,7 +154,7 @@ struct CIElapsedText: View {
     return CIJobsView()
         .environment(vm)
         .frame(width: 640, height: 360)
-        .panel()
+        .gitPanel()
         .padding()
         .background(Theme.background)
         .task { await vm.show(MockData.ciRuns[3]) }

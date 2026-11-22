@@ -28,7 +28,7 @@ private struct BlameFileListPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: "Files", detail: "\(viewModel.filteredFiles.count)") {
+            GitPanelHeader(title: "Files", detail: "\(viewModel.filteredFiles.count)") {
                 Button { Task { await viewModel.reloadFiles() } } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(.borderless)
                     .help("Reload File List")
@@ -59,7 +59,7 @@ private struct BlameFileListPanel: View {
             }
         }
         .frame(maxHeight: .infinity, alignment: .top)
-        .panel()
+        .gitPanel()
     }
 }
 
@@ -76,7 +76,7 @@ private struct BlameFilePanel: View {
         Group {
             if let file = viewModel.selectedFile {
                 VStack(spacing: 0) {
-                    PanelHeader(title: (file as NSString).lastPathComponent, detail: revisionLabel) {
+                    GitPanelHeader(title: (file as NSString).lastPathComponent, detail: revisionLabel) {
                         navigation
                     }
                     content
@@ -87,7 +87,7 @@ private struct BlameFilePanel: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .panel()
+        .gitPanel()
     }
 
     private var revisionLabel: String {

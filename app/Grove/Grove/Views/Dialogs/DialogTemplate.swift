@@ -111,7 +111,7 @@ struct DialogCard<Content: View>: View {
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .card(padding: Theme.Spacing.md)
+        .gitCard(padding: Theme.Spacing.md)
     }
 }
 
@@ -220,7 +220,7 @@ struct DialogOptionsSection<Content: View>: View {
             .accessibilityHidden(!isExpanded)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .card(padding: 0)
+        .gitCard(padding: 0)
     }
 }
 

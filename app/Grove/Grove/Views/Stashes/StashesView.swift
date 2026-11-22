@@ -64,7 +64,7 @@ private struct StashListPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: "Stashes", detail: "\(viewModel.stashes.count)") {
+            GitPanelHeader(title: "Stashes", detail: "\(viewModel.stashes.count)") {
                 if viewModel.isLoading && !viewModel.stashes.isEmpty { ProgressView().controlSize(.small) }
                 Menu {
                     Button("Stash Changes\u{2026}") { GroveAction.stash.post() }
@@ -102,7 +102,7 @@ private struct StashListPanel: View {
             }
         }
         .frame(maxHeight: .infinity, alignment: .top)
-        .panel()
+        .gitPanel()
         .task {
             if viewModel.selectedStash == nil, let first = viewModel.stashes.first { await viewModel.select(first) }
         }
@@ -162,7 +162,7 @@ private struct StashDetailPanel: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .panel()
+        .gitPanel()
     }
 
     private func header(_ stash: StashEntry) -> some View {

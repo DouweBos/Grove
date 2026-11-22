@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// One commit in the history list: graph lanes, avatar, refs + subject, and a mono meta line.
@@ -85,7 +86,7 @@ struct CommitRow: View {
         }
     }
     .frame(width: 520)
-    .panel()
+    .gitPanel()
     .padding()
     .background(Theme.background)
 }

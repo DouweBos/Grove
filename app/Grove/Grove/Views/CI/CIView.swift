@@ -19,7 +19,7 @@ struct CIView: View {
                     Task { await viewModel.refresh() }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .panel()
+                .gitPanel()
             } else {
                 CIRunDetailView()
                     .environment(viewModel.detail)
@@ -77,7 +77,7 @@ private struct CIRunListPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: "Workflow Runs", detail: "\(viewModel.runs.count)\(viewModel.hasMoreRuns ? "+" : "")") {
+            GitPanelHeader(title: "Workflow Runs", detail: "\(viewModel.runs.count)\(viewModel.hasMoreRuns ? "+" : "")") {
                 if viewModel.isLoading || viewModel.isLoadingMore { ProgressView().controlSize(.small) }
                 Button { viewModel.beginDispatch() } label: { Image(systemName: "play") }
                     .buttonStyle(.borderless)
@@ -93,7 +93,7 @@ private struct CIRunListPanel: View {
             content
         }
         .frame(maxHeight: .infinity, alignment: .top)
-        .panel()
+        .gitPanel()
     }
 
     private var isUnavailable: Bool { viewModel.loadFailure != nil && viewModel.runs.isEmpty }

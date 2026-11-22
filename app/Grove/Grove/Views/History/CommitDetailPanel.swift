@@ -15,7 +15,7 @@ struct CommitDetailPanel: View {
                 CommitSelectionSummary(commits: viewModel.selectedCommits)
             } else if let commit = viewModel.selectedCommit {
                 VStack(spacing: 0) {
-                    PanelHeader(title: commit.shortSHA) {
+                    GitPanelHeader(title: commit.shortSHA) {
                         Picker("View", selection: Binding(get: { viewModel.detailTab }, set: { viewModel.selectDetailTab($0) })) {
                             ForEach(HistoryViewModel.DetailTab.allCases) { Text($0.rawValue).tag($0) }
                         }
@@ -42,7 +42,7 @@ struct CommitDetailPanel: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .panel()
+        .gitPanel()
     }
 }
 

@@ -136,7 +136,7 @@ private struct CILogRows: View {
     return CILogView()
         .environment(vm)
         .frame(width: 640, height: 420)
-        .panel()
+        .gitPanel()
         .padding()
         .background(Theme.background)
         .task { await vm.show(MockData.ciJobs(for: MockData.ciRuns[3])[1]) }

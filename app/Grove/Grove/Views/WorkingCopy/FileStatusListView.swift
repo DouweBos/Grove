@@ -5,6 +5,7 @@
 // staged file appears in both Staged and Changes, each row acting on its own half.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct FileStatusListView: View {
@@ -18,13 +19,13 @@ struct FileStatusListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: "Files", detail: fileCountDetail) {
+            GitPanelHeader(title: "Files", detail: fileCountDetail) {
                 viewModePicker
                 FilesPanelMenu()
             }
             content
         }
-        .panel()
+        .gitPanel()
     }
 
     private var fileCountDetail: String? {

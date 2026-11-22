@@ -3,6 +3,7 @@
 //
 // Summary tile: colored label, large rounded number, mono footnote.
 
+import GroveUIKit
 import SwiftUI
 
 struct StatCard: View {
@@ -33,7 +34,7 @@ struct StatCard: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .card()
+            .gitCard()
             .overlay {
                 if isSelected {
                     RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)

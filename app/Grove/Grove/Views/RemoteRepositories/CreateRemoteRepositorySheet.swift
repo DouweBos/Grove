@@ -106,7 +106,7 @@ struct CreateRemoteRepositorySheet: View {
 
     private var addRemote: some View {
         DialogCard {
-            SectionLabel(title: "Add as a Remote")
+            GitSectionLabel(title: "Add as a Remote")
             DialogField("Repository") {
                 Picker("Repository", selection: Binding(get: { viewModel.targetPath ?? "" }, set: viewModel.selectTarget)) {
                     ForEach(viewModel.targets) { Text($0.name).tag($0.path) }

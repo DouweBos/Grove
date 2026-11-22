@@ -20,7 +20,7 @@ struct StackLayerCard: View {
             header
             if isExpanded { commitList }
         }
-        .card(padding: Theme.Spacing.md)
+        .gitCard(padding: Theme.Spacing.md)
     }
 
     private var header: some View {

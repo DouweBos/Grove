@@ -17,7 +17,7 @@ struct RepositorySettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: "Repository Settings", detail: ".git/config") {
+            GitPanelHeader(title: "Repository Settings", detail: ".git/config") {
                 if viewModel.isLoading { ProgressView().controlSize(.small) }
                 if viewModel.didSave && !viewModel.hasChanges {
                     Label("Saved", systemImage: "checkmark.circle.fill")
@@ -39,7 +39,7 @@ struct RepositorySettingsView: View {
             form
         }
         .frame(maxWidth: 720, maxHeight: .infinity, alignment: .top)
-        .panel()
+        .gitPanel()
         .frame(maxWidth: .infinity)
         .padding(.bottom, Theme.Spacing.md)
         .task { await viewModel.load() }

@@ -4,6 +4,7 @@
 // Panels shown on the browser's repository summary.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// The latest commits on the checked-out branch.
@@ -13,7 +14,7 @@ struct RecentCommitsCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: "Recent Commits", detail: branch)
+            GitPanelHeader(title: "Recent Commits", detail: branch)
             if commits.isEmpty {
                 Text("No commits yet.")
                     .font(.system(size: 13))
@@ -49,7 +50,7 @@ struct RecentCommitsCard: View {
                 }
             }
         }
-        .panel()
+        .gitPanel()
     }
 }
 
@@ -59,7 +60,7 @@ struct RemotesCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: "Remotes", detail: "\(remotes.count)")
+            GitPanelHeader(title: "Remotes", detail: "\(remotes.count)")
             ForEach(remotes) { remote in
                 HStack(spacing: Theme.Spacing.md) {
                     Image(systemName: "cloud")
@@ -80,7 +81,7 @@ struct RemotesCard: View {
                 .padding(.vertical, Theme.Spacing.sm)
             }
         }
-        .panel()
+        .gitPanel()
     }
 }
 

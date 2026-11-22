@@ -77,7 +77,7 @@ struct RemoteRepositoryDetail: View {
                         .font(.system(size: 14))
                         .foregroundStyle(Theme.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .card()
+                        .gitCard()
                 }
                 facts
                 urls
@@ -143,17 +143,17 @@ struct RemoteRepositoryDetail: View {
             if let localPath { fact("Local Clone", abbreviatingHome(localPath)) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .card()
+        .gitCard()
     }
 
     private var urls: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            SectionLabel(title: "Clone URLs")
+            GitSectionLabel(title: "Clone URLs")
             urlRow("SSH", repository.sshURL)
             urlRow("HTTPS", repository.httpsCloneURL)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .card()
+        .gitCard()
     }
 
     private func fact(_ title: String, _ value: String) -> some View {

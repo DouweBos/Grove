@@ -80,7 +80,7 @@ struct FileStatusRow: View {
     }
     .padding(Theme.Spacing.sm)
     .frame(width: 320)
-    .panel()
+    .gitPanel()
     .padding()
     .background(Theme.background)
 }

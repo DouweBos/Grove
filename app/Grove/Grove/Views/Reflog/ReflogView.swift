@@ -65,7 +65,7 @@ private struct ReflogListPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: "Reflog", detail: "HEAD \u{00B7} \(viewModel.entries.count)") {
+            GitPanelHeader(title: "Reflog", detail: "HEAD \u{00B7} \(viewModel.entries.count)") {
                 if viewModel.isLoading && !viewModel.entries.isEmpty { ProgressView().controlSize(.small) }
             }
             if viewModel.isLoading && viewModel.entries.isEmpty {
@@ -82,7 +82,7 @@ private struct ReflogListPanel: View {
             }
         }
         .frame(maxHeight: .infinity, alignment: .top)
-        .panel()
+        .gitPanel()
     }
 
     private var indexedEntries: [IndexedEntry] {

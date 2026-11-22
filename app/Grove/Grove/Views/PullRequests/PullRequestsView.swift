@@ -19,7 +19,7 @@ struct PullRequestsView: View {
                     Task { await viewModel.refresh() }
                 }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .panel()
+                    .gitPanel()
             } else {
                 PullRequestDetailView()
             }
@@ -59,7 +59,7 @@ private struct PullRequestListPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: "Pull Requests", detail: "\(viewModel.filteredPullRequests.count)") {
+            GitPanelHeader(title: "Pull Requests", detail: "\(viewModel.filteredPullRequests.count)") {
                 if viewModel.isLoading { ProgressView().controlSize(.small) }
                 Button { viewModel.beginCreatePullRequest() } label: { Image(systemName: "plus") }
                     .buttonStyle(.borderless)
@@ -83,7 +83,7 @@ private struct PullRequestListPanel: View {
             content
         }
         .frame(maxHeight: .infinity, alignment: .top)
-        .panel()
+        .gitPanel()
     }
 
     @ViewBuilder

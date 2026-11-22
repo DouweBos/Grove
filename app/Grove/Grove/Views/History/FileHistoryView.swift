@@ -14,10 +14,10 @@ struct FileHistoryView: View {
         HStack(spacing: Theme.Spacing.md) {
             commitList
                 .frame(width: 320)
-                .panel()
+                .gitPanel()
             diffPanel
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .panel()
+                .gitPanel()
         }
         .task { await viewModel.loadHistory() }
         .confirmationDialog(restoreTitle, isPresented: restoreBinding, titleVisibility: .visible,
@@ -40,7 +40,7 @@ struct FileHistoryView: View {
 
     private var commitList: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: (viewModel.filePath as NSString).lastPathComponent,
+            GitPanelHeader(title: (viewModel.filePath as NSString).lastPathComponent,
                         detail: "\(viewModel.commits.count) commit\(viewModel.commits.count == 1 ? "" : "s")")
             if viewModel.isLoading && viewModel.commits.isEmpty {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -102,7 +102,7 @@ struct FileHistoryView: View {
     private var diffPanel: some View {
         if let commit = viewModel.selectedCommit {
             VStack(spacing: 0) {
-                PanelHeader(title: commit.summary, detail: commit.shortSHA) {
+                GitPanelHeader(title: commit.summary, detail: commit.shortSHA) {
                     if let diff = viewModel.fileDiff { DiffStatsLabel(stats: diff.stats) }
                     if !isImage { WrapLinesToggle() }
                     Button { Task { await viewModel.openBlame(commit) } } label: { Image(systemName: "person.text.rectangle") }

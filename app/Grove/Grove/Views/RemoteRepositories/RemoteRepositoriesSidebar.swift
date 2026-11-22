@@ -4,6 +4,7 @@
 // Cloud browser sidebar: each signed-in account with its organizations, each listing its repositories.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct RemoteRepositoriesSidebar: View {
@@ -25,7 +26,7 @@ struct RemoteRepositoriesSidebar: View {
                         }
                         ForEach(section.owners) { RemoteOwnerSection(owner: $0) }
                     } header: {
-                        SectionLabel(title: "\(section.account.kind.displayName) \u{00B7} \(section.account.title)")
+                        GitSectionLabel(title: "\(section.account.kind.displayName) \u{00B7} \(section.account.title)")
                     }
                 }
             }

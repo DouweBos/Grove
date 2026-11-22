@@ -61,7 +61,7 @@ struct StashDialogView: View {
 
     private var fileList: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: "Files", detail: "\(selectedPaths.count) of \(statusEntries.count)") {
+            GitPanelHeader(title: "Files", detail: "\(selectedPaths.count) of \(statusEntries.count)") {
                 Button(allSelected ? "Deselect All" : "Select All") {
                     selectedPaths = allSelected ? [] : Set(statusEntries.map(\.path))
                 }
@@ -80,7 +80,7 @@ struct StashDialogView: View {
                 .frame(minHeight: 80, maxHeight: 200)
             }
         }
-        .panel()
+        .gitPanel()
     }
 
     private var allSelected: Bool {

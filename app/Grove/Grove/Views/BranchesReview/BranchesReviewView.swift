@@ -68,7 +68,7 @@ struct BranchesReviewView: View {
 
     private var listPanel: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: viewModel.categoryFilter.map { "\($0.rawValue) Branches" } ?? "Local Branches",
+            GitPanelHeader(title: viewModel.categoryFilter.map { "\($0.rawValue) Branches" } ?? "Local Branches",
                         detail: "\(viewModel.visibleBranches.count) \u{00B7} vs \(viewModel.primaryBranch)") {
                 if viewModel.isLoading { ProgressView().controlSize(.small) }
                 if viewModel.selectedIDs.isEmpty {
@@ -117,7 +117,7 @@ struct BranchesReviewView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .panel()
+        .gitPanel()
     }
 }
 

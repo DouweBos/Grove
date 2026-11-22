@@ -13,7 +13,7 @@ struct PRConversationView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                SectionLabel(title: "Conversation", count: viewModel.comments.count)
+                GitSectionLabel(title: "Conversation", count: viewModel.comments.count)
                 if viewModel.isLoadingComments {
                     ProgressView().controlSize(.small)
                 } else if viewModel.comments.isEmpty {
@@ -24,7 +24,7 @@ struct PRConversationView: View {
             }
             if !viewModel.reviewThreads.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                    SectionLabel(title: "Line Comments", count: viewModel.reviewThreads.count)
+                    GitSectionLabel(title: "Line Comments", count: viewModel.reviewThreads.count)
                     ForEach(viewModel.reviewThreads) { PRReviewThreadView(thread: $0) }
                 }
             }
@@ -34,7 +34,7 @@ struct PRConversationView: View {
 
     private var composer: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            SectionLabel(title: "Add a Comment")
+            GitSectionLabel(title: "Add a Comment")
             MultilineField(text: viewModel.commentDraft, placeholder: "Write a comment (Markdown)", height: 90,
                            onChange: viewModel.setCommentDraft)
             if let error = viewModel.commentError {

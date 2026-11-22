@@ -13,7 +13,7 @@ struct CommitListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: title, detail: countLabel) {
+            GitPanelHeader(title: title, detail: countLabel) {
                 HistoryFilterField(text: viewModel.searchText) { viewModel.setSearchText($0) }
                     .frame(maxWidth: 190)
                 layoutPicker
@@ -25,7 +25,7 @@ struct CommitListView: View {
             }
             content
         }
-        .panel()
+        .gitPanel()
     }
 
     @ViewBuilder

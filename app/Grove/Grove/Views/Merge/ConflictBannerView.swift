@@ -55,7 +55,7 @@ struct ConflictBannerView: View {
             .controlSize(.large)
             .disabled(viewModel.isRunningOperation)
         }
-        .card(padding: Theme.Spacing.md)
+        .gitCard(padding: Theme.Spacing.md)
         .confirmationDialog("Abort the \(operationName.lowercased())?", isPresented: $isConfirmingAbort) {
             Button("Abort \(operationName)", role: .destructive) { Task { await viewModel.abortOperation() } }
             Button("Cancel", role: .cancel) {}

@@ -36,7 +36,7 @@ struct CommitChangesetView: View {
         let count = viewModel.commitDiffs.count
         let allExpanded = viewModel.expandedPaths.count == count
         return HStack(spacing: Theme.Spacing.sm) {
-            SectionLabel(title: "\(count) changed file\(count == 1 ? "" : "s")")
+            GitSectionLabel(title: "\(count) changed file\(count == 1 ? "" : "s")")
                 .fixedSize()
             DiffStatsLabel(stats: stats)
             Spacer()
@@ -87,7 +87,7 @@ struct CommitChangesetView: View {
     return ScrollView { LazyVStack(spacing: 0) { CommitChangesetView() } }
         .environment(vm)
         .frame(width: 520, height: 500)
-        .panel()
+        .gitPanel()
         .padding()
         .background(Theme.background)
         .task { await vm.loadInitial() }

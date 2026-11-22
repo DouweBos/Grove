@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Day label between commit groups; keeps the graph lanes running through it.
@@ -16,7 +17,7 @@ struct DateGroupHeader: View {
             if showsGraph {
                 CommitGraphPassThrough(lanes: lanes, maxColumns: maxGraphColumns)
             }
-            SectionLabel(title: date.commitDayTitle)
+            GitSectionLabel(title: date.commitDayTitle)
         }
         .padding(.leading, Theme.Spacing.sm)
         .padding(.trailing, Theme.Spacing.md)
@@ -31,7 +32,7 @@ struct DateGroupHeader: View {
                         lanes: [GraphLine(kind: .passThrough, fromColumn: 0, toColumn: 0, colorIndex: 0)])
     }
     .frame(width: 300)
-    .panel()
+    .gitPanel()
     .padding()
     .background(Theme.background)
 }

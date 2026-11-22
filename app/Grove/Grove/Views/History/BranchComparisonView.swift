@@ -44,7 +44,7 @@ struct BranchComparisonView: View {
                 actionBar(source: source, target: target)
             }
         }
-        .panel()
+        .gitPanel()
         .task { await loadBranches() }
         .onChange(of: source) { Task { await compare() } }
         .onChange(of: target) { Task { await compare() } }

@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Detail pane for a multi-selection: count, SHA range, authors and dates, then each commit.
@@ -13,7 +14,7 @@ struct CommitSelectionSummary: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(title: "\(commits.count) Commits Selected")
+            GitPanelHeader(title: "\(commits.count) Commits Selected")
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     facts
@@ -43,7 +44,7 @@ struct CommitSelectionSummary: View {
             if merges > 0 { fact("Merges", "\(merges)") }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .card()
+        .gitCard()
     }
 
     private func fact(_ label: String, _ value: String) -> some View {
@@ -63,7 +64,7 @@ struct CommitSelectionSummary: View {
 #Preview {
     CommitSelectionSummary(commits: Array(MockData.commits.prefix(4)))
         .frame(width: 520, height: 520)
-        .panel()
+        .gitPanel()
         .padding()
         .background(Theme.background)
 }

@@ -4,6 +4,7 @@
 // A change to a Git LFS file: git only sees its pointer, so this shows the object's size and id before and after.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct LFSPointerDiffView: View {
@@ -35,7 +36,7 @@ struct LFSPointerDiffView: View {
             }
         }
         .frame(maxWidth: 420, alignment: .leading)
-        .card(padding: Theme.Spacing.lg)
+        .gitCard(padding: Theme.Spacing.lg)
         .padding(Theme.Spacing.xl)
         .frame(maxWidth: .infinity, alignment: .top)
     }

@@ -5,6 +5,7 @@
 // the git identity that will author the commit, and the Commit button.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct CommitComposerView: View {
@@ -33,7 +34,7 @@ struct CommitComposerView: View {
             options
             footer
         }
-        .card(padding: Theme.Spacing.md)
+        .gitCard(padding: Theme.Spacing.md)
     }
 
     // MARK: Fields

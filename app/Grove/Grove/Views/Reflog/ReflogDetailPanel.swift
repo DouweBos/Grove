@@ -28,7 +28,7 @@ struct ReflogDetailPanel: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .panel()
+        .gitPanel()
     }
 
     // MARK: - Header
@@ -82,7 +82,7 @@ struct ReflogDetailPanel: View {
     @ViewBuilder
     private func commitSection(_ entry: ReflogEntry) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            SectionLabel(title: "Commit")
+            GitSectionLabel(title: "Commit")
             if viewModel.isLoadingDetail {
                 ProgressView().controlSize(.small)
             } else if let commit = viewModel.selectedCommit {
