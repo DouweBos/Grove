@@ -23,6 +23,10 @@ let package = Package(
   targets: [
     .target(name: "GroveUIKit", dependencies: [.product(name: "GroveKit", package: "GroveKit")], swiftSettings: swiftSettings),
     .testTarget(
+      name: "GroveUIKitTests",
+      dependencies: ["GroveUIKit", .product(name: "GroveKit", package: "GroveKit")],
+      swiftSettings: swiftSettings),
+    .testTarget(
       name: "GroveUIKitConsumerTests",
       dependencies: ["GroveUIKit", .product(name: "GroveKit", package: "GroveKit")],
       swiftSettings: [.swiftLanguageMode(.v6)]),

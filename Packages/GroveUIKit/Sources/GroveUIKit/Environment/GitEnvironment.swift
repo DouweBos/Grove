@@ -8,6 +8,7 @@ import SwiftUI
 extension EnvironmentValues {
     @Entry var gitStyle = GitUIStyle.system
     @Entry var gitFeatures = GitFeatures.all
+    @Entry var gitHost = GitUIHost.system
 }
 
 extension View {

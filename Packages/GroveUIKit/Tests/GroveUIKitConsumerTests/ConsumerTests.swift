@@ -42,6 +42,49 @@ struct ConsumerTests {
         #expect((fields["onDismiss"] as? (() -> Void)?).flatMap { $0 } == nil)
     }
 
+    @Test func anAppCanShowADiffWithItsOwnRowsAndActions() throws {
+        let patch = "diff --git a/a.swift b/a.swift\n--- a/a.swift\n+++ b/a.swift\n@@ -1,2 +1,2 @@\n let a = 1\n-let b = 2\n+let b = 3\n"
+        let diff = try #require(DiffParser.parse(patch).first)
+        let options = GitDiffOptions(layout: .constant(.split), wrapsLines: .constant(true), imageMode: .constant(.slider))
+        let note = GitDiffAnnotation(id: "note", side: .new, revision: "body",
+                                     anchor: { _ in GitDiffLineAnchor(hunk: 0, line: 2) }, height: { _ in 40 },
+                                     content: { context in
+                                         Button("Edit") { context.presentPopover { close in Button("Save", action: close) } }
+                                             .frame(width: context.width)
+                                     })
+        let annotations = GitDiffAnnotations([note], addTitle: "Add Comment", maxWidth: 480) { picked, close in
+            picked.indices.isEmpty ? nil : AnyView(Button(picked.side == .new ? "New" : picked.hunk.header, action: close))
+        }
+        let host = GitUIHost(copy: { _ in }, toast: { _ in }, openFile: { _, _ in })
+        let staging = FileStatus.added.supportsHunkActions
+            ? GitDiffStaging(side: .unstaged) { (_: HunkAction, _: HunkData, _: [GroveKit.DiffLine]) in } : nil
+        let pane = GitDiffPane(diff: diff, path: "a.swift", status: .modified, options: options, staging: staging,
+                               sideSwitch: GitDiffSideSwitch(side: .unstaged, select: { _ in }),
+                               ignoresWhitespace: .constant(false), annotations: annotations,
+                               leading: { Image(systemName: "swift") }, accessory: { Toggle("Viewed", isOn: .constant(false)) })
+            .gitUIHost(host)
+            .frame(width: 640, height: 320)
+
+        let view = NSHostingView(rootView: pane)
+        let window = NSWindow(contentRect: NSRect(x: -8000, y: -8000, width: 640, height: 320),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = view
+        defer { window.close() }
+        view.layoutSubtreeIfNeeded()
+        // An app's driver finds the table by its public type.
+        func table(in view: NSView) -> GitDiffTableView? {
+            (view as? GitDiffTableView) ?? view.subviews.lazy.compactMap(table).first
+        }
+        let found = try #require(table(in: view))
+        found.selectRowIndexes([2], byExtendingSelection: false)
+        #expect(found.numberOfRows == 4)
+        #expect(Array(found.selectedRowIndexes) == [2])
+        #expect(GitImageDiffView.supports(path: "logo.PNG") && !GitImageDiffView.supports(path: "logo.svg"))
+        _ = GitDiffView(diff: diff, options: options, fitsContent: true)
+        _ = GitDiffImages.commit("HEAD", in: MockGitRepository())
+    }
+
     @Test func anAppCanWrapTheCommands() async {
         var features = GitFeatures.all
         features.remove([.merge], reason: "Only in the project root")

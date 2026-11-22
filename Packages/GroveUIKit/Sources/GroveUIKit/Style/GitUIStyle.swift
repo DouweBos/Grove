@@ -89,6 +89,9 @@ public nonisolated struct GitUIStyle: Equatable, Sendable {
     var warningFill: Color { warning.opacity(0.14) }
     var dangerFill: Color { danger.opacity(0.12) }
     var successFill: Color { success.opacity(0.12) }
+    var addedWordFill: Color { success.opacity(0.3) }
+    var deletedWordFill: Color { danger.opacity(0.3) }
+    var hunkHeaderFill: Color { info.opacity(0.08) }
 
     func font(_ size: CGFloat, _ weight: Font.Weight = .regular, _ design: Font.Design = .default) -> Font {
         .system(size: size * fontScale, weight: weight, design: design)

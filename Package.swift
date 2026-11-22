@@ -40,6 +40,12 @@ let package = Package(
       swiftSettings: swiftSettings
     ),
     .testTarget(
+      name: "GroveUIKitTests",
+      dependencies: ["GroveKit", "GroveUIKit"],
+      path: "Packages/GroveUIKit/Tests/GroveUIKitTests",
+      swiftSettings: swiftSettings
+    ),
+    .testTarget(
       name: "GroveUIKitConsumerTests",
       dependencies: ["GroveKit", "GroveUIKit"],
       path: "Packages/GroveUIKit/Tests/GroveUIKitConsumerTests",
