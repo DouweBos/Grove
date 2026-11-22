@@ -25,10 +25,10 @@ extension RefActionsViewModel {
     /// Adds and fetches a remote. Throws when adding fails, for a sheet to show; a failed fetch keeps the remote.
     /// `onAdded` runs before the fetch, e.g. to close that sheet while the fetch shows as `activity`.
     public func addRemote(name: String, url: String, onAdded: () -> Void = {}) async throws {
-        try await reporting(.remote) { try await repository.addRemote(name: name, url: url) }
+        try await reporting(.remote) { try await commands.perform(.addRemote(name: name, url: url)) }
         onAdded()
         await perform(.remote, "Fetching \(name)…") {
-            try await repository.fetch(remote: name, progress: nil)
+            try await commands.perform(.fetch(remote: name))
             try await trackMatchingBranches(on: name)
         }
     }
@@ -38,12 +38,12 @@ extension RefActionsViewModel {
         let remoteNames = Set(try await repository.remoteBranches().map(\.name))
         for branch in try await repository.localBranches() where branch.upstream == nil {
             let candidate = "\(remote)/\(branch.name)"
-            if remoteNames.contains(candidate) { try await repository.setUpstream(of: branch.name, to: candidate) }
+            if remoteNames.contains(candidate) { try await commands.perform(.setUpstream(branch: branch.name, upstream: candidate)) }
         }
     }
 
     public func removeRemote(_ remote: RemoteInfo) async {
-        await perform(.remote, "Removing \(remote.name)…") { try await repository.removeRemote(name: remote.name) }
+        await perform(.remote, "Removing \(remote.name)…") { try await commands.perform(.removeRemote(remote.name)) }
     }
 
     // MARK: - Tracking
@@ -63,12 +63,12 @@ extension RefActionsViewModel {
 
     /// Throws so a Track sheet can show the failure and stay open.
     public func track(_ branch: BranchInfo, remoteBranch: String) async throws {
-        try await reporting(.setUpstream) { try await repository.setUpstream(of: branch.name, to: remoteBranch) }
+        try await reporting(.setUpstream) { try await commands.perform(.setUpstream(branch: branch.name, upstream: remoteBranch)) }
         await didChangeRepository()
     }
 
     public func stopTracking(_ branch: BranchInfo) async {
-        await perform(.setUpstream, "Untracking \(branch.name)…") { try await repository.setUpstream(of: branch.name, to: nil) }
+        await perform(.setUpstream, "Untracking \(branch.name)…") { try await commands.perform(.setUpstream(branch: branch.name, upstream: nil)) }
     }
 
     // MARK: - Submodules
@@ -148,7 +148,7 @@ extension RefActionsViewModel {
             try await removeWorktree(worktree, force: force)
         }
         guard let branch else { return }
-        try await reporting(.branchDelete) { try await repository.deleteBranch(name: branch.name, force: forceBranch) }
+        try await reporting(.branchDelete) { try await commands.perform(.deleteBranch(name: branch.name, force: forceBranch)) }
         recordBranchDeletion(branch)
     }
 

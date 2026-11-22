@@ -13,6 +13,8 @@ import Observation
 public final class RefActionsViewModel {
 
     public let repository: any GitRepositoryProtocol
+    /// Runs this view model's mutations; an app sets its own to go through its host.
+    @ObservationIgnored public lazy var commands: any GitCommandPerforming = RepositoryCommands(repository: repository)
     /// Shared with the app's other views; read for the current branch and worktrees.
     public let refs: RepositoryRefs
 
@@ -97,7 +99,7 @@ public final class RefActionsViewModel {
         activity = "Checking out \(name)…"
         defer { activity = nil }
         do {
-            try await repository.checkout(branch: name)
+            try await commands.perform(.checkout(name))
             onAction?(.checkout, true)
         } catch {
             errorMessage = error.localizedDescription
@@ -107,20 +109,20 @@ public final class RefActionsViewModel {
         // Detached HEAD has no branch to return to, so it isn't recorded.
         if let previous, previous != name {
             undoManager?.record(GitUndoManager.checkoutAction(targetBranch: name, previousBranch: previous,
-                                                              repository: repository))
+                                                              repository: repository, commands: commands))
         }
         await didChangeRepository()
     }
 
     /// Throws so a rename dialog can show the failure and stay open.
     public func renameBranch(_ branch: BranchInfo, to newName: String) async throws {
-        try await reporting(.branchRename) { try await repository.renameBranch(oldName: branch.name, newName: newName) }
+        try await reporting(.branchRename) { try await commands.perform(.renameBranch(from: branch.name, to: newName)) }
         await didChangeRepository()
     }
 
     public func deleteBranch(_ branch: BranchInfo, force: Bool = false) async {
         do {
-            try await repository.deleteBranch(name: branch.name, force: force)
+            try await commands.perform(.deleteBranch(name: branch.name, force: force))
             onAction?(.branchDelete, true)
         } catch {
             errorMessage = error.localizedDescription
@@ -134,17 +136,17 @@ public final class RefActionsViewModel {
     /// For a dialog that deletes the branch itself, so the deletion can still be undone.
     public func recordBranchDeletion(_ branch: BranchInfo) {
         undoManager?.record(GitUndoManager.deleteBranchAction(branchName: branch.name, sha: branch.targetSHA,
-                                                              repository: repository))
+                                                              repository: repository, commands: commands))
     }
 
     /// Merges `branch` into HEAD.
     public func merge(branch: BranchInfo) async {
-        await run(.merge) { try await repository.merge(branch: branch.name) }
+        await run(.merge) { try await commands.perform(.merge(branch.name, squash: false)) }
     }
 
     /// Rebases HEAD onto `branch`.
     public func rebase(onto branch: BranchInfo) async {
-        await run(.rebase) { try await repository.rebase(onto: branch.name) }
+        await run(.rebase) { try await commands.perform(.rebase(onto: branch.name)) }
     }
 
     public func cherryPick(sha: String) async {
@@ -153,17 +155,17 @@ public final class RefActionsViewModel {
 
     /// Applies the stash at `index`, keeping it in the list.
     public func stashApply(index: Int) async {
-        await run(.stashApply) { try await repository.stashApply(index: index, drop: false) }
+        await run(.stashApply) { try await commands.perform(.applyStash(index: index, drop: false)) }
     }
 
     public func deleteTag(_ tag: TagInfo) async {
-        await run(.tagDelete) { try await repository.deleteTag(name: tag.name) }
+        await run(.tagDelete) { try await commands.perform(.deleteTag(tag.name)) }
     }
 
     /// Deletes a remote-tracking branch's branch on its remote.
     public func deleteRemoteBranch(_ branch: BranchInfo) async {
         guard let remote = branch.remoteName else { return }
-        await run(.branchDelete) { try await repository.deleteRemoteBranch(name: Self.shortName(of: branch), remote: remote) }
+        await run(.branchDelete) { try await commands.perform(.deleteRemoteBranch(name: Self.shortName(of: branch), remote: remote)) }
     }
 
     /// Remote branch name without its "remote/" prefix.

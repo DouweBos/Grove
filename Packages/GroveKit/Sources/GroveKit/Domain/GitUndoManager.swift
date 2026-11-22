@@ -236,15 +236,17 @@ public final class GitUndoManager {
     /// Returns a pre-built ``GitAction`` for undoing branch creation.
     static func createBranchAction(
         branchName: String,
-        repository: any GitRepositoryProtocol
+        repository: any GitRepositoryProtocol,
+        commands: (any GitCommandPerforming)? = nil
     ) -> GitAction {
-        GitAction(
+        let commands = commands ?? RepositoryCommands(repository: repository)
+        return GitAction(
             description: "Create Branch '\(branchName)'",
             undoCommand: {
-                try await repository.deleteBranch(name: branchName, force: false)
+                try await commands.perform(.deleteBranch(name: branchName, force: false))
             },
             redoCommand: {
-                _ = try await repository.createBranch(name: branchName, from: nil, checkout: false)
+                try await commands.perform(.createBranch(name: branchName, from: nil, checkout: false, track: false, parent: nil))
             }
         )
     }
@@ -258,16 +260,18 @@ public final class GitUndoManager {
     public static func deleteBranchAction(
         branchName: String,
         sha: String,
-        repository: any GitRepositoryProtocol
+        repository: any GitRepositoryProtocol,
+        commands: (any GitCommandPerforming)? = nil
     ) -> GitAction {
-        GitAction(
+        let commands = commands ?? RepositoryCommands(repository: repository)
+        return GitAction(
             description: "Delete Branch '\(branchName)'",
             undoCommand: {
                 // Restore the branch at its original commit.
-                _ = try await repository.createBranch(name: branchName, from: sha, checkout: false)
+                try await commands.perform(.createBranch(name: branchName, from: sha, checkout: false, track: false, parent: nil))
             },
             redoCommand: {
-                try await repository.deleteBranch(name: branchName, force: true)
+                try await commands.perform(.deleteBranch(name: branchName, force: true))
             }
         )
     }
@@ -281,15 +285,17 @@ public final class GitUndoManager {
     public static func checkoutAction(
         targetBranch: String,
         previousBranch: String,
-        repository: any GitRepositoryProtocol
+        repository: any GitRepositoryProtocol,
+        commands: (any GitCommandPerforming)? = nil
     ) -> GitAction {
-        GitAction(
+        let commands = commands ?? RepositoryCommands(repository: repository)
+        return GitAction(
             description: "Checkout '\(targetBranch)'",
             undoCommand: {
-                try await repository.checkout(branch: previousBranch)
+                try await commands.perform(.checkout(previousBranch))
             },
             redoCommand: {
-                try await repository.checkout(branch: targetBranch)
+                try await commands.perform(.checkout(targetBranch))
             }
         )
     }

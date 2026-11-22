@@ -90,6 +90,8 @@ public final class BranchesReviewViewModel {
     public var undoManager: GitUndoManager?
 
     public let repository: any GitRepositoryProtocol
+    /// Runs this view model's mutations; an app sets its own to go through its host.
+    @ObservationIgnored public lazy var commands: any GitCommandPerforming = RepositoryCommands(repository: repository)
 
     /// The session's shared refs; without them (previews, tests) branches are read directly.
     private let refs: RepositoryRefs?
@@ -240,10 +242,10 @@ public final class BranchesReviewViewModel {
         var deleted: [GitUndoManager.GitAction] = []
         for branch in pending.branches {
             do {
-                try await repository.deleteBranch(name: branch.name, force: branch.category != .merged)
+                try await commands.perform(.deleteBranch(name: branch.name, force: branch.category != .merged))
                 selectedIDs.remove(branch.id)
                 deleted.append(GitUndoManager.deleteBranchAction(branchName: branch.name, sha: branch.sha,
-                                                                 repository: repository))
+                                                                 repository: repository, commands: commands))
             } catch {
                 failures.append("\(branch.name): \(error.localizedDescription)")
             }

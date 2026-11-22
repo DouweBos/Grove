@@ -53,6 +53,8 @@ public final class StashesViewModel {
     public var onRevealInHistory: ((String) -> Void)?
 
     public let repository: any GitRepositoryProtocol
+    /// Runs this view model's mutations; an app sets its own to go through its host.
+    @ObservationIgnored public lazy var commands: any GitCommandPerforming = RepositoryCommands(repository: repository)
     // A stash commit is immutable, so its diff is cached by SHA; indices shift but SHAs don't.
     @ObservationIgnored private var diffCache = LRUCache<String, [FileDiff]>(capacity: 30)
 
@@ -125,9 +127,9 @@ public final class StashesViewModel {
         defer { isPerforming = false }
         do {
             switch pending.operation {
-            case .apply: try await repository.stashApply(index: pending.stash.id, drop: false)
-            case .pop: try await repository.stashApply(index: pending.stash.id, drop: true)
-            case .drop: try await repository.stashDrop(index: pending.stash.id)
+            case .apply: try await commands.perform(.applyStash(index: pending.stash.id, drop: false))
+            case .pop: try await commands.perform(.applyStash(index: pending.stash.id, drop: true))
+            case .drop: try await commands.perform(.dropStash(index: pending.stash.id))
             }
             onAction?(pending.operation.groveKitAction, true)
         } catch {

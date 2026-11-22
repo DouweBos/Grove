@@ -89,6 +89,8 @@ public final class ReflogViewModel {
     public var undoManager: GitUndoManager?
 
     public let repository: any GitRepositoryProtocol
+    /// Runs this view model's mutations; an app sets its own to go through its host.
+    @ObservationIgnored public lazy var commands: any GitCommandPerforming = RepositoryCommands(repository: repository)
     // Keyed by SHA: commit details are immutable and verifying signatures makes each lookup slow.
     @ObservationIgnored private var commitCache = LRUCache<String, CommitInfo>(capacity: 100)
 
@@ -180,9 +182,9 @@ public final class ReflogViewModel {
         guard RefName.isValid(name) else { return }
         branchSource = nil
         do {
-            try await repository.createBranch(name: name, from: entry.newSHA, checkout: checkout)
+            try await commands.perform(.createBranch(name: name, from: entry.newSHA, checkout: checkout, track: false, parent: nil))
             if !checkout {
-                undoManager?.record(GitUndoManager.createBranchAction(branchName: name, repository: repository))
+                undoManager?.record(GitUndoManager.createBranchAction(branchName: name, repository: repository, commands: commands))
             }
             onAction?(.branchCreate, true)
         } catch {
