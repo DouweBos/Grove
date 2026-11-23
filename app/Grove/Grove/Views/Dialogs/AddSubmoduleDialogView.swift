@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Clones a repository into a folder of this one as a submodule.
@@ -19,7 +20,7 @@ struct AddSubmoduleDialogView: View {
     private var trimmedPath: String { path.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "Add Submodule",
             message: "Clones the repository into a folder here and stages .gitmodules and the submodule, ready to commit.",
             symbol: "shippingbox",
@@ -30,18 +31,18 @@ struct AddSubmoduleDialogView: View {
             onCancel: viewModel.dismissAddSubmodule,
             onPrimary: add
         ) {
-            DialogCard {
-                DialogField("URL") {
+            GitDialogCard {
+                GitDialogField("URL") {
                     TextField("https://github.com/owner/repository.git", text: $url)
                         .textFieldStyle(.roundedBorder)
                         .font(.monoCaption)
                 }
-                DialogField("Path") {
+                GitDialogField("Path") {
                     TextField("vendor/library", text: Binding(get: { path }, set: { path = $0; pathEdited = true }))
                         .textFieldStyle(.roundedBorder)
                         .font(.monoCaption)
                 }
-                DialogField("Branch") {
+                GitDialogField("Branch") {
                     TextField("Remote default", text: $branch)
                         .textFieldStyle(.roundedBorder)
                         .font(.monoCaption)

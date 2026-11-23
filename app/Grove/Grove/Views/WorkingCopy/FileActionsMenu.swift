@@ -5,6 +5,7 @@
 // plus the rename sheet and Trash confirmation they open.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct FileActionsMenu: View {
@@ -114,7 +115,7 @@ private struct RenameFileSheet: View {
     private var trimmed: String { newPath.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "Rename \(entry.fileName)",
             message: entry.workdirStatus == .untracked
                 ? "Include folders in the path to move the file."
@@ -126,8 +127,8 @@ private struct RenameFileSheet: View {
             onCancel: onCancel,
             onPrimary: { onRename(trimmed) }
         ) {
-            DialogCard {
-                DialogField("New Path") {
+            GitDialogCard {
+                GitDialogField("New Path") {
                     TextField("Path", text: $newPath)
                         .textFieldStyle(.roundedBorder)
                         .font(.monoCaption)

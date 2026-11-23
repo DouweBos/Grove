@@ -71,7 +71,7 @@ struct RepositorySidebar: View {
             RemoveWorktreeDialogView(viewModel: viewModel, worktree: worktree)
         }
         .sheet(isPresented: Binding(get: { viewModel.isAddingRemote }, set: { if !$0 { viewModel.dismissAddRemote() } })) {
-            AddRemoteDialogView(viewModel: viewModel)
+            GitDialogView(.addRemote, context: viewModel.dialogContext)
         }
         .sidebarPrompts(viewModel)
         .sheet(item: Binding(get: { viewModel.pendingDrop }, set: { if $0 == nil { viewModel.cancelDrop() } })) { action in

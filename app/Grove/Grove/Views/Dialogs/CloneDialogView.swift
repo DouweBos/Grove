@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -47,7 +48,7 @@ struct CloneDialogView: View {
     private var canClone: Bool { !trimmedURL.isEmpty && !destination.lastPathComponent.isEmpty }
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "Clone Repository",
             message: "Downloads a copy of a remote repository in the background and adds it to your list.",
             symbol: "square.and.arrow.down",
@@ -59,8 +60,8 @@ struct CloneDialogView: View {
             onCancel: { dismiss() },
             onPrimary: performClone
         ) {
-            DialogCard {
-                DialogField("From") {
+            GitDialogCard {
+                GitDialogField("From") {
                     Picker("From", selection: $isSubversion) {
                         Text("Git").tag(false)
                         Text("Subversion").tag(true)
@@ -69,22 +70,22 @@ struct CloneDialogView: View {
                     .labelsHidden()
                     .fixedSize()
                 }
-                DialogField("URL") {
+                GitDialogField("URL") {
                     TextField(isSubversion ? "https://svn.example.com/project" : "https://github.com/org/repo.git",
                               text: $cloneURL.onSet { errorMessage = nil })
                         .textFieldStyle(.roundedBorder)
                         .font(.monoCaption)
                 }
                 if isSubversion {
-                    DialogOptionRow(isOn: $standardLayout, label: "Standard Layout",
+                    GitDialogOptionRow(isOn: $standardLayout, label: "Standard Layout",
                                     description: "Maps trunk, branches and tags to git branches and tags (git svn clone --stdlayout).")
                 }
-                DialogField("Name") {
+                GitDialogField("Name") {
                     TextField(suggestedName.isEmpty ? "Folder name" : suggestedName, text: $folderName.onSet { errorMessage = nil })
                         .textFieldStyle(.roundedBorder)
                 }
-                DialogField("Location") {
-                    DialogPathField(path: parent.path) { isPickerPresented = true }
+                GitDialogField("Location") {
+                    GitDialogPathField(path: abbreviatingHome(parent.path)) { isPickerPresented = true }
                 }
             }
         }

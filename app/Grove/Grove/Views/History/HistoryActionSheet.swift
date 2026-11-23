@@ -13,13 +13,9 @@ struct HistoryActionSheet: View {
     var body: some View {
         switch action {
         case .createBranch(let commit):
-            CreateBranchDialogView(repository: viewModel.repository,
-                                   localBranches: viewModel.branches.filter(\.isLocal),
-                                   fromRef: commit.id) { _ in Task { await viewModel.refCreated() } }
+            GitDialogView(.createBranch(from: commit.id), context: dialogContext)
         case .createTag(let commit):
-            CreateTagDialogView(repository: viewModel.repository, targetSHA: commit.id) { _ in
-                Task { await viewModel.refCreated() }
-            }
+            GitDialogView(.createTag(at: commit.id), context: dialogContext)
         case .revert(let commit):
             CommitActionSheet(commits: [commit], symbol: "arrow.uturn.backward", title: "Revert Commit",
                               message: "Creates a new commit that undoes the changes made in this commit.",
@@ -54,6 +50,13 @@ struct HistoryActionSheet: View {
             FileHistorySheet(history: viewModel, path: path)
         case .compare(let branch):
             BranchComparisonSheet(repository: viewModel.repository, refs: viewModel.refs, target: branch, onRepositoryChanged: viewModel.onRepositoryChanged)
+        }
+    }
+
+    /// Closing the sheet clears the pending action; a failure keeps it open.
+    private var dialogContext: GitDialogContext {
+        .grove(repository: viewModel.repository, refs: viewModel.refs, undo: viewModel.undoManager) { [viewModel] in
+            await viewModel.onRepositoryChanged?()
         }
     }
 

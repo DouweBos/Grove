@@ -1,6 +1,7 @@
 // Views/Repositories/GroupNameSheet.swift
 // Grove
 
+import GroveUIKit
 import SwiftUI
 
 /// Names a new bookmark group, or renames a group or a repository.
@@ -12,7 +13,7 @@ struct GroupNameSheet: View {
     @State private var name = ""
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: title,
             message: message,
             symbol: isRepository ? "arrow.triangle.branch" : "folder",
@@ -22,8 +23,8 @@ struct GroupNameSheet: View {
             onCancel: { viewModel.dismissGroupEditor() },
             onPrimary: { viewModel.commitGroupEditor(name: name) }
         ) {
-            DialogCard {
-                DialogField("Name") {
+            GitDialogCard {
+                GitDialogField("Name") {
                     TextField(isRepository ? "Name" : "Work", text: $name)
                         .textFieldStyle(.roundedBorder)
                 }

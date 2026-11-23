@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -17,7 +18,7 @@ struct CreateRepositorySheet: View {
     @State private var error: String?
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "New Repository",
             message: "Runs git init in the chosen folder, adds it to your list and opens it.",
             symbol: "plus.square.on.square",
@@ -28,9 +29,9 @@ struct CreateRepositorySheet: View {
             onCancel: { dismiss() },
             onPrimary: performCreate
         ) {
-            DialogCard {
-                DialogField("Folder") {
-                    DialogPathField(path: destinationURL?.path) { isPickerPresented = true }
+            GitDialogCard {
+                GitDialogField("Folder") {
+                    GitDialogPathField(path: destinationURL.map { abbreviatingHome($0.path) }) { isPickerPresented = true }
                 }
             }
         }

@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Presents the sidebar's `SidebarSheet` and `SidebarConfirmation`; attach it outside the List.
@@ -11,18 +12,7 @@ private struct SidebarPrompts: ViewModifier {
     func body(content: Content) -> some View {
         content
             .sheet(item: Binding(get: { viewModel.sheet }, set: { if $0 == nil { viewModel.dismissSheet() } })) { sheet in
-                switch sheet {
-                case .createBranch(let ref):
-                    CreateBranchDialogView(repository: viewModel.repository, localBranches: viewModel.localBranches, fromRef: ref) { _ in
-                        Task { await viewModel.didChangeRepository() }
-                    }
-                case .renameBranch(let branch):
-                    RenameBranchDialogView(branch: branch) { try await viewModel.actions.renameBranch(branch, to: $0) }
-                case .deleteBranch(let branch):
-                    DeleteBranchDialogView(viewModel: viewModel, branch: branch)
-                case .trackRemoteBranch(let branch):
-                    TrackRemoteBranchDialogView(viewModel: viewModel, branch: branch)
-                }
+                GitDialogView(sheet.dialog, context: viewModel.dialogContext)
             }
             .confirmationDialog(
                 viewModel.confirmation.map(Self.title) ?? "",

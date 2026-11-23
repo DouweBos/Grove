@@ -4,6 +4,7 @@
 // Confirms a sidebar drop before it runs: merge, rebase, pull or push, with what it will change.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct SidebarDropSheet: View {
@@ -22,7 +23,7 @@ struct SidebarDropSheet: View {
     }
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: title,
             message: message,
             symbol: symbol,
@@ -52,26 +53,26 @@ struct SidebarDropSheet: View {
     private var options: some View {
         switch action {
         case .merge(let source, let target):
-            DialogCard {
-                DialogField("Merge") { mono(source) }
-                DialogField("Into") { mono(target) }
+            GitDialogCard {
+                GitDialogField("Merge") { mono(source) }
+                GitDialogField("Into") { mono(target) }
             }
         case .rebase(let target, let onto):
-            DialogCard {
-                DialogField("Rebase") { mono(target) }
-                DialogField("Onto") { mono(onto) }
+            GitDialogCard {
+                GitDialogField("Rebase") { mono(target) }
+                GitDialogField("Onto") { mono(onto) }
             }
         case .moveStack(let branch, let onto):
-            DialogCard {
-                DialogField("Move") { mono(branch) }
-                DialogField("Onto") { mono(onto) }
+            GitDialogCard {
+                GitDialogField("Move") { mono(branch) }
+                GitDialogField("Onto") { mono(onto) }
             }
         case .pull(let remoteBranch, let target):
-            DialogCard {
-                DialogField("From") { mono(remoteBranch) }
-                DialogField("Into") { mono(target) }
+            GitDialogCard {
+                GitDialogField("From") { mono(remoteBranch) }
+                GitDialogField("Into") { mono(target) }
                 if isHEAD(target) {
-                    DialogField("Integrate") {
+                    GitDialogField("Integrate") {
                         if pullStrategy == nil {
                             ProgressView().controlSize(.small).frame(maxWidth: .infinity, alignment: .leading)
                         } else {
@@ -88,15 +89,15 @@ struct SidebarDropSheet: View {
                 }
             }
         case .push(let branch, let remote):
-            DialogCard {
-                DialogField("Push") { mono(branch) }
-                DialogField("To") {
+            GitDialogCard {
+                GitDialogField("Push") { mono(branch) }
+                GitDialogField("To") {
                     HStack(spacing: Theme.Spacing.xs) {
                         Text("\(remote)/").font(.monoCaption).foregroundStyle(Theme.textSecondary)
                         TextField(branch, text: $remoteBranchName).textFieldStyle(.roundedBorder).font(.monoCaption)
                     }
                 }
-                DialogOptionRow(isOn: $setUpstream, label: "Track \(remote)/\(remoteBranchName)",
+                GitDialogOptionRow(isOn: $setUpstream, label: "Track \(remote)/\(remoteBranchName)",
                                 description: "Sets it as \(branch)'s upstream, so Pull and Push use it.")
             }
         }

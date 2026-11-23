@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Starts a feature, release or hotfix branch from git-flow's base for it (or another branch).
@@ -28,7 +29,7 @@ struct GitFlowStartSheet: View {
     }
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "Start \(kind.title)",
             message: "Creates \(branchName) from \(base) and checks it out.",
             symbol: kind.symbol,
@@ -39,8 +40,8 @@ struct GitFlowStartSheet: View {
             onCancel: viewModel.dismissSheet,
             onPrimary: start
         ) {
-            DialogCard {
-                DialogField(kind == .feature ? "Name" : "Version") {
+            GitDialogCard {
+                GitDialogField(kind == .feature ? "Name" : "Version") {
                     HStack(spacing: Theme.Spacing.xs) {
                         Text(config.prefix(for: kind)).font(.monoCaption).foregroundStyle(Theme.textSecondary)
                         TextField(kind.namePrompt, text: $name)
@@ -48,7 +49,7 @@ struct GitFlowStartSheet: View {
                             .onSubmit(start)
                     }
                 }
-                DialogField("Starting At") {
+                GitDialogField("Starting At") {
                     Picker("Starting At", selection: $base) {
                         ForEach(bases, id: \.self) { Text($0).tag($0) }
                     }

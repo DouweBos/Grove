@@ -80,7 +80,6 @@ public struct GitDialogSheet<Content: View>: View {
         .font(style.font(13))
         .background(style.background)
         .foregroundStyle(style.textPrimary)
-        .tint(style.accent)
         .animation(.easeInOut(duration: 0.15), value: progress)
         .animation(.easeInOut(duration: 0.15), value: errorMessage)
         .animation(.easeInOut(duration: 0.15), value: dismissedError)

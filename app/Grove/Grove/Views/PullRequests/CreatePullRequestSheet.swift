@@ -12,7 +12,7 @@ struct CreatePullRequestSheet: View {
     let onCancel: () -> Void
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "Create Pull Request",
             message: "Asks to merge \(viewModel.head) into \(viewModel.base.isEmpty ? "the base branch" : viewModel.base).",
             symbol: "arrow.triangle.pull",
@@ -24,15 +24,15 @@ struct CreatePullRequestSheet: View {
             onCancel: onCancel,
             onPrimary: { Task { await viewModel.submit() } }
         ) {
-            DialogCard {
-                DialogField("Head") {
+            GitDialogCard {
+                GitDialogField("Head") {
                     Picker("Head", selection: Binding(get: { viewModel.head },
                                                       set: { name in Task { await viewModel.setHead(name) } })) {
                         ForEach(viewModel.headCandidates, id: \.self) { Text($0).tag($0) }
                     }
                     .labelsHidden()
                 }
-                DialogField("Base") {
+                GitDialogField("Base") {
                     Picker("Base", selection: Binding(get: { viewModel.base },
                                                       set: { name in Task { await viewModel.setBase(name) } })) {
                         ForEach(viewModel.baseCandidates, id: \.self) { Text("\(viewModel.remote)/\($0)").tag($0) }
@@ -41,22 +41,22 @@ struct CreatePullRequestSheet: View {
                 }
                 summary
             }
-            DialogCard {
-                DialogField("Title") {
+            GitDialogCard {
+                GitDialogField("Title") {
                     TextField("Title", text: Binding(get: { viewModel.title }, set: viewModel.setTitle))
                         .textFieldStyle(.roundedBorder)
                 }
-                DialogField("Description") {
+                GitDialogField("Description") {
                     MultilineField(text: viewModel.body, placeholder: "Describe the change (Markdown)", height: 150,
                                    onChange: viewModel.setBody)
                 }
-                DialogField("Reviewers") {
+                GitDialogField("Reviewers") {
                     TextField("Optional, e.g. alice, bob", text: Binding(get: { viewModel.reviewersText },
                                                                          set: viewModel.setReviewers))
                         .textFieldStyle(.roundedBorder)
                         .font(.monoCaption)
                 }
-                DialogOptionRow(isOn: Binding(get: { viewModel.isDraft }, set: viewModel.setDraft),
+                GitDialogOptionRow(isOn: Binding(get: { viewModel.isDraft }, set: viewModel.setDraft),
                                 label: "Draft",
                                 description: "Reviewers aren't asked yet and it can't be merged until marked ready.")
                 .padding(.leading, 96 + Theme.Spacing.md)

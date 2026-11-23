@@ -47,7 +47,7 @@ private struct ApplyPatchSheet: View {
     let viewModel: WorkingCopyViewModel
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "Apply Patch",
             message: "Changes the working copy with the patch. Grove checks that it applies before changing anything.",
             symbol: "doc.badge.plus",
@@ -57,15 +57,15 @@ private struct ApplyPatchSheet: View {
             onCancel: { viewModel.cancelApplyPatch() },
             onPrimary: { Task { await viewModel.applyPendingPatch() } }
         ) {
-            DialogCard {
-                DialogField("Patch") {
+            GitDialogCard {
+                GitDialogField("Patch") {
                     Text(abbreviatingHome(request.file.path))
                         .font(.monoCaption)
                         .lineLimit(1)
                         .truncationMode(.head)
                         .help(request.file.path)
                 }
-                DialogField("Index") {
+                GitDialogField("Index") {
                     Toggle("Also stage the changes",
                            isOn: Binding(get: { request.toIndex }, set: { on in Task { await viewModel.setPatchAppliesToIndex(on) } }))
                         .toggleStyle(.checkbox)

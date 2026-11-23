@@ -1,6 +1,7 @@
 // Views/Repositories/AddRepositorySheet.swift
 // Grove
 
+import GroveUIKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -15,7 +16,7 @@ struct AddRepositorySheet: View {
     @State private var groupID: UUID?
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "Add Repository",
             message: "Choose a folder that already contains a Git repository.",
             symbol: "folder.badge.plus",
@@ -28,12 +29,12 @@ struct AddRepositorySheet: View {
                 dismiss()
             }
         ) {
-            DialogCard {
-                DialogField("Folder") {
-                    DialogPathField(path: selectedURL?.path) { isPickerPresented = true }
+            GitDialogCard {
+                GitDialogField("Folder") {
+                    GitDialogPathField(path: selectedURL.map { abbreviatingHome($0.path) }) { isPickerPresented = true }
                 }
                 if !viewModel.sortedGroups.isEmpty {
-                    DialogField("Group") {
+                    GitDialogField("Group") {
                         Picker("Group", selection: $groupID) {
                             Text("None").tag(UUID?.none)
                             ForEach(viewModel.sortedGroups) { Text($0.name).tag(UUID?.some($0.id)) }

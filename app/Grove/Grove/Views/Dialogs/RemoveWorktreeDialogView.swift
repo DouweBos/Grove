@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Confirms removing a linked worktree, optionally with its uncommitted changes and its branch.
@@ -22,7 +23,7 @@ struct RemoveWorktreeDialogView: View {
     private var title: String { worktree.branch ?? worktree.folderName }
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "Remove the worktree \u{201C}\(title)\u{201D}?",
             message: "Deletes the folder \(abbreviatingHome(worktree.path)). Commits stay in the repository.",
             symbol: "trash",
@@ -34,20 +35,20 @@ struct RemoveWorktreeDialogView: View {
             onCancel: { dismiss() },
             onPrimary: performRemove
         ) {
-            DialogCard {
-                DialogOptionRow(
+            GitDialogCard {
+                GitDialogOptionRow(
                     isOn: $force,
                     label: "Remove Even with Uncommitted Changes",
                     description: "Discards the worktree's modified and untracked files."
                 )
                 if let branch {
-                    DialogOptionRow(
+                    GitDialogOptionRow(
                         isOn: $deleteBranch,
                         label: "Also Delete Branch \(branch.name)",
                         description: "Otherwise the branch is kept and can be checked out elsewhere."
                     )
                     if deleteBranch {
-                        DialogOptionRow(
+                        GitDialogOptionRow(
                             isOn: $forceDeleteBranch,
                             label: "Delete Even if Unmerged",
                             description: "Required when the branch has commits that aren't merged anywhere."

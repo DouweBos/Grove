@@ -12,7 +12,7 @@ struct DispatchWorkflowSheet: View {
     let onCancel: () -> Void
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "Run Workflow",
             message: "Starts \(viewModel.workflow?.name ?? "a workflow") on \(viewModel.ref.isEmpty ? "a branch or tag" : viewModel.ref).",
             symbol: "play.circle",
@@ -24,22 +24,22 @@ struct DispatchWorkflowSheet: View {
             onCancel: onCancel,
             onPrimary: { Task { await viewModel.submit() } }
         ) {
-            DialogCard {
-                DialogField("Workflow") {
+            GitDialogCard {
+                GitDialogField("Workflow") {
                     Picker("Workflow", selection: Binding(get: { viewModel.workflowID },
                                                           set: { id in Task { await viewModel.setWorkflow(id) } })) {
                         ForEach(viewModel.workflows) { Text($0.name).tag(Int?.some($0.id)) }
                     }
                     .labelsHidden()
                 }
-                DialogField("Branch or Tag") {
-                    ComboBox(text: Binding(get: { viewModel.ref }, set: { name in Task { await viewModel.setRef(name) } }),
+                GitDialogField("Branch or Tag") {
+                    GitComboBox(text: Binding(get: { viewModel.ref }, set: { name in Task { await viewModel.setRef(name) } }),
                              items: viewModel.refCandidates, placeholder: "main", isMonospaced: true)
                 }
             }
             form
-            DialogCard {
-                DialogOptionRow(isOn: Binding(get: { viewModel.notifiesWhenFinished }, set: { viewModel.setNotifiesWhenFinished($0) }),
+            GitDialogCard {
+                GitDialogOptionRow(isOn: Binding(get: { viewModel.notifiesWhenFinished }, set: { viewModel.setNotifiesWhenFinished($0) }),
                                 label: "Notify me when it finishes",
                                 description: "Sends a notification when the run passes, fails or is cancelled.")
             }
@@ -61,10 +61,10 @@ struct DispatchWorkflowSheet: View {
                    : "This workflow can\u{2019}t be started by hand: it has no workflow_dispatch trigger on \(viewModel.ref).")
         case .inputs(let inputs):
             if !inputs.isEmpty {
-                DialogCard { ForEach(inputs) { DispatchInputField(viewModel: viewModel, input: $0) } }
+                GitDialogCard { ForEach(inputs) { DispatchInputField(viewModel: viewModel, input: $0) } }
             }
         case .freeForm:
-            DialogCard {
+            GitDialogCard {
                 Text("Grove couldn\u{2019}t read this workflow\u{2019}s inputs. Add the ones it needs by name.")
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.textSecondary)
@@ -99,12 +99,12 @@ private struct DispatchInputField: View {
 
     var body: some View {
         if input.kind == .boolean {
-            DialogOptionRow(isOn: Binding(get: { viewModel.value(for: input) == "true" },
+            GitDialogOptionRow(isOn: Binding(get: { viewModel.value(for: input) == "true" },
                                           set: { viewModel.setValue($0 ? "true" : "false", for: input) }),
                             label: input.name, description: input.description.isEmpty ? nil : input.description)
                 .padding(.leading, 96 + Theme.Spacing.md)
         } else {
-            DialogField(input.isRequired ? "\(input.name) *" : input.name) {
+            GitDialogField(input.isRequired ? "\(input.name) *" : input.name) {
                 VStack(alignment: .leading, spacing: 3) {
                     control
                     if !input.description.isEmpty {

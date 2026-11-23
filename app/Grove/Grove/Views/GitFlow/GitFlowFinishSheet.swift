@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Finishes a feature, release or hotfix: merges it where git-flow merges it, with the finish options.
@@ -36,7 +37,7 @@ struct GitFlowFinishSheet: View {
     }
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "Finish \(kind.title)",
             message: summary + " Conflicts stop the finish for you to resolve.",
             symbol: kind.symbol,
@@ -47,8 +48,8 @@ struct GitFlowFinishSheet: View {
             onCancel: viewModel.dismissSheet,
             onPrimary: finish
         ) {
-            DialogCard {
-                DialogField(kind.title) {
+            GitDialogCard {
+                GitDialogField(kind.title) {
                     Picker(kind.title, selection: $name) {
                         ForEach(names, id: \.self) { Text(config.branchName(kind, $0)).tag($0) }
                     }
@@ -56,21 +57,21 @@ struct GitFlowFinishSheet: View {
                     .disabled(names.isEmpty)
                 }
                 if kind.isTagged {
-                    DialogOptionRow(isOn: $createsTag, label: "Tag \(tagName)", description: "An annotated tag on \(config.productionBranch).")
+                    GitDialogOptionRow(isOn: $createsTag, label: "Tag \(tagName)", description: "An annotated tag on \(config.productionBranch).")
                     if createsTag {
-                        DialogField("Tag Message") {
+                        GitDialogField("Tag Message") {
                             TextField("Release \(name)", text: $tagMessage).textFieldStyle(.roundedBorder)
                         }
                     }
                 }
             }
-            DialogOptionsSection {
+            GitDialogOptionsSection {
                 if kind == .feature {
-                    DialogOptionRow(isOn: $options.squash, label: "Squash Commits",
+                    GitDialogOptionRow(isOn: $options.squash, label: "Squash Commits",
                                     description: "One commit on \(config.developBranch) instead of a merge commit.")
                 }
-                DialogOptionRow(isOn: $options.keepBranch, label: "Keep Branch", description: "Doesn't delete \(branch) afterwards.")
-                DialogOptionRow(isOn: $options.push, label: "Push to origin",
+                GitDialogOptionRow(isOn: $options.keepBranch, label: "Keep Branch", description: "Doesn't delete \(branch) afterwards.")
+                GitDialogOptionRow(isOn: $options.push, label: "Push to origin",
                                 description: "Pushes \(config.developBranch), \(config.productionBranch) and tags afterwards.")
             }
         }

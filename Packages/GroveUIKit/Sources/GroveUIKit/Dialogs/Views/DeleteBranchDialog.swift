@@ -112,7 +112,7 @@ struct TrackDialog: View {
     var body: some View {
         GitDialogSheet(
             title: "Track Remote Branch",
-            message: "\u{201C}\(form.branch.name)\u{201D} pulls from this branch, which also tells how far ahead or behind of it you are.",
+            message: "\u{201C}\(form.branch.name)\u{201D} pulls from this branch and counts how far ahead or behind of it you are.",
             symbol: "arrow.left.arrow.right",
             progress: operation.title, errorMessage: operation.errorMessage,
             primaryTitle: "Track", isPrimaryDisabled: form.commands.isEmpty, blocker: form.unsupportedReason(context.features),

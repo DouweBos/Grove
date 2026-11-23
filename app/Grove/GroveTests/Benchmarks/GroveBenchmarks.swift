@@ -5,6 +5,7 @@
 
 import Foundation
 @testable import GroveKit
+import GroveUIKit
 import Testing
 @testable import Grove
 
@@ -136,8 +137,7 @@ struct GroveBenchmarks {
         })
     }
 
-    /// Mirrors PullDialogView's `.task`: strategy, remotes, then remote branches.
-    /// The shared refs read, then what PullDialogView does on top of the refs a session already holds.
+    /// The shared refs read, then what the pull dialog does on top of the refs a session already holds.
     private func pullDialog(_ preset: FixturePreset, _ path: URL) async throws {
         let repository = try await GitRepository(path: path)
         try await report.measure(preset, "refs read (RepositoryRefs.refresh)", setup: {
@@ -150,7 +150,7 @@ struct GroveBenchmarks {
             await refs.refresh()
             return refs
         }, body: { refs in
-            _ = PullSourcePicker.defaultSource(for: repository.currentBranch, in: refs.remoteBranches)
+            _ = GitPullForm.defaultSource(for: repository.currentBranch, in: refs.remoteBranches)
             _ = await repository.defaultPullStrategy()
         })
     }

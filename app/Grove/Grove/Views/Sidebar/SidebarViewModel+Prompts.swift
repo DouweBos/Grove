@@ -5,6 +5,7 @@
 // since a List hands a section's modifiers to every row and each copy would present again.
 
 import GroveKit
+import GroveUIKit
 
 enum SidebarSheet: Identifiable {
     case createBranch(from: String)
@@ -18,6 +19,15 @@ enum SidebarSheet: Identifiable {
         case .renameBranch(let branch): "rename:\(branch.id)"
         case .deleteBranch(let branch): "delete:\(branch.id)"
         case .trackRemoteBranch(let branch): "track:\(branch.id)"
+        }
+    }
+
+    var dialog: GitDialog {
+        switch self {
+        case .createBranch(let ref): .createBranch(from: ref)
+        case .renameBranch(let branch): .renameBranch(branch.name)
+        case .deleteBranch(let branch): .deleteBranch(branch)
+        case .trackRemoteBranch(let branch): .trackRemoteBranch(branch)
         }
     }
 }

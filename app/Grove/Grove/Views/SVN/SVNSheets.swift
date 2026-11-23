@@ -4,6 +4,7 @@
 // Fetch from SVN and Commit to SVN, shown in place of Pull and Push for git-svn clones.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct SVNSheetView: View {
@@ -23,7 +24,7 @@ struct SVNFetchSheet: View {
     @State private var rebase = true
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "Fetch from SVN",
             message: "Downloads new revisions from \(viewModel.status.url ?? "the Subversion repository").",
             symbol: "arrow.down.to.line",
@@ -34,7 +35,7 @@ struct SVNFetchSheet: View {
             onCancel: viewModel.dismissSheet,
             onPrimary: fetch
         ) {
-            DialogCard {
+            GitDialogCard {
                 Picker("After fetching", selection: $rebase) {
                     Text("Rebase local commits onto the new revisions").tag(true)
                     Text("Only fetch").tag(false)
@@ -61,7 +62,7 @@ struct SVNDcommitSheet: View {
     private var unsent: Int { viewModel.status.unsentCount }
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "Commit to SVN",
             message: "Sends \(unsent == 1 ? "1 local commit" : "\(unsent) local commits") to \(viewModel.status.url ?? "Subversion"), "
                 + "one revision each. They're then rewritten with their SVN revision, so their hashes change.",
@@ -73,11 +74,11 @@ struct SVNDcommitSheet: View {
             onCancel: viewModel.dismissSheet,
             onPrimary: dcommit
         ) {
-            DialogCard {
-                DialogField("Destination") {
+            GitDialogCard {
+                GitDialogField("Destination") {
                     Text(viewModel.status.url ?? "Unknown").font(.monoCaption).lineLimit(1).truncationMode(.middle)
                 }
-                DialogField("Commits") {
+                GitDialogField("Commits") {
                     Text(unsent < 1 ? "Nothing to send" : "\(unsent)").font(.monoCaption)
                 }
             }

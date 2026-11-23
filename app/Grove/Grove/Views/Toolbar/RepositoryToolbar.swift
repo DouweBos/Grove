@@ -6,6 +6,7 @@
 // so that .sheet() modifiers can attach to a View, not ToolbarContent.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 import Observation
 
@@ -197,6 +198,11 @@ struct RepositoryToolbarSheets<Content: View>: View {
 
     @State private var isNarrow = false
 
+    /// The sidebar's commands and refresh, which `onComplete` also runs.
+    private func dialog(_ dialog: GitDialog) -> some View {
+        GitDialogView(dialog, context: sidebarVM.dialogContext)
+    }
+
     private var refs: RepositoryRefs { toolbarState.refs }
 
     var body: some View {
@@ -212,36 +218,16 @@ struct RepositoryToolbarSheets<Content: View>: View {
                     iconsOnly: isNarrow
                 ) { sidebarVM.select($0) }
             }
-            .sheet(isPresented: $toolbarState.isPushPresented) {
-                PushDialogView(repository: repository, refs: refs, onComplete: onComplete)
-            }
-            .sheet(isPresented: $toolbarState.isPullPresented) {
-                PullDialogView(repository: repository, refs: refs, onComplete: onComplete)
-            }
-            .sheet(isPresented: $toolbarState.isFetchPresented) {
-                FetchDialogView(repository: repository, remotes: refs.remotes, onComplete: onComplete)
-            }
-            .sheet(isPresented: $toolbarState.isSyncPresented) {
-                SyncDialogView(repository: repository, remotes: refs.remotes, strategy: refs.defaultPullStrategy, onComplete: onComplete)
-            }
-            .sheet(isPresented: $toolbarState.isBranchPresented) {
-                CreateBranchDialogView(repository: repository, localBranches: refs.localBranches) { _ in onComplete() }
-            }
-            .sheet(isPresented: $toolbarState.isTagPresented) {
-                CreateTagDialogView(repository: repository) { _ in onComplete() }
-            }
-            .sheet(isPresented: $toolbarState.isStashPresented) {
-                StashDialogView(repository: repository, initialPaths: toolbarState.stashPaths, onComplete: onComplete)
-            }
-            .sheet(isPresented: $toolbarState.isSnapshotPresented) {
-                SnapshotDialogView(repository: repository, onComplete: onComplete)
-            }
-            .sheet(isPresented: $toolbarState.isMergePresented) {
-                MergeDialogView(repository: repository, localBranches: refs.localBranches, onComplete: onComplete)
-            }
-            .sheet(isPresented: $toolbarState.isRebasePresented) {
-                RebaseDialogView(repository: repository, localBranches: refs.localBranches, onComplete: onComplete)
-            }
+            .sheet(isPresented: $toolbarState.isPushPresented) { dialog(.push()) }
+            .sheet(isPresented: $toolbarState.isPullPresented) { dialog(.pull) }
+            .sheet(isPresented: $toolbarState.isFetchPresented) { dialog(.fetch) }
+            .sheet(isPresented: $toolbarState.isSyncPresented) { dialog(.sync) }
+            .sheet(isPresented: $toolbarState.isBranchPresented) { dialog(.createBranch()) }
+            .sheet(isPresented: $toolbarState.isTagPresented) { dialog(.createTag()) }
+            .sheet(isPresented: $toolbarState.isStashPresented) { dialog(.stash(paths: toolbarState.stashPaths.map { $0.sorted() })) }
+            .sheet(isPresented: $toolbarState.isSnapshotPresented) { dialog(.snapshot) }
+            .sheet(isPresented: $toolbarState.isMergePresented) { dialog(.merge) }
+            .sheet(isPresented: $toolbarState.isRebasePresented) { dialog(.rebase) }
             .sheet(item: Binding(get: { toolbarState.gitFlow.sheet },
                                  set: { if $0 == nil { toolbarState.gitFlow.dismissSheet() } })) { sheet in
                 GitFlowSheetView(viewModel: toolbarState.gitFlow, sheet: sheet)

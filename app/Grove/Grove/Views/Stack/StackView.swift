@@ -44,10 +44,8 @@ struct StackView: View {
         .padding(.bottom, Theme.Spacing.md)
         .task(id: viewModel.stack) { await viewModel.refresh() }
         .sheet(item: $newBranchFrom) { request in
-            CreateBranchDialogView(repository: viewModel.repository, localBranches: viewModel.refs.localBranches,
-                                   fromRef: request.ref) { _ in
-                Task { await viewModel.onRepositoryChanged?() }
-            }
+            GitDialogView(.createBranch(from: request.ref), context: .grove(
+                repository: viewModel.repository, refs: viewModel.refs, undo: nil) { [viewModel] in await viewModel.onRepositoryChanged?() })
         }
     }
 

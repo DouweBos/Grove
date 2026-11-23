@@ -21,7 +21,7 @@ struct CreateRemoteRepositorySheet: View {
     // MARK: Form
 
     private var form: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "New Remote Repository",
             message: "Creates an empty repository on \(viewModel.section?.account.kind.displayName ?? "the service").",
             symbol: "plus.rectangle.on.folder",
@@ -33,9 +33,9 @@ struct CreateRemoteRepositorySheet: View {
             onCancel: windowVM.remoteRepositories.endCreating,
             onPrimary: { Task { await viewModel.create() } }
         ) {
-            DialogCard {
+            GitDialogCard {
                 if viewModel.sections.count > 1 {
-                    DialogField("Account") {
+                    GitDialogField("Account") {
                         Picker("Account", selection: Binding(get: { viewModel.accountID }, set: viewModel.selectAccount)) {
                             ForEach(viewModel.sections) { section in
                                 Text("\(section.account.kind.displayName) \u{00B7} \(section.account.title)").tag(section.id)
@@ -44,7 +44,7 @@ struct CreateRemoteRepositorySheet: View {
                         .labelsHidden()
                     }
                 }
-                DialogField(viewModel.section?.account.kind == .azureDevOps ? "Project" : "Owner") {
+                GitDialogField(viewModel.section?.account.kind == .azureDevOps ? "Project" : "Owner") {
                     Picker("Owner", selection: Binding(get: { viewModel.ownerID }, set: viewModel.selectOwner)) {
                         ForEach(viewModel.owners) { owner in
                             Label(owner.title, systemImage: owner.isAccount ? "person.crop.circle" : "building.2").tag(owner.id)
@@ -52,7 +52,7 @@ struct CreateRemoteRepositorySheet: View {
                     }
                     .labelsHidden()
                 }
-                DialogField("Name") {
+                GitDialogField("Name") {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                         TextField("my-repository", text: Binding(get: { viewModel.name }, set: viewModel.setName))
                             .textFieldStyle(.roundedBorder)
@@ -64,11 +64,11 @@ struct CreateRemoteRepositorySheet: View {
                     }
                 }
                 if viewModel.supportsVisibilityAndDescription {
-                    DialogField("Description") {
+                    GitDialogField("Description") {
                         TextField("Optional", text: Binding(get: { viewModel.details }, set: viewModel.setDetails))
                             .textFieldStyle(.roundedBorder)
                     }
-                    DialogOptionRow(isOn: Binding(get: { viewModel.isPrivate }, set: viewModel.setPrivate), label: "Private",
+                    GitDialogOptionRow(isOn: Binding(get: { viewModel.isPrivate }, set: viewModel.setPrivate), label: "Private",
                                     description: "Only people you give access can see it.")
                         .padding(.leading, 96 + Theme.Spacing.md)
                 } else {
@@ -83,7 +83,7 @@ struct CreateRemoteRepositorySheet: View {
     // MARK: Created
 
     private func created(_ repository: RemoteRepository) -> some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "Created \(repository.name)",
             message: "\(repository.nameWithOwner) is ready on \(repository.service.displayName). It's empty until something is pushed to it.",
             symbol: "checkmark.circle",
@@ -96,24 +96,24 @@ struct CreateRemoteRepositorySheet: View {
                 windowVM.showCloneDialog(url: repository.defaultCloneURL)
             }
         ) {
-            DialogCard {
-                DialogField("SSH") { urlText(repository.sshURL) }
-                DialogField("HTTPS") { urlText(repository.httpsCloneURL) }
+            GitDialogCard {
+                GitDialogField("SSH") { urlText(repository.sshURL) }
+                GitDialogField("HTTPS") { urlText(repository.httpsCloneURL) }
             }
             if !viewModel.targets.isEmpty { addRemote }
         }
     }
 
     private var addRemote: some View {
-        DialogCard {
+        GitDialogCard {
             GitSectionLabel(title: "Add as a Remote")
-            DialogField("Repository") {
+            GitDialogField("Repository") {
                 Picker("Repository", selection: Binding(get: { viewModel.targetPath ?? "" }, set: viewModel.selectTarget)) {
                     ForEach(viewModel.targets) { Text($0.name).tag($0.path) }
                 }
                 .labelsHidden()
             }
-            DialogField("Remote Name") {
+            GitDialogField("Remote Name") {
                 HStack(spacing: Theme.Spacing.sm) {
                     TextField("origin", text: Binding(get: { viewModel.remoteName }, set: viewModel.setRemoteName))
                         .textFieldStyle(.roundedBorder)

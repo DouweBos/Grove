@@ -26,7 +26,8 @@ struct RemoteDialog: View {
         GitDialogSheet(
             title: form.original.map { "Edit \($0.name)" } ?? "Add Remote",
             message: isAdding
-                ? "Connects this repository to another copy of it, such as one on GitHub."
+                ? "Connects this repository to another copy of it, such as one on GitHub"
+                    + (context.onRemoteAdded == nil ? "." : ", and fetches its branches.")
                 : "Renames the remote or points it at another URL. Its remote branches follow a new name.",
             symbol: "cloud",
             progress: operation.title,

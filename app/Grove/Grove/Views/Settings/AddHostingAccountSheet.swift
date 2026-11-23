@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Adds or re-authenticates an account: a browser sign-in where the service has one, else a token, checked before saving.
@@ -13,7 +14,7 @@ struct AddHostingAccountSheet: View {
     private var provider: AccountProvider { form.provider }
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: form.replacing == nil ? "Add \(provider.title) Account" : "Sign In to \(provider.title) Again",
             message: "Grove checks the token with \(provider.title) before saving it in your Keychain.",
             symbol: provider.kind.symbol,
@@ -25,8 +26,8 @@ struct AddHostingAccountSheet: View {
             onCancel: viewModel.cancelForm,
             onPrimary: { Task { await viewModel.submitForm() } }
         ) {
-            DialogCard {
-                DialogField("Service") {
+            GitDialogCard {
+                GitDialogField("Service") {
                     Picker("Service", selection: binding(\.provider)) {
                         ForEach(AccountProvider.allCases) { Text($0.title).tag($0) }
                     }
@@ -34,27 +35,27 @@ struct AddHostingAccountSheet: View {
                     .disabled(form.replacing != nil)
                 }
                 if provider.asksForHost {
-                    DialogField("Host") {
+                    GitDialogField("Host") {
                         TextField(provider.kind == .github ? "github.example.com" : "gitlab.example.com", text: binding(\.host))
                             .textFieldStyle(.roundedBorder)
                             .font(.monoCaption)
                     }
                 }
                 if provider == .azureDevOps {
-                    DialogField("Organization") {
+                    GitDialogField("Organization") {
                         TextField("my-org, from dev.azure.com/my-org", text: binding(\.organization))
                             .textFieldStyle(.roundedBorder)
                     }
                 }
                 if provider.asksForUsername || provider == .azureDevOps {
-                    DialogField(provider == .azureDevOps ? "Name" : "Username") {
+                    GitDialogField(provider == .azureDevOps ? "Name" : "Username") {
                         TextField(provider == .azureDevOps ? "Optional label" : "Username, or email for an API token",
                                   text: binding(\.username))
                             .textFieldStyle(.roundedBorder)
                     }
                 }
                 if OAuthDeviceFlow.isAvailable(for: provider) { browserSignIn }
-                DialogField(provider == .bitbucket ? "App Password" : "Token") {
+                GitDialogField(provider == .bitbucket ? "App Password" : "Token") {
                     SecureField(provider == .bitbucket ? "App password or API token" : "Personal access token", text: binding(\.token))
                         .textFieldStyle(.roundedBorder)
                 }
@@ -75,7 +76,7 @@ struct AddHostingAccountSheet: View {
 
     @ViewBuilder
     private var browserSignIn: some View {
-        DialogField("Browser") {
+        GitDialogField("Browser") {
             if let code = form.deviceCode {
                 HStack(spacing: Theme.Spacing.sm) {
                     ProgressView().controlSize(.small)

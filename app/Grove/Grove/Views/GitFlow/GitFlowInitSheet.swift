@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// Sets up git-flow: which branches are production and develop, and the branch and tag prefixes.
@@ -22,7 +23,7 @@ struct GitFlowInitSheet: View {
     }
 
     var body: some View {
-        DialogSheet(
+        GitDialogSheet(
             title: "Initialize Git Flow",
             message: "Stores the branch model in this repository's config, creates the develop branch if it's missing and checks it out.",
             symbol: "arrow.triangle.branch",
@@ -33,22 +34,22 @@ struct GitFlowInitSheet: View {
             onCancel: viewModel.dismissSheet,
             onPrimary: initialize
         ) {
-            DialogCard {
-                DialogField("Production") {
+            GitDialogCard {
+                GitDialogField("Production") {
                     Picker("Production", selection: $config.productionBranch) {
                         ForEach(options(including: config.productionBranch), id: \.self) { Text($0).tag($0) }
                     }
                     .labelsHidden()
                 }
-                DialogField("Develop") {
+                GitDialogField("Develop") {
                     TextField("develop", text: $config.developBranch).textFieldStyle(.roundedBorder)
                 }
             }
-            DialogCard {
-                DialogField("Features") { prefixField("feature/", text: $config.featurePrefix) }
-                DialogField("Releases") { prefixField("release/", text: $config.releasePrefix) }
-                DialogField("Hotfixes") { prefixField("hotfix/", text: $config.hotfixPrefix) }
-                DialogField("Version Tags") { prefixField("none, e.g. v", text: $config.versionTagPrefix) }
+            GitDialogCard {
+                GitDialogField("Features") { prefixField("feature/", text: $config.featurePrefix) }
+                GitDialogField("Releases") { prefixField("release/", text: $config.releasePrefix) }
+                GitDialogField("Hotfixes") { prefixField("hotfix/", text: $config.hotfixPrefix) }
+                GitDialogField("Version Tags") { prefixField("none, e.g. v", text: $config.versionTagPrefix) }
             }
         }
     }
