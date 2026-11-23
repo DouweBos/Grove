@@ -181,5 +181,43 @@ struct ConsumerTests {
             _ = NSHostingController(rootView: view).sizeThatFits(in: NSSize(width: 300, height: 600))
         }
     }
+
+    @Test func anAppCanShowHistoryCompareFileHistoryAndTheRebasePlannerItsWay() async {
+        let repository = MockGitRepository()
+        let history = HistoryViewModel(repository: repository)
+        let commands = HostCommands(features: .all)
+        history.commands = commands
+        history.onOpenBlame = { _, _ in }
+        history.onRebaseStopped = {}
+        let context = GitDialogContext(repository: repository, refs: history.refs, commands: commands)
+        var host = GitHistoryHost()
+        host.title = "feature vs main"
+        host.ownCommits = []
+        host.compare = { _, _ in }
+        host.interactiveRebase = { (commit: CommitInfo) in _ = commit.id }
+        host.showInHistory = { _ in }
+        host.openBlame = { _, _ in }
+        host.avatarURL = { _, _ in nil }
+        host.diffOptions = GitDiffOptions()
+        host.compareAnnotations = { _, _, _ in nil }
+        let views: [AnyView] = [
+            AnyView(GitHistoryView(viewModel: history, dialogs: context, host: host)),
+            AnyView(GitCompareView(context: context, base: .constant("main"), compare: .constant("feature"))),
+            AnyView(GitFileHistoryView(viewModel: history.fileHistory(path: "README.md"))),
+            AnyView(GitInteractiveRebaseView(viewModel: history, from: "abc") {}),
+        ]
+        for view in views {
+            _ = NSHostingController(rootView: view.frame(width: 1000, height: 600)).sizeThatFits(in: NSSize(width: 1000, height: 600))
+        }
+        _ = NSHostingController(rootView: GitCommitRow(commit: MockData.commits[0])).sizeThatFits(in: NSSize(width: 400, height: 60))
+        let table: GitCommitTableView.Type = GitCommitTableView.self
+        #expect(table is NSTableView.Type)
+        await history.loadInitial()
+        if let commit = history.commits.dropFirst().first {
+            await history.cherryPick(commit)
+            await history.reset(to: commit, mode: .soft)
+            #expect(commands.performed == [.cherryPick(commit.id), .reset(to: commit.id, mode: .soft)])
+        }
+    }
 }
 #endif
