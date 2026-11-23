@@ -92,6 +92,14 @@ extension GitRepository {
         }
     }
 
+    public func saveConflictResolution(path file: String, contents: String) async throws {
+        // An executable on either side stays executable once resolved.
+        let stages = try await shell.runAllowingFailure(["ls-files", "--stage", "--", file]).stdout
+        let executable = stages.split(separator: "\n").contains { $0.hasPrefix("100755") }
+        try await shell.runner.writeFile(Data(contents.utf8), to: path.appendingPathComponent(file), executable: executable)
+        try await shell.run(["add", "--", file])
+    }
+
     func configValue(_ key: String) async -> String? {
         guard let result = try? await shell.runAllowingFailure(["config", "--get", key]), result.isSuccess else { return nil }
         let value = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)

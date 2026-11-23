@@ -39,6 +39,8 @@ public final class WorkingCopyViewModel {
     /// Reports each action this view model runs, e.g. to the app's telemetry.
     @ObservationIgnored public var onAction: GroveKitActionHandler?
     public var undoManager: GitUndoManager?
+    /// Runs the mutations an app may run its own way, e.g. saving a conflict's edited result.
+    @ObservationIgnored public lazy var commands: any GitCommandPerforming = RepositoryCommands(repository: repository)
 
     // MARK: Status
 
@@ -102,6 +104,14 @@ public final class WorkingCopyViewModel {
 
     var hasSubject: Bool { !commitSubject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     public var canCommit: Bool { hasSubject && (isAmend || !stagedFiles.isEmpty) && conflictedFiles.isEmpty && !isCommitting }
+
+    /// Why Commit can't run, in words for its help; nil when it can.
+    public var commitBlocker: String? {
+        if !conflictedFiles.isEmpty { return "Resolve the conflicts first" }
+        if !isAmend && stagedFiles.isEmpty { return "Stage changes to commit" }
+        if !hasSubject { return "Enter a summary" }
+        return isCommitting ? "A commit is already running" : nil
+    }
 
     public var commitButtonTitle: String {
         if isAmend { return "Amend Commit" }

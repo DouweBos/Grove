@@ -19,6 +19,14 @@ extension WorkingCopyViewModel {
         if let next = conflictedFiles.first { await select(next) }
     }
 
+    /// Takes `contents` as the file's resolution, then moves on to the next conflict.
+    public func saveConflictResolution(_ entry: StatusEntry, contents: String) async {
+        await mutate(.resolveConflict) {
+            try await self.commands.perform(.saveConflictResolution(path: entry.path, contents: contents))
+        }
+        if let next = conflictedFiles.first { await select(next) }
+    }
+
     public func abortOperation() async {
         await runOperation(.abortOperation) {
             let repo = self.repository

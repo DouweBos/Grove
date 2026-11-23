@@ -125,6 +125,8 @@ public struct RepositoryCommands: GitCommandPerforming {
             guard try await repository.saveSnapshot(message: message, includeUntracked: untracked) else {
                 throw GitCommandError.nothingToSnapshot
             }
+        case .saveConflictResolution(let path, let contents):
+            try await repository.saveConflictResolution(path: path, contents: contents)
         }
     }
 

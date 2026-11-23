@@ -42,12 +42,15 @@ public nonisolated enum GitCommand: Sendable, Equatable {
     case applyStash(index: Int, drop: Bool)
     case dropStash(index: Int)
     case snapshot(message: String, includeUntracked: Bool)
+    /// Writes an edited merge result over a conflicted file and marks it resolved.
+    case saveConflictResolution(path: String, contents: String)
 
     /// Everything the command needs; all of it has to be supported.
     public var requiredFeatures: Set<GitFeature> {
         switch self {
         // A stash's branch is the host's to allow in a worktree too, so it needs no feature.
-        case .fetch, .stash, .branchFromStash, .applyStash, .dropStash, .snapshot, .renameCurrentBranch: []
+        case .fetch, .stash, .branchFromStash, .applyStash, .dropStash, .snapshot, .renameCurrentBranch,
+             .saveConflictResolution: []
         case .pull(_, _, _, let options): Self.features(of: options)
         case .push(_, _, _, _, let options), .pushBranch(_, _, _, _, _, let options):
             Self.features(of: options).union([.push])

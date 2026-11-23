@@ -351,6 +351,8 @@ public protocol GitRepositoryProtocol: AnyObject, Observable, StackGitOperations
     func conflictVersions(path: String) async throws -> ConflictVersions
     /// Resolve a conflicted file by taking one side wholesale and staging it.
     func resolveConflict(path: String, side: ConflictSide) async throws
+    /// Resolve a conflicted file with an edited result: writes it to the working tree and stages it.
+    func saveConflictResolution(path: String, contents: String) async throws
 
     // MARK: Git LFS (GitRepository+LFS.swift)
 

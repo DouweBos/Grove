@@ -55,6 +55,7 @@ extension GitRepositoryProtocol {
     public func continueOperation() async throws {}
     public func conflictVersions(path: String) async throws -> ConflictVersions { ConflictVersions() }
     public func resolveConflict(path: String, side: ConflictSide) async throws {}
+    public func saveConflictResolution(path: String, contents: String) async throws {}
 
     @discardableResult
     public func commit(message: String, body: String?, amend: Bool) async throws -> CommitInfo {

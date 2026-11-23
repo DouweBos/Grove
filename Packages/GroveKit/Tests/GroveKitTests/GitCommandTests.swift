@@ -25,7 +25,7 @@ struct GitCommandTests {
                     options: PushOptions(recurseSubmodules: .check, skipHooks: true, tags: .follow)),
         .pull(remote: nil, branch: nil, strategy: .merge, options: PullOptions(verifySignatures: true)),
         .sync(remote: nil, strategy: .rebase), .renameCurrentBranch(to: "renamed"),
-        .stashAndCheckout("main"), .discardAndCheckout("main"),
+        .stashAndCheckout("main"), .discardAndCheckout("main"), .saveConflictResolution(path: "a", contents: "b"),
     ]
 
     @Test(arguments: GitFeature.allCases)
