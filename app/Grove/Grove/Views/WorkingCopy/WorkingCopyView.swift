@@ -16,6 +16,7 @@ struct WorkingCopyView: View {
 
     @Environment(\.openSettings) private var openSettings
     @AppStorage("WorkingCopyLeftWidth") private var leftWidth: Double = 360
+    @AppStorage("WorkingCopyCompactDiffHeight") private var compactDiffHeight: Double = 0
     @AppStorage(GrovePreferences.Key.diffToolPath) private var diffToolPath = ""
     @AppStorage(GrovePreferences.Key.mergeToolPath) private var mergeToolPath = ""
     private var settings = DiffSettings()
@@ -54,6 +55,7 @@ struct WorkingCopyView: View {
         }
         host.diffOptions = settings.options
         host.leftWidth = $leftWidth
+        host.compactDiffHeight = $compactDiffHeight
         return host
     }
 }
