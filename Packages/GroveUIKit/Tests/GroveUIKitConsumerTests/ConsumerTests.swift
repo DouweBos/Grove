@@ -134,5 +134,39 @@ struct ConsumerTests {
         }
         #expect(GitDialogField<EmptyView>.labelWidth > 0)
     }
+    @Test func anAppCanShowTheWorkingCopyWithItsOwnParts() async {
+        let viewModel = WorkingCopyViewModel(repository: MockGitRepository())
+        viewModel.commands = HostCommands(features: .all)
+        var host = GitWorkingCopyHost()
+        host.openFile = { _ in }
+        host.profiles = GitIdentityProfiles(load: { [] }, save: { _, _ in }, remove: { _ in }, manage: {})
+        host.manageTemplates = {}
+        host.present = { (_: GitDialog) in }
+        host.openInDiffTool = { _, _ in }
+        host.openInMergeTool = { _ in }
+        host.choosePatch = { nil }
+        host.choosePatchDestination = { _, _ in nil }
+        host.onMessageFocus = { _ in }
+        host.onEvent = { (event: GitWorkingCopyEvent) in _ = event == .patchCreated(succeeded: true) }
+        host.showsErrors = false
+        host.leftWidth = .constant(320)
+        host.diffOptions = GitDiffOptions()
+        var slots = GitWorkingCopySlots()
+        slots.filesHeader = AnyView(Text("Scope"))
+        slots.rowAccessory = { _ in AnyView(Image(systemName: "eye")) }
+        slots.rowMenu = { _, _ in AnyView(Button("Blame") {}) }
+        slots.composerAccessory = AnyView(Button("Review") {})
+        slots.diff = { entry in AnyView(Text(entry.path)) }
+        slots.replacement = (files: AnyView(Text("Files")), detail: AnyView(Text("Diff")))
+        let view = GitWorkingCopyView(viewModel: viewModel, host: host, slots: slots)
+            .gitWorkingCopyDialogs(viewModel)
+            .frame(width: 1000, height: 600)
+        _ = NSHostingController(rootView: view).sizeThatFits(in: NSSize(width: 1000, height: 600))
+        _ = GitConflictsView(viewModel: viewModel, host: host) {}
+        _ = GitAvatar(name: "Ada", size: 22)
+        let entry = MockData.statusEntries[0]
+        await viewModel.saveConflictResolution(entry, contents: "merged")
+        #expect((viewModel.commands as? HostCommands)?.performed == [.saveConflictResolution(path: entry.path, contents: "merged")])
+    }
 }
 #endif
