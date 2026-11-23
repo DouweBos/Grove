@@ -102,7 +102,7 @@ struct CreateBranchDialog: View {
         guard isCommitSHA(ref) else { return ref }
         let short = "Commit \(ref.prefix(7))"
         guard ref == form.start, let commitSubject else { return short }
-        return "\(short) \u{00B7} \(commitSubject.count > 40 ? commitSubject.prefix(40) + "\u{2026}" : commitSubject)"
+        return "\(short) \u{00B7} \(commitSubject)"
     }
 
     private func create() {
