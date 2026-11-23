@@ -15,6 +15,8 @@ struct PullSourcePicker: View {
     /// The app's usual pick, suggested after the upstream.
     var preferred: String?
     @Binding var selection: String?
+    /// Switches to typing a branch that isn't in the list, e.g. one not fetched yet.
+    var typeOther: (() -> Void)?
 
     /// Local sources are written `./branch`: `git pull . branch` integrates a local branch.
     nonisolated static func localSource(_ branch: String) -> String { "./" + branch }
@@ -36,6 +38,10 @@ struct PullSourcePicker: View {
                         ForEach(group.names, id: \.self) { item($0) }
                     }
                 }
+            }
+            if let typeOther {
+                Divider()
+                Button("Other Branch", action: typeOther)
             }
         } label: {
             HStack(spacing: GitMetrics.Spacing.xs) {
@@ -78,7 +84,7 @@ struct PullSourcePicker: View {
 
     private var parentSources: [String] { sources(named: parent) }
 
-    private var names: [String] {
+    var names: [String] {
         branches.map(\.name).filter { !$0.hasSuffix("/HEAD") }
     }
 

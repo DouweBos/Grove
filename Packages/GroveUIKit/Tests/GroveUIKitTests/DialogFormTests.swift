@@ -69,6 +69,15 @@ struct DialogFormTests {
                                                  options: PullOptions(verifySignatures: true, skipHooks: true))])
     }
 
+    @Test func pullFromATypedBranchThatWasNeverFetched() async throws {
+        var form = GitPullForm(branch: head, remoteBranches: [], remotes: MockData.remotes, strategy: .merge)
+        form.source = "upstream/release/2.0"
+        #expect(try await submit(form) == [.pull(remote: "upstream", branch: "release/2.0", strategy: .merge,
+                                                 options: PullOptions())])
+        form.source = "nowhere"
+        #expect(form.commands.isEmpty)
+    }
+
     @Test func autoStashStashesAroundThePullAndRebase() async throws {
         // The mock repository always has changes; a clean one runs `commands(stashed: false)`.
         var pull = GitPullForm(branch: head, remoteBranches: [], remotes: MockData.remotes, strategy: .merge)

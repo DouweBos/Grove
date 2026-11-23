@@ -13,6 +13,7 @@ struct PullDialog: View {
     let close: (Bool) -> Void
     @State private var form: GitPullForm
     @State private var operation = DialogOperation()
+    @State private var typingSource = false
 
     init(context: GitDialogContext, close: @escaping (Bool) -> Void) {
         self.context = context
@@ -42,9 +43,13 @@ struct PullDialog: View {
             GitDialogCard {
                 GitDialogField("From") {
                     HStack(spacing: GitMetrics.Spacing.sm) {
-                        PullSourcePicker(branches: context.refs.remoteBranches, upstream: form.upstream,
-                                         parent: branch.flatMap { context.refs.parents[$0.name] },
-                                         preferred: context.preferredBranch, selection: $form.source)
+                        if typingSource {
+                            GitComboBox(text: typedSource, items: sourcePicker.names, placeholder: "remote/branch",
+                                        isMonospaced: true)
+                                .gitInitialFocus()
+                        } else {
+                            sourcePicker
+                        }
                         if let branch, form.source == form.upstream, branch.behind > 0 {
                             GitStatusBadge(title: "\(branch.behind) behind", symbol: "arrow.down", tone: .caution).fixedSize()
                         }
@@ -68,6 +73,21 @@ struct PullDialog: View {
         .onChange(of: context.refs.remoteBranches) { _, branches in
             if form.source == nil { form.source = GitPullForm.defaultSource(for: branch, in: branches) }
         }
+    }
+
+    private var sourcePicker: PullSourcePicker {
+        PullSourcePicker(branches: context.refs.remoteBranches, upstream: form.upstream,
+                         parent: branch.flatMap { context.refs.parents[$0.name] },
+                         preferred: context.preferredBranch, selection: $form.source,
+                         typeOther: { typingSource = true })
+    }
+
+    /// A typed `remote/branch`; empty means nothing to pull yet.
+    private var typedSource: Binding<String> {
+        Binding(get: { form.source ?? "" }, set: { text in
+            let trimmed = text.trimmingCharacters(in: .whitespaces)
+            form.source = trimmed.isEmpty ? nil : trimmed
+        })
     }
 
     private var options: some View {
