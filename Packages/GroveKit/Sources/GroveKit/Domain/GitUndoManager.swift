@@ -234,7 +234,7 @@ public final class GitUndoManager {
     }
 
     /// Returns a pre-built ``GitAction`` for undoing branch creation.
-    static func createBranchAction(
+    public static func createBranchAction(
         branchName: String,
         repository: any GitRepositoryProtocol,
         commands: (any GitCommandPerforming)? = nil

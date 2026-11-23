@@ -39,6 +39,12 @@ extension GitRepositoryProtocol {
     public func renameRemote(from old: String, to new: String) async throws { throw CocoaError(.featureUnsupported) }
     public func pruneRemote(name: String) async throws { throw CocoaError(.featureUnsupported) }
 
+    public func push(branch: String, to remote: String, as remoteBranch: String, forceWithLease: Bool, setUpstream: Bool,
+                     options: PushOptions, progress: (@Sendable (Double) -> Void)?) async throws {
+        guard !forceWithLease, !options.skipHooks, options.recurseSubmodules == nil, options.tags == .none else { throw CocoaError(.featureUnsupported) }
+        try await push(branch: branch, to: remote, as: remoteBranch, setUpstream: setUpstream)
+    }
+
     @discardableResult
     public func commit(message: String, body: String?, amend: Bool, sign: Bool, signOff: Bool) async throws -> CommitInfo {
         try await commit(message: message, body: body, amend: amend, sign: sign)

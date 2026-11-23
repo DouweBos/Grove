@@ -30,6 +30,19 @@ public nonisolated struct GitFeatureError: LocalizedError, Equatable {
     public var errorDescription: String? { reason }
 }
 
+/// A command that ran but had nothing to do, which the person should hear about.
+public nonisolated enum GitCommandError: LocalizedError, Equatable {
+    case nothingToSnapshot
+    case detachedHead
+
+    public var errorDescription: String? {
+        switch self {
+        case .nothingToSnapshot: "There are no local changes to snapshot."
+        case .detachedHead: "No branch is checked out."
+        }
+    }
+}
+
 /// Runs each command on the repository.
 public struct RepositoryCommands: GitCommandPerforming {
     public let features: GitFeatures
@@ -43,17 +56,27 @@ public struct RepositoryCommands: GitCommandPerforming {
     public func perform(_ command: GitCommand, progress: (@Sendable (Double) -> Void)?) async throws {
         try requireSupport(for: command)
         switch command {
-        case .fetch(let remote):
+        case .fetch(let remote?):
             try await repository.fetch(remote: remote, progress: progress)
+        case .fetch(nil):
+            try await fetchAll(progress: progress)
         case .pull(let remote, let branch, let strategy, let options):
             try await repository.pull(remote: remote, branch: branch, strategy: strategy, options: options, progress: progress)
         case .push(let remote, let branch, let lease, let setUpstream, let options):
             try await repository.push(remote: remote, branch: branch, forceWithLease: lease, setUpstream: setUpstream,
                                       options: options, progress: progress)
+        case .pushBranch(let local, let remote, let target, let lease, let setUpstream, let options):
+            try await repository.push(branch: local, to: remote, as: target, forceWithLease: lease, setUpstream: setUpstream,
+                                      options: options, progress: progress)
+        case .sync(let remote, let strategy):
+            try await repository.sync(remote: remote, strategy: strategy, progress: progress)
         case .createBranch(let name, let start, let checkout, let track, let parent):
             _ = try await repository.createBranch(name: name, from: start, checkout: checkout, track: track, parent: parent)
         case .renameBranch(let old, let new):
             try await repository.renameBranch(oldName: old, newName: new)
+        case .renameCurrentBranch(let new):
+            guard let current = repository.currentBranch?.name else { throw GitCommandError.detachedHead }
+            try await repository.renameBranch(oldName: current, newName: new)
         case .deleteBranch(let name, let force):
             try await repository.deleteBranch(name: name, force: force)
         case .deleteRemoteBranch(let name, let remote):
@@ -61,6 +84,12 @@ public struct RepositoryCommands: GitCommandPerforming {
         case .setUpstream(let branch, let upstream):
             try await repository.setUpstream(of: branch, to: upstream)
         case .checkout(let name):
+            try await repository.checkout(branch: name)
+        case .stashAndCheckout(let name):
+            try await stashAndCheckout(name)
+        case .discardAndCheckout(let name):
+            let tracked = try await repository.status().filter { $0.workdirStatus != .untracked && $0.isChanged }
+            try await repository.discardChanges(paths: tracked.map(\.path))
             try await repository.checkout(branch: name)
         case .merge(let branch, let squash):
             try await repository.merge(branch: branch, squash: squash)
@@ -93,7 +122,35 @@ public struct RepositoryCommands: GitCommandPerforming {
         case .dropStash(let index):
             try await repository.stashDrop(index: index)
         case .snapshot(let message, let untracked):
-            _ = try await repository.saveSnapshot(message: message, includeUntracked: untracked)
+            guard try await repository.saveSnapshot(message: message, includeUntracked: untracked) else {
+                throw GitCommandError.nothingToSnapshot
+            }
         }
     }
+
+    /// Every remote in turn, sharing the progress between them.
+    private func fetchAll(progress: (@Sendable (Double) -> Void)?) async throws {
+        let remotes = try await repository.remotes().map(\.name)
+        for (index, remote) in remotes.enumerated() {
+            let share = progress.map { report in { @Sendable (value: Double) in report((Double(index) + value) / Double(remotes.count)) } }
+            try await repository.fetch(remote: remote, progress: share)
+        }
+    }
+
+    /// Like the host's: the changes come back after the switch, and stay put when it fails.
+    private func stashAndCheckout(_ name: String) async throws {
+        let dirty = try await repository.status().contains(where: \.isChanged)
+        if dirty { try await repository.stashCreate(message: "Before checking out \(name)", includeUntracked: true, paths: nil) }
+        do {
+            try await repository.checkout(branch: name)
+        } catch {
+            if dirty { try? await repository.stashApply(index: 0, drop: true) }
+            throw error
+        }
+        if dirty { try await repository.stashApply(index: 0, drop: true) }
+    }
+}
+
+extension StatusEntry {
+    nonisolated var isChanged: Bool { indexStatus != .unmodified || workdirStatus != .unmodified }
 }

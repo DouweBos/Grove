@@ -21,6 +21,11 @@ struct GitCommandTests {
         .renameRemote(from: "up", to: "down"), .pruneRemote("down"), .branchFromStash(index: 0, name: "saved"),
         .stash(message: nil, includeUntracked: false, keepIndex: true, paths: nil), .applyStash(index: 0, drop: false),
         .dropStash(index: 0), .snapshot(message: "wip", includeUntracked: true),
+        .pushBranch("topic", remote: "origin", as: "review", forceWithLease: true, setUpstream: true,
+                    options: PushOptions(recurseSubmodules: .check, skipHooks: true, tags: .follow)),
+        .pull(remote: nil, branch: nil, strategy: .merge, options: PullOptions(verifySignatures: true)),
+        .sync(remote: nil, strategy: .rebase), .renameCurrentBranch(to: "renamed"),
+        .stashAndCheckout("main"), .discardAndCheckout("main"),
     ]
 
     @Test(arguments: GitFeature.allCases)
@@ -38,5 +43,14 @@ struct GitCommandTests {
     @Test func everythingIsSupportedByDefault() throws {
         let commands = RepositoryCommands(repository: MockGitRepository())
         for command in Self.samples { try commands.requireSupport(for: command) }
+    }
+
+    @Test func optionsNeedTheirFeatures() {
+        #expect(GitCommand.pull(remote: nil, branch: nil, strategy: .merge, options: PullOptions(verifySignatures: true))
+            .requiredFeatures == [.verifySignatures])
+        #expect(GitCommand.push(remote: "o", branch: "b", forceWithLease: false, setUpstream: false,
+                                options: PushOptions(recurseSubmodules: .onDemand)).requiredFeatures == [.push, .recurseSubmodules])
+        #expect(GitCommand.renameCurrentBranch(to: "x").requiredFeatures.isEmpty)
+        #expect(GitCommand.stashAndCheckout("x").requiredFeatures == [.checkout])
     }
 }

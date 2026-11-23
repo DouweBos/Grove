@@ -37,4 +37,26 @@ extension GitRepository {
     public func pruneRemote(name: String) async throws {
         try await shell.run(["remote", "prune", name])
     }
+
+    public func push(branch: String, to remote: String, as remoteBranch: String, forceWithLease: Bool, setUpstream: Bool,
+                     options: PushOptions, progress: (@Sendable (Double) -> Void)?) async throws {
+        try await runReportingProgress(Self.pushArguments(forceWithLease: forceWithLease, setUpstream: setUpstream, options: options)
+                                           + [remote, "refs/heads/\(branch):refs/heads/\(remoteBranch)"], progress: progress)
+        progress?(1.0)
+        currentBranch = try? await Self.loadCurrentBranch(shell: shell)
+    }
+
+    nonisolated static func pushArguments(forceWithLease: Bool, setUpstream: Bool, options: PushOptions) -> [String] {
+        var args = ["push", "--progress"]
+        if forceWithLease { args.append("--force-with-lease") }
+        if setUpstream { args.append("-u") }
+        if let mode = options.recurseSubmodules { args.append("--recurse-submodules=\(mode.rawValue)") }
+        if options.skipHooks { args.append("--no-verify") }
+        switch options.tags {
+        case .none: break
+        case .follow: args.append("--follow-tags")
+        case .all: args.append("--tags")
+        }
+        return args
+    }
 }

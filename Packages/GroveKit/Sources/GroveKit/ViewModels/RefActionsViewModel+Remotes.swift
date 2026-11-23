@@ -27,6 +27,11 @@ extension RefActionsViewModel {
     public func addRemote(name: String, url: String, onAdded: () -> Void = {}) async throws {
         try await reporting(.remote) { try await commands.perform(.addRemote(name: name, url: url)) }
         onAdded()
+        await fetchAddedRemote(name)
+    }
+
+    /// Fetches a just-added remote, showing as `activity`, and has same-named local branches track it.
+    public func fetchAddedRemote(_ name: String) async {
         await perform(.remote, "Fetching \(name)…") {
             try await commands.perform(.fetch(remote: name))
             try await trackMatchingBranches(on: name)

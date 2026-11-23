@@ -413,4 +413,7 @@ public protocol GitRepositoryProtocol: AnyObject, Observable, StackGitOperations
     func stashBranch(index: Int, name: String) async throws
     func renameRemote(from old: String, to new: String) async throws
     func pruneRemote(name: String) async throws
+    /// Pushes any local branch, checked out or not, with a push dialog's options.
+    func push(branch: String, to remote: String, as remoteBranch: String, forceWithLease: Bool, setUpstream: Bool,
+              options: PushOptions, progress: (@Sendable (Double) -> Void)?) async throws
 }

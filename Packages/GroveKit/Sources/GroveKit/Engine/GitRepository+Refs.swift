@@ -189,17 +189,8 @@ extension GitRepository {
         Logger.gitRepository.info(
             "Pushing to \(remote, privacy: .public)/\(branch, privacy: .public) in \(self.displayName, privacy: .public)"
         )
-        var args = ["push", "--progress"]
-        if forceWithLease { args.append("--force-with-lease") }
-        if setUpstream { args.append("-u") }
-        if let mode = options.recurseSubmodules { args.append("--recurse-submodules=\(mode.rawValue)") }
-        if options.skipHooks { args.append("--no-verify") }
-        switch options.tags {
-        case .none: break
-        case .follow: args.append("--follow-tags")
-        case .all: args.append("--tags")
-        }
-        args += [remote, "HEAD:refs/heads/\(branch)"]
+        let args = Self.pushArguments(forceWithLease: forceWithLease, setUpstream: setUpstream, options: options)
+            + [remote, "HEAD:refs/heads/\(branch)"]
         try await runReportingProgress(args, progress: progress)
         progress?(1.0)
         currentBranch = try? await Self.loadCurrentBranch(shell: shell)

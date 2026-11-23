@@ -4,7 +4,7 @@
 /// One thing a session's git may or may not support.
 public nonisolated enum GitFeature: String, CaseIterable, Sendable {
     case createBranch, editBranches, checkout, merge, rebase, push, tag, remotes, submodules, bisect
-    case skipHooks, autostash, cancel
+    case skipHooks, autostash, cancel, verifySignatures, recurseSubmodules
     case reveal, trash, export, applyPatch
 }
 
