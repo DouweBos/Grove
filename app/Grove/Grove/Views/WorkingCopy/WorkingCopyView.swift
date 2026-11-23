@@ -1,123 +1,60 @@
 // Views/WorkingCopy/WorkingCopyView.swift
 // Grove
 //
-// The Changes tab: composer and file list on the left, diff on the right,
-// as two cards with a draggable gap between them.
+// The Changes tab, from GroveUIKit, with what only Grove has: profiles and templates in Settings,
+// external diff and merge tools, Finder, and the toolbar's stash and snapshot sheets.
 
 import AppKit
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct WorkingCopyView: View {
     let viewModel: WorkingCopyViewModel
+    /// Opens the toolbar's Stash sheet with these paths ticked.
+    var stashFiles: ([String]) -> Void = { _ in }
 
+    @Environment(\.openSettings) private var openSettings
     @AppStorage("WorkingCopyLeftWidth") private var leftWidth: Double = 360
-    @State private var dragStartWidth: Double?
-    @State private var suppressHunkWarning = false
+    @AppStorage(GrovePreferences.Key.diffToolPath) private var diffToolPath = ""
+    @AppStorage(GrovePreferences.Key.mergeToolPath) private var mergeToolPath = ""
+    private var settings = DiffSettings()
 
-    private let minLeft: Double = 260
-    private let minRight: Double = 380
+    init(viewModel: WorkingCopyViewModel, stashFiles: @escaping ([String]) -> Void = { _ in }) {
+        self.viewModel = viewModel
+        self.stashFiles = stashFiles
+    }
 
     var body: some View {
-        GeometryReader { geo in
-            // Too narrow for two usable columns (sidebar open in a small window): stack the diff below.
-            if geo.size.width >= minLeft + minRight + Theme.Spacing.md {
-                HStack(spacing: 0) {
-                    WorkingCopyLeftColumn()
-                        .frame(width: clampedLeftWidth(total: geo.size.width))
-                    resizeHandle(total: geo.size.width)
-                    DiffPanelView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            } else {
-                VStack(spacing: Theme.Spacing.md) {
-                    WorkingCopyLeftColumn(axis: .horizontal)
-                        .frame(height: max(240, geo.size.height * 0.4))
-                    DiffPanelView()
-                }
+        GitWorkingCopyView(viewModel: viewModel, host: host)
+            .padding(.bottom, Theme.Spacing.lg)
+    }
+
+    private var host: GitWorkingCopyHost {
+        var host = GitWorkingCopyHost()
+        let root = viewModel.repository.path
+        host.openFile = { NSWorkspace.shared.open(root.appendingPathComponent($0)) }
+        host.profiles = GitIdentityProfiles(load: { UserProfileStore.shared.profiles },
+                                            manage: { [openSettings] in PreferencesTab.profiles.open(openSettings) })
+        host.manageTemplates = { [openSettings] in PreferencesTab.templates.open(openSettings) }
+        host.present = { [stashFiles] dialog in
+            switch dialog {
+            case .stash(let paths?): stashFiles(paths)
+            case .stash(nil): GroveAction.stash.post()
+            case .snapshot: GroveAction.saveSnapshot.post()
+            default: break
             }
         }
-        .padding(.bottom, Theme.Spacing.lg)
-        .environment(viewModel)
-        .confirmationDialog(discardTitle, isPresented: discardBinding, presenting: viewModel.pendingDiscard) { entries in
-            Button("Discard", role: .destructive) { Task { await viewModel.discard(entries) } }
-            Button("Cancel", role: .cancel) { viewModel.cancelDiscard() }
-        } message: { entries in
-            Text(entries.count > 1 && entries.contains { $0.workdirStatus == .untracked }
-                 ? "Untracked files are deleted. This can't be undone."
-                 : "This can't be undone.")
+        let vm = viewModel
+        if !diffToolPath.isEmpty {
+            host.openInDiffTool = { entry, side in Task { await vm.openInDiffTool(entry, side: side) } }
         }
-        .confirmationDialog(viewModel.pendingHunkDiscard?.title ?? "Discard changes?", isPresented: hunkDiscardBinding,
-                            presenting: viewModel.pendingHunkDiscard) { pending in
-            Button("Discard", role: .destructive) {
-                Task { await viewModel.confirmHunkDiscard(pending, dontAskAgain: suppressHunkWarning) }
-            }
-            Button("Cancel", role: .cancel) { viewModel.cancelHunkDiscard() }
-        } message: { _ in
-            Text("The changes are removed from the working tree.")
+        if !mergeToolPath.isEmpty {
+            host.openInMergeTool = { entry in Task { await vm.openInMergeTool(entry) } }
         }
-        .dialogSuppressionToggle("Don\u{2019}t ask again", isSuppressed: $suppressHunkWarning)
-        .modifier(FileActionDialogs(viewModel: viewModel))
-        .modifier(PatchDialogs(viewModel: viewModel))
-        .alert("Something Went Wrong", isPresented: errorBinding) {
-            Button("OK") { viewModel.clearError() }
-        } message: {
-            Text(viewModel.errorMessage ?? "")
-        }
-    }
-
-    // MARK: Resizing
-
-    private func clampedLeftWidth(total: CGFloat) -> CGFloat {
-        let lower = minLeft
-        let upper = max(lower, Double(total) - minRight - Double(Theme.Spacing.md))
-        return CGFloat(min(max(leftWidth, lower), upper))
-    }
-
-    private func resizeHandle(total: CGFloat) -> some View {
-        Color.clear
-            .frame(width: Theme.Spacing.md)
-            .contentShape(Rectangle())
-            .onHover { inside in
-                if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
-            }
-            .gesture(
-                DragGesture(minimumDistance: 1)
-                    .onChanged { value in
-                        let start = dragStartWidth ?? Double(clampedLeftWidth(total: total))
-                        dragStartWidth = start
-                        leftWidth = start + value.translation.width
-                    }
-                    .onEnded { _ in
-                        leftWidth = Double(clampedLeftWidth(total: total))
-                        dragStartWidth = nil
-                    }
-            )
-    }
-
-    // MARK: Dialog bindings
-
-    private var discardTitle: String {
-        guard let entries = viewModel.pendingDiscard, let entry = entries.first else { return "Discard changes?" }
-        if entries.count > 1 { return "Discard all changes to \(entries.count) files?" }
-        return entry.workdirStatus == .untracked
-            ? "Delete untracked file \(entry.fileName)?"
-            : "Discard all changes to \(entry.fileName)?"
-    }
-
-    private var discardBinding: Binding<Bool> {
-        Binding(get: { viewModel.pendingDiscard != nil },
-                set: { if !$0 { viewModel.cancelDiscard() } })
-    }
-
-    private var hunkDiscardBinding: Binding<Bool> {
-        Binding(get: { viewModel.pendingHunkDiscard != nil },
-                set: { if !$0 { viewModel.cancelHunkDiscard() } })
-    }
-
-    private var errorBinding: Binding<Bool> {
-        Binding(get: { viewModel.errorMessage != nil },
-                set: { if !$0 { viewModel.clearError() } })
+        host.diffOptions = settings.options
+        host.leftWidth = $leftWidth
+        return host
     }
 }
 

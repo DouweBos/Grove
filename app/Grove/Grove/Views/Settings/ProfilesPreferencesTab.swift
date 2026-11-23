@@ -4,6 +4,7 @@
 // Named identities (name, email, signing key) to pick per repository.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct ProfilesPreferencesTab: View {
@@ -52,7 +53,7 @@ struct ProfilesPreferencesTab: View {
 
     private func row(_ profile: UserProfile) -> some View {
         HStack(spacing: Theme.Spacing.sm) {
-            InitialAvatar(name: profile.userName.isEmpty ? profile.title : profile.userName, size: 22)
+            GitAvatar(name: profile.userName.isEmpty ? profile.title : profile.userName, size: 22)
             VStack(alignment: .leading, spacing: 0) {
                 Text(profile.title).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.textPrimary)
                 Text(profile.email.isEmpty ? "No email" : profile.email).font(.monoCaption).foregroundStyle(Theme.textSecondary)

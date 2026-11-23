@@ -71,8 +71,9 @@ struct RepositoryContentRouter: View {
     private var contentView: some View {
         switch session.selectedItem {
         case .workingCopy:
-            WorkingCopyView(viewModel: session.workingCopyVM)
-                .environment(\.stashFiles) { [toolbarState = session.toolbarState] in toolbarState.presentStash(paths: $0) }
+            WorkingCopyView(viewModel: session.workingCopyVM) { [toolbarState = session.toolbarState] in
+                toolbarState.presentStash(paths: $0)
+            }
                 .dropDestination(for: String.self) { items, _ in
                     guard let payload = items.first else { return false }
                     return session.sidebarVM.handleWorkingCopyDrop(
