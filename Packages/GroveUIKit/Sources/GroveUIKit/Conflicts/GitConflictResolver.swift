@@ -50,7 +50,9 @@ struct GitConflictResolver: View {
     private var header: some View {
         HStack(spacing: GitMetrics.Spacing.sm) {
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(style.warning)
-            Text("Both sides changed \(entry.fileName). Keep one version, or edit the result and save it.")
+            Text(result.text == nil && result != .loading
+                 ? "Both sides changed \(entry.fileName). Keep one version."
+                 : "Both sides changed \(entry.fileName). Keep one version, or edit the result and save it.")
                 .font(style.font(13))
                 .foregroundStyle(style.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)

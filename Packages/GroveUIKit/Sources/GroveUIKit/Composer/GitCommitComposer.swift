@@ -139,6 +139,11 @@ struct GitCommitComposer: View {
                 Toggle("Sign", isOn: Binding(get: { viewModel.signCommit }, set: { viewModel.setSignCommit($0) }))
                     .help("Sign this commit with your configured key")
             }
+            // The app's own, here rather than beside Commit, so the identity keeps its room.
+            if let accessory = slots.composerAccessory {
+                Spacer(minLength: GitMetrics.Spacing.sm)
+                HStack(spacing: GitMetrics.Spacing.sm) { accessory }.controlSize(.small).fixedSize()
+            }
         }
         .toggleStyle(.checkbox)
         .gitClickable()
@@ -150,7 +155,6 @@ struct GitCommitComposer: View {
         HStack(spacing: GitMetrics.Spacing.sm) {
             CommitIdentityMenu()
             Spacer(minLength: GitMetrics.Spacing.sm)
-            if let accessory = slots.composerAccessory { accessory }
             Button {
                 viewModel.act { await viewModel.commit() }
             } label: {
