@@ -10,11 +10,17 @@ import SwiftUI
 import Testing
 
 @MainActor
-private struct HostCommands: GitCommandPerforming {
+private final class HostCommands: GitCommandPerforming {
     let features: GitFeatures
+    private(set) var performed: [GitCommand] = []
+
+    init(features: GitFeatures) {
+        self.features = features
+    }
 
     func perform(_ command: GitCommand, progress: (@Sendable (Double) -> Void)?) async throws {
         try requireSupport(for: command)
+        performed.append(command)
     }
 }
 
@@ -90,6 +96,43 @@ struct ConsumerTests {
         features.remove([.merge], reason: "Only in the project root")
         let commands = HostCommands(features: features)
         await #expect(throws: GitFeatureError.self) { try await commands.perform(.merge("topic", squash: false)) }
+    }
+
+    @Test func anAppCanPresentAndSubmitTheDialogs() async throws {
+        let repository = MockGitRepository()
+        let refs = RepositoryRefs(repository: repository)
+        refs.replace(localBranches: MockData.branches.filter(\.isLocal), remotes: MockData.remotes)
+        let commands = HostCommands(features: .all)
+        var context = GitDialogContext(repository: repository, refs: refs, commands: commands)
+        context.preferredBranch = "develop"
+        context.onChange = {}
+        context.pinBranch = { _ in }
+        context.onRemoteAdded = { _ in }
+        context.worktrees = GitDialogWorktrees(checkingOut: { _ in nil }, remove: { _, _, _, _ in }, open: { _ in })
+        let presenter = GitDialogPresenter()
+        presenter.onClose = { _, _ in }
+        presenter.present(.push(), context: context)
+        _ = Text("Window").gitDialogs(presenter)
+        _ = GitDialogView(.merge, context: context) { _ in }
+
+        var merge = GitMergeForm(candidates: ["develop"])
+        merge.squash = true
+        try await merge.submit(in: context, progress: nil)
+        #expect(commands.performed == [.merge("develop", squash: true)])
+        var push = GitPushForm(branch: MockData.branches[0], isHead: true, remotes: MockData.remotes)
+        push.tags = .follow
+        #expect(push.unsupportedReason(.all) == nil && push.commands.count == 1)
+
+        // An app's own sheets build on the same template.
+        _ = GitDialogSheet(title: "Clone", primaryTitle: "Clone", onCancel: {}, onPrimary: {}) {
+            GitDialogCard {
+                GitDialogField("URL") { GitComboBox(text: .constant(""), items: [], placeholder: "URL").gitInitialFocus() }
+                GitDialogPathField(path: "~/Projects") {}
+                GitDialogOptionRow(isOn: .constant(true), label: "Recurse")
+            }
+            GitDialogOptionsSection { Text("More") }
+        }
+        #expect(GitDialogField<EmptyView>.labelWidth > 0)
     }
 }
 #endif
