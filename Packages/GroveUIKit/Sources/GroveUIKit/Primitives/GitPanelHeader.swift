@@ -24,11 +24,17 @@ public struct GitPanelHeader<Accessory: View>: View {
                 .font(style.font(13, .semibold))
                 .foregroundStyle(style.textPrimary)
                 .lineLimit(1)
+                .fixedSize()
             if let detail {
-                Text(detail)
-                    .font(style.monoCaption)
-                    .foregroundStyle(style.textSecondary)
-                    .lineLimit(1)
+                // In a narrow panel the detail goes rather than show a stub of it.
+                ViewThatFits(in: .horizontal) {
+                    Text(detail)
+                        .font(style.monoCaption)
+                        .foregroundStyle(style.textSecondary)
+                        .lineLimit(1)
+                        .fixedSize()
+                    Color.clear.frame(width: 0, height: 0)
+                }
             }
             Spacer(minLength: GitMetrics.Spacing.sm)
             accessory()

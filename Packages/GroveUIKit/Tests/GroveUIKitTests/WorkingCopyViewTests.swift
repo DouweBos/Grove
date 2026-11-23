@@ -140,6 +140,8 @@ struct WorkingCopyViewTests {
         #expect(WorkingCopyCompact.diffHeight(stored: 20, total: 700, fontScale: 1.5) == 240)
         // Before any drag the two split evenly.
         #expect(WorkingCopyCompact.diffHeight(stored: 0, total: 700, fontScale: 1) == 344)
+        // A conflict's resolver gets the room its versions and result need.
+        #expect(WorkingCopyCompact.diffHeight(stored: 360, total: 700, fontScale: 1, conflict: true) == 440)
     }
 
     @Test func aSidePanelShowsTheCompactListWithoutAComposer() async throws {
