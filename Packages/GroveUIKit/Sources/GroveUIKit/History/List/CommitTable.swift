@@ -68,7 +68,9 @@ final class CommitTableCoordinator: NSObject, NSTableViewDataSource, NSTableView
     weak var table: CommitNSTableView?
     private(set) var commits: [CommitInfo] = []
     private(set) var rows = CommitListRows()
-    private var indexByID: [String: Int] = [:]
+    /// Built only once a lookup isn't near the top or the last focus.
+    private var indexByID: [String: Int]?
+    private var lastFocusIndex = 0
     private var input: CommitTableInput?
     private var drawing: CommitDrawing?
     private var dataKey: [AnyHashable] = []
@@ -130,7 +132,7 @@ final class CommitTableCoordinator: NSObject, NSTableViewDataSource, NSTableView
             if key != dataKey {
                 commits = input.commits
                 rows = CommitListRows(commits, grouped: grouped)
-                indexByID = Dictionary(commits.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first })
+                indexByID = nil
             }
             dataKey = key
             drawing = CommitDrawing(palette: CommitListPalette(input.style), metrics: CommitListMetrics(input.style),
@@ -140,13 +142,36 @@ final class CommitTableCoordinator: NSObject, NSTableViewDataSource, NSTableView
         }
         if input.selection != appliedSelection {
             appliedSelection = input.selection
-            let indexes = IndexSet(input.selection.compactMap { indexByID[$0].map { rows.rowOfCommit[$0] } })
+            let indexes = IndexSet(input.selection.compactMap { index(of: $0).map { rows.row(ofCommit: $0) } })
             table.selectRowIndexes(indexes, byExtendingSelection: false)
         }
         if input.focus != appliedFocus {
             appliedFocus = input.focus
-            if let focus = input.focus, let index = indexByID[focus] { table.scrollRowToVisible(rows.rowOfCommit[index]) }
+            if let focus = input.focus, let index = index(of: focus) {
+                lastFocusIndex = index
+                let row = rows.row(ofCommit: index)
+                // Before its first layout the table has no height and would scroll the row to the top.
+                if table.visibleRect.height > 0 {
+                    table.scrollRowToVisible(row)
+                } else {
+                    DispatchQueue.main.async { [weak table] in table?.scrollRowToVisible(row) }
+                }
+            }
         }
+    }
+
+    /// Arrow keys move the focus by a row and a selection starts near the top, so most lookups never need the map.
+    private func index(of id: String) -> Int? {
+        if let indexByID { return indexByID[id] }
+        let near = max(0, lastFocusIndex - 64)..<min(commits.count, lastFocusIndex + 64)
+        let top = 0..<min(commits.count, 512)
+        for range in [near, top] {
+            if let found = commits[range].firstIndex(where: { $0.id == id }) { return found }
+        }
+        var map = [String: Int](minimumCapacity: commits.count)
+        for (index, commit) in commits.enumerated() where map[commit.id] == nil { map[commit.id] = index }
+        indexByID = map
+        return map[id]
     }
 
     // MARK: Data
@@ -155,14 +180,14 @@ final class CommitTableCoordinator: NSObject, NSTableViewDataSource, NSTableView
 
     func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
         guard let input, let drawing else { return 26 }
-        if case .day = rows.rows[row] { return drawing.metrics.dayHeight }
+        if case .day = rows.row(row) { return drawing.metrics.dayHeight }
         return drawing.metrics.rowHeight(input.layout)
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        guard let input, let drawing, rows.rows.indices.contains(row) else { return nil }
+        guard let input, let drawing, row >= 0, row < rows.count else { return nil }
         let cell = tableView.makeView(withIdentifier: CommitRowCell.identifier, owner: nil) as? CommitRowCell ?? CommitRowCell()
-        switch rows.rows[row] {
+        switch rows.row(row) {
         case .day(let date, let first):
             let lanes = viewModel.graphNodes[commits[first].id]?.lanesAbove ?? []
             cell.configure(.day(date, lanes: lanes, graphColumns: input.graphColumns, showsGraph: input.showsGraph),

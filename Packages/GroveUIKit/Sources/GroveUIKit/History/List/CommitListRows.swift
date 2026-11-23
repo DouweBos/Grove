@@ -22,36 +22,53 @@ enum CommitListRow: Equatable {
     case commit(Int)
 }
 
+/// Looked up rather than listed: a day's header sits before its first commit, so a row is found by a binary search
+/// over the days, and 100k commits need no 100k-row array.
 struct CommitListRows {
-    private(set) var rows: [CommitListRow] = []
-    /// Each commit's row.
-    private(set) var rowOfCommit: [Int] = []
+    private var groups: [CommitDayGroup] = []
+    private var commitCount = 0
+    private var grouped = false
 
     init() {}
 
     init(_ commits: [CommitInfo], grouped: Bool) {
-        rows.reserveCapacity(commits.count + (grouped ? commits.count / 4 : 0))
-        rowOfCommit.reserveCapacity(commits.count)
-        guard grouped else {
-            rows = commits.indices.map { .commit($0) }
-            rowOfCommit = Array(commits.indices)
-            return
-        }
-        for group in Self.groups(commits) {
-            rows.append(.day(group.date, firstCommit: group.range.lowerBound))
-            for index in group.range {
-                rowOfCommit.append(rows.count)
-                rows.append(.commit(index))
-            }
-        }
+        commitCount = commits.count
+        self.grouped = grouped
+        if grouped { groups = Self.groups(commits) }
     }
 
-    var count: Int { rows.count }
+    var count: Int { commitCount + (grouped ? groups.count : 0) }
+
+    func row(_ row: Int) -> CommitListRow {
+        guard grouped else { return .commit(row) }
+        // The last day whose header is at or above `row`.
+        var low = 0, high = groups.count - 1
+        while low < high {
+            let mid = (low + high + 1) / 2
+            if groups[mid].range.lowerBound + mid <= row { low = mid } else { high = mid - 1 }
+        }
+        let header = groups[low].range.lowerBound + low
+        return row == header ? .day(groups[low].date, firstCommit: groups[low].range.lowerBound) : .commit(row - low - 1)
+    }
+
+    func row(ofCommit index: Int) -> Int {
+        guard grouped else { return index }
+        var low = 0, high = groups.count - 1
+        while low < high {
+            let mid = (low + high + 1) / 2
+            if groups[mid].range.lowerBound <= index { low = mid } else { high = mid - 1 }
+        }
+        return index + low + 1
+    }
 
     func commitIndex(atRow row: Int) -> Int? {
-        guard rows.indices.contains(row), case .commit(let index) = rows[row] else { return nil }
+        guard row >= 0, row < count, case .commit(let index) = self.row(row) else { return nil }
         return index
     }
+
+    /// Every row in order, for tests.
+    var rows: [CommitListRow] { (0..<count).map { row($0) } }
+    var rowOfCommit: [Int] { (0..<commitCount).map { row(ofCommit: $0) } }
 
     /// Consecutive commits from the same calendar day share a group. Calendar math runs only when the day changes,
     /// so 100k commits group in a few milliseconds.
@@ -59,16 +76,19 @@ struct CommitListRows {
         var result: [CommitDayGroup] = []
         var dayStart = Date.distantFuture
         var dayEnd = Date.distantPast
-        for (index, commit) in commits.enumerated() {
-            let date = commit.committerDate
-            if !result.isEmpty, date >= dayStart, date < dayEnd {
-                result[result.count - 1].range = result[result.count - 1].range.lowerBound..<index + 1
-                continue
+        var groupStart = 0
+        commits.withUnsafeBufferPointer { buffer in
+            for index in buffer.indices {
+                let date = buffer[index].committerDate
+                if index > 0, date >= dayStart, date < dayEnd { continue }
+                if index > 0 { result[result.count - 1].range = groupStart..<index }
+                dayStart = calendar.startOfDay(for: date)
+                dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? date
+                groupStart = index
+                result.append(CommitDayGroup(id: buffer[index].id, date: date, range: index..<index + 1))
             }
-            dayStart = calendar.startOfDay(for: date)
-            dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? date
-            result.append(CommitDayGroup(id: commit.id, date: date, range: index..<index + 1))
         }
+        if !result.isEmpty { result[result.count - 1].range = groupStart..<commits.count }
         return result
     }
 }
