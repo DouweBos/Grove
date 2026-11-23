@@ -21,11 +21,11 @@ struct GitConflictResolver: View {
         VStack(alignment: .leading, spacing: GitMetrics.Spacing.md) {
             header
             VSplitView {
-                HStack(spacing: GitMetrics.Spacing.md) {
-                    ConflictVersionPanel(side: .ours, branchName: viewModel.operationContext?.oursLabel ?? "HEAD",
-                                         content: sideContent(\.ours), isBusy: isBusy) { take(.ours) }
-                    ConflictVersionPanel(side: .theirs, branchName: viewModel.operationContext?.theirsLabel ?? "Incoming",
-                                         content: sideContent(\.theirs), isBusy: isBusy) { take(.theirs) }
+                // Side by side while each side keeps a readable width, else one above the other.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: GitMetrics.Spacing.md) { sides }
+                        .frame(minWidth: 520 * style.fontScale)
+                    VStack(spacing: GitMetrics.Spacing.sm) { sides }
                 }
                 .padding(.bottom, GitMetrics.Spacing.sm)
                 .frame(minHeight: 140 * style.fontScale)
@@ -37,6 +37,15 @@ struct GitConflictResolver: View {
         .padding(GitMetrics.Spacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: entry.path) { await load() }
+    }
+
+    @ViewBuilder
+    private var sides: some View {
+
+        ConflictVersionPanel(side: .ours, branchName: viewModel.operationContext?.oursLabel ?? "HEAD",
+                             content: sideContent(\.ours), isBusy: isBusy) { take(.ours) }
+        ConflictVersionPanel(side: .theirs, branchName: viewModel.operationContext?.theirsLabel ?? "Incoming",
+                             content: sideContent(\.theirs), isBusy: isBusy) { take(.theirs) }
     }
 
     private var isBusy: Bool { isSaving || viewModel.isDiffLoading }
@@ -70,28 +79,51 @@ struct GitConflictResolver: View {
         }
     }
 
-    private var mergedEditor: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: GitMetrics.Spacing.sm) {
-                Text("Result").font(style.sectionLabel).foregroundStyle(style.textSecondary)
+    private func resultHeader(path: Bool, compact: Bool) -> some View {
+        HStack(spacing: GitMetrics.Spacing.sm) {
+            Text("Result").font(style.sectionLabel).foregroundStyle(style.textSecondary).fixedSize()
+            if path {
                 Text(entry.path)
                     .font(style.monoCaption)
                     .foregroundStyle(style.textSecondary)
                     .lineLimit(1)
                     .truncationMode(.head)
-                Spacer(minLength: GitMetrics.Spacing.sm)
-                if result.text != nil, editor.hasMarkers {
+                    .frame(minWidth: 60, alignment: .leading)
+            }
+            Spacer(minLength: GitMetrics.Spacing.sm)
+            if result.text != nil, editor.hasMarkers {
+                if compact {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(style.warning)
+                        .accessibilityLabel("Markers Left")
+                        .help("Conflict markers are still in the result")
+                } else {
                     GitStatusBadge(title: "Markers Left", symbol: "exclamationmark.triangle", tone: .caution)
+                        .fixedSize()
                         .help("Conflict markers are still in the result")
                 }
-                Button("Revert") { Task { await load() } }
-                    .disabled(result.text == nil || !editor.isEdited || isSaving)
-                    .gitClickable()
-                    .help("Back to the file as it is on disk")
-                Button("Save and Mark Resolved") { save() }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(result.text == nil || isBusy)
-                    .gitClickable()
+            }
+            Button("Revert") { Task { await load() } }
+                .fixedSize()
+                .disabled(result.text == nil || !editor.isEdited || isSaving)
+                .gitClickable()
+                .help("Back to the file as it is on disk")
+            Button(compact ? "Save" : "Save and Mark Resolved") { save() }
+                .fixedSize()
+                .buttonStyle(.borderedProminent)
+                .disabled(result.text == nil || isBusy)
+                .gitClickable()
+                .help("Save and mark resolved")
+        }
+    }
+
+    private var mergedEditor: some View {
+        VStack(spacing: 0) {
+            // Narrow, the path, then the badge's words and the button's give way; the buttons never truncate.
+            ViewThatFits(in: .horizontal) {
+                resultHeader(path: true, compact: false)
+                resultHeader(path: false, compact: false)
+                resultHeader(path: false, compact: true)
             }
             .controlSize(.small)
             .padding(.horizontal, GitMetrics.Spacing.md)

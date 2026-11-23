@@ -18,17 +18,11 @@ struct ConflictVersionPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: GitMetrics.Spacing.sm) {
-                Circle().fill(style.lane(side == .ours ? 0 : 1)).frame(width: 8, height: 8)
-                Text(side == .ours ? "Current" : "Incoming")
-                    .font(style.sectionLabel)
-                    .foregroundStyle(style.textSecondary)
-                GitBranchLabel(name: branchName, kind: .localBranch(isHEAD: side == .ours))
-                Spacer(minLength: GitMetrics.Spacing.sm)
-                Button(side == .ours ? "Keep Current" : "Take Incoming", action: onSelect)
-                    .controlSize(.small)
-                    .disabled(content == nil || isBusy)
-                    .gitClickable()
+            // Narrow, the side's name and the branch give way before the button does.
+            ViewThatFits(in: .horizontal) {
+                header(named: true, branch: true)
+                header(named: false, branch: true)
+                header(named: false, branch: false)
             }
             .padding(.horizontal, GitMetrics.Spacing.md)
             .frame(height: 40 * style.fontScale)
@@ -37,6 +31,26 @@ struct ConflictVersionPanel: View {
             preview.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .gitPanel()
+    }
+
+    private func header(named: Bool, branch: Bool) -> some View {
+        HStack(spacing: GitMetrics.Spacing.sm) {
+            Circle().fill(style.lane(side == .ours ? 0 : 1)).frame(width: 8, height: 8)
+                .help(side == .ours ? "Current" : "Incoming")
+            if named {
+                Text(side == .ours ? "Current" : "Incoming")
+                    .font(style.sectionLabel)
+                    .foregroundStyle(style.textSecondary)
+                    .fixedSize()
+            }
+            if branch { GitBranchLabel(name: branchName, kind: .localBranch(isHEAD: side == .ours), maxNameWidth: 120) }
+            Spacer(minLength: GitMetrics.Spacing.sm)
+            Button(side == .ours ? "Keep Current" : "Take Incoming", action: onSelect)
+                .controlSize(.small)
+                .fixedSize()
+                .disabled(content == nil || isBusy)
+                .gitClickable()
+        }
     }
 
     @ViewBuilder
