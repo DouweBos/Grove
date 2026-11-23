@@ -63,7 +63,6 @@ struct FileSection<Accessory: View>: View {
                 { viewModel.act { staged ? await viewModel.unstageFile(entry) : await viewModel.stageFile(entry) } }
             }
         )
-        .id(fileRow)
         .gesture(TapGesture(count: 2).onEnded { list.open(entry.path) })
         .simultaneousGesture(TapGesture().onEnded {
             list.focus()

@@ -131,6 +131,22 @@ struct WorkingCopyViewTests {
         #expect(groups.last?.paths == ["src/b2.swift", "src/b3.swift", "src/b10.swift"])
     }
 
+    @Test func theEditorKeepsItsTextUntilSavedAndSavesWhatWasTyped() async throws {
+        let editor = ConflictEditor()
+        editor.load("<<<<<<< ours\na\n=======\nb\n>>>>>>> theirs\n")
+        #expect(editor.hasMarkers && !editor.isEdited)
+        #expect(await editor.currentText() == "<<<<<<< ours\na\n=======\nb\n>>>>>>> theirs\n")
+        let hosting = render(ConflictTextView(editor: editor), width: 400, height: 300)
+        func textView(in view: NSView) -> NSTextView? {
+            (view as? NSTextView) ?? view.subviews.lazy.compactMap(textView).first
+        }
+        let field = try #require(textView(in: hosting))
+        field.selectAll(nil)
+        field.insertText("both\n", replacementRange: field.selectedRange())
+        #expect(editor.isEdited && !editor.hasMarkers)
+        #expect(await editor.currentText() == "both\n")
+    }
+
     @Test func markersAndBinaryContentAreSpotted() {
         #expect("a\n<<<<<<< HEAD\nb\n=======\nc\n>>>>>>> topic\n".hasConflictMarkers)
         #expect(!"let a = \"<<<<<<<\"".hasConflictMarkers)

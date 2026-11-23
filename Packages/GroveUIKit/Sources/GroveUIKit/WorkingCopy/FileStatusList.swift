@@ -15,8 +15,8 @@ struct FileStatusList: View {
     @Environment(\.workingCopyHost) private var host
     @Environment(\.workingCopySlots) private var slots
     @FocusState private var isListFocused: Bool
-    /// Row frames in the list's content, so a drag can tell which row it's over.
-    @State private var rowFrames: [FileRow: CGRect] = [:]
+    /// Row frames in the list's content, so a drag can tell which row it's over; not observed, so recording them redraws nothing.
+    @State private var rowFrames = RowFrames()
     @State private var dragRow: FileRow?
 
     static let coordinateSpace = "GitFileStatusList"
@@ -74,36 +74,31 @@ struct FileStatusList: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    // Lazy: a deleted folder can put tens of thousands of files here at once.
-                    LazyVStack(alignment: .leading, spacing: 2) {
-                        sections
-                    }
-                    .coordinateSpace(name: Self.coordinateSpace)
-                    .gesture(dragSelection)
-                    .padding(GitMetrics.Spacing.sm)
+            ScrollView {
+                // Lazy: a deleted folder can put tens of thousands of files here at once.
+                LazyVStack(alignment: .leading, spacing: 2) {
+                    sections
                 }
-                .focusable()
-                .focused($isListFocused)
-                .focusEffectDisabled()
-                .onKeyPress(.space) {
-                    viewModel.act { await viewModel.toggleStageOfSelection() }
-                    return .handled
-                }
-                .onKeyPress(.return) { openFocused() }
-                // Edit > Select All, so ⌘A reaches the list only while it has focus, not the commit message.
-                .onCommand(#selector(NSResponder.selectAll(_:))) {
-                    Task { await viewModel.selectAllFiles() }
-                }
-                .onKeyPress(keys: [.upArrow, .downArrow]) { press in
-                    let offset = press.key == .upArrow ? -1 : 1
-                    Task {
-                        await viewModel.moveSelection(by: offset, extend: press.modifiers.contains(.shift))
-                        if let focus = viewModel.fileSelection.focus { proxy.scrollTo(focus) }
-                    }
-                    return .handled
-                }
+                .coordinateSpace(name: Self.coordinateSpace)
+                .gesture(dragSelection)
+                .padding(GitMetrics.Spacing.sm)
+            }
+            .focusable()
+            .focused($isListFocused)
+            .focusEffectDisabled()
+            .onKeyPress(.space) {
+                viewModel.act { await viewModel.toggleStageOfSelection() }
+                return .handled
+            }
+            .onKeyPress(.return) { openFocused() }
+            // Edit > Select All, so ⌘A reaches the list only while it has focus, not the commit message.
+            .onCommand(#selector(NSResponder.selectAll(_:))) {
+                Task { await viewModel.selectAllFiles() }
+            }
+            .onKeyPress(keys: [.upArrow, .downArrow]) { press in
+                let offset = press.key == .upArrow ? -1 : 1
+                Task { await viewModel.moveSelection(by: offset, extend: press.modifiers.contains(.shift)) }
+                return .handled
             }
         }
     }
@@ -168,7 +163,7 @@ struct FileStatusList: View {
     }
 
     private func row(at y: CGFloat) -> FileRow? {
-        rowFrames.first { $0.value.minY - 1 <= y && y <= $0.value.maxY + 1 }?.key
+        rowFrames.frames.first { $0.value.minY - 1 <= y && y <= $0.value.maxY + 1 }?.key
     }
 
     private func entry(for row: FileRow) -> StatusEntry? {
@@ -176,7 +171,7 @@ struct FileStatusList: View {
     }
 
     private func recordFrame(_ frame: CGRect, of row: FileRow) {
-        if rowFrames[row] != frame { rowFrames[row] = frame }
+        rowFrames.frames[row] = frame
     }
 
     private func sectionButton(_ title: String, action: @escaping () async -> Void) -> some View {
@@ -186,6 +181,10 @@ struct FileStatusList: View {
             .foregroundStyle(style.accent)
             .gitClickable()
     }
+}
+
+final class RowFrames {
+    var frames: [FileRow: CGRect] = [:]
 }
 
 extension StatusEntry {

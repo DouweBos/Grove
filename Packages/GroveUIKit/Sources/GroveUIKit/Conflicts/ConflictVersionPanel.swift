@@ -49,7 +49,7 @@ struct ConflictVersionPanel: View {
         case .some(.some(let text)) where text.looksBinary:
             GitEmptyState(systemImage: "doc.zipper", title: "Binary File", subtitle: "Keep a side to resolve it.")
         case .some(.some(let text)):
-            ConflictTextView(text: .constant(text), isEditable: false)
+            ConflictTextView(text: text)
                 .background(style.background.opacity(0.5))
         }
     }

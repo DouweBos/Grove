@@ -6,12 +6,51 @@
 
 #if os(macOS)
 import AppKit
+import Observation
 import SwiftUI
+
+/// The merged result as it's being edited. The text stays in the view until it's saved:
+/// turning a 300k-line editor's text into a String takes longer than a keystroke may.
+@MainActor
+@Observable
+final class ConflictEditor {
+    private(set) var isEdited = false
+    private(set) var hasMarkers = false
+    @ObservationIgnored fileprivate weak var textView: NSTextView?
+    @ObservationIgnored fileprivate var loaded = ""
+
+    /// Shows `text` as the unedited result.
+    func load(_ text: String) {
+        loaded = text
+        textView?.string = text
+        isEdited = false
+        hasMarkers = text.hasConflictMarkers
+    }
+
+    /// The text as edited, converted off the main actor.
+    func currentText() async -> String {
+        guard isEdited, let storage = textView?.textStorage else { return loaded }
+        nonisolated(unsafe) let snapshot = storage.string.copy() as! NSString
+        return await Task.detached {
+            var text = String(snapshot)
+            text.makeContiguousUTF8()
+            return text
+        }.value
+    }
+
+    fileprivate func edited() {
+        isEdited = true
+        guard let text = textView?.textStorage?.mutableString else { return }
+        // Foundation's search on the view's own string, which needs no copy.
+        hasMarkers = text.range(of: "<<<<<<< ").location != NSNotFound || text.range(of: ">>>>>>> ").location != NSNotFound
+    }
+}
 
 struct ConflictTextView: NSViewRepresentable {
     @Environment(\.gitStyle) private var style
-    @Binding var text: String
-    var isEditable = true
+    /// Read-only text; ignored when an editor is given.
+    var text = ""
+    var editor: ConflictEditor?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSTextView.scrollableTextView()
@@ -29,21 +68,26 @@ struct ConflictTextView: NSViewRepresentable {
         textView.isContinuousSpellCheckingEnabled = false
         textView.isGrammarCheckingEnabled = false
         textView.drawsBackground = false
+        textView.isEditable = editor != nil
         textView.delegate = context.coordinator
-        textView.setAccessibilityLabel(isEditable ? "Merged result" : "Side")
+        textView.setAccessibilityLabel(editor != nil ? "Merged result" : "Side")
         apply(to: textView, coordinator: context.coordinator)
-        textView.string = text
-        context.coordinator.shown = text
+        if let editor {
+            editor.textView = textView
+            textView.string = editor.loaded
+        } else {
+            textView.string = text
+            context.coordinator.shown = text
+        }
         return scroll
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
-        context.coordinator.text = $text
+        context.coordinator.editor = editor
         guard let textView = scroll.documentView as? NSTextView else { return }
-        textView.isEditable = isEditable
         apply(to: textView, coordinator: context.coordinator)
         // Against the last text shown, not the view's: reading a 100k-line view's string copies it.
-        if context.coordinator.shown != text {
+        if editor == nil, context.coordinator.shown != text {
             textView.string = text
             context.coordinator.shown = text
         }
@@ -54,14 +98,14 @@ struct ConflictTextView: NSViewRepresentable {
         let look = Coordinator.Look(scale: style.fontScale, text: style.textPrimary, accent: style.accent)
         guard coordinator.look != look else { return }
         coordinator.look = look
-        textView.isEditable = isEditable
-        textView.font = .monospacedSystemFont(ofSize: 12 * style.fontScale, weight: .regular)
+        let font = NSFont.monospacedSystemFont(ofSize: 12 * style.fontScale, weight: .regular)
+        textView.font = font
         textView.textColor = NSColor(style.textPrimary)
         textView.insertionPointColor = NSColor(style.accent)
-        textView.typingAttributes = [.font: textView.font as Any, .foregroundColor: NSColor(style.textPrimary)]
+        textView.typingAttributes = [.font: font, .foregroundColor: NSColor(style.textPrimary)]
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
+    func makeCoordinator() -> Coordinator { Coordinator(editor: editor) }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
         struct Look: Equatable {
@@ -70,16 +114,14 @@ struct ConflictTextView: NSViewRepresentable {
             let accent: Color
         }
 
-        var text: Binding<String>
+        var editor: ConflictEditor?
         var look: Look?
         var shown = ""
 
-        init(text: Binding<String>) { self.text = text }
+        init(editor: ConflictEditor?) { self.editor = editor }
 
         func textDidChange(_ notification: Notification) {
-            guard let textView = notification.object as? NSTextView else { return }
-            shown = textView.string
-            text.wrappedValue = shown
+            editor?.edited()
         }
     }
 }

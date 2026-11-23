@@ -13,7 +13,7 @@ struct GitConflictResolver: View {
     @Environment(WorkingCopyViewModel.self) private var viewModel
     @Environment(\.workingCopyHost) private var host
     let entry: StatusEntry
-    @State private var merged = ""
+    @State private var editor = ConflictEditor()
     @State private var result = ConflictResult.loading
     @State private var isSaving = false
 
@@ -78,12 +78,12 @@ struct GitConflictResolver: View {
                     .lineLimit(1)
                     .truncationMode(.head)
                 Spacer(minLength: GitMetrics.Spacing.sm)
-                if result.text != nil, merged.hasConflictMarkers {
+                if result.text != nil, editor.hasMarkers {
                     GitStatusBadge(title: "Markers Left", symbol: "exclamationmark.triangle", tone: .caution)
                         .help("Conflict markers are still in the result")
                 }
                 Button("Revert") { Task { await load() } }
-                    .disabled(result.text == nil || merged == result.text || isSaving)
+                    .disabled(result.text == nil || !editor.isEdited || isSaving)
                     .gitClickable()
                     .help("Back to the file as it is on disk")
                 Button("Save and Mark Resolved") { save() }
@@ -106,7 +106,7 @@ struct GitConflictResolver: View {
         case .loading:
             ProgressView().controlSize(.small)
         case .loaded:
-            ConflictTextView(text: $merged)
+            ConflictTextView(editor: editor)
         case .unreadable(let reason):
             GitEmptyState(systemImage: "exclamationmark.triangle", title: "Couldn\u{2019}t Read the Result", subtitle: reason,
                           actionTitle: "Try Again") { Task { await load() } }
@@ -117,7 +117,7 @@ struct GitConflictResolver: View {
         result = .loading
         let read = await ConflictResult.read(entry.path, from: viewModel.repository)
         guard !Task.isCancelled else { return }
-        merged = read.text ?? ""
+        editor.load(read.text ?? "")
         result = read
     }
 
@@ -128,9 +128,9 @@ struct GitConflictResolver: View {
     /// Only text read from the file is ever written back: an unreadable result has nothing to save.
     private func save() {
         guard result.text != nil, !isSaving else { return }
-        let contents = merged
         isSaving = true
         viewModel.act {
+            let contents = await editor.currentText()
             await viewModel.saveConflictResolution(entry, contents: contents)
             isSaving = false
         }
