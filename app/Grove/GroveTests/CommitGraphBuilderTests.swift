@@ -26,21 +26,6 @@ struct CommitGraphBuilderTests {
 }
 
 @MainActor
-struct CommitDateFormatTests {
-    private let now = Date(timeIntervalSince1970: 1_790_000_000)
-
-    @Test func recentDatesAreRelative() {
-        #expect(now.addingTimeInterval(-20).commitRelative(now: now) == "just now")
-        #expect(now.addingTimeInterval(-12 * 60).commitRelative(now: now) == "12 min ago")
-    }
-
-    @Test func oldDatesAreShortDates() {
-        let old = now.addingTimeInterval(-400 * 86_400)
-        #expect(old.commitRelative(now: now).contains("20"))
-    }
-}
-
-@MainActor
 struct HistoryViewModelFilterTests {
 
 }

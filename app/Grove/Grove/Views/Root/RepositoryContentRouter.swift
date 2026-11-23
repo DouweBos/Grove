@@ -82,8 +82,7 @@ struct RepositoryContentRouter: View {
                 }
 
         case .history:
-            HistoryView()
-                .environment(session.historyVM)
+            HistoryView(viewModel: session.historyVM, session: session)
 
         case .stashes:
             StashesView()
@@ -149,8 +148,7 @@ struct RepositoryContentRouter: View {
 
     private func filteredHistoryView(branch: String) -> some View {
         let vm = session.filteredHistoryVM(for: branch)
-        return HistoryView()
-            .environment(vm)
+        return HistoryView(viewModel: vm, session: session)
             .task(id: branch) {
                 await vm.loadIfNeeded()
             }

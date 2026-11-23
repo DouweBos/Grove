@@ -96,8 +96,7 @@ struct StackLayerCard: View {
         if let commits {
             VStack(spacing: 0) {
                 ForEach(commits) { commit in
-                    CommitRow(commit: commit)
-                        .frame(height: CommitRow.height)
+                    GitCommitRow(commit: commit)
                 }
             }
             .padding(.leading, 20)
