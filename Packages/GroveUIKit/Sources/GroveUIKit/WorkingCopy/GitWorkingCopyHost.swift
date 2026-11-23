@@ -56,6 +56,10 @@ public struct GitWorkingCopyHost {
     public var showsErrors = true
     /// The composer and files column's width, kept by the app; nil keeps it for the view's life.
     public var leftWidth: Binding<Double>?
+    /// The compact layout's diff height, kept by the app, 0 until dragged, which splits evenly; nil keeps it for the view's life.
+    public var compactDiffHeight: Binding<Double>?
+    /// Off while another view of the same view model on screen already shows its confirmations and patch sheets.
+    public var presentsDialogs = true
 
     public init() {}
 }
@@ -64,10 +68,14 @@ public struct GitWorkingCopyHost {
 public struct GitWorkingCopySlots {
     /// Beside the Files header's controls, e.g. what the list covers.
     public var filesHeader: AnyView?
+    /// In place of the Files header's count, e.g. how many have been viewed.
+    public var filesDetail: String?
     /// At a row's trailing edge, e.g. a viewed mark.
     public var rowAccessory: ((StatusEntry) -> AnyView)?
     /// More items for a row's menu, after the kit's; gets the clicked entry and every one the menu acts on.
     public var rowMenu: ((StatusEntry, [StatusEntry]) -> AnyView)?
+    /// More items for an unchanged file's menu in All Files.
+    public var trackedFileMenu: ((String) -> AnyView)?
     /// Beside Commit, e.g. drafting a message.
     public var composerAccessory: AnyView?
     /// The app's diff for a file that isn't conflicted; nil shows the kit's.

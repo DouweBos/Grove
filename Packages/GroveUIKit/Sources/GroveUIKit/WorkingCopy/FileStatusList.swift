@@ -1,8 +1,8 @@
 // WorkingCopy/FileStatusList.swift
 // GroveUIKit
 //
-// The Files panel: Conflicts, Staged and Changes sections. A partly staged file is in both Staged and Changes,
-// each row acting on its own half.
+// The Files panel: Conflicts, Staged and Changes sections under a filter. A partly staged file is in both Staged
+// and Changes, each row acting on its own half.
 
 #if os(macOS)
 import AppKit
@@ -18,15 +18,20 @@ struct FileStatusList: View {
     /// Row frames in the list's content, so a drag can tell which row it's over; not observed, so recording them redraws nothing.
     @State private var rowFrames = RowFrames()
     @State private var dragRow: FileRow?
+    @State private var filter = ""
 
     static let coordinateSpace = "GitFileStatusList"
 
     var body: some View {
         VStack(spacing: 0) {
-            GitPanelHeader(title: "Files", detail: fileCountDetail) {
+            GitPanelHeader(title: "Files", detail: slots.filesDetail ?? fileCountDetail) {
                 slots.filesHeader
                 viewModePicker
                 FilesPanelMenu()
+            }
+            if !viewModel.statusEntries.isEmpty || viewModel.fileViewMode == .allFiles || !filter.isEmpty {
+                GitSearchField(placeholder: "Filter", text: filter, onChange: { filter = $0 })
+                    .padding([.horizontal, .top], GitMetrics.Spacing.sm)
             }
             content
         }
@@ -61,8 +66,17 @@ struct FileStatusList: View {
 
     @ViewBuilder
     private var content: some View {
+        let groups = Groups(viewModel, filter: filter)
         if viewModel.fileViewMode == .allFiles {
-            AllFilesTree()
+            AllFilesTree(filter: filter)
+        } else if groups.isEmpty, !viewModel.statusEntries.isEmpty {
+            Text("Nothing matches \u{201C}\(filter)\u{201D}")
+                .font(style.font(13))
+                .foregroundStyle(style.textSecondary)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .padding(GitMetrics.Spacing.lg)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.statusEntries.isEmpty {
             Group {
                 if !viewModel.hasLoadedStatus {
@@ -74,14 +88,20 @@ struct FileStatusList: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            ScrollView {
-                // Lazy: a deleted folder can put tens of thousands of files here at once.
-                LazyVStack(alignment: .leading, spacing: 2) {
-                    sections
+            ScrollViewReader { proxy in
+                ScrollView {
+                    // Lazy: a deleted folder can put tens of thousands of files here at once.
+                    LazyVStack(alignment: .leading, spacing: 2) {
+                        sections(groups)
+                    }
+                    .coordinateSpace(name: Self.coordinateSpace)
+                    .gesture(dragSelection)
+                    .padding(GitMetrics.Spacing.sm)
                 }
-                .coordinateSpace(name: Self.coordinateSpace)
-                .gesture(dragSelection)
-                .padding(GitMetrics.Spacing.sm)
+                // Arrow keys can move the selection off screen; the list follows it.
+                .onChange(of: viewModel.fileSelection.focus) { _, focus in
+                    if let focus { proxy.scrollTo(focus) }
+                }
             }
             .focusable()
             .focused($isListFocused)
@@ -104,24 +124,41 @@ struct FileStatusList: View {
     }
 
     @ViewBuilder
-    private var sections: some View {
-        let conflicts = viewModel.conflictedFiles
-        if !conflicts.isEmpty {
-            FileSection(title: "Conflicts", entries: conflicts, side: .unstaged, isStagedSection: nil, list: listActions)
+    private func sections(_ groups: Groups) -> some View {
+        if !groups.conflicts.isEmpty {
+            FileSection(title: "Conflicts", entries: groups.conflicts, side: .unstaged, isStagedSection: nil, list: listActions)
         }
-        if !viewModel.showOnlyConflicts {
-            let staged = viewModel.stagedFiles
-            if !staged.isEmpty {
-                FileSection(title: "Staged", entries: staged, side: .staged, isStagedSection: true, list: listActions) {
-                    sectionButton("Unstage All") { await viewModel.unstageAll() }
-                }
+        if !groups.staged.isEmpty {
+            FileSection(title: "Staged", entries: groups.staged, side: .staged, isStagedSection: true, list: listActions) {
+                sectionButton("Unstage All") { await viewModel.unstageAll() }
             }
-            let unstaged = viewModel.unstagedFiles
-            if !unstaged.isEmpty {
-                FileSection(title: "Changes", entries: unstaged, side: .unstaged, isStagedSection: false, list: listActions) {
-                    sectionButton("Stage All") { await viewModel.stageAll() }
-                }
+        }
+        if !groups.unstaged.isEmpty {
+            FileSection(title: "Changes", entries: groups.unstaged, side: .unstaged, isStagedSection: false, list: listActions) {
+                sectionButton("Stage All") { await viewModel.stageAll() }
             }
+        }
+    }
+
+    /// The sections' files that match the filter, a path's part in any case.
+    struct Groups {
+        let conflicts: [StatusEntry]
+        let staged: [StatusEntry]
+        let unstaged: [StatusEntry]
+
+        var isEmpty: Bool { conflicts.isEmpty && staged.isEmpty && unstaged.isEmpty }
+
+        @MainActor
+        init(_ viewModel: WorkingCopyViewModel, filter: String) {
+            let onlyConflicts = viewModel.showOnlyConflicts
+            conflicts = Self.matching(viewModel.conflictedFiles, filter)
+            staged = onlyConflicts ? [] : Self.matching(viewModel.stagedFiles, filter)
+            unstaged = onlyConflicts ? [] : Self.matching(viewModel.unstagedFiles, filter)
+        }
+
+        static func matching(_ entries: [StatusEntry], _ filter: String) -> [StatusEntry] {
+            let query = filter.trimmingCharacters(in: .whitespaces)
+            return query.isEmpty ? entries : entries.filter { $0.path.localizedCaseInsensitiveContains(query) }
         }
     }
 

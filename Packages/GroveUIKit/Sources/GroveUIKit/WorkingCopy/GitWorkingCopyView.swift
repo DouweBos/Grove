@@ -2,54 +2,59 @@
 // GroveUIKit
 //
 // The Changes screen: composer and file list on the left, the diff or conflict resolver on the right,
-// as two cards with a draggable gap between them.
+// as two cards with a draggable gap between them; narrower, the compact list over the diff.
 
 #if os(macOS)
 import AppKit
 import GroveKit
 import SwiftUI
 
+/// How the working copy arranges its composer, files and diff.
+public enum GitWorkingCopyLayout: Equatable, Sendable {
+    /// Two columns, or the compact layout with the composer when too narrow for them.
+    case automatic
+    /// The file list over the diff, e.g. in a side panel; without the composer, committing is left to the app's other views.
+    case compact(composer: Bool)
+}
+
 public struct GitWorkingCopyView: View {
     @Environment(\.gitStyle) private var style
     private let viewModel: WorkingCopyViewModel
     private let host: GitWorkingCopyHost
     private let slots: GitWorkingCopySlots
+    private let layout: GitWorkingCopyLayout
     @State private var ownWidth: Double = 360
     @State private var dragStartWidth: Double?
 
-    private let minLeft: Double = 260
-    private let minRight: Double = 380
+    static let minLeft: Double = 260
+    static let minRight: Double = 380
 
     public init(viewModel: WorkingCopyViewModel, host: GitWorkingCopyHost = GitWorkingCopyHost(),
-                slots: GitWorkingCopySlots = GitWorkingCopySlots()) {
+                slots: GitWorkingCopySlots = GitWorkingCopySlots(), layout: GitWorkingCopyLayout = .automatic) {
         self.viewModel = viewModel
         self.host = host
         self.slots = slots
+        self.layout = layout
     }
 
     public var body: some View {
         GeometryReader { geo in
-            // Too narrow for two usable columns: the detail goes below.
-            if geo.size.width >= (minLeft + minRight) * style.fontScale + GitMetrics.Spacing.md {
+            switch Self.arrangement(width: geo.size.width, fontScale: style.fontScale, layout: layout) {
+            case .columns:
                 HStack(spacing: 0) {
                     WorkingCopyLeftColumn()
                         .frame(width: clampedLeftWidth(total: geo.size.width))
                     resizeHandle(total: geo.size.width)
-                    detail.frame(maxWidth: .infinity, maxHeight: .infinity)
+                    WorkingCopyDetailArea().frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-            } else {
-                VStack(spacing: GitMetrics.Spacing.md) {
-                    WorkingCopyLeftColumn(axis: .horizontal)
-                        .frame(height: max(240, geo.size.height * 0.4))
-                    detail
-                }
+            case .compact(let composer):
+                WorkingCopyCompact(showsComposer: composer)
             }
         }
         .environment(viewModel)
         .environment(\.workingCopyHost, host)
         .environment(\.workingCopySlots, slots)
-        .gitWorkingCopyDialogs(viewModel)
-        .modifier(PatchDialogs(viewModel: viewModel, host: host))
+        .modifier(WorkingCopyPresentation(viewModel: viewModel, host: host))
         .alert("Something Went Wrong", isPresented: errorBinding) {
             Button("OK") { viewModel.clearError() }
         } message: {
@@ -57,13 +62,22 @@ public struct GitWorkingCopyView: View {
         }
     }
 
-    @ViewBuilder
-    private var detail: some View {
-        if let replacement = slots.replacement, viewModel.selectedEntry?.isConflicted != true {
-            replacement.detail.gitPanel()
-        } else {
-            WorkingCopyDetail()
+    enum Arrangement: Equatable {
+        case columns
+        case compact(composer: Bool)
+    }
+
+    /// The one place the working copy decides between columns and compact.
+    static func arrangement(width: CGFloat, fontScale: Double, layout: GitWorkingCopyLayout) -> Arrangement {
+        switch layout {
+        case .compact(let composer): .compact(composer: composer)
+        case .automatic: width >= compactBelow(fontScale: fontScale) ? .columns : .compact(composer: true)
         }
+    }
+
+    /// Narrower than both columns' minimums and the gap between them: 652pt at the default size.
+    static func compactBelow(fontScale: Double) -> CGFloat {
+        CGFloat((minLeft + minRight) * fontScale) + GitMetrics.Spacing.md
     }
 
     private var errorBinding: Binding<Bool> {
@@ -81,8 +95,8 @@ public struct GitWorkingCopyView: View {
     }
 
     private func clampedLeftWidth(total: CGFloat) -> CGFloat {
-        let lower = minLeft * style.fontScale
-        let upper = max(lower, Double(total) - minRight * style.fontScale - Double(GitMetrics.Spacing.md))
+        let lower = Self.minLeft * style.fontScale
+        let upper = max(lower, Double(total) - Self.minRight * style.fontScale - Double(GitMetrics.Spacing.md))
         return CGFloat(min(max(leftWidth, lower), upper))
     }
 
@@ -107,6 +121,22 @@ public struct GitWorkingCopyView: View {
     }
 }
 
+/// The confirmations and patch sheets, unless another view of the same view model presents them.
+private struct WorkingCopyPresentation: ViewModifier {
+    let viewModel: WorkingCopyViewModel
+    let host: GitWorkingCopyHost
+
+    func body(content: Content) -> some View {
+        if host.presentsDialogs {
+            content
+                .gitWorkingCopyDialogs(viewModel)
+                .modifier(PatchDialogs(viewModel: viewModel, host: host))
+        } else {
+            content
+        }
+    }
+}
+
 extension EnvironmentValues {
     @Entry var workingCopyHost = GitWorkingCopyHost()
     @Entry var workingCopySlots = GitWorkingCopySlots()
@@ -127,6 +157,14 @@ extension WorkingCopyViewModel {
     GitWorkingCopyView(viewModel: vm)
         .frame(width: 1000, height: 700)
         .padding(.horizontal, 16)
+        .task { await vm.refresh() }
+}
+
+#Preview("Compact") {
+    let vm = WorkingCopyViewModel(repository: MockGitRepository())
+    GitWorkingCopyView(viewModel: vm, layout: .compact(composer: false))
+        .frame(width: 300, height: 700)
+        .padding(8)
         .task { await vm.refresh() }
 }
 #endif

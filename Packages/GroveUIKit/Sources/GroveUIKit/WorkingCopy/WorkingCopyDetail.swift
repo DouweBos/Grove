@@ -7,6 +7,20 @@
 import GroveKit
 import SwiftUI
 
+/// The app's replacement for the diff unless a conflict is picked, else the kit's detail.
+struct WorkingCopyDetailArea: View {
+    @Environment(WorkingCopyViewModel.self) private var viewModel
+    @Environment(\.workingCopySlots) private var slots
+
+    var body: some View {
+        if let replacement = slots.replacement, viewModel.selectedEntry?.isConflicted != true {
+            replacement.detail.gitPanel()
+        } else {
+            WorkingCopyDetail()
+        }
+    }
+}
+
 struct WorkingCopyDetail: View {
     @Environment(WorkingCopyViewModel.self) private var viewModel
     @Environment(\.workingCopySlots) private var slots

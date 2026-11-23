@@ -31,7 +31,7 @@ A macOS Git client built with SwiftUI. Its design language follows our disk anal
 - Public types are prefixed `Git`; everything else is internal. `GroveUIKitConsumerTests` builds as an importing app does, in Swift 6.
 - Mutations other apps may run their own way go through `GitCommandPerforming`.
 - Dialogs submit a `Git…Form` through the context's commands, never the repository, and only offer what its `GitFeatures` allow; a host without `cancel` gets a spinner and no Cancel while one runs.
-- The working copy takes the app's parts through `GitWorkingCopyHost` closures and `GitWorkingCopySlots`; a nil closure leaves its item out. A conflict's result is only ever saved from text read through the repository.
+- The working copy takes the app's parts through `GitWorkingCopyHost` closures and `GitWorkingCopySlots`; a nil closure leaves its item out. It goes compact (the list over the diff) only through `GitWorkingCopyView.arrangement`. A conflict's result is only ever saved from text read through the repository.
 - The diff is an AppKit table. Highlights keep kinds and ranges, never colors, and an update that changes nothing never reads the whole diff.
 
 ## Design system

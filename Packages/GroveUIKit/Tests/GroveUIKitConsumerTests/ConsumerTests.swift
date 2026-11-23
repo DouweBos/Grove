@@ -168,5 +168,18 @@ struct ConsumerTests {
         await viewModel.saveConflictResolution(entry, contents: "merged")
         #expect((viewModel.commands as? HostCommands)?.performed == [.saveConflictResolution(path: entry.path, contents: "merged")])
     }
+    @Test func anAppCanShowTheCompactWorkingCopyInAPanel() {
+        let viewModel = WorkingCopyViewModel(repository: MockGitRepository())
+        var host = GitWorkingCopyHost()
+        host.compactDiffHeight = .constant(300)
+        host.presentsDialogs = false
+        var slots = GitWorkingCopySlots()
+        slots.filesDetail = "3 changed · 1 of 3 viewed"
+        slots.trackedFileMenu = { path in AnyView(Button("Blame \(path)") {}) }
+        for layout in [GitWorkingCopyLayout.automatic, .compact(composer: false), .compact(composer: true)] {
+            let view = GitWorkingCopyView(viewModel: viewModel, host: host, slots: slots, layout: layout).frame(width: 300, height: 600)
+            _ = NSHostingController(rootView: view).sizeThatFits(in: NSSize(width: 300, height: 600))
+        }
+    }
 }
 #endif

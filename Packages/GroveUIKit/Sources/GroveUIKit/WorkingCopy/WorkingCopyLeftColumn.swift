@@ -8,45 +8,43 @@ import GroveKit
 import SwiftUI
 
 struct WorkingCopyLeftColumn: View {
-    @Environment(\.gitStyle) private var style
-    @Environment(WorkingCopyViewModel.self) private var viewModel
-    @Environment(\.workingCopySlots) private var slots
-    /// Horizontal when the detail goes below in narrow windows.
-    var axis: Axis = .vertical
-
     var body: some View {
-        if axis == .vertical {
-            VStack(spacing: GitMetrics.Spacing.md) {
-                composer
-                files
-            }
-        } else {
-            HStack(alignment: .top, spacing: GitMetrics.Spacing.md) {
-                composer.frame(maxWidth: .infinity)
-                files.frame(maxWidth: .infinity)
-            }
+        VStack(spacing: GitMetrics.Spacing.md) {
+            WorkingCopyComposerArea(showsComposer: true)
+            WorkingCopyFiles()
         }
     }
+}
 
-    @ViewBuilder
-    private var files: some View {
+/// The file list, or the app's replacement for it.
+struct WorkingCopyFiles: View {
+    @Environment(\.workingCopySlots) private var slots
+
+    var body: some View {
         if let replacement = slots.replacement {
             replacement.files.gitPanel()
         } else {
             FileStatusList()
         }
     }
+}
 
-    @ViewBuilder
-    private var composer: some View {
+/// The LFS warning, then the composer or the operation's banner; without the composer only the warning.
+struct WorkingCopyComposerArea: View {
+    @Environment(WorkingCopyViewModel.self) private var viewModel
+    let showsComposer: Bool
+
+    var body: some View {
         if viewModel.showsLFSWarning {
             GitBanner(symbol: "externaldrive.badge.exclamationmark", message: LFSStatus.missingMessage,
                       onDismiss: viewModel.dismissLFSWarning)
         }
-        if viewModel.isInOperation {
-            GitOperationBanner()
-        } else {
-            GitCommitComposer()
+        if showsComposer {
+            if viewModel.isInOperation {
+                GitOperationBanner()
+            } else {
+                GitCommitComposer()
+            }
         }
     }
 }

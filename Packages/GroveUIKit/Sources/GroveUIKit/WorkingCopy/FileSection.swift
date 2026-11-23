@@ -74,6 +74,7 @@ struct FileSection<Accessory: View>: View {
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(FileStatusList.coordinateSpace)) } action: {
             list.recordFrame($0, fileRow)
         }
+        .id(fileRow)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(entry.path)
         .accessibilityAddTraits(.isButton)

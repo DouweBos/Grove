@@ -124,6 +124,63 @@ struct WorkingCopyViewTests {
         #expect(vm.statusEntries.isEmpty)
     }
 
+    @Test func theWorkingCopyGoesCompactBelowItsTwoColumns() {
+        #expect(GitWorkingCopyView.compactBelow(fontScale: 1) == 652)
+        #expect(GitWorkingCopyView.arrangement(width: 652, fontScale: 1, layout: .automatic) == .columns)
+        #expect(GitWorkingCopyView.arrangement(width: 651, fontScale: 1, layout: .automatic) == .compact(composer: true))
+        // Zoomed text needs more room before two columns fit.
+        #expect(GitWorkingCopyView.arrangement(width: 800, fontScale: 1.4, layout: .automatic) == .compact(composer: true))
+        #expect(GitWorkingCopyView.arrangement(width: 1400, fontScale: 1, layout: .compact(composer: false)) == .compact(composer: false))
+    }
+
+    @Test func theCompactDiffKeepsTheListItsMinimum() {
+        #expect(WorkingCopyCompact.diffHeight(stored: 360, total: 700, fontScale: 1) == 360)
+        #expect(WorkingCopyCompact.diffHeight(stored: 650, total: 700, fontScale: 1) == 700 - 100 - 12)
+        #expect(WorkingCopyCompact.diffHeight(stored: 20, total: 700, fontScale: 1) == 160)
+        #expect(WorkingCopyCompact.diffHeight(stored: 20, total: 700, fontScale: 1.5) == 240)
+        // Before any drag the two split evenly.
+        #expect(WorkingCopyCompact.diffHeight(stored: 0, total: 700, fontScale: 1) == 344)
+    }
+
+    @Test func aSidePanelShowsTheCompactListWithoutAComposer() async throws {
+        let root = try ScratchConflict.make()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let vm = WorkingCopyViewModel(repository: try await GitRepository(path: root, runner: LocalGitRunner()))
+        await vm.refresh()
+        await vm.resolveNextConflict()
+        var host = host
+        host.presentsDialogs = false
+        var slots = slots
+        slots.filesDetail = "2 changed · 1 of 2 viewed"
+        var zoomed = GitUIStyle.system
+        zoomed.fontScale = 17.0 / 13
+        for (width, style) in [(280.0, GitUIStyle.system), (420.0, .system), (420.0, zoomed)] {
+            let view = GitWorkingCopyView(viewModel: vm, host: host, slots: slots, layout: .compact(composer: false))
+            #expect(render(view.gitUIStyle(style), width: width).fittingSize.width > 0)
+        }
+        _ = render(GitWorkingCopyView(viewModel: vm, host: host, layout: .compact(composer: true)), width: 600)
+        slots.replacement = (files: AnyView(Text("Turn files")), detail: AnyView(Text("Turn diff")))
+        _ = render(GitWorkingCopyView(viewModel: vm, host: host, slots: slots, layout: .compact(composer: false)), width: 280)
+        #expect(vm.selectedEntry?.isConflicted == true)
+    }
+
+    @Test func theFilterMatchesAnyPartOfAPathInAnyCase() async {
+        let entries = [
+            StatusEntry(id: "a", path: "src/Session/merge.ts", indexStatus: .unmodified, workdirStatus: .modified),
+            StatusEntry(id: "b", path: "docs/README.md", indexStatus: .unmodified, workdirStatus: .modified),
+        ]
+        #expect(FileStatusList.Groups.matching(entries, " session ").map(\.path) == ["src/Session/merge.ts"])
+        #expect(FileStatusList.Groups.matching(entries, "").count == 2)
+        #expect(FileStatusList.Groups.matching(entries, "nothing").isEmpty)
+    }
+
+    @Test func allFilesListsTrackedFilesInFinderOrderAndFilters() {
+        let groups = AllFilesTree.groups(["src/b10.swift", "README.md", "src/b2.swift"], entries: [])
+        #expect(groups.flatMap(\.paths) == ["README.md", "src/b2.swift", "src/b10.swift"])
+        let filtered = AllFilesTree.groups(["src/b10.swift", "README.md"], entries: [], filter: " SRC ")
+        #expect(filtered.flatMap(\.paths) == ["src/b10.swift"])
+    }
+
     @Test func allFilesListsUntrackedOnesTooInFinderOrder() {
         let untracked = StatusEntry(id: "n", path: "src/b3.swift", indexStatus: .unmodified, workdirStatus: .untracked)
         let groups = AllFilesTree.groups(["src/b10.swift", "README.md", "src/b2.swift"], entries: [untracked])
