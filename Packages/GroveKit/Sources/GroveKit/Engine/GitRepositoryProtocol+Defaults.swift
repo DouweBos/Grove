@@ -103,6 +103,7 @@ extension GitRepositoryProtocol {
     public func branchTips() async throws -> [BranchTip] { [] }
     public func aheadBehind(branches: [String], base: String) async throws -> [String: AheadBehind] { [:] }
     public func compareBranches(base: String, compare: String) async throws -> BranchComparison { BranchComparison() }
+    public func mergePreview(base: String, compare: String) async -> MergePreview { MergePreview() }
     public func defaultPullStrategy() async -> PullStrategy { .merge }
     public func localConfigValue(_ key: String) async throws -> String? { nil }
     public func setLocalConfigValue(_ key: String, to value: String?) async throws {}

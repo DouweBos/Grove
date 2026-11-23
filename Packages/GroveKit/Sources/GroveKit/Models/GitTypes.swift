@@ -224,6 +224,18 @@ public enum SubmodulePushMode: String, CaseIterable, Sendable {
 // MARK: - BranchComparison
 
 /// Both sides of `git log --left-right --cherry-mark base...compare`, plus the files `compare` changed since the merge base.
+/// What merging one ref into another would do, read without changing either.
+public struct MergePreview: Sendable, Equatable {
+    public var mergeBase: String?
+    /// Nil when git can't tell, e.g. one too old for `merge-tree --write-tree`.
+    public var conflicts: Bool?
+
+    public init(mergeBase: String? = nil, conflicts: Bool? = nil) {
+        self.mergeBase = mergeBase
+        self.conflicts = conflicts
+    }
+}
+
 public struct BranchComparison: Sendable {
     public var onlyInBase: [CommitInfo] = []
     public var onlyInCompare: [CommitInfo] = []

@@ -289,6 +289,8 @@ public protocol GitRepositoryProtocol: AnyObject, Observable, StackGitOperations
     func aheadBehind(branches: [String], base: String) async throws -> [String: AheadBehind]
     /// Commits unique to each side of `base...compare` and the files `compare` changed since the merge base.
     func compareBranches(base: String, compare: String) async throws -> BranchComparison
+    /// Where `base` and `compare` meet and whether merging `compare` into `base` would conflict, without touching either.
+    func mergePreview(base: String, compare: String) async -> MergePreview
     /// Value from the repository's local `.git/config`, or nil when unset.
     func localConfigValue(_ key: String) async throws -> String?
     /// Writes a local config value; nil or empty unsets it.

@@ -57,6 +57,19 @@ extension GitRepository {
         return (parts[0], parts[1])
     }
 
+    /// `merge-tree --write-tree` merges in memory: exit 0 is clean, 1 conflicts, anything else (an old git) is unknown.
+    public func mergePreview(base: String, compare: String) async -> MergePreview {
+        let shell = inspectionShell
+        let mergeBase = try? await shell.run(["merge-base", base, compare]).stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let mergeBase, !mergeBase.isEmpty else { return MergePreview() }
+        let merge = try? await shell.runAllowingFailure(["merge-tree", "--write-tree", "--name-only", base, compare])
+        switch merge?.exitCode {
+        case 0: return MergePreview(mergeBase: mergeBase, conflicts: false)
+        case 1: return MergePreview(mergeBase: mergeBase, conflicts: true)
+        default: return MergePreview(mergeBase: mergeBase)
+        }
+    }
+
     public func compareBranches(base: String, compare: String) async throws -> BranchComparison {
         let shell = inspectionShell
         let range = "\(base)...\(compare)"

@@ -45,6 +45,13 @@ extension HistoryViewModel {
         setPendingAction(nil)
     }
 
+    /// Every listed commit, as ⌘A selects them.
+    public func selectAll() {
+        var next = selection
+        next.selectAll(in: filteredCommits.map(\.id))
+        applySelection(next)
+    }
+
     /// The File History of `path`, wired to this list's hooks.
     public func fileHistory(path: String) -> FileHistoryViewModel {
         let history = FileHistoryViewModel(repository: repository, filePath: path)
@@ -66,23 +73,23 @@ extension HistoryViewModel {
     // MARK: - Mutations
 
     public func cherryPick(_ commit: CommitInfo) async {
-        await perform(.cherryPick) { try await $0.cherryPick(commit: commit.id) }
+        await perform(.cherryPick, .cherryPick(commit.id))
     }
 
     public func revert(_ commit: CommitInfo) async {
-        await perform(.revert) { try await $0.revert(commit: commit.id) }
+        await perform(.revert, .revert(commit.id))
     }
 
     /// Detaches HEAD at the commit, e.g. a force-pushed remote tip to look at before resetting a branch to it.
     public func checkout(_ commit: CommitInfo) async {
-        await perform(.checkout) { try await $0.checkout(branch: commit.id) }
+        await perform(.checkout, .checkout(commit.id))
     }
 
     /// Reset moves HEAD's branch, so it's offered only where the list shows that branch.
     public var canReset: Bool { filterBranch == nil || filterBranch == headBranchName }
 
     public func reset(to commit: CommitInfo, mode: ResetMode) async {
-        await perform(.reset) { try await $0.resetToCommit(commit.id, mode: mode) }
+        await perform(.reset, .reset(to: commit.id, mode: mode))
     }
 
     /// Called by the create branch/tag sheets after they wrote the ref themselves.
@@ -91,11 +98,14 @@ extension HistoryViewModel {
         await repositoryChanged()
     }
 
-    func perform(_ action: GroveKitAction, _ operation: (any GitRepositoryProtocol) async throws -> Void) async {
+    func perform(_ action: GroveKitAction, _ command: GitCommand, before: (() async -> Void)? = nil,
+                 after: (() async -> Void)? = nil) async {
         setPerforming(true)
         defer { setPerforming(false) }
+        await before?()
         do {
-            try await operation(repository)
+            try await commands.perform(command)
+            await after?()
             dismissAction()
             onAction?(action, true)
         } catch {
@@ -103,6 +113,11 @@ extension HistoryViewModel {
             onAction?(action, false)
         }
         await repositoryChanged()
+        // A conflict stops the operation; Changes is where it's resolved and continued.
+        if repository.repositoryState != .normal {
+            dismissAction()
+            onRebaseStopped?()
+        }
     }
 
     private func repositoryChanged() async {

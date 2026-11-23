@@ -26,6 +26,8 @@ struct GitCommandTests {
         .pull(remote: nil, branch: nil, strategy: .merge, options: PullOptions(verifySignatures: true)),
         .sync(remote: nil, strategy: .rebase), .renameCurrentBranch(to: "renamed"),
         .stashAndCheckout("main"), .discardAndCheckout("main"), .saveConflictResolution(path: "a", contents: "b"),
+        .cherryPick("abc"), .revert("abc"), .reset(to: "abc", mode: .hard), .reword("abc", message: "m"),
+        .squash(["abc", "def"], message: "m"), .drop("abc"), .rebaseInteractive(onto: "abc", steps: [RebaseStep(sha: "def")]),
     ]
 
     @Test(arguments: GitFeature.allCases)
@@ -52,5 +54,11 @@ struct GitCommandTests {
                                 options: PushOptions(recurseSubmodules: .onDemand)).requiredFeatures == [.push, .recurseSubmodules])
         #expect(GitCommand.renameCurrentBranch(to: "x").requiredFeatures.isEmpty)
         #expect(GitCommand.stashAndCheckout("x").requiredFeatures == [.checkout])
+    }
+
+    @Test func historyRewritesNeedNoFeature() {
+        let rewrites: [GitCommand] = [.cherryPick("a"), .revert("a"), .reset(to: "a", mode: .soft), .reword("a", message: "m"),
+                                      .squash(["a", "b"], message: "m"), .drop("a"), .rebaseInteractive(onto: "a", steps: [])]
+        #expect(rewrites.allSatisfy { $0.requiredFeatures.isEmpty })
     }
 }

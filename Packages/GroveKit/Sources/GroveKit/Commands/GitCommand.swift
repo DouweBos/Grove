@@ -44,6 +44,16 @@ public nonisolated enum GitCommand: Sendable, Equatable {
     case snapshot(message: String, includeUntracked: Bool)
     /// Writes an edited merge result over a conflicted file and marks it resolved.
     case saveConflictResolution(path: String, contents: String)
+    case cherryPick(String)
+    case revert(String)
+    /// Moves HEAD's branch to a commit.
+    case reset(to: String, mode: ResetMode)
+    case reword(String, message: String)
+    /// Folds commits, oldest first, into one.
+    case squash([String], message: String)
+    case drop(String)
+    /// `steps` oldest first.
+    case rebaseInteractive(onto: String, steps: [RebaseStep])
 
     /// Everything the command needs; all of it has to be supported.
     public var requiredFeatures: Set<GitFeature> {
@@ -51,6 +61,8 @@ public nonisolated enum GitCommand: Sendable, Equatable {
         // A stash's branch is the host's to allow in a worktree too, so it needs no feature.
         case .fetch, .stash, .branchFromStash, .applyStash, .dropStash, .snapshot, .renameCurrentBranch,
              .saveConflictResolution: []
+        // History rewrites only touch the checked-out branch, which every repository may change.
+        case .cherryPick, .revert, .reset, .reword, .squash, .drop, .rebaseInteractive: []
         case .pull(_, _, _, let options): Self.features(of: options)
         case .push(_, _, _, _, let options), .pushBranch(_, _, _, _, _, let options):
             Self.features(of: options).union([.push])

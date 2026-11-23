@@ -127,6 +127,20 @@ public struct RepositoryCommands: GitCommandPerforming {
             }
         case .saveConflictResolution(let path, let contents):
             try await repository.saveConflictResolution(path: path, contents: contents)
+        case .cherryPick(let sha):
+            try await repository.cherryPick(commit: sha)
+        case .revert(let sha):
+            try await repository.revert(commit: sha)
+        case .reset(let sha, let mode):
+            try await repository.resetToCommit(sha, mode: mode)
+        case .reword(let sha, let message):
+            try await repository.rewordCommit(sha, newMessage: message)
+        case .squash(let shas, let message):
+            try await repository.squashCommits(shas, message: message)
+        case .drop(let sha):
+            try await repository.dropCommit(sha)
+        case .rebaseInteractive(let base, let steps):
+            try await repository.rebaseInteractive(onto: base, steps: steps)
         }
     }
 

@@ -74,8 +74,10 @@ public final class HistoryViewModel {
     @ObservationIgnored public var onOpenBlame: ((_ file: String, _ revision: String) async -> Void)?
     /// Reports each action this view model runs, e.g. to the app's telemetry.
     @ObservationIgnored public var onAction: GroveKitActionHandler?
-    /// Set by the session to show Changes, where the conflict banner continues a stopped rebase.
+    /// Set by the session to show Changes, where the conflict banner continues a rebase, cherry-pick or revert that stopped.
     public var onRebaseStopped: (() -> Void)?
+    /// Runs every mutation; an app can route them through its host.
+    @ObservationIgnored public lazy var commands: any GitCommandPerforming = RepositoryCommands(repository: repository)
     public var undoManager: GitUndoManager?
 
     public let repository: any GitRepositoryProtocol

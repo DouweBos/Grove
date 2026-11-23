@@ -90,4 +90,29 @@ struct ViewModelCommandsTests {
         await model.confirmDelete(pending)
         #expect(spy.performed == [.deleteBranch(name: branch.name, force: branch.category != .merged)])
     }
+
+    @Test func historyMutatesOnlyThroughThem() async {
+        let model = HistoryViewModel(repository: repository)
+        model.commands = spy
+        await model.loadInitial()
+        let commits = model.commits
+        guard commits.count >= 3 else {
+            Issue.record("the mock repository has too few commits")
+            return
+        }
+        let commit = commits[1]
+        await model.checkout(commit)
+        await model.cherryPick(commit)
+        await model.revert(commit)
+        await model.reset(to: commit, mode: .mixed)
+        await model.reword(commit, message: "new")
+        await model.squash([commits[0], commit], message: "both")
+        await model.drop(commit)
+        await model.rebaseInteractively(onto: commits[2], plan: [RebaseStep(sha: commit.id, action: .reword, message: "m")])
+        #expect(spy.performed == [
+            .checkout(commit.id), .cherryPick(commit.id), .revert(commit.id), .reset(to: commit.id, mode: .mixed),
+            .reword(commit.id, message: "new"), .squash([commit.id, commits[0].id], message: "both"), .drop(commit.id),
+            .rebaseInteractive(onto: commits[2].id, steps: [RebaseStep(sha: commit.id, action: .reword, message: "m")]),
+        ])
+    }
 }
