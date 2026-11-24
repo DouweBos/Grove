@@ -57,10 +57,13 @@ extension HistoryViewModel {
         let history = FileHistoryViewModel(repository: repository, filePath: path)
         history.onRepositoryChanged = onRepositoryChanged
         history.onAction = onAction
-        history.onOpenBlame = { [weak self] file, revision in
-            // Blame replaces History, whose sheet would come back on returning to it.
-            self?.dismissAction()
-            await self?.onOpenBlame?(file, revision)
+        // Without an app that opens blame, File History offers none.
+        if onOpenBlame != nil {
+            history.onOpenBlame = { [weak self] file, revision in
+                // Blame replaces History, whose sheet would come back on returning to it.
+                self?.dismissAction()
+                await self?.onOpenBlame?(file, revision)
+            }
         }
         return history
     }

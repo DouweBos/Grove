@@ -25,4 +25,11 @@ struct FileHistoryPathTests {
 
         #expect(shas.map { paths[$0] } == ["last.txt", "café.txt", "first name.txt"])
     }
+
+    @Test func offersBlameOnlyWhenTheHistoryCanOpenIt() {
+        let history = HistoryViewModel(repository: MockGitRepository())
+        #expect(history.fileHistory(path: "README.md").onOpenBlame == nil)
+        history.onOpenBlame = { _, _ in }
+        #expect(history.fileHistory(path: "README.md").onOpenBlame != nil)
+    }
 }
