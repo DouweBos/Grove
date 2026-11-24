@@ -23,8 +23,8 @@ struct BlameDrawing {
         }
     }
 
-    init(_ style: GitUIStyle) {
-        metrics = BlameMetrics(style)
+    init(_ style: GitUIStyle, available: CGFloat = .infinity) {
+        metrics = BlameMetrics(style, available: available)
         palette = BlamePalette(style)
         fonts = Fonts(metrics)
     }
@@ -101,15 +101,18 @@ final class BlameLineCell: NSView {
              font: drawing.fonts.code, color: uncommitted ? palette.warning : palette.accent)
         let right = metrics.annotationWidth - pad
         var summaryEnd = right
-        if !uncommitted {
+        if !uncommitted, metrics.showsDate {
             let dateX = right - metrics.dateWidth
             text(entry.authorDate.formatted(BlameDrawing.dateStyle),
                  in: NSRect(x: dateX, y: 0, width: metrics.dateWidth, height: height),
                  font: drawing.fonts.code, color: palette.secondary, alignment: .right)
-            let authorX = dateX - gap - metrics.authorWidth
-            text(entry.authorName, in: NSRect(x: authorX, y: 0, width: metrics.authorWidth, height: height),
-                 font: drawing.fonts.gutter, color: palette.secondary)
-            summaryEnd = authorX - gap
+            summaryEnd = dateX - gap
+            if metrics.showsAuthor {
+                let authorX = dateX - gap - metrics.authorWidth
+                text(entry.authorName, in: NSRect(x: authorX, y: 0, width: metrics.authorWidth, height: height),
+                     font: drawing.fonts.gutter, color: palette.secondary)
+                summaryEnd = authorX - gap
+            }
         }
         let summaryX = pad + (uncommitted ? metrics.shaWidth + 30 : metrics.shaWidth) + gap
         text(uncommitted ? "Local changes" : entry.summary,

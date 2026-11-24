@@ -44,6 +44,8 @@ final class BlameTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewD
     private var document: String?
     private var dates: (oldest: Date, newest: Date) = (.distantPast, .distantPast)
     private var longest = 0
+    /// The visible width the drawing was laid out for, so a resize only redraws when the annotation changes.
+    private var laidOutWidth: CGFloat = 0
 
     init(viewModel: BlameViewModel) {
         self.viewModel = viewModel
@@ -102,7 +104,7 @@ final class BlameTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewD
         }
         if styleChanged {
             self.style = style
-            drawing = BlameDrawing(style)
+            relayout(force: true)
             table.rowHeight = drawing?.metrics.lineHeight ?? 18
         }
         resizeColumn()
@@ -115,7 +117,23 @@ final class BlameTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewD
         }
     }
 
-    @objc private func scrollResized() { resizeColumn() }
+    @objc private func scrollResized() {
+        if relayout(force: false) { table?.reloadData() }
+        resizeColumn()
+    }
+
+    /// Rebuilds the drawing for the visible width; true when the annotation's width changed.
+    @discardableResult
+    private func relayout(force: Bool) -> Bool {
+        guard let style else { return false }
+        let width = table?.enclosingScrollView?.contentSize.width ?? 0
+        let available = width > 0 ? width : .infinity
+        let next = BlameDrawing(style, available: available)
+        guard force || next.metrics.annotationWidth != drawing?.metrics.annotationWidth else { return false }
+        drawing = next
+        laidOutWidth = width
+        return true
+    }
 
     private func resizeColumn() {
         guard let table, let drawing, let column = table.tableColumns.first else { return }

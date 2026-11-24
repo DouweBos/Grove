@@ -9,8 +9,13 @@ import SwiftUI
 
 struct BlameMetrics: Equatable {
     let scale: CGFloat
+    /// The table's visible width; the annotation takes at most 40% of it so the code keeps the rest.
+    let available: CGFloat
 
-    init(_ style: GitUIStyle) { scale = style.fontScale }
+    init(_ style: GitUIStyle, available: CGFloat = .infinity) {
+        scale = style.fontScale
+        self.available = available
+    }
 
     var font: NSFont { .monospacedSystemFont(ofSize: 12 * scale, weight: .regular) }
     var gutterFont: NSFont { .systemFont(ofSize: 12 * scale) }
@@ -18,7 +23,12 @@ struct BlameMetrics: Equatable {
     var charWidth: CGFloat { ("M" as NSString).size(withAttributes: [.font: font]).width }
 
     /// Who, what and when for a run of lines, left of the lane bar.
-    var annotationWidth: CGFloat { (420 * scale).rounded() }
+    var annotationWidth: CGFloat {
+        min(420 * scale, max(150 * scale, available * 0.4)).rounded()
+    }
+    /// Author and date drop out, in that order, when the annotation narrows.
+    var showsAuthor: Bool { annotationWidth >= 400 * scale }
+    var showsDate: Bool { annotationWidth >= 240 * scale }
     var laneWidth: CGFloat { 3 }
     var numberWidth: CGFloat { (48 * scale).rounded() }
     var textX: CGFloat { annotationWidth + laneWidth + numberWidth + GitMetrics.Spacing.md }

@@ -104,6 +104,21 @@ struct BlameViewTests {
         #expect(metrics.annotationWidth > BlameMetrics(.system).annotationWidth)
     }
 
+    @Test func aNarrowTableKeepsMostOfItsWidthForTheCode() {
+        let wide = BlameMetrics(.system, available: 2000)
+        #expect(wide.annotationWidth == 420)
+        #expect(wide.showsAuthor && wide.showsDate)
+        let narrow = BlameMetrics(.system, available: 600)
+        #expect(narrow.annotationWidth == 240)
+        #expect(!narrow.showsAuthor && narrow.showsDate)
+        let tiny = BlameMetrics(.system, available: 300)
+        #expect(tiny.annotationWidth == 150)
+        #expect(!tiny.showsDate)
+        var zoomed = GitUIStyle.system
+        zoomed.fontScale = 17.0 / 13
+        #expect(BlameMetrics(zoomed, available: 900).annotationWidth == 360)
+    }
+
     @Test func zoomAndThemeRestyleLiveRows() async throws {
         let vm = await opened()
         let probe = Probe(vm)
