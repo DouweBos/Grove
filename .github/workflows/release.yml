@@ -41,6 +41,10 @@ jobs:
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
 
+      # Apps depend on the packages by tag, so a tag whose packages don't build must never be made.
+      - name: Build the packages
+        run: swift build
+
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
