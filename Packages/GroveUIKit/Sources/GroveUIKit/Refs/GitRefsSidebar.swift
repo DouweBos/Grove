@@ -79,6 +79,9 @@ public struct GitRefsSidebar<Header: View, Branches: View>: View {
             GitSearchField(placeholder: "Filter", text: model.filter, onChange: { model.filter = $0 })
         }
         .padding(GitMetrics.Spacing.sm)
+        // Opaque, so rows scrolling under the filter don't show through it.
+        .background(style.background)
+        .overlay(alignment: .top) { Rectangle().fill(style.border).frame(height: 0.5) }
     }
 }
 

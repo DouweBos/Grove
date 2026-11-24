@@ -100,6 +100,11 @@ public final class GitRefsModel {
     /// Errors from its actions or the last refs read, for an app whose commands show none.
     var errorMessage: String? { actionError ?? actions.errorMessage ?? refs.errorMessage }
 
+    /// Shows a failure of the app's own sidebar action, e.g. an export, where the sidebar shows its errors.
+    public func report(_ message: String) {
+        actionError = message
+    }
+
     func dismissError() {
         actionError = nil
         actions.dismissError()
@@ -132,7 +137,8 @@ public final class GitRefsModel {
 
     func limit(_ key: String) -> Int { rowLimits[key] ?? Self.pageSize }
 
-    func showMore(_ key: String) { rowLimits[key] = limit(key) + Self.pageSize * 4 }
+    /// Lists more rows of a long list, e.g. "tags", a remote or a folder.
+    public func showMore(_ key: String) { rowLimits[key] = limit(key) + Self.pageSize * 4 }
 
     // MARK: Checkout
 
@@ -150,7 +156,7 @@ public final class GitRefsModel {
     }
 
     /// Double-click: the worktree that has the branch, else a checkout here; a remote branch's local one if any.
-    func activate(_ item: GitRefItem, features: GitFeatures, host: GitRefsHost) async {
+    public func activate(_ item: GitRefItem, features: GitFeatures, host: GitRefsHost) async {
         switch item {
         case .branch(let name):
             guard let branch = refs.localBranches.first(where: { $0.name == name }) else { return }
@@ -160,8 +166,8 @@ public final class GitRefsModel {
                 await checkout(name)
             }
         case .remoteBranch(let name):
-            guard let branch = refs.remoteBranches.first(where: { $0.name == name }) else { return }
-            let short = RefActionsViewModel.shortName(of: branch)
+            let short = refs.remoteBranches.first { $0.name == name }.map(RefActionsViewModel.shortName(of:))
+                ?? name.split(separator: "/", maxSplits: 1).last.map(String.init) ?? name
             if refs.localBranches.contains(where: { $0.name == short }) {
                 await activate(.branch(short), features: features, host: host)
             } else if features.contains(.checkout) {
