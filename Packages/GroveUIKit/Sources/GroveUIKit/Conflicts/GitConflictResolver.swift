@@ -16,17 +16,23 @@ struct GitConflictResolver: View {
     @State private var editor = ConflictEditor()
     @State private var result = ConflictResult.loading
     @State private var isSaving = false
+    @State private var width: CGFloat = .infinity
+    @State private var resultWidth: CGFloat = .infinity
 
     var body: some View {
         VStack(alignment: .leading, spacing: GitMetrics.Spacing.md) {
             header
             VSplitView {
-                // Side by side while each side keeps a readable width, else one above the other.
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: GitMetrics.Spacing.md) { sides }
-                        .frame(minWidth: 520 * style.fontScale)
-                    VStack(spacing: GitMetrics.Spacing.sm) { sides }
+                // Side by side while each side keeps a readable width, else one above the other. A width check, not
+                // ViewThatFits: that builds both layouts of two 100k-line panels.
+                Group {
+                    if width < 520 * style.fontScale {
+                        VStack(spacing: GitMetrics.Spacing.sm) { sides }
+                    } else {
+                        HStack(spacing: GitMetrics.Spacing.md) { sides }
+                    }
                 }
+                .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
                 .padding(.bottom, GitMetrics.Spacing.sm)
                 .frame(minHeight: 140 * style.fontScale)
                 mergedEditor
@@ -120,11 +126,9 @@ struct GitConflictResolver: View {
     private var mergedEditor: some View {
         VStack(spacing: 0) {
             // Narrow, the path, then the badge's words and the button's give way; the buttons never truncate.
-            ViewThatFits(in: .horizontal) {
-                resultHeader(path: true, compact: false)
-                resultHeader(path: false, compact: false)
-                resultHeader(path: false, compact: true)
-            }
+            resultHeader(path: resultWidth >= 520 * style.fontScale, compact: resultWidth < 400 * style.fontScale)
+                .frame(maxWidth: .infinity)
+                .onGeometryChange(for: CGFloat.self, of: \.size.width) { resultWidth = $0 }
             .controlSize(.small)
             .padding(.horizontal, GitMetrics.Spacing.md)
             .frame(height: 40 * style.fontScale)

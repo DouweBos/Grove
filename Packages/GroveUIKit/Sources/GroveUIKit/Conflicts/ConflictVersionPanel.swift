@@ -15,15 +15,15 @@ struct ConflictVersionPanel: View {
     let content: String??
     let isBusy: Bool
     var onSelect: () -> Void
+    @State private var headerWidth: CGFloat = .infinity
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Narrow, the side's name and the branch give way before the button does.
-            ViewThatFits(in: .horizontal) {
-                header(named: true, branch: true)
-                header(named: false, branch: true)
-                header(named: false, branch: false)
-            }
+            // Narrow, the side's name and the branch give way before the button does. Width checks rather than
+            // ViewThatFits, which would build every variant of every header.
+            header(named: headerWidth >= 300 * style.fontScale, branch: headerWidth >= 220 * style.fontScale)
+                .frame(maxWidth: .infinity)
+                .onGeometryChange(for: CGFloat.self, of: \.size.width) { headerWidth = $0 }
             .padding(.horizontal, GitMetrics.Spacing.md)
             .frame(height: 40 * style.fontScale)
             .overlay(alignment: .bottom) { Rectangle().fill(style.border).frame(height: 0.5) }
