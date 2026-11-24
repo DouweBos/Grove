@@ -10,8 +10,9 @@ extension GitRepository {
 
     public func stackGraph(tips: [String], excluding: [String]) async throws -> StackGraph {
         guard !tips.isEmpty else { return StackGraph() }
-        let args = ["rev-list", "--parents", "--topo-order"] + tips + ["--not"] + excluding + ["--"]
-        return StackGraph.parse(try await shell.run(args).stdout)
+        // Through stdin: thousands of branches are more arguments than a process may take.
+        let input = (tips + excluding.map { "^" + $0 }).joined(separator: "\n") + "\n"
+        return StackGraph.parse(try await shell.runWithInput(["rev-list", "--parents", "--topo-order", "--stdin", "--"], input: input).stdout)
     }
 
     public func patchIDs(for commits: [String]) async throws -> [String: String] {

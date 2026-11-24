@@ -120,4 +120,21 @@ struct StackReadingTests {
         #expect(refs.localBranchesMatchingStacks.contains { $0.name == "e" })
         #expect(refs.stack(containing: "e") != nil)
     }
+
+    @Test func thousandsOfBranchesAreReadThroughStdin() async throws {
+        let repo = try ScratchRepository("many")
+        defer { try? FileManager.default.removeItem(at: repo.root) }
+        try repo.git(["checkout", "-q", "-b", "side"])
+        try repo.commit("side.txt", "side\n", "side")
+        let sha = try repo.sha("HEAD")
+        let packed = (0..<5000).map { "\(sha) refs/heads/team\($0 % 50)/feature-\($0)" }.joined(separator: "\n")
+        try Data((packed + "\n").utf8).write(to: repo.root.appendingPathComponent(".git/packed-refs"))
+        try repo.git(["checkout", "-q", "main"])
+        let repository = try await GitRepository(path: repo.root, runner: LocalGitRunner())
+        let tips = try await repository.localBranches().filter { $0.name != "main" }.map(\.id)
+
+        let graph = try await repository.stackGraph(tips: tips, excluding: ["refs/heads/main"])
+        #expect(tips.count == 5001)
+        #expect(graph.order == [sha])
+    }
 }
