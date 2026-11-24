@@ -20,10 +20,10 @@ extension DiffTableCoordinator {
         guard let table else { return }
         let selected = table.selectedRowIndexes
         forEachVisibleCell { cell, row in
-            if let cell = cell as? DiffRowCell<DiffLineView> {
+            if let cell = cell as? DiffLineCell {
                 cell.content.isSelected = selected.contains(row)
                 cell.content.textSelection = textSelection?.row == row ? textSelection : nil
-            } else if let cell = cell as? DiffRowCell<DiffHunkHeaderView>, rows[row].kind == .header {
+            } else if let cell = cell as? DiffHeaderCell, rows[row].kind == .header {
                 cell.content.setButtons(headerButtons(hunk: rows[row].hunk))
             }
         }

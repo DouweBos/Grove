@@ -20,7 +20,7 @@ extension DiffTableCoordinator {
         case .annotation:
             return nil
         case .header:
-            guard let table, let cell = table.view(atColumn: 0, row: row, makeIfNecessary: false) as? DiffRowCell<DiffHunkHeaderView>
+            guard let table, let cell = table.view(atColumn: 0, row: row, makeIfNecessary: false) as? DiffHeaderCell
             else { return .arrow }
             return cell.content.isOverButton(NSPoint(x: x, y: geometry.metrics.headerHeight / 2)) ? .pointingHand : .arrow
         case .line, .pair:

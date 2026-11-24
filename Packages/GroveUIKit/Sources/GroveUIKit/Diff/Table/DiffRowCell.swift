@@ -12,17 +12,18 @@ protocol DiffRowContent: NSView {
     func place(_ geometry: DiffGeometry)
 }
 
-final class DiffRowCell<Content: DiffRowContent>: NSView {
-    let content: Content
+/// Not generic: Swift 6.3's optimizer crashes on a generic cell's deinit, so each kind is a subclass.
+class DiffRowCell: NSView {
+    private let rowContent: any DiffRowContent
     private var scrolledX: CGFloat = 0
     private var width: CGFloat = 0
 
-    init(content: Content, identifier: NSUserInterfaceItemIdentifier) {
-        self.content = content
+    init(rowContent: any DiffRowContent, identifier: NSUserInterfaceItemIdentifier) {
+        self.rowContent = rowContent
         super.init(frame: .zero)
         self.identifier = identifier
-        content.clipsToBounds = true
-        addSubview(content)
+        rowContent.clipsToBounds = true
+        addSubview(rowContent)
     }
 
     @available(*, unavailable)
@@ -37,7 +38,7 @@ final class DiffRowCell<Content: DiffRowContent>: NSView {
         scrolledX = geometry.scrolledX
         self.width = width
         layoutContent()
-        content.place(geometry)
+        rowContent.place(geometry)
     }
 
     override func setFrameSize(_ newSize: NSSize) {
@@ -47,8 +48,23 @@ final class DiffRowCell<Content: DiffRowContent>: NSView {
 
     private func layoutContent() {
         let frame = NSRect(x: scrolledX, y: 0, width: width, height: bounds.height)
-        if content.frame != frame { content.frame = frame }
+        if rowContent.frame != frame { rowContent.frame = frame }
     }
+}
+
+final class DiffLineCell: DiffRowCell {
+    let content = DiffLineView()
+    init() { super.init(rowContent: content, identifier: DiffCellID.line) }
+}
+
+final class DiffHeaderCell: DiffRowCell {
+    let content = DiffHunkHeaderView()
+    init() { super.init(rowContent: content, identifier: DiffCellID.header) }
+}
+
+final class DiffAnnotationCell: DiffRowCell {
+    let content = DiffAnnotationView()
+    init() { super.init(rowContent: content, identifier: DiffCellID.annotation) }
 }
 
 /// Draws nothing: each line draws its own selection, under its pinned gutter too.

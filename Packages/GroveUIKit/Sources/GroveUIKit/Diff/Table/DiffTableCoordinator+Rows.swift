@@ -85,19 +85,19 @@ extension DiffTableCoordinator: NSTableViewDataSource, NSTableViewDelegate {
         guard diff != nil, rows.indices.contains(row) else { return nil }
         switch rows[row].kind {
         case .header:
-            let cell = tableView.makeView(withIdentifier: DiffCellID.header, owner: nil) as? DiffRowCell<DiffHunkHeaderView>
-                ?? DiffRowCell(content: DiffHunkHeaderView(), identifier: DiffCellID.header)
+            let cell = tableView.makeView(withIdentifier: DiffCellID.header, owner: nil) as? DiffHeaderCell
+                ?? DiffHeaderCell()
             configure(cell, row: row)
             return cell
         case .annotation:
-            let cell = tableView.makeView(withIdentifier: DiffCellID.annotation, owner: nil) as? DiffRowCell<DiffAnnotationView>
-                ?? DiffRowCell(content: DiffAnnotationView(), identifier: DiffCellID.annotation)
+            let cell = tableView.makeView(withIdentifier: DiffCellID.annotation, owner: nil) as? DiffAnnotationCell
+                ?? DiffAnnotationCell()
             configure(cell, row: row)
             return cell
         case .line, .pair:
             correctHeightIfEstimated(row: row)
-            let cell = tableView.makeView(withIdentifier: DiffCellID.line, owner: nil) as? DiffRowCell<DiffLineView>
-                ?? DiffRowCell(content: DiffLineView(), identifier: DiffCellID.line)
+            let cell = tableView.makeView(withIdentifier: DiffCellID.line, owner: nil) as? DiffLineCell
+                ?? DiffLineCell()
             configure(cell, row: row)
             return cell
         }
@@ -106,14 +106,14 @@ extension DiffTableCoordinator: NSTableViewDataSource, NSTableViewDelegate {
     func configure(_ view: NSView, row: Int) {
         guard let diff, rows.indices.contains(row) else { return }
         let item = rows[row]
-        if let cell = view as? DiffRowCell<DiffLineView> {
+        if let cell = view as? DiffLineCell {
             guard item.kind.isSelectable else { return }
             cell.content.configure(lineContent(item, in: diff), palette: palette)
             cell.content.isSelected = table?.selectedRowIndexes.contains(row) ?? false
             cell.content.textSelection = textSelection?.row == row ? textSelection : nil
             cell.content.hover = hover?.row == row ? hover?.side : nil
             cell.place(geometry, width: geometry.lineWidth)
-        } else if let cell = view as? DiffRowCell<DiffHunkHeaderView> {
+        } else if let cell = view as? DiffHeaderCell {
             guard item.kind == .header else { return }
             let hunk = diff.hunks[item.hunk]
             let id = hunk.id
@@ -121,7 +121,7 @@ extension DiffTableCoordinator: NSTableViewDataSource, NSTableViewDelegate {
                 header: hunk.header, buttons: headerButtons(hunk: item.hunk), palette: palette, metrics: geometry.metrics,
                 perform: { [weak self] action in self?.perform(action, hunk: item.hunk, id: id) })
             cell.place(geometry, width: geometry.viewport)
-        } else if let cell = view as? DiffRowCell<DiffAnnotationView> {
+        } else if let cell = view as? DiffAnnotationCell {
             guard case .annotation(let index) = item.kind, let annotation = annotation(index) else { return }
             let id = annotation.id
             let context = GitDiffAnnotationContext(width: cardWidth(for: annotation)) { [weak self] content in
@@ -167,11 +167,11 @@ extension DiffTableCoordinator: NSTableViewDataSource, NSTableViewDelegate {
 
     func placeVisible() {
         forEachVisibleCell { cell, _ in
-            if let cell = cell as? DiffRowCell<DiffLineView> {
+            if let cell = cell as? DiffLineCell {
                 cell.place(geometry, width: geometry.lineWidth)
-            } else if let cell = cell as? DiffRowCell<DiffHunkHeaderView> {
+            } else if let cell = cell as? DiffHeaderCell {
                 cell.place(geometry, width: geometry.viewport)
-            } else if let cell = cell as? DiffRowCell<DiffAnnotationView> {
+            } else if let cell = cell as? DiffAnnotationCell {
                 cell.place(geometry, width: geometry.viewport)
             }
         }
@@ -179,7 +179,7 @@ extension DiffTableCoordinator: NSTableViewDataSource, NSTableViewDelegate {
 
     func highlightsArrived(in hunks: Set<Int>) {
         forEachVisibleCell { cell, row in
-            if hunks.contains(rows[row].hunk), cell is DiffRowCell<DiffLineView> { configure(cell, row: row) }
+            if hunks.contains(rows[row].hunk), cell is DiffLineCell { configure(cell, row: row) }
         }
     }
 

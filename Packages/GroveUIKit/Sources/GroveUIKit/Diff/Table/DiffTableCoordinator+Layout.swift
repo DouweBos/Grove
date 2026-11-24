@@ -32,7 +32,7 @@ extension DiffTableCoordinator {
         // Cards rewrap with the pane.
         withoutAnimation { table.noteHeightOfRows(withIndexesChanged: annotationRows) }
         forEachVisibleCell { cell, row in
-            if cell is DiffRowCell<DiffAnnotationView> { configure(cell, row: row) }
+            if cell is DiffAnnotationCell { configure(cell, row: row) }
         }
         contentResized()
     }

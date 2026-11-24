@@ -53,7 +53,7 @@ extension DiffTableCoordinator {
         guard next?.row != hover?.row || next?.side != hover?.side else { return }
         hover = next
         forEachVisibleCell { cell, row in
-            (cell as? DiffRowCell<DiffLineView>)?.content.hover = next?.row == row ? next?.side : nil
+            (cell as? DiffLineCell)?.content.hover = next?.row == row ? next?.side : nil
         }
     }
 

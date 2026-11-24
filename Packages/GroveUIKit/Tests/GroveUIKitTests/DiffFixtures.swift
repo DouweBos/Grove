@@ -83,8 +83,8 @@ final class DiffTableProbe {
     }
 
     func cell<Content: DiffRowContent>(_ row: Int, _: Content.Type) throws -> Content {
-        let cell = try table.view(atColumn: 0, row: row, makeIfNecessary: true) as? DiffRowCell<Content>
-        return try #require(cell).content
+        let cell = try table.view(atColumn: 0, row: row, makeIfNecessary: true) as? DiffRowCell
+        return try #require(cell?.subviews.first as? Content)
     }
 
     func buttons(_ row: Int = 0) throws -> [String] {
