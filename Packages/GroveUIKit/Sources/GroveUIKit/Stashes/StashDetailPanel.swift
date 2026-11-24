@@ -45,6 +45,7 @@ struct StashDetailPanel: View {
                 buttons(stash)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(GitMetrics.Spacing.lg)
     }
 

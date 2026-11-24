@@ -72,6 +72,7 @@ struct ReflogDetailPanel: View {
                 buttons(entry)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(GitMetrics.Spacing.lg)
     }
 
