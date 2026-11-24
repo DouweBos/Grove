@@ -13,6 +13,7 @@ public struct GitCompareView: View {
     private let context: GitDialogContext
     @Binding private var base: String
     @Binding private var compare: String
+    private let host: GitHistoryHost?
     @State private var model = CompareModel()
     @State private var pendingAction: CompareAction?
     @State private var isActing = false
@@ -27,20 +28,30 @@ public struct GitCompareView: View {
     /// - Parameters:
     ///   - context: Reads through its repository and refs; merge and rebase run through its commands.
     ///   - base: A branch, tag or commit; empty until picked.
-    public init(context: GitDialogContext, base: Binding<String>, compare: Binding<String>) {
+    ///   - host: Blame, Show in History, review rows and diff options; nil keeps those of the History it's shown from.
+    public init(context: GitDialogContext, base: Binding<String>, compare: Binding<String>, host: GitHistoryHost? = nil) {
         self.context = context
         _base = base
         _compare = compare
+        self.host = host
     }
 
     public var body: some View {
+        if let host {
+            content.environment(\.historyHost, host)
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         VStack(spacing: 0) {
             CompareRefBar(refs: context.refs, base: $base, compare: $compare, model: model)
             if let error = model.errorMessage {
                 GitBanner(symbol: "xmark.octagon", message: error, tone: .negative, onDismiss: { model.errorMessage = nil })
                     .padding(GitMetrics.Spacing.sm)
             }
-            content
+            comparison
             if !base.isEmpty, !compare.isEmpty, model.comparison?.onlyInCompare.isEmpty == false {
                 actionBar
             }
@@ -63,7 +74,7 @@ public struct GitCompareView: View {
     }
 
     @ViewBuilder
-    private var content: some View {
+    private var comparison: some View {
         if base.isEmpty || compare.isEmpty {
             GitEmptyState(systemImage: "arrow.left.arrow.right", title: "Choose Two Refs",
                           subtitle: "See which commits each branch, tag or commit has that the other doesn't.")

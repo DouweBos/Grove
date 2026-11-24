@@ -76,6 +76,7 @@ final class CommitTableCoordinator: NSObject, NSTableViewDataSource, NSTableView
     private var dataKey: [AnyHashable] = []
     private var appliedSelection: Set<String> = []
     private var appliedFocus: String?
+    private var grouping: Task<Void, Never>?
     private let avatars = AvatarImages()
     private let symbols = SymbolImages()
 
@@ -131,8 +132,14 @@ final class CommitTableCoordinator: NSObject, NSTableViewDataSource, NSTableView
         if key != dataKey || styleChanged {
             if key != dataKey {
                 commits = input.commits
-                rows = CommitListRows(commits, grouped: grouped)
                 indexByID = nil
+                grouping?.cancel()
+                if grouped, commits.count > Self.groupsInBackgroundAbove {
+                    rows = CommitListRows(commits, grouped: false)
+                    groupInBackground()
+                } else {
+                    rows = CommitListRows(commits, grouped: grouped)
+                }
             }
             dataKey = key
             drawing = CommitDrawing(palette: CommitListPalette(input.style), metrics: CommitListMetrics(input.style),
@@ -157,6 +164,24 @@ final class CommitTableCoordinator: NSObject, NSTableViewDataSource, NSTableView
                     DispatchQueue.main.async { [weak table] in table?.scrollRowToVisible(row) }
                 }
             }
+        }
+    }
+
+    /// A long history shows at once and gets its day headers a moment later, rather than stall its first layout.
+    static let groupsInBackgroundAbove = 20_000
+
+    private func groupInBackground() {
+        let snapshot = commits
+        grouping = Task { [weak self] in
+            let groups = await Task.detached(priority: .userInitiated) { CommitListRows.groups(snapshot) }.value
+            guard let self, !Task.isCancelled, let table, self.commits.count == snapshot.count,
+                  self.commits.first?.id == snapshot.first?.id else { return }
+            let top = rows.commitIndex(atRow: table.rows(in: table.visibleRect).location)
+            rows = CommitListRows(groups: groups, commitCount: snapshot.count)
+            table.reloadData()
+            appliedSelection = []
+            if let input { update(input) }
+            if let top { table.scroll(table.rect(ofRow: top == 0 ? 0 : rows.row(ofCommit: top)).origin) }
         }
     }
 

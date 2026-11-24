@@ -4,6 +4,7 @@
 // History date headers: in topological order a day can recur, and each run still needs its own group.
 
 #if os(macOS)
+import AppKit
 import Foundation
 @testable import GroveKit
 import Testing
@@ -41,6 +42,21 @@ struct CommitDayGroupTests {
         let rows = CommitListRows(commits, grouped: true)
         #expect(rows.rowOfCommit.count == 100_000)
         #expect(Date().timeIntervalSince(began) < 0.5)
+    }
+
+    @Test func aLongHistoryShowsAtOnceAndGetsItsDayHeadersAMomentLater() async throws {
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let commits = (0..<30_000).map { commit("c\($0)", start - Double($0) * 600) }
+        let coordinator = CommitTableCoordinator(viewModel: HistoryViewModel(repository: MockGitRepository()))
+        let scroll = coordinator.makeView()
+        scroll.frame = NSRect(x: 0, y: 0, width: 600, height: 800)
+        coordinator.update(CommitTableInput(commits: commits, layout: .graph, showsGraph: false, graphColumns: 1, refsKey: 0,
+                                            selection: ["c5"], focus: "c5", style: .system, ownCommits: nil, avatarURL: nil))
+        #expect(coordinator.rows.count == 30_000)
+        for _ in 0..<200 where coordinator.rows.count == 30_000 { try await Task.sleep(for: .milliseconds(10)) }
+        let days = CommitListRows.groups(commits).count
+        #expect(coordinator.rows.count == 30_000 + days)
+        #expect(coordinator.table?.selectedRow == coordinator.rows.row(ofCommit: 5))
     }
 
     private func commit(_ id: String, _ date: Date) -> CommitInfo {

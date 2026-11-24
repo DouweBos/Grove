@@ -8,7 +8,7 @@ import Foundation
 import GroveKit
 
 /// Consecutive commits from one calendar day.
-struct CommitDayGroup: Identifiable {
+nonisolated struct CommitDayGroup: Identifiable, Sendable {
     /// The first commit's SHA: in topological order a day can recur, so the day itself isn't unique.
     let id: String
     let date: Date
@@ -35,6 +35,12 @@ struct CommitListRows {
         commitCount = commits.count
         self.grouped = grouped
         if grouped { groups = Self.groups(commits) }
+    }
+
+    init(groups: [CommitDayGroup], commitCount: Int) {
+        self.groups = groups
+        self.commitCount = commitCount
+        grouped = true
     }
 
     var count: Int { commitCount + (grouped ? groups.count : 0) }
@@ -72,7 +78,7 @@ struct CommitListRows {
 
     /// Consecutive commits from the same calendar day share a group. Calendar math runs only when the day changes,
     /// so 100k commits group in a few milliseconds.
-    static func groups(_ commits: [CommitInfo], calendar: Calendar = .current) -> [CommitDayGroup] {
+    nonisolated static func groups(_ commits: [CommitInfo], calendar: Calendar = .current) -> [CommitDayGroup] {
         var result: [CommitDayGroup] = []
         var dayStart = Date.distantFuture
         var dayEnd = Date.distantPast

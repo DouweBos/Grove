@@ -202,7 +202,7 @@ struct ConsumerTests {
         host.compareAnnotations = { _, _, _ in nil }
         let views: [AnyView] = [
             AnyView(GitHistoryView(viewModel: history, dialogs: context, host: host)),
-            AnyView(GitCompareView(context: context, base: .constant("main"), compare: .constant("feature"))),
+            AnyView(GitCompareView(context: context, base: .constant("main"), compare: .constant("feature"), host: host)),
             AnyView(GitFileHistoryView(viewModel: history.fileHistory(path: "README.md"))),
             AnyView(GitInteractiveRebaseView(viewModel: history, from: "abc") {}),
         ]
