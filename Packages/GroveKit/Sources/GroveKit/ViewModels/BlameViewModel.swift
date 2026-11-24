@@ -5,7 +5,7 @@ import Foundation
 import Observation
 
 /// One rendered line of a blamed file.
-public struct BlameLine: Identifiable, Hashable {
+public struct BlameLine: Identifiable, Hashable, Sendable {
     public let number: Int
     public let text: String
     public let entry: BlameEntry?
@@ -45,11 +45,17 @@ public final class BlameViewModel {
 
     public var canGoForward: Bool { !revisionStack.isEmpty }
     public var isAtWorkingTree: Bool { revision == nil }
-    public var commitCount: Int { Set(lines.compactMap { $0.entry?.commitSHA }).count }
+    /// Commits the shown lines come from.
+    public private(set) var commitCount = 0
 
     public let repository: any GitRepositoryProtocol
     // Revisions are immutable; working-tree entries (nil revision) are shown at once but always re-read.
-    @ObservationIgnored private var blameCache = LRUCache<BlameKey, [BlameLine]>(capacity: 30)
+    @ObservationIgnored private var blameCache = LRUCache<BlameKey, BlamedFile>(capacity: 30)
+
+    private struct BlamedFile: Sendable {
+        var lines: [BlameLine] = []
+        var commitCount = 0
+    }
 
     private struct BlameKey: Hashable {
         let file: String
@@ -117,10 +123,17 @@ public final class BlameViewModel {
     /// Closes the file that couldn't be blamed, back to picking one.
     public func dismissError() {
         guard errorMessage != nil else { return }
+        close()
+    }
+
+    /// Back to picking a file, e.g. when the app's route names none.
+    public func close() {
         errorMessage = nil
         selectedFile = nil
         revision = nil
         revisionStack = []
+        show(BlamedFile())
+        isLoadingBlame = false
     }
 
     public func reload() async {
@@ -134,13 +147,13 @@ public final class BlameViewModel {
         errorMessage = nil
         // Never leave another file's or revision's lines on screen while this one loads.
         if let cached = blameCache.value(for: key) {
-            lines = cached
+            show(cached)
             if requested != nil {
                 isLoadingBlame = false
                 return
             }
         } else {
-            lines = []
+            show(BlamedFile())
         }
         isLoadingBlame = true
         defer { if selectedFile == file, revision == requested { isLoadingBlame = false } }
@@ -148,18 +161,27 @@ public final class BlameViewModel {
             async let entries = repository.blame(file: file, revision: requested)
             async let contents = repository.fileContents(path: file, revision: requested)
             let (blame, text) = try await (entries, contents)
-            let built = Self.buildLines(text: text, entries: blame)
+            // A 100k-line file takes tens of milliseconds to lay out, so not on the main thread.
+            let built = await Task.detached(priority: .userInitiated) {
+                let lines = Self.buildLines(text: text, entries: blame)
+                return BlamedFile(lines: lines, commitCount: Set(lines.lazy.compactMap { $0.entry?.commitSHA }).count)
+            }.value
             blameCache.insert(built, for: key)
             guard selectedFile == file, revision == requested else { return }
-            lines = built
+            show(built)
         } catch {
             guard selectedFile == file, revision == requested else { return }
-            lines = []
+            show(BlamedFile())
             // Only stepping back (`sha^`) can land before the file existed; other failures are git's own.
             errorMessage = requested?.hasSuffix("^") == true
                 ? "This file has no earlier revision (it may have been added or renamed in that commit)."
                 : error.localizedDescription
         }
+    }
+
+    private func show(_ file: BlamedFile) {
+        lines = file.lines
+        commitCount = file.commitCount
     }
 
     nonisolated static func buildLines(text: String, entries: [BlameEntry]) -> [BlameLine] {

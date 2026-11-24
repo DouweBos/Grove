@@ -9,9 +9,13 @@ import Testing
 
 @MainActor
 @Suite(.serialized)
-struct BlameAtRevisionTests {
+final class BlameAtRevisionTests {
 
     private let root: URL
+
+    deinit {
+        try? FileManager.default.removeItem(at: root)
+    }
 
     init() throws {
         root = FileManager.default.temporaryDirectory.appendingPathComponent("grovekit-blame-\(UUID().uuidString)")
@@ -46,6 +50,19 @@ struct BlameAtRevisionTests {
         await vm.open(file: "a.txt", revision: "nope")
         #expect(vm.lines.isEmpty)
         #expect(vm.errorMessage?.contains("earlier revision") == false)
+    }
+
+    @Test func countsCommitsAndClosesBackToPicking() async throws {
+        try commit("a.txt", "one\n", "add a")
+        try commit("a.txt", "one\ntwo\n", "add two")
+        let vm = BlameViewModel(repository: try await GitRepository(path: root, runner: LocalGitRunner()))
+        await vm.open(file: "a.txt")
+        #expect(vm.commitCount == 2)
+        await vm.open(file: "a.txt", revision: "HEAD~1")
+        #expect(vm.commitCount == 1)
+        vm.close()
+        #expect(vm.selectedFile == nil && vm.revision == nil && vm.lines.isEmpty && vm.commitCount == 0)
+        #expect(!vm.canGoForward && vm.errorMessage == nil)
     }
 
     // MARK: Helpers
