@@ -28,6 +28,9 @@ struct GitCommandTests {
         .stashAndCheckout("main"), .discardAndCheckout("main"), .saveConflictResolution(path: "a", contents: "b"),
         .cherryPick("abc"), .revert("abc"), .reset(to: "abc", mode: .hard), .reword("abc", message: "m"),
         .squash(["abc", "def"], message: "m"), .drop("abc"), .rebaseInteractive(onto: "abc", steps: [RebaseStep(sha: "def")]),
+        .fastForward(branch: "main", remote: "origin", remoteBranch: "main"), .initSubmodule(path: "vendor/lib"),
+        .updateSubmodule(path: "vendor/lib", toRemote: true), .fetchSubmodule(path: "vendor/lib"),
+        .removeSubmodule(path: "vendor/lib"),
     ]
 
     @Test(arguments: GitFeature.allCases)
@@ -54,6 +57,8 @@ struct GitCommandTests {
                                 options: PushOptions(recurseSubmodules: .onDemand)).requiredFeatures == [.push, .recurseSubmodules])
         #expect(GitCommand.renameCurrentBranch(to: "x").requiredFeatures.isEmpty)
         #expect(GitCommand.stashAndCheckout("x").requiredFeatures == [.checkout])
+        #expect(GitCommand.fastForward(branch: "a", remote: "o", remoteBranch: "a").requiredFeatures == [.editBranches])
+        #expect(GitCommand.updateSubmodule(path: "a", toRemote: false).requiredFeatures == [.submodules])
     }
 
     @Test func historyRewritesNeedNoFeature() {

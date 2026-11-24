@@ -79,21 +79,21 @@ extension RefActionsViewModel {
     // MARK: - Submodules
 
     public func initSubmodule(_ submodule: SubmoduleInfo) async {
-        await perform(.submodule, "Cloning \(submodule.displayName)…") { try await repository.initSubmodule(path: submodule.path) }
+        await perform(.submodule, "Cloning \(submodule.displayName)…") { try await commands.perform(.initSubmodule(path: submodule.path)) }
     }
 
     public func updateSubmodule(_ submodule: SubmoduleInfo, toRemote: Bool) async {
         await perform(.submodule, "Updating \(submodule.displayName)…") {
-            try await repository.updateSubmodule(path: submodule.path, toRemote: toRemote)
+            try await commands.perform(.updateSubmodule(path: submodule.path, toRemote: toRemote))
         }
     }
 
     public func fetchSubmodule(_ submodule: SubmoduleInfo) async {
-        await perform(.submodule, "Fetching \(submodule.displayName)…") { try await repository.fetchSubmodule(path: submodule.path) }
+        await perform(.submodule, "Fetching \(submodule.displayName)…") { try await commands.perform(.fetchSubmodule(path: submodule.path)) }
     }
 
     public func removeSubmodule(_ submodule: SubmoduleInfo) async {
-        await perform(.submodule, "Removing \(submodule.displayName)…") { try await repository.removeSubmodule(path: submodule.path) }
+        await perform(.submodule, "Removing \(submodule.displayName)…") { try await commands.perform(.removeSubmodule(path: submodule.path)) }
     }
 
     /// Throws so an Add Submodule sheet can show the failure and stay open.

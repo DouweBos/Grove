@@ -48,6 +48,23 @@ struct ViewModelCommandsTests {
         ])
     }
 
+    @Test func submodulesAndCarriedCheckoutsPerformTheirCommands() async throws {
+        let model = refActions()
+        let submodule = SubmoduleInfo(name: "lib", path: "vendor/lib", url: nil, sha: nil, state: .upToDate)
+        await model.initSubmodule(submodule)
+        await model.updateSubmodule(submodule, toRemote: true)
+        await model.fetchSubmodule(submodule)
+        await model.removeSubmodule(submodule)
+        await model.cherryPick(sha: "abc1234")
+        #expect(await model.checkout(named: "topic", carrying: .stash))
+        #expect(await model.checkout(named: "topic", carrying: .discard))
+        #expect(spy.performed == [
+            .initSubmodule(path: "vendor/lib"), .updateSubmodule(path: "vendor/lib", toRemote: true),
+            .fetchSubmodule(path: "vendor/lib"), .removeSubmodule(path: "vendor/lib"), .cherryPick("abc1234"),
+            .stashAndCheckout("topic"), .discardAndCheckout("topic"),
+        ])
+    }
+
     @Test func undoGoesThroughTheSameCommands() async throws {
         let deletion = GitUndoManager.deleteBranchAction(branchName: "topic", sha: "abc", repository: repository, commands: spy)
         try await deletion.undoCommand()

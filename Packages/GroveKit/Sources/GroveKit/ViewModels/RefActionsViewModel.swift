@@ -94,17 +94,31 @@ public final class RefActionsViewModel {
         await checkout(named: Self.shortName(of: branch))
     }
 
-    private func checkout(named name: String) async {
+    /// What a checkout does with uncommitted changes that would block it.
+    public enum CheckoutCarry: Sendable {
+        /// Stashes them and restores them on the other branch.
+        case stash
+        /// Throws away changes to tracked files.
+        case discard
+    }
+
+    /// Checks out `name`, a local branch or a remote one's short name; false when it failed, with `errorMessage` set.
+    @discardableResult
+    public func checkout(named name: String, carrying carry: CheckoutCarry? = nil) async -> Bool {
         let previous = headName
         activity = "Checking out \(name)…"
         defer { activity = nil }
         do {
-            try await commands.perform(.checkout(name))
+            switch carry {
+            case nil: try await commands.perform(.checkout(name))
+            case .stash: try await commands.perform(.stashAndCheckout(name))
+            case .discard: try await commands.perform(.discardAndCheckout(name))
+            }
             onAction?(.checkout, true)
         } catch {
             errorMessage = error.localizedDescription
             onAction?(.checkout, false)
-            return
+            return false
         }
         // Detached HEAD has no branch to return to, so it isn't recorded.
         if let previous, previous != name {
@@ -112,6 +126,7 @@ public final class RefActionsViewModel {
                                                               repository: repository, commands: commands))
         }
         await didChangeRepository()
+        return true
     }
 
     /// Throws so a rename dialog can show the failure and stay open.
@@ -150,7 +165,7 @@ public final class RefActionsViewModel {
     }
 
     public func cherryPick(sha: String) async {
-        await run(.cherryPick) { try await repository.cherryPick(commit: sha) }
+        await run(.cherryPick) { try await commands.perform(.cherryPick(sha)) }
     }
 
     /// Applies the stash at `index`, keeping it in the list.

@@ -95,6 +95,8 @@ public struct RepositoryCommands: GitCommandPerforming {
             try await repository.merge(branch: branch, squash: squash)
         case .rebase(let branch):
             try await repository.rebase(onto: branch)
+        case .fastForward(let branch, let remote, let remoteBranch):
+            try await repository.fastForward(branch: branch, fromRemote: remote, branch: remoteBranch)
         case .createTag(let name, let sha, let message, let sign):
             _ = try await repository.createTag(name: name, at: sha, message: message, sign: sign)
         case .deleteTag(let name):
@@ -141,6 +143,14 @@ public struct RepositoryCommands: GitCommandPerforming {
             try await repository.dropCommit(sha)
         case .rebaseInteractive(let base, let steps):
             try await repository.rebaseInteractive(onto: base, steps: steps)
+        case .initSubmodule(let path):
+            try await repository.initSubmodule(path: path)
+        case .updateSubmodule(let path, let toRemote):
+            try await repository.updateSubmodule(path: path, toRemote: toRemote)
+        case .fetchSubmodule(let path):
+            try await repository.fetchSubmodule(path: path)
+        case .removeSubmodule(let path):
+            try await repository.removeSubmodule(path: path)
         }
     }
 

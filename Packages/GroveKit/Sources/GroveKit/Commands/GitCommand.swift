@@ -27,6 +27,8 @@ public nonisolated enum GitCommand: Sendable, Equatable {
     /// Checks out after throwing away unstaged changes to tracked files.
     case discardAndCheckout(String)
     case merge(String, squash: Bool)
+    /// Moves a local branch that isn't checked out to its remote branch, only when that's a fast-forward.
+    case fastForward(branch: String, remote: String, remoteBranch: String)
     case rebase(onto: String)
     case createTag(name: String, at: String?, message: String?, sign: Bool)
     case deleteTag(String)
@@ -54,6 +56,13 @@ public nonisolated enum GitCommand: Sendable, Equatable {
     case drop(String)
     /// `steps` oldest first.
     case rebaseInteractive(onto: String, steps: [RebaseStep])
+    /// Clones a submodule that isn't checked out yet.
+    case initSubmodule(path: String)
+    /// To the commit the repository records, or to its remote's latest.
+    case updateSubmodule(path: String, toRemote: Bool)
+    case fetchSubmodule(path: String)
+    /// Deletes its clone and stages the removal from `.gitmodules`.
+    case removeSubmodule(path: String)
 
     /// Everything the command needs; all of it has to be supported.
     public var requiredFeatures: Set<GitFeature> {
@@ -68,7 +77,7 @@ public nonisolated enum GitCommand: Sendable, Equatable {
             Self.features(of: options).union([.push])
         case .sync: [.push]
         case .createBranch(_, _, let checkout, _, _): checkout ? [.createBranch, .checkout] : [.createBranch]
-        case .renameBranch, .deleteBranch, .setUpstream: [.editBranches]
+        case .renameBranch, .deleteBranch, .setUpstream, .fastForward: [.editBranches]
         case .deleteRemoteBranch: [.editBranches, .push]
         case .checkout, .stashAndCheckout, .discardAndCheckout: [.checkout]
         case .merge: [.merge]
@@ -76,6 +85,7 @@ public nonisolated enum GitCommand: Sendable, Equatable {
         case .createTag, .deleteTag: [.tag]
         case .pushTag, .pushAllTags: [.tag, .push]
         case .addRemote, .removeRemote, .setRemoteURL, .renameRemote, .pruneRemote: [.remotes]
+        case .initSubmodule, .updateSubmodule, .fetchSubmodule, .removeSubmodule: [.submodules]
         }
     }
 
