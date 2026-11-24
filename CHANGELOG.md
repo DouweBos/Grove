@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.11.0
+
+- Cancelling a clone the moment it starts stops it, also when the Mac is busy.
+- Error and warning banners can be dismissed and stay dismissed when the repository refreshes, and Blame and CI artifacts offer their Retry buttons again.
+- "Open Blame at This Revision" in File History opens Blame at that commit, also from before the file was renamed.
+- GroveKit, for apps that use it: additions only. `HistoryViewModel.fileHistory(path:)` with `onOpenBlame`, and ways to dismiss the Blame, File History, merge status and Git LFS banners. A dismissed refresh error stays dismissed until a read works or fails differently.
+- Unstaging or discarding selected lines changes exactly those lines.
+- Hunk and line actions keep a missing newline at the end of a file, and work with renamed, added and deleted files and with paths that have spaces or other scripts.
+- An action on a diff that is out of date is refused instead of changing other content.
+- GroveKit, for apps that use it: no API changes. Hunk actions take hunks and lines as `diff(for:staged:ignoreWhitespace:)` returned them, paths from status and diffs come unquoted, and a staged rename's diff has its `oldPath`.
+- Grove no longer quits when git stops reading a long list it was given.
+- Diffs stay fast at 100,000 lines, also with Wrap Lines, and can be shown side by side. Added, deleted, renamed and untracked files can be staged, unstaged and discarded by hunk and line. Click a line to select it, Shift- or Command-click for more; drag along a line to copy part of it.
+- GroveUIKit, for apps that use GroveKit: a new product with Grove's git UI, starting with its style, feature checks and primitives. GroveKit adds `GitCommandPerforming`, push tag options, squash merge, stash keep-index and branch, and remote rename and prune. The refs, reflog, branches review and stash view models run their changes, and their undo, through their `commands`, which an app can set.
+- GroveKit: `FileStatus.supportsHunkActions` says which changes can be staged by hunk and line, and the diff's models can be used off the main actor.
+- GroveUIKit adds the diff: `GitDiffPane` and `GitDiffView` with unified and split layouts, word and syntax highlights, Wrap Lines, image and Git LFS diffs, hunk and line actions, and slots for an app's own rows and controls. An app's copy, toast and open-file come in through `GitUIHost`.
+- GroveKit's `GitCommand` adds pushing a branch that isn't checked out (`pushBranch`), `sync`, `renameCurrentBranch`, and checking out after stashing or discarding changes; `.fetch(remote: nil)` fetches every remote, and a snapshot with nothing to save throws `GitCommandError.nothingToSnapshot`. `GitFeature` adds `verifySignatures` and `recurseSubmodules`, which pulls and pushes with those options need. Apps that switch over either enum need the new cases.
+- GroveUIKit adds the dialogs: fetch, pull, push, sync, new, rename, delete and track branch, merge, rebase, stash, snapshot, tag, add or edit a remote, and a branch from a stash, as `GitDialogView`, shown from anywhere through `GitDialogPresenter`. Each submits a public `Git…Form` through the app's `GitCommandPerforming`, offers only what its `GitFeatures` allow and says why the rest is off. Their template (`GitDialogSheet`, `GitDialogCard`, `GitDialogField`, `GitDialogOptionRow`, `GitDialogOptionsSection`, `GitDialogPathField`, `GitComboBox`) is public for an app's own sheets.
+- GroveKit: `GitCommand.saveConflictResolution` and `WorkingCopyViewModel.saveConflictResolution(_:contents:)` resolve a conflict with an edited result through the view model's `commands`, and `commitBlocker` says why Commit is off. `GitRepositoryProtocol` adds `saveConflictResolution(path:contents:)`; apps that switch over `GitCommand` need the new case.
+- GroveUIKit adds the working copy: `GitWorkingCopyView` with the composer, file list, patches, the operation banner and a conflict resolver that edits the merged result, and `GitConflictsView` for the conflicts alone. An app brings its own parts through `GitWorkingCopyHost` (open file, identity profiles, templates, dialogs, diff and merge tools, patch panels, focus and events) and `GitWorkingCopySlots` (header, row, row menu, composer, diff, or a replacement for the files and diff); `gitWorkingCopyDialogs` shows the discard, rename and Trash confirmations wherever its files are listed, and `GitAvatar` draws an initial.
+- GroveUIKit: `GitWorkingCopyView` takes a `GitWorkingCopyLayout`; below its two columns' width, or always with `.compact(composer:)`, it shows the file list over the diff, with or without the composer. The file list has a filter, and All Files rows have menus. `GitWorkingCopyHost` adds `compactDiffHeight` and `presentsDialogs`, `GitWorkingCopySlots` adds `filesDetail` and `trackedFileMenu`.
+- GroveKit's `GitCommand` adds the history rewrites: `cherryPick`, `revert`, `reset(to:mode:)`, `reword`, `squash`, `drop` and `rebaseInteractive(onto:steps:)`; `HistoryViewModel` runs all its changes, checkout included, through its new `commands`, and a cherry-pick, revert or rebase that stops on a conflict calls `onRebaseStopped`. `selectAll()` selects every listed commit. `GitRepositoryProtocol.mergePreview(base:compare:)` reads where two refs meet and whether merging would conflict. `RebaseStep` and `RebaseAction` are nonisolated. Apps that switch over `GitCommand` need the new cases.
+- GroveUIKit adds History: `GitHistoryView`, whose commit list is an AppKit table that stays fast at 100,000 commits, with the commit's detail, changeset and tree, a multi-selection summary and every commit action's sheet; `GitCompareView`, `GitFileHistoryView` and `GitInteractiveRebaseView` on their own; and `GitCommitRow`. An app brings its title, dimmed commits, compare, rebase, blame, avatars, diff options and review rows through `GitHistoryHost`. Tests and drivers find the list as `GitCommitTableView`.
+- GroveKit's `BlameViewModel` lays out a blamed file off the main thread, keeps `commitCount` instead of counting on every read, and adds `close()` to go back to picking a file. `BlameLine` is `Sendable`.
+- GroveUIKit adds Blame: `GitBlameView`, the file picker beside the blamed file, whose lines are an AppKit table that stays fast at 100,000 lines, with each run's commit, author, date and age. An app brings routing of picked files, Show Commit in History and file icons through `GitBlameHost`, and opens a line through `GitUIHost.openFile`. Tests and drivers find the table as `GitBlameTableView`. `GitSelectableList` and `gitSelectableRow(isSelected:)` are public for an app's own lists.
+- GroveKit's `GitCommand` adds `fastForward(branch:remote:remoteBranch:)` and the submodule commands `initSubmodule`, `updateSubmodule`, `fetchSubmodule` and `removeSubmodule`, which need `GitFeature.submodules`. `RefActionsViewModel` runs submodules and cherry-picks through its `commands`, and `checkout(named:carrying:)` can stash or discard what would block a checkout. Apps that switch over `GitCommand` need the new cases.
+- GroveUIKit adds the refs sidebar, `GitRefsSidebar` with `GitRefsModel`: branches in folders with pinned and protected ones first, worktrees, archived branches (also gone ones), remotes, tags and submodules, a filter, Show More for long lists, drag and drop to merge, rebase, pull and push, and asking to stash or discard when changes block a checkout. An app brings its marks, worktree, submodule, pull request, history, export and compare actions, its own rows and drops through `GitRefsHost`, its rows' branch actions through `gitRefBranchRow(_:)`. Also `GitStashesView`, `GitReflogView`, `GitBranchesReviewView`, `GitChangesetBrowser`, `GitSidebarRow`, `GitAheadBehind` and `GitFolderExpansion`.
+- History sorts and groups commits by commit date, so rebased commits no longer break up the day headers.
+- History keeps the selected commit's date in view when it first opens.
+- Repositories with thousands of branches open again instead of crashing while stacks are read.
+- Pull can take a remote branch that isn't in the list: choose Other Branch and type it.
+- Blame stays fast with very long files and shows each change's author, with newer changes tinted more strongly.
+- Click a change's commit to see the file before it, Option-click a line to open it in your editor, and right-click for Show Commit in History, Copy SHA or Copy Line. Select lines and press Command-C to copy them.
+- In a narrow window Blame shows the file list and the file one at a time.
+- Push can send annotated tags on the pushed commits, or all tags.
+- Merge can squash the branch into one commit to make, Stash can keep staged changes in the working copy, and New Tag can tag any branch, tag or commit.
+- Delete Branch warns when the branch has commits the checked-out branch doesn't, and ticks Delete Even if Unmerged for it. Track Remote Branch also takes a name typed in.
+- A branch created without checking it out can be undone.
+- History stays fast with very long histories. Return or a double-click checks out the selected commit after asking, Command-A selects every commit, Command-C copies the selected SHAs, and Page Up, Page Down, Home and End move through the list.
+- Several selected commits can be squashed, saved as a patch or have their SHAs copied from the detail pane.
+- Compare takes branches, tags and commits, shows where they meet and whether merging would conflict, and opens each changed file into its diff.
+- A cherry-pick or revert that stops on a conflict takes you to Changes to resolve it.
+- The sidebar has a filter at the bottom, and long lists like tags show their first rows with Show More, so repositories with thousands of branches and tags stay fast.
+- Branch menus add Squash-Merge, Push or Publish, Pull, and Check Out works for tags; remotes add Fetch, Prune Stale Branches and Rename or Set URL; tags add Push. Archived branches that no longer exist stay listed so they can be unarchived.
+- When uncommitted changes block a checkout, Grove offers to stash them and bring them along or to discard them.
+- The reflog lists the selected entry's changed files, and New Branch at an entry uses the same dialog as everywhere else. Stashes add New Branch from Stash and Copy Message.
+- Menu items no longer end in an ellipsis.
+- Conflicts are resolved in the Changes tab with both versions above the merged result, which can be edited and saved as the resolution. Binary conflicts say so instead of showing their bytes.
+- Return or a double-click opens a changed file, and the Files menu also has Stage All and Unstage All.
+- The commit identity menu can save the identity as a profile or remove one.
+- In a narrow window, Changes shows the file list over the diff, split by a gap you can drag, under the commit message.
+- The file list has a filter, and files in All Files have a menu to open, copy or reveal them.
+- Stash files straight from the Changes context menu: "Stash N Files" opens the Stash dialog with the selection ticked.
+
 ## 0.10.0
 
 - Pull and fetch try again on their own when another app fetched the same remote at the same moment, instead of failing with "cannot lock ref".
