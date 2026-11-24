@@ -238,6 +238,57 @@ struct ConsumerTests {
         #expect(blame.selectedFile == nil)
     }
 
+    @Test func anAppCanShowRefsStashesReflogAndReviewItsWay() async {
+        let repository = MockGitRepository()
+        let refs = RepositoryRefs(repository: repository)
+        var features = GitFeatures.all
+        features.remove([.checkout, .createBranch], reason: "Only in the project root")
+        let commands = HostCommands(features: features)
+        let actions = RefActionsViewModel(repository: repository, refs: refs)
+        actions.commands = commands
+        actions.onRepositoryChanged = {}
+        let model = GitRefsModel(actions: actions)
+        await refs.refresh()
+        var host = GitRefsHost()
+        host.marks = GitBranchMarks(pinned: ["develop"], archived: ["old"], protected: ["main"], base: "develop")
+        host.setPinned = { _, _ in }
+        host.setArchived = { _, _ in }
+        host.hiddenBranches = ["feature/auth"]
+        host.showsFailures = false
+        host.compare = { _, _ in }
+        host.branchMenu = { _ in AnyView(Button("Mine") {}) }
+        host.drop = { payload, _, _ in
+            GitRefCustomDrop(id: payload, title: "Move", message: "", symbol: "square", primaryTitle: "Move", fields: []) {}
+        }
+        let dialogs = GitDialogContext(repository: repository, refs: refs, commands: commands)
+        var selection: GitRefItem? = .branch("main")
+        let sidebar = GitRefsSidebar(model: model, dialogs: dialogs, presenter: GitDialogPresenter(),
+                                     selection: Binding(get: { selection }, set: { selection = $0 }), host: host) {
+            Text("Header")
+        } branches: {
+            Text("stack").gitRefBranchRow(refs.localBranches[0])
+        }
+        _ = NSHostingController(rootView: sidebar.gitFeatures(features).frame(width: 280, height: 600))
+            .sizeThatFits(in: NSSize(width: 280, height: 600))
+        #expect(model.localBranchGroups(host.marks, hiding: host.hiddenBranches).flatMap(\.branches).allSatisfy { $0.name != "main" })
+        #expect(model.handleDrop("develop", onBranch: refs.localBranches[0], option: false, host: host))
+        var expansion = GitFolderExpansion(containsHEAD: true)
+        expansion.toggle(to: false)
+        #expect(!expansion.isExpanded)
+
+        let stashes = StashesViewModel(repository: repository)
+        stashes.commands = commands
+        let reflog = ReflogViewModel(repository: repository)
+        let review = BranchesReviewViewModel(repository: repository, refs: refs)
+        for view in [AnyView(GitStashesView(viewModel: stashes, dialogs: dialogs, options: GitDiffOptions(), hasChanges: false)),
+                     AnyView(GitReflogView(viewModel: reflog, dialogs: dialogs)),
+                     AnyView(GitBranchesReviewView(viewModel: review)),
+                     AnyView(GitChangesetBrowser(files: [], selectedPath: nil) { _ in }),
+                     AnyView(GitSidebarRow(title: "main", symbol: "tag") { GitAheadBehind(ahead: 1, behind: 2) })] {
+            _ = NSHostingController(rootView: view.frame(width: 900, height: 600)).sizeThatFits(in: NSSize(width: 900, height: 600))
+        }
+    }
+
     private struct Item: Identifiable { let id: String }
 }
 #endif
