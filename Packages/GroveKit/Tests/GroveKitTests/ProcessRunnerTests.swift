@@ -27,4 +27,20 @@ struct ProcessRunnerTests {
         #expect(output.stdout == input)
         #expect(output.status == 0)
     }
+
+    @Test func aCancelThatArrivesBeforeTheLaunchStillStopsTheProcess() async throws {
+        let sleeper = Process()
+        sleeper.executableURL = URL(fileURLWithPath: "/bin/sleep")
+        sleeper.arguments = ["30"]
+        let started = Date()
+        let task = Task {
+            // Already cancelled when it asks to run, as under load the launch can come after the cancel.
+            while !Task.isCancelled { await Task.yield() }
+            return try await ProcessRunner.runStreaming(sleeper) { _ in }
+        }
+        task.cancel()
+        _ = try? await task.value
+        #expect(Date().timeIntervalSince(started) < 5)
+        #expect(!sleeper.isRunning)
+    }
 }

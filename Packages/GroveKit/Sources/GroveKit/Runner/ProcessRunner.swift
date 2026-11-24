@@ -37,18 +37,19 @@ public nonisolated enum ProcessRunner {
             try await withCheckedThrowingContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
                     do {
-                        continuation.resume(returning: try runBlocking(box.process, input: nil, onStderr: onStderr))
+                        continuation.resume(returning: try runBlocking(box.process, input: nil, onStderr: onStderr, box: box))
                     } catch {
                         continuation.resume(throwing: error)
                     }
                 }
             }
         } onCancel: {
-            if box.process.isRunning { box.process.terminate() }
+            box.cancel()
         }
     }
 
-    private static func runBlocking(_ process: Process, input: Data?, onStderr: (@Sendable (Data) -> Void)? = nil) throws -> Output {
+    private static func runBlocking(_ process: Process, input: Data?, onStderr: (@Sendable (Data) -> Void)? = nil,
+                                    box: ProcessBox? = nil) throws -> Output {
         let stdout = Pipe()
         let stderr = Pipe()
         let stdin = input.map { _ in Pipe() }
@@ -58,7 +59,7 @@ public nonisolated enum ProcessRunner {
 
         let exited = DispatchSemaphore(value: 0)
         process.terminationHandler = { _ in exited.signal() }
-        try process.run()
+        if let box { try box.launch() } else { try process.run() }
 
         let readers = DispatchGroup()
         let errorOutput = DataBox()
@@ -87,10 +88,28 @@ public nonisolated enum ProcessRunner {
         return Output(stdout: output, stderr: errorOutput.data, status: process.terminationStatus)
     }
 
-    /// Lets the cancellation handler reach the process; `terminate` is safe from any thread.
+    /// Lets the cancellation handler reach the process. Under load the launch can come after the cancel,
+    /// so the cancel is remembered and the launch checks it under the same lock.
     private final class ProcessBox: @unchecked Sendable {
         let process: Process
+        private let lock = NSLock()
+        private var cancelled = false
+
         init(_ process: Process) { self.process = process }
+
+        func cancel() {
+            lock.withLock {
+                cancelled = true
+                if process.isRunning { process.terminate() }
+            }
+        }
+
+        func launch() throws {
+            try lock.withLock {
+                guard !cancelled else { throw CancellationError() }
+                try process.run()
+            }
+        }
     }
 
     /// Written by exactly one reader before `readers.wait()` returns, so no lock is needed.
