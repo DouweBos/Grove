@@ -62,7 +62,6 @@ final class CommitRowCell: NSView {
         bounds.clip()
         switch content {
         case .commit(let model):
-            NSGraphicsContext.current?.cgContext.setAlpha(model.isDimmed ? 0.55 : 1)
             if layout == .graph { drawGraphRow(model, drawing) } else { drawTableRow(model, drawing) }
         case .day(let date, let lanes, let columns, let showsGraph):
             drawDay(date, lanes: lanes, columns: columns, showsGraph: showsGraph, drawing)
@@ -86,6 +85,8 @@ final class CommitRowCell: NSView {
             NSGraphicsContext.restoreGraphicsState()
             x += width + 8 * s
         }
+        // The lanes run on at full strength; only the commit itself dims.
+        dim(model)
         let tint = model.node.map { d.palette.lane($0.colorIndex) }
         d.avatar(model.commit, image: model.avatar, tint: tint,
                  in: NSRect(x: x, y: (height - m.avatar) / 2, width: m.avatar, height: m.avatar))
@@ -124,6 +125,7 @@ final class CommitRowCell: NSView {
         let mid = bounds.height / 2
         let gap = 8 * s
         let mono = m.mono(12)
+        dim(model)
         var right = bounds.width - 12 * s
         for (value, width) in [(model.commit.shortSHA, CommitListMetrics.Column.sha),
                                (model.commit.authorDate.commitRelative(), CommitListMetrics.Column.date)] {
@@ -141,6 +143,10 @@ final class CommitRowCell: NSView {
         let x = d.refs(model.refs, x: 12 * s, midY: mid, maxX: right)
         d.text(model.commit.summary, font: m.font(12, .medium), color: d.palette.text,
                in: NSRect(x: x, y: 0, width: right - x, height: bounds.height))
+    }
+
+    private func dim(_ model: CommitRowModel) {
+        if model.isDimmed { NSGraphicsContext.current?.cgContext.setAlpha(0.55) }
     }
 
     // MARK: Day header
