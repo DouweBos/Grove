@@ -59,6 +59,34 @@ struct CommitDayGroupTests {
         #expect(coordinator.table?.selectedRow == coordinator.rows.row(ofCommit: 5))
     }
 
+    @Test func theSelectedCommitKeepsItsDayHeaderInSightOnFirstShow() async throws {
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let commits = (0..<300).map { commit("c\($0)", start - Double($0) * 3_600) }
+        let coordinator = CommitTableCoordinator(viewModel: HistoryViewModel(repository: MockGitRepository()))
+        let scroll = coordinator.makeView()
+        let input = { (focus: String) in
+            CommitTableInput(commits: commits, layout: .graph, showsGraph: false, graphColumns: 1, refsKey: 0,
+                             selection: [focus], focus: focus, style: .system, ownCommits: nil, avatarURL: nil)
+        }
+        // Selected before the table has any height, as History is when it first shows.
+        coordinator.update(input("c0"))
+        try await Task.sleep(for: .milliseconds(50))
+        scroll.frame = NSRect(x: 0, y: 0, width: 600, height: 400)
+        let table = try #require(coordinator.table)
+        #expect(table.visibleRect.minY == 0)
+
+        // Further down, a day's first commit brings its header along.
+        let rows = coordinator.rows
+        let dayRow = try #require((0..<rows.count).last { row in
+            if case .day = rows.row(row) { return row > 100 }
+            return false
+        })
+        let first = try #require(rows.commitIndex(atRow: dayRow + 1))
+        coordinator.update(input(commits[first].id))
+        let visible = table.rows(in: table.visibleRect)
+        #expect(visible.contains(dayRow) && visible.contains(dayRow + 1))
+    }
+
     private func commit(_ id: String, _ date: Date) -> CommitInfo {
         CommitInfo(id: id, message: id, summary: id, body: nil, authorName: "T", authorEmail: "t@t", authorDate: date,
                    committerName: "T", committerEmail: "t@t", committerDate: date, parentIDs: [], isSigned: false)

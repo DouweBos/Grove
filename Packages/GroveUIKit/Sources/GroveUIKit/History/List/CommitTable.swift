@@ -117,6 +117,9 @@ final class CommitTableCoordinator: NSObject, NSTableViewDataSource, NSTableView
         scroll.drawsBackground = false
         table.autoresizingMask = [.width]
         self.table = table
+        scroll.contentView.postsFrameChangedNotifications = true
+        NotificationCenter.default.addObserver(self, selector: #selector(clipViewResized),
+                                               name: NSView.frameDidChangeNotification, object: scroll.contentView)
         return scroll
     }
 
@@ -156,16 +159,26 @@ final class CommitTableCoordinator: NSObject, NSTableViewDataSource, NSTableView
             appliedFocus = input.focus
             if let focus = input.focus, let index = index(of: focus) {
                 lastFocusIndex = index
-                let row = rows.row(ofCommit: index)
-                // Before its first layout the table has no height and would scroll the row to the top.
-                if table.visibleRect.height > 0 {
-                    table.scrollRowToVisible(row)
-                } else {
-                    DispatchQueue.main.async { [weak table] in table?.scrollRowToVisible(row) }
-                }
+                pendingReveal = focus
+                revealPending()
             }
         }
     }
+
+    /// The focus waiting for the table to get a height; before its first layout any row would scroll to the top.
+    private var pendingReveal: String?
+
+    func revealPending() {
+        guard let table, let focus = pendingReveal, table.visibleRect.height > 0 else { return }
+        pendingReveal = nil
+        guard let index = index(of: focus) else { return }
+        let row = rows.row(ofCommit: index)
+        // A day's first commit brings its header along, so its date stays in sight.
+        if row > 0, case .day = rows.row(row - 1) { table.scrollRowToVisible(row - 1) }
+        table.scrollRowToVisible(row)
+    }
+
+    @objc private func clipViewResized() { revealPending() }
 
     /// A long history shows at once and gets its day headers a moment later, rather than stall its first layout.
     static let groupsInBackgroundAbove = 20_000
