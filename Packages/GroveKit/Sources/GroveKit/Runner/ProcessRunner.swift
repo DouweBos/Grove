@@ -74,8 +74,11 @@ public nonisolated enum ProcessRunner {
         }
         if let input, let stdin {
             DispatchQueue.global(qos: .userInitiated).async(group: readers) {
-                stdin.fileHandleForWriting.write(input)
-                try? stdin.fileHandleForWriting.close()
+                // A git that exits before reading it all, e.g. on a bad revision, mustn't take the app down with SIGPIPE.
+                let handle = stdin.fileHandleForWriting
+                _ = fcntl(handle.fileDescriptor, F_SETNOSIGPIPE, 1)
+                try? handle.write(contentsOf: input)
+                try? handle.close()
             }
         }
         let output = stdout.fileHandleForReading.readDataToEndOfFile()

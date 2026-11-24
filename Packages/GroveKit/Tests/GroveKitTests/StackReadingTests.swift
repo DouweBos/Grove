@@ -137,4 +137,13 @@ struct StackReadingTests {
         #expect(tips.count == 5001)
         #expect(graph.order == [sha])
     }
+
+    @Test func aGitThatStopsReadingItsInputThrowsInsteadOfCrashing() async throws {
+        let repo = try ScratchRepository("bad-input")
+        defer { try? FileManager.default.removeItem(at: repo.root) }
+        let repository = try await GitRepository(path: repo.root, runner: LocalGitRunner())
+        let tips = (0..<20000).map { "refs/heads/missing-branch-with-a-long-name-\($0)" }
+
+        await #expect(throws: (any Error).self) { try await repository.stackGraph(tips: tips, excluding: ["refs/heads/main"]) }
+    }
 }
