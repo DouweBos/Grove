@@ -3,6 +3,7 @@
 
 import Foundation
 import GroveKit
+import GroveUIKit
 
 extension SidebarViewModel {
 
@@ -16,6 +17,7 @@ extension SidebarViewModel {
             try await repository.archive(revision: ref, to: url)
         } catch {
             errorMessage = "Couldn't export the files: \(error.localizedDescription)"
+            refsModel.report("Couldn't export the files: \(error.localizedDescription)")
         }
     }
 }

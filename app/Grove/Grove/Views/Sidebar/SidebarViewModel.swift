@@ -3,6 +3,7 @@
 
 import Foundation
 import GroveKit
+import GroveUIKit
 import Observation
 
 /// ViewModel for the in-repository sidebar.
@@ -29,6 +30,8 @@ final class SidebarViewModel {
 
     /// Branch, remote, submodule and worktree actions, shared with GroveKit's other apps.
     let actions: RefActionsViewModel
+    /// GroveUIKit's refs sidebar: folders, filter, drops and confirmations.
+    let refsModel: GitRefsModel
 
     /// A failed action, else a failed ref read.
     var errorMessage: String? {
@@ -77,22 +80,12 @@ final class SidebarViewModel {
 
     /// Double-click on a branch: open the worktree that has it in a new tab, otherwise check it out here.
     func activate(branch: BranchInfo) async {
-        if let worktree = actions.worktree(checkingOut: branch) {
-            openInNewTab(worktree)
-        } else if !branch.isHEAD {
-            await actions.checkout(branch: branch)
-        }
+        await refsModel.activate(.branch(branch.name), features: actions.commands.features, host: refsHost)
     }
 
     /// Double-click on a remote branch: its local branch if there is one, otherwise a new tracking branch.
-    /// Git refuses when local changes would be overwritten, which shows as the sidebar's error.
     func activate(remoteBranch branch: BranchInfo) async {
-        let shortName = RefActionsViewModel.shortName(of: branch)
-        if let local = localBranches.first(where: { $0.name == shortName }) {
-            await activate(branch: local)
-        } else {
-            await actions.checkout(remoteBranch: branch)
-        }
+        await refsModel.activate(.remoteBranch(branch.name), features: actions.commands.features, host: refsHost)
     }
 
     func select(_ item: SidebarItem) {
@@ -147,15 +140,13 @@ final class SidebarViewModel {
             .sorted { $0.name < $1.name }
     }
 
-    /// Toggle a branch between pinned and unpinned.
-    func togglePin(branch: BranchInfo) {
-        if pinnedBranchNames.contains(branch.name) {
-            pinnedBranchNames.remove(branch.name)
-        } else {
-            pinnedBranchNames.insert(branch.name)
-        }
+    func setPinned(_ name: String, _ pinned: Bool) {
+        if pinned { pinnedBranchNames.insert(name) } else { pinnedBranchNames.remove(name) }
         savePinnedBranches()
     }
+
+    /// Pinned and archived branches, as the refs sidebar takes them.
+    var branchMarks: GitBranchMarks { GitBranchMarks(pinned: pinnedBranchNames, archived: archivedBranchNames) }
 
     // MARK: - Stacks
 
@@ -183,15 +174,14 @@ final class SidebarViewModel {
         listedBranches.filter { archivedBranchNames.contains($0.name) }.sorted { $0.name < $1.name }
     }
 
-    func archive(branch: BranchInfo) {
-        archivedBranchNames.insert(branch.name)
-        pinnedBranchNames.remove(branch.name)
-        UserDefaults.standard.set(Array(archivedBranchNames), forKey: archivedBranchesDefaultsKey)
-        savePinnedBranches()
-    }
-
-    func unarchive(branch: BranchInfo) {
-        archivedBranchNames.remove(branch.name)
+    func setArchived(_ name: String, _ archived: Bool) {
+        if archived {
+            archivedBranchNames.insert(name)
+            pinnedBranchNames.remove(name)
+            savePinnedBranches()
+        } else {
+            archivedBranchNames.remove(name)
+        }
         UserDefaults.standard.set(Array(archivedBranchNames), forKey: archivedBranchesDefaultsKey)
     }
 
@@ -235,6 +225,7 @@ final class SidebarViewModel {
         let refs = refs ?? RepositoryRefs(repository: repository)
         self.refs = refs
         self.actions = RefActionsViewModel(repository: repository, refs: refs)
+        refsModel = GitRefsModel(actions: actions)
         loadPinnedBranches()
     }
 
@@ -267,16 +258,6 @@ final class SidebarViewModel {
 
     private(set) var isAddingSubmodule = false
     private(set) var isAddingRemote = false
-    /// Set through `present(_:)` and `requestConfirmation(_:)` in SidebarViewModel+Prompts.swift.
-    var sheet: SidebarSheet?
-    var confirmation: SidebarConfirmation?
-
-    // MARK: - Drops (SidebarViewModel+Drops.swift)
-
-    /// A drop waiting for confirmation, e.g. merging one branch into another.
-    var pendingDrop: SidebarDropAction?
-    var dropError: String?
-    var isRunningDrop = false
 
     func requestAddSubmodule() { isAddingSubmodule = true }
     /// The worktree the Remove Worktree sheet is for; the sidebar owns the sheet since the section can vanish.
@@ -289,35 +270,8 @@ final class SidebarViewModel {
 
     // MARK: - Derived
 
-    /// Branch groups derived from "/" in branch names.
+    /// Branch groups derived from "/" in branch names, without archived and stacked ones.
     var localBranchGroups: [(prefix: String?, branches: [BranchInfo])] {
-        let stacked = stackedBranchNames
-        let branches = listedBranches.filter { !archivedBranchNames.contains($0.name) && !stacked.contains($0.name) }
-        return Self.folderGroups(branches, trunk: refs.trunk, name: \.name)
-    }
-
-    /// One remote's branches, grouped by "/" in their name without the remote.
-    func remoteBranchGroups(of remote: RemoteInfo) -> [(prefix: String?, branches: [BranchInfo])] {
-        let branches = remoteBranches.filter { $0.remoteName == remote.name && !$0.name.hasSuffix("/HEAD") }
-        return Self.folderGroups(branches, trunk: refs.trunk) { RefActionsViewModel.shortName(of: $0) }
-    }
-
-    /// The trunk, then names without a "/", then a group per first path component, sorted.
-    private static func folderGroups(_ branches: [BranchInfo], trunk: String?,
-                                     name: (BranchInfo) -> String) -> [(prefix: String?, branches: [BranchInfo])] {
-        var ungrouped: [BranchInfo] = []
-        var groups: [String: [BranchInfo]] = [:]
-        for branch in branches {
-            let name = name(branch)
-            if let slashIndex = name.firstIndex(of: "/") {
-                groups[String(name[..<slashIndex]), default: []].append(branch)
-            } else {
-                ungrouped.append(branch)
-            }
-        }
-        if let index = ungrouped.firstIndex(where: { name($0) == trunk }) {
-            ungrouped.insert(ungrouped.remove(at: index), at: 0)
-        }
-        return [(prefix: nil, branches: ungrouped)] + groups.keys.sorted().map { (prefix: $0, branches: groups[$0]!) }
+        refsModel.localBranchGroups(branchMarks, hiding: stackedBranchNames).map { ($0.prefix, $0.branches) }
     }
 }

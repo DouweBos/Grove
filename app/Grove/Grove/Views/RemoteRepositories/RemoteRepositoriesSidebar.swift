@@ -94,7 +94,7 @@ private struct RemoteOwnerSection: View {
                 }
             }
         } label: {
-            SidebarRow(title: owner.title, symbol: owner.isAccount ? "person.crop.circle" : "building.2", tint: Theme.accent,
+            GitSidebarRow(title: owner.title, symbol: owner.isAccount ? "person.crop.circle" : "building.2", tint: Theme.accent,
                        isEmphasized: true) {
                 if case .loaded(let all) = viewModel.states[owner.id] {
                     Text("\(all.count)").font(.system(size: 11, weight: .semibold, design: .rounded))
@@ -119,7 +119,7 @@ struct RemoteRepositoryRow: View {
     var clone: CloneQueue.Job?
 
     var body: some View {
-        SidebarRow(
+        GitSidebarRow(
             title: repository.name,
             symbol: isCloned ? "internaldrive" : (repository.isFork ? "tuningfork" : "cloud"),
             tint: isCloned ? Theme.success : Theme.textSecondary

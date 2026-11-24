@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// A stack in the Branches section drawn as a lane graph, first layer on top; selecting it opens the Stack tab.
@@ -10,24 +11,24 @@ struct StackSidebarFolder<Row: View>: View {
     let stack: BranchStack
     let showStack: () -> Void
     @ViewBuilder let row: (StackLayer, StackSidebarLanes) -> Row
-    @State private var expansion: FolderExpansion
+    @State private var expansion: GitFolderExpansion
 
     init(stack: BranchStack, showStack: @escaping () -> Void, @ViewBuilder row: @escaping (StackLayer, StackSidebarLanes) -> Row) {
         self.stack = stack
         self.showStack = showStack
         self.row = row
-        _expansion = State(initialValue: FolderExpansion(containsHEAD: stack.layers.contains(where: \.isHEAD)))
+        _expansion = State(initialValue: GitFolderExpansion(containsHEAD: stack.layers.contains(where: \.isHEAD)))
     }
 
     var body: some View {
         DisclosureGroup(isExpanded: Binding(get: { expansion.isExpanded }, set: { expansion.toggle(to: $0) })) {
             ForEach(StackSidebarLanes.rows(of: stack), id: \.layer.branch) { row($0.layer, $0.lanes) }
         } label: {
-            SidebarRow(title: stack.name, symbol: "square.stack.3d.up",
+            GitSidebarRow(title: stack.name, symbol: "square.stack.3d.up",
                        tint: stack.needsAttention ? Theme.warning : Theme.textSecondary) {
                 Text("\(stack.layers.count)").font(.system(size: 11, design: .monospaced))
             }
-            .tag(SidebarItem.branchStack(stack.id))
+            .tag(GitRefItem.host(SidebarViewModel.stackTag + stack.id))
             .help(stack.needsAttention ? "\(stack.name): some layers need a restack or retarget" : "\(stack.name) on \(stack.trunk)")
             .contextMenu {
                 Button("Show Stack", systemImage: "square.stack.3d.up", action: showStack)

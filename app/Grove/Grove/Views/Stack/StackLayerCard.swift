@@ -51,7 +51,7 @@ struct StackLayerCard: View {
                 DiffStatsBar(stats: stats, width: 44)
             }
             if layer.ahead > 0 || layer.behind > 0 {
-                AheadBehindIndicator(ahead: layer.ahead, behind: layer.behind)
+                GitAheadBehind(ahead: layer.ahead, behind: layer.behind)
                     .foregroundStyle(Theme.textSecondary)
             }
             markers

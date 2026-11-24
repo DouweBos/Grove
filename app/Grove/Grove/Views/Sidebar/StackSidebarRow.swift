@@ -2,6 +2,7 @@
 // Grove
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 /// One layer of a stack: its lane graph node, name, PR label, health glyphs and ahead/behind.
@@ -33,7 +34,7 @@ struct StackSidebarRow: View {
     }
 
     private var row: some View {
-        SidebarRow(
+        GitSidebarRow(
             title: displayName,
             symbol: branch.isHEAD ? "checkmark.circle.fill" : "arrow.triangle.branch",
             tint: branch.isHEAD ? Theme.accent : Theme.textSecondary,
@@ -48,7 +49,7 @@ struct StackSidebarRow: View {
                         .foregroundStyle(health == .unpushed ? Theme.textSecondary : Theme.warning)
                 }
                 if branch.ahead > 0 || branch.behind > 0 {
-                    AheadBehindIndicator(ahead: branch.ahead, behind: branch.behind)
+                    GitAheadBehind(ahead: branch.ahead, behind: branch.behind)
                 }
             }
         }

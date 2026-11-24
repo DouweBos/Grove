@@ -237,42 +237,4 @@ struct SidebarViewModelTests {
         #expect(!vm.remotes.isEmpty)
         #expect(vm.errorMessage != nil)
     }
-
-    // MARK: localBranchGroups — shows all branches
-
-    @Test func localBranchGroups_includesAllLocalBranches() async {
-        let repo = MockGitRepository()
-        let vm = SidebarViewModel(repository: repo)
-
-        await vm.refresh()
-
-        let allGroupedBranches = vm.localBranchGroups.flatMap(\.branches)
-        #expect(allGroupedBranches.count == vm.localBranches.count,
-                "localBranchGroups should contain all local branches, not just active ones")
-    }
-
-    @Test func remoteBranchGroups_foldersByPrefixWithoutTheRemote() {
-        let vm = SidebarViewModel(repository: MockGitRepository())
-        let remote = RemoteInfo(id: "origin", name: "origin", url: "git@example.com:a/b.git")
-        let branches = ["origin/HEAD", "origin/main", "origin/adam/ima", "origin/adam/mat", "origin/alex/oom"].map {
-            BranchInfo(id: "refs/remotes/\($0)", name: $0, isLocal: false, isRemote: true, isHEAD: false,
-                       targetSHA: "s", remoteName: "origin", upstream: nil, ahead: 0, behind: 0)
-        }
-        vm.refs.replace(remoteBranches: branches, remotes: [remote])
-
-        let groups = vm.remoteBranchGroups(of: remote)
-        #expect(groups.map(\.prefix) == [nil, "adam", "alex"])
-        #expect(groups.map { $0.branches.map(\.name) } == [["origin/main"], ["origin/adam/ima", "origin/adam/mat"], ["origin/alex/oom"]])
-    }
-
-    @Test func localBranchGroups_listTheTrunkFirst() {
-        let vm = SidebarViewModel(repository: MockGitRepository())
-        let branches = ["code-editor-plan", "main", "zeta"].map {
-            BranchInfo(id: "refs/heads/\($0)", name: $0, isLocal: true, isRemote: false, isHEAD: false,
-                       targetSHA: "s", remoteName: nil, upstream: nil, ahead: 0, behind: 0)
-        }
-        vm.refs.replace(localBranches: branches, stacks: [MockData.linearStack])
-
-        #expect(vm.localBranchGroups.first?.branches.map(\.name) == ["main", "code-editor-plan", "zeta"])
-    }
 }

@@ -6,6 +6,7 @@
 
 import AppKit
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 // MARK: - RepositoryContentRouter
@@ -85,15 +86,13 @@ struct RepositoryContentRouter: View {
             HistoryView(viewModel: session.historyVM, session: session)
 
         case .stashes:
-            StashesView()
-                .environment(session.stashesVM)
+            StashesView(viewModel: session.stashesVM, sidebar: session.sidebarVM)
                 .task(id: "stashes-initial") {
                     await session.refreshOnEntry(.stashes)
                 }
 
         case .reflog:
-            ReflogView()
-                .environment(session.reflogVM)
+            ReflogView(viewModel: session.reflogVM, sidebar: session.sidebarVM)
                 .task(id: "reflog-initial") {
                     await session.refreshOnEntry(.reflog)
                 }
@@ -117,8 +116,8 @@ struct RepositoryContentRouter: View {
                 }
 
         case .branchesReview:
-            BranchesReviewView()
-                .environment(session.branchesReviewVM)
+            GitBranchesReviewView(viewModel: session.branchesReviewVM)
+                .padding(.bottom, Theme.Spacing.md)
                 .task(id: "branchesreview-initial") {
                     await session.refreshOnEntry(.branchesReview)
                 }

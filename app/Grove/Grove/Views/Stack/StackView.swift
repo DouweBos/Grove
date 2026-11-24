@@ -178,3 +178,9 @@ private struct StackTree: View {
         .frame(width: 1000, height: 500)
         .background(Theme.background)
 }
+
+/// Identifies a "new branch from ref" sheet.
+struct CreateBranchRequest: Identifiable {
+    let ref: String
+    var id: String { ref }
+}

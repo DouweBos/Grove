@@ -9,6 +9,7 @@ import SwiftUI
 struct PullRequestDetailView: View {
 
     @Environment(PullRequestsViewModel.self) private var viewModel
+    private let diffSettings = DiffSettings()
 
     var body: some View {
         Group {
@@ -108,8 +109,9 @@ struct PullRequestDetailView: View {
             commits
         case .files:
             // TODO: No image previews for pull request changesets.
-            ChangesetBrowser(files: viewModel.prChangeset, selectedPath: viewModel.selectedChangesetPath,
-                             isLoading: viewModel.isLoadingChangeset, emptyTitle: "No File Changes") {
+            GitChangesetBrowser(files: viewModel.prChangeset, selectedPath: viewModel.selectedChangesetPath,
+                                isLoading: viewModel.isLoadingChangeset, emptyTitle: "No File Changes",
+                                options: diffSettings.options) {
                 viewModel.selectChangesetFile($0)
             }
         }

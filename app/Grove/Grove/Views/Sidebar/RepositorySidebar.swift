@@ -10,58 +10,19 @@ import SwiftUI
 struct RepositorySidebar: View {
 
     @Environment(SidebarViewModel.self) private var viewModel
+    @Environment(WindowViewModel.self) private var windowVM
+    @Environment(WindowStore.self) private var windows
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        @Bindable var vm = viewModel
-
-        List(selection: $vm.selection) {
-            Section {
-                RepositorySummaryHeader()
-                    .listRowSeparator(.hidden)
-                    .selectionDisabled()
-            }
-
-            // MARK: Branches
-
-            BranchesSidebarSection()
-
-            // MARK: Worktrees
-
-            WorktreesSidebarSection()
-
-            // MARK: Archived Branches
-
-            ArchivedBranchesSidebarSection()
-
-            // MARK: Remotes
-
-            RemotesSidebarSection()
-
-            // MARK: Tags
-
-            TagsSidebarSection()
-
-            // MARK: Submodules
-
-            SubmodulesSidebarSection()
-        }
-        .listStyle(.sidebar)
-        // Double-click / Return on a branch; a tap gesture on the row itself would eat the click that selects it.
-        .contextMenu(forSelectionType: SidebarItem.self) { _ in
-        } primaryAction: { items in
-            switch items.first {
-            case .branch(let branch): Task { await viewModel.activate(branch: branch) }
-            case .remoteBranch(let branch): Task { await viewModel.activate(remoteBranch: branch) }
-            default: break
-            }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let activity = viewModel.actions.activity {
-                GitProgressStrip(title: activity, detail: "", fraction: nil)
-                    .padding(Theme.Spacing.sm)
-            } else if let message = viewModel.errorMessage {
-                GitBanner(symbol: "xmark.octagon", message: message, tone: .negative) { viewModel.dismissError() }
-                    .padding(Theme.Spacing.sm)
+        GitRefsSidebar(model: viewModel.refsModel, dialogs: viewModel.dialogContext,
+                       selection: Binding(get: { viewModel.refSelection }, set: { viewModel.select(ref: $0) }), host: host) {
+            RepositorySummaryHeader()
+        } branches: {
+            ForEach(viewModel.stacks) { stack in
+                StackSidebarFolder(stack: stack, showStack: { viewModel.showStack(stack) }) { layer, lanes in
+                    stackRow(layer, lanes: lanes)
+                }
             }
         }
         .sheet(isPresented: Binding(get: { viewModel.isAddingSubmodule }, set: { if !$0 { viewModel.dismissAddSubmodule() } })) {
@@ -73,12 +34,31 @@ struct RepositorySidebar: View {
         .sheet(isPresented: Binding(get: { viewModel.isAddingRemote }, set: { if !$0 { viewModel.dismissAddRemote() } })) {
             GitDialogView(.addRemote, context: viewModel.dialogContext)
         }
-        .sidebarPrompts(viewModel)
-        .sheet(item: Binding(get: { viewModel.pendingDrop }, set: { if $0 == nil { viewModel.cancelDrop() } })) { action in
-            SidebarDropSheet(viewModel: viewModel, action: action)
-        }
         .task {
             await viewModel.loadIfNeeded()
+        }
+    }
+
+    /// Grove's own parts, and submodules opening in a tab or this window.
+    private var host: GitRefsHost {
+        var host = viewModel.refsHost
+        let path = viewModel.repository.path
+        host.openSubmodule = { [windows, openWindow] submodule in
+            windows.requestTab()
+            openWindow(id: GroveApp.mainWindowID, value: RepositoryReference(path: path.appendingPathComponent(submodule.path).path))
+        }
+        host.openSubmoduleHere = { [windowVM] submodule in
+            windowVM.openReference(RepositoryReference(path: path.appendingPathComponent(submodule.path).path))
+        }
+        return host
+    }
+
+    @ViewBuilder
+    private func stackRow(_ layer: StackLayer, lanes: StackSidebarLanes) -> some View {
+        if let branch = viewModel.listedBranches.first(where: { $0.name == layer.branch }) {
+            StackSidebarRow(layer: layer, lanes: lanes, branch: branch, worktree: viewModel.actions.worktree(checkingOut: branch))
+                .gitRefBranchRow(branch, menuLeading: AnyView(
+                    Button("Show Stack", systemImage: "square.stack.3d.up") { viewModel.showStack(containing: branch.name) }))
         }
     }
 }
@@ -234,6 +214,7 @@ private struct RepositorySummaryHeader: View {
         RepositorySidebar()
             .environment(vm)
             .environment(WindowViewModel(manager: MockRepositoryManager()))
+            .environment(WindowStore(manager: MockRepositoryManager()))
     } detail: {
         Text("Detail")
     }
