@@ -219,5 +219,25 @@ struct ConsumerTests {
             #expect(commands.performed == [.cherryPick(commit.id), .reset(to: commit.id, mode: .soft)])
         }
     }
+
+    @Test func anAppCanShowBlameItsWay() async {
+        let blame = BlameViewModel(repository: MockGitRepository())
+        var host = GitBlameHost()
+        host.pick = { (path: String?) in _ = path }
+        host.showInHistory = { _ in }
+        host.fileIcon = { _ in AnyView(Image(systemName: "doc")) }
+        await blame.open(file: "README.md")
+        let view = GitBlameView(viewModel: blame, host: host).gitUIHost(GitUIHost(openFile: { _, _ in }))
+        _ = NSHostingController(rootView: view.frame(width: 1000, height: 600)).sizeThatFits(in: NSSize(width: 1000, height: 600))
+        let list = GitSelectableList(items: [Item(id: "a")], selection: "a", onSelect: { _ in }) { Text($0.id) }
+        _ = NSHostingController(rootView: list.frame(width: 300, height: 200)).sizeThatFits(in: NSSize(width: 300, height: 200))
+        _ = NSHostingController(rootView: Text("row").gitSelectableRow(isSelected: true)).sizeThatFits(in: NSSize(width: 300, height: 40))
+        let table: GitBlameTableView.Type = GitBlameTableView.self
+        #expect(table is NSTableView.Type)
+        blame.close()
+        #expect(blame.selectedFile == nil)
+    }
+
+    private struct Item: Identifiable { let id: String }
 }
 #endif

@@ -33,6 +33,7 @@ A macOS Git client built with SwiftUI. Its design language follows our disk anal
 - Dialogs submit a `Git…Form` through the context's commands, never the repository, and only offer what its `GitFeatures` allow; a host without `cancel` gets a spinner and no Cancel while one runs.
 - The working copy takes the app's parts through `GitWorkingCopyHost` closures and `GitWorkingCopySlots`; a nil closure leaves its item out. It goes compact (the list over the diff) only through `GitWorkingCopyView.arrangement`. A conflict's result is only ever saved from text read through the repository.
 - History's commit list is an AppKit table that draws its rows itself and mirrors the view model's selection; its menus and keys check `GitFeatures`. The app's parts come through `GitHistoryHost`; blame goes through the view model's `onOpenBlame`, conflicts through `onRebaseStopped`.
+- Blame's lines are an AppKit table that draws its rows itself; the app routes picked files and shows commits through `GitBlameHost`, and opens lines through `GitUIHost.openFile`, only at the working tree.
 - The diff is an AppKit table. Highlights keep kinds and ranges, never colors, and an update that changes nothing never reads the whole diff.
 
 ## Design system
