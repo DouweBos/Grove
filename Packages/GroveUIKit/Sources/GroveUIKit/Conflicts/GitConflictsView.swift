@@ -48,21 +48,25 @@ public struct GitConflictsView: View {
             }
             .padding(.bottom, GitMetrics.Spacing.lg)
         } else {
-            HStack(spacing: GitMetrics.Spacing.md) {
-                VStack(spacing: GitMetrics.Spacing.md) {
-                    if viewModel.isInOperation { GitOperationBanner(showsOnlyConflicts: false) }
-                    list(conflicts)
-                }
-                .frame(width: 300 * style.fontScale)
-                Group {
-                    if let entry = viewModel.selectedEntry, entry.isConflicted {
-                        GitConflictResolver(entry: entry).id(entry.path)
-                    } else {
-                        GitEmptyState(systemImage: "exclamationmark.triangle", title: "Select a Conflicted File")
+            // A GeometryReader, as the working copy has: the resolver's split view asks for more height than the window has.
+            GeometryReader { geo in
+                HStack(spacing: GitMetrics.Spacing.md) {
+                    VStack(spacing: GitMetrics.Spacing.md) {
+                        if viewModel.isInOperation { GitOperationBanner(showsOnlyConflicts: false) }
+                        list(conflicts)
                     }
+                    .frame(width: 300 * style.fontScale)
+                    Group {
+                        if let entry = viewModel.selectedEntry, entry.isConflicted {
+                            GitConflictResolver(entry: entry).id(entry.path)
+                        } else {
+                            GitEmptyState(systemImage: "exclamationmark.triangle", title: "Select a Conflicted File")
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .gitPanel()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .gitPanel()
+                .frame(width: geo.size.width, height: geo.size.height)
             }
             .padding(.bottom, GitMetrics.Spacing.lg)
         }
