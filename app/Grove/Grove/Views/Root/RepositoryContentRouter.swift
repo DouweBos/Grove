@@ -99,7 +99,7 @@ struct RepositoryContentRouter: View {
                 }
 
         case .blame:
-            BlameView(viewModel: session.blameVM)
+            BlameView(viewModel: session.blameVM, session: session)
 
         case .pullRequests:
             PullRequestsView()

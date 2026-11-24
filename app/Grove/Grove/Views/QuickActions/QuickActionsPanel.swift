@@ -4,6 +4,7 @@
 // Floating command palette (Cmd+Shift+A): commands, views, refs, commits and files.
 
 import GroveKit
+import GroveUIKit
 import SwiftUI
 
 struct QuickActionsPanel: View {
@@ -113,7 +114,7 @@ struct QuickActionsPanel: View {
                     LazyVStack(spacing: 2) {
                         ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, result in
                             QuickActionRow(result: result)
-                                .selectableRow(isSelected: index == viewModel.selectedIndex)
+                                .gitSelectableRow(isSelected: index == viewModel.selectedIndex)
                                 .id(result.id)
                                 .onTapGesture {
                                     viewModel.highlight(index)

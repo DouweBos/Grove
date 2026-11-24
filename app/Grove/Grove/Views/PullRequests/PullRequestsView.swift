@@ -96,7 +96,7 @@ private struct PullRequestListPanel: View {
             GitEmptyState(systemImage: "arrow.triangle.pull", title: emptyTitle,
                            subtitle: viewModel.pullRequests.isEmpty ? "This repository has no pull requests on \(viewModel.serviceName)." : nil)
         } else {
-            SelectableList(items: viewModel.filteredPullRequests, selection: viewModel.selectedPR?.id,
+            GitSelectableList(items: viewModel.filteredPullRequests, selection: viewModel.selectedPR?.id,
                            onSelect: { pr in Task { await viewModel.select(pr) } }) { pr in
                 PullRequestRow(pr: pr)
                     .contextMenu {

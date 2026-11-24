@@ -101,7 +101,7 @@ struct BranchesReviewView: View {
                                             isChecked: viewModel.selectedIDs.contains(branch.id)) {
                                 viewModel.toggleSelection(branch)
                             }
-                            .selectableRow(isSelected: viewModel.selectedIDs.contains(branch.id))
+                            .gitSelectableRow(isSelected: viewModel.selectedIDs.contains(branch.id))
                             .onTapGesture { viewModel.toggleSelection(branch) }
                             .contextMenu {
                                 Button("Delete \u{201C}\(branch.name)\u{201D}\u{2026}", systemImage: "trash", role: .destructive) {

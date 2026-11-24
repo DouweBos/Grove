@@ -74,7 +74,7 @@ private struct ReflogListPanel: View {
                 GitEmptyState(systemImage: "clock.arrow.circlepath", title: "No Reflog Entries",
                                subtitle: "HEAD movements such as commits, checkouts and resets appear here.")
             } else {
-                SelectableList(items: indexedEntries, selection: viewModel.selectedEntry?.id,
+                GitSelectableList(items: indexedEntries, selection: viewModel.selectedEntry?.id,
                                onSelect: { item in Task { await viewModel.select(item.entry) } }) { item in
                     ReflogRow(entry: item.entry, index: item.index, action: viewModel.actionType(for: item.entry))
                         .contextMenu { contextMenu(item.entry) }

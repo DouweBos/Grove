@@ -85,7 +85,7 @@ private struct StashListPanel: View {
                                subtitle: "Stash your changes to set work aside without committing.",
                                actionTitle: "Stash Changes\u{2026}") { GroveAction.stash.post() }
             } else {
-                SelectableList(items: viewModel.stashes, selection: viewModel.selectedStash?.id,
+                GitSelectableList(items: viewModel.stashes, selection: viewModel.selectedStash?.id,
                                onSelect: { stash in Task { await viewModel.select(stash) } }) { stash in
                     StashRow(stash: stash)
                         .draggable("stash@{\(stash.id)}")

@@ -41,7 +41,7 @@ struct ChangesetBrowser: View {
             }
             .padding(.horizontal, Theme.Spacing.lg)
             .padding(.top, Theme.Spacing.md)
-            SelectableList(items: files.map(ChangesetRowItem.init), selection: selectedPath,
+            GitSelectableList(items: files.map(ChangesetRowItem.init), selection: selectedPath,
                            onSelect: { onSelect($0.file) }) { item in
                 ChangesetFileLine(file: item.file)
             }

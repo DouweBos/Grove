@@ -182,7 +182,7 @@ struct PullRequestDetailView: View {
                             Spacer()
                             Text(commit.shortSHA).font(.monoCaption).foregroundStyle(Theme.accent)
                         }
-                        .selectableRow(isSelected: false)
+                        .gitSelectableRow(isSelected: false)
                         .contextMenu {
                             Button("Copy SHA", systemImage: "doc.on.doc") { GroveClipboard.copy(commit.id) }
                         }

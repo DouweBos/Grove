@@ -21,7 +21,7 @@ struct CIJobsView: View {
                            subtitle: "This run hasn't started any jobs.")
         } else {
             HStack(spacing: 0) {
-                SelectableList(items: entries, selection: viewModel.selectedJobID.map(Entry.ID.job) ?? .summary,
+                GitSelectableList(items: entries, selection: viewModel.selectedJobID.map(Entry.ID.job) ?? .summary,
                                onSelect: select) { entry in
                     switch entry {
                     case .summary: CISummaryRow()

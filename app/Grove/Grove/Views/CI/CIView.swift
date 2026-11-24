@@ -113,7 +113,7 @@ private struct CIRunListPanel: View {
                                actionTitle: "Clear Filters") { Task { await viewModel.clearFilters() } }
             }
         } else {
-            SelectableList(items: viewModel.runs, selection: viewModel.selectedRunID, onSelect: { run in Task { await viewModel.select(run) } }) { run in
+            GitSelectableList(items: viewModel.runs, selection: viewModel.selectedRunID, onSelect: { run in Task { await viewModel.select(run) } }) { run in
                 CIRunRow(run: run, isWatched: viewModel.isWatching(run))
                     .onAppear {
                         // The last row coming into view reads the next page.

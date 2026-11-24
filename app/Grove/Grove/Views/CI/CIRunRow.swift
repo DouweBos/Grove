@@ -45,7 +45,7 @@ struct CIRunRow: View {
 
 #Preview {
     VStack(spacing: 2) {
-        ForEach(MockData.ciRuns) { CIRunRow(run: $0).selectableRow(isSelected: $0.id == 146) }
+        ForEach(MockData.ciRuns) { CIRunRow(run: $0).gitSelectableRow(isSelected: $0.id == 146) }
     }
     .padding(Theme.Spacing.sm)
     .frame(width: 360)
