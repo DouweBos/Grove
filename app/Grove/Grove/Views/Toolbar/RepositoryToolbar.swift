@@ -90,9 +90,9 @@ struct RepositoryToolbar: ToolbarContent {
 
     var body: some ToolbarContent {
         ToolbarItem(placement: .principal) {
-            PillTabBar(
+            GitPillTabBar(
                 tabs: visibleTabs.map {
-                    PillTab(id: $0, title: $0.title, symbol: $0.symbol, badge: $0 == .changes ? changeCount : nil,
+                    GitPillTab(id: $0, title: $0.title, symbol: $0.symbol, badge: $0 == .changes ? changeCount : nil,
                             indicator: $0 == .ci && toolbarState.refs.isHeadFailingCI)
                 },
                 selection: currentTab,

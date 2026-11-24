@@ -63,6 +63,25 @@ What GroveKit writes carries the app's names: `GitNaming` sets the scratch-file 
 
 Besides the per-tab view models, apps get `RefActionsViewModel` (checkout, rename, delete, merge, rebase, remotes, tracking, submodules and worktrees, with undo records), `RepositoryWatcher` (refreshes on outside changes through the runner; a linked worktree ignores its siblings), `BranchTreeNode` and `RefName` for ref lists, and `DiffParser` for patches from elsewhere. Every view model takes an `onAction` hook that reports each git action as a `GroveKitAction` and whether it succeeded, with no user data, for telemetry.
 
+## GroveUIKit
+
+GroveUIKit is Grove's git UI as a second product of the same package, macOS only, so another app can show the same views over GroveKit: the working copy with its commit composer and conflict resolver, the diff, history with commit detail, compare, file history and the rebase planner, blame, the refs sidebar, stashes, reflog, branches review, every git dialog, the shared primitives (cards, panel headers, banners, empty states, badges) and the pill bar that switches between the views. Grove renders from it too, so both apps get the same fixes.
+
+```swift
+.target(name: "MyApp", dependencies: [
+    .product(name: "GroveKit", package: "Grove"),
+    .product(name: "GroveUIKit", package: "Grove"),
+]),
+```
+
+The app brings the look and what it can do:
+
+- `GitUIStyle` carries the app's colours and text zoom (`.gitUIStyle(_:)`); spacing and radii are the kit's.
+- `GitFeatures` says what the repository supports (`.gitFeatures(_:)`); every button, menu, drag and key checks it, and what can't run is off with the reason.
+- Mutations go through `GitCommandPerforming`, so an app can run them its own way (Argus runs them on its host); the default runs them on the repository.
+- What only the app can do comes in through hosts and slots (`GitUIHost`, `GitWorkingCopyHost`, `GitHistoryHost`, `GitBlameHost`, `GitRefsHost`), where a nil closure leaves the item out.
+- The app keeps its window, toolbar and routing: `GitPillTabBar` only reports which tab was picked.
+
 ## Architecture
 
 ### Directory Structure
@@ -95,7 +114,8 @@ Grove/
 
 ### Key Patterns
 
-- **GroveKit**: the engine, git models and headless ViewModels live in `Packages/GroveKit` (see above); the folders here hold the views and Grove-only domain.
+- **GroveKit**: the engine, git models and headless ViewModels live in `Packages/GroveKit` (see above).
+- **GroveUIKit**: the git views live in `Packages/GroveUIKit` (see above); the folders here hold Grove's window, toolbar, router and the views only Grove has (stacks, pull requests, Actions, settings).
 - **Protocol-driven**: Views and ViewModels depend on `GitRepositoryProtocol`, never on the concrete `GitRepository`. This enables `MockGitRepository` for previews and tests.
 - **Observable ViewModels**: All ViewModels are `@MainActor @Observable` classes, injected into the view hierarchy via `.environment()`.
 - **RepositorySession**: A single `@Observable` object per repository window that owns all ViewModels, the file watcher, auto-fetcher, and undo manager. Keeps the view layer thin.

@@ -57,7 +57,7 @@ struct QuickActionsPanel: View {
     private var panel: some View {
         VStack(spacing: 0) {
             searchRow
-            PillTabBar(tabs: QuickActionsTab.allCases.map { PillTab(id: $0, title: $0.rawValue, symbol: $0 == .items ? "command" : "doc.text") },
+            GitPillTabBar(tabs: QuickActionsTab.allCases.map { GitPillTab(id: $0, title: $0.rawValue, symbol: $0 == .items ? "command" : "doc.text") },
                        selection: viewModel.selectedTab, compact: true) { viewModel.selectTab($0) }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, Theme.Spacing.md)

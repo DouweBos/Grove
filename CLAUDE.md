@@ -35,6 +35,7 @@ A macOS Git client built with SwiftUI. Its design language follows our disk anal
 - History's commit list is an AppKit table that draws its rows itself and mirrors the view model's selection; its menus and keys check `GitFeatures`. The app's parts come through `GitHistoryHost`; blame goes through the view model's `onOpenBlame`, conflicts through `onRebaseStopped`.
 - Blame's lines are an AppKit table that draws its rows itself; the app routes picked files and shows commits through `GitBlameHost`, and opens lines through `GitUIHost.openFile`, only at the working tree.
 - The refs sidebar (`GitRefsSidebar`) is a `List` the app selects in through `GitRefItem`; pins, archives, protected branches and everything else only the app can do come through `GitRefsHost`, its own rows through the `branches` slot with `gitRefBranchRow`. Drops and every menu check `GitFeatures` and run through the model's `actions.commands`. Stashes, Reflog and Branches Review take their GroveKit view models and present dialogs through a `GitDialogPresenter`.
+- `GitPillTabBar` switches the git views; it only reports picks, and the window, toolbar and routing stay the app's.
 - The diff is an AppKit table. Highlights keep kinds and ranges, never colors, and an update that changes nothing never reads the whole diff.
 
 ## Design system
@@ -43,7 +44,7 @@ A macOS Git client built with SwiftUI. Its design language follows our disk anal
 2. Content sits in cards (`.gitCard()`, or `.gitPanel()` for edge-to-edge lists) on `Theme.background`.
 3. SF Symbols only, no emoji. Hashes, paths, counts and dates use `.monoCaption`.
 4. Reusable components live in GroveUIKit's `Primitives/` when the git UI needs them, else in `DesignSystem/`, each with a `#Preview`. Check both before building a one-off.
-5. Top-level navigation is the pill bar in the toolbar (`RepositoryTab`); the sidebar holds refs only.
+5. Top-level navigation is GroveUIKit's `GitPillTabBar` in the toolbar (`RepositoryTab`); the sidebar holds refs only.
 
 ## Build and test
 

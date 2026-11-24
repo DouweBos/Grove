@@ -289,6 +289,17 @@ struct ConsumerTests {
         }
     }
 
+    @Test func anAppCanSwitchItsGitViewsWithThePillBar() {
+        let tabs = [GitPillTab(id: "changes", title: "Changes", symbol: "tray", badge: 3),
+                    GitPillTab(id: "history", title: "History", symbol: "clock"),
+                    GitPillTab(id: "conflicts", title: "Conflicts", symbol: "exclamationmark.triangle", indicator: true)]
+        func width(iconsOnly: Bool) -> CGFloat {
+            let bar = GitPillTabBar(tabs: tabs, selection: "changes", compact: true, iconsOnly: iconsOnly) { _ in }
+            return NSHostingController(rootView: bar).sizeThatFits(in: NSSize(width: 2000, height: 100)).width
+        }
+        #expect(width(iconsOnly: true) < width(iconsOnly: false))
+    }
+
     private struct Item: Identifiable { let id: String }
 }
 #endif
